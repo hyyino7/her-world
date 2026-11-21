@@ -164,10 +164,12 @@ pnpm run verify
 - `test:native-services`：跨会话 Bank 召回及 provider 重启。
 - `test:native-life`：限定作用域的回顾读写、越界拒绝、纠正/撤回、原生历史恢复及压缩连续性。
 - `test:room-refresh`：可选的 macOS Room 合成器与窗口检查。
-- 没有包脚本、只能手动运行的三条窗口检查，先 `pnpm run build`；Electron 用 DSH 自带的 `~/.dsh/electron/Electron.app/Contents/MacOS/Electron`：
+- 没有包脚本、只能手动运行的四条窗口检查，先 `pnpm run build`；Electron 用 DSH 自带的 `~/.dsh/electron/Electron.app/Contents/MacOS/Electron`：
   - `tests/manual/room-canvas.cjs`：用 Electron 直接运行，隔离的 Chromium 合成回归，不连正在运行的 Room。
   - `tests/manual/companion-settings-window.cjs`：用 Electron 直接运行，需要已安装的 DSH（`DSH_APP` 改安装路径），设置页处理器用临时 Repo。
   - `node scripts/checks/check-standalone-window.mjs`：独立桌宠窗口探针（`tests/desktop/standalone-window-probe.cjs`），`DSH_CHATBOT_ELECTRON_PATH` 可改 Electron 路径。
+  - `scripts/checks/check-room-interactions.cjs`：用 Electron 直接运行，在临时 Room 上走一遍 3D 视图和原生消息端口，不用个人资料、电视截图或平台账号。
+- 回退到 0.2.0 的演练 `tests/migrate/home-rollback.mjs` 不在门禁里，要先准备一份装好依赖并构建过的 v0.2.0 检出，再运行 `HER_WORLD_020_ROOT=/absolute/v0.2.0 node --test tests/migrate/home-rollback.mjs`。它核对回退后聊天、召回和共享 home 可用，2a 发版前跑过。
 
 这些检查不安装或更新 DSH。已安装环境里的主人验收，与源码、包和脚本宿主验证分开。
 
