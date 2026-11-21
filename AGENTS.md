@@ -49,22 +49,25 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 
 ## 开发约定
 
+没注明出处的约定来自 dev-kit 的项目模板（`~/Developer/dev-kit/`）；项目自己的规则在条目末尾注明出处（G7）。
+
 - 快测：`pnpm run build`，然后 `node --test <受影响的测试文件>`。构建只要几秒；改了 `arch/` 或模块之间的依赖，还要跑 `pnpm run check:arch`。
 - 门禁：`pnpm run verify`，合并前跑一次。它会自动收集 `tests/**/*.test.mjs` 和 `dist/tests/**/*.test.js`，并包含 `check:arch`。
 - 行为清单：`pnpm run build && pnpm run test:behavior-list`
-- 门禁和行为清单里的 Memory 测试要监听本机回环；在不允许回环的沙箱里会失败，这是环境问题，要换到允许回环的地方重跑，不能记成通过或跳过（见 [docs/development.md](docs/development.md#architecture-behavior)）。
+- 门禁和行为清单里的 Memory 测试要监听本机回环；在不允许回环的沙箱里会失败，这是环境问题，要换到允许回环的地方重跑，不能记成通过或跳过（见 [docs/development.md](docs/development.md#architecture-behavior)）Codex 沙箱拒绝调用 `/bin/ps` 也是同一类环境原因（2b 每一批都遇到）。
 - 恢复环境：[docs/development.md](docs/development.md#local-tools) 里的那一条恢复命令。挪了目录之后，先删掉 `.venv` 和 `node_modules` 再跑它。
 - 迁移和盘点命令：见 [docs/development.md](docs/development.md)。真实数据只在主人提供的隔离副本上跑；Agent 只看命令输出的原因代码和通过与否。
 - 高风险（改之前先停下对齐）：
-  - `scripts/lib/offline-backup.mjs`、`scripts/lib/repo-storage.mjs`、`scripts/migrate/`
-  - `src/core/storage.ts`、`src/core/workspace.ts`
-  - `package.json` 的 `exports`、`files`、`imports`；`cordis.patch.yml`
+  - `scripts/lib/offline-backup.mjs`、`scripts/lib/repo-storage.mjs`、`scripts/migrate/`（decisions.md「迁移的幂等以目标状态为准」「回退的边界」）
+  - `src/core/storage.ts`、`src/core/workspace.ts`（Core 的存储和绑定，所有伙伴数据经它读写）
+  - `package.json` 的 `exports`、`files`、`imports`；`cordis.patch.yml`（decisions.md「重构期间兼容面保持不变」）
   - 发布流程：`.github/workflows/`、`scripts/checks/check-release.mjs`、[docs/github-updates.md](docs/github-updates.md)
 - 禁改：
-  - `vendor/**`、`references/`
+  - `vendor/**`、`references/`（decisions.md「没有现成替代，上游代码整体复用」）
   - 生成文件，名单在 `arch/layers.json` 各模块的 `generated` 里（例如 `src/desktop/platform/client.js`）。要改就改它的生成源
-  - `arch/baseline/**`：只能用 `pnpm run check:arch -- --write-baseline` 删除条目，或在纯搬家提交里用 `pnpm run check:arch -- --write-baseline --move <对照文件>` 改键
+  - `arch/baseline/**`：只能用 `pnpm run check:arch -- --write-baseline` 删除条目，或在纯搬家提交里用 `pnpm run check:arch -- --write-baseline --move <对照文件>` 改键（decisions.md「纯搬家可以用工具改基线的键」；唯一一次手工改键见「第 4 批白名单写回数组」）
 - 提交：一个提交只做一件事；单个提交不超过 15 个文件、600 行改动。`pnpm run build` 生成的 `dist/src/**`、脚本生成的基线文件和抄录的样例不计入阈值，但照常提交，并在方案里预先声明（构建产物一条来自 M2 方案拍板点 9：每改一个 `src/*.ts` 就多出 `.js` 和 `.d.ts`，C2、E2 等批按模块提交都靠它）。
+  阈值针对单个提交；合并已验收分支的合并提交、整份删除方案文件的提交不计（阶段 2 收尾 G8 复盘：体检列出的超限多数是这两类）。
 
 ## 目录
 
