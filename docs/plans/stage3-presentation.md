@@ -144,6 +144,17 @@
 - 最终实际 npm 档案 987 项、695 个包内引用，解包后的 21 个 iframe 脚本、MessageChannel、preload、只读拍照子进程夹具、四组情绪采样及图片 4 项通过。真实 Electron 开窗和拍照以 `SIGABRT` 退出。私有仓外插件、实际安装后的窗口和渲染、主人验收待核实。
 - 典型修改 2 从最终代码在独立分支实做，首个空快照显示 `--`，刷新显示百分比，拒绝旧版本回包，空快照清除旧值。手写 `src/room/assets.ts`、跟踪产物 `dist/src/room/assets.js`、测试 `tests/room/thirst-status.test.mjs` 各 1 个，3 文件、1 层、1 模块，达标。
 
+<a id="channels-execution"></a>
+### 第四批 · Channels
+
+- 薄字段前置将 QQ／微信可编辑字段和设备归属收在 `channels/messaging-settings.ts`。`messaging.ts` 给状态回包附上描述，Console 通用表单据此渲染和构造保存请求，桌宠客户端由构建重新生成。真实 Console 路由夹具验证无效值仍被拒绝、合法 QQ／微信字段重启后读回。
+- Channels 按 `homeScope()` 的工作区、存储、启动和代次接收 `world.changed`，在串行队列及适配器初始化边界复核。Plan 补 home 写入、启动和暂停通知，卸载沿用生活区撤销通知。Channels 经隔离标签读取运行中 home，Bridge 经 Memory 的压缩登记读待办。钱包刷新不发送主动消息，同号送达沿用已有回执。
+- 外层 QQ 连接状态缺有效绑定返回 `off`，其余委托 Messaging。五类渠道记录和 `desktop-session` 登记为 Core 原位例外，沿用现有记录协议和恢复器。
+- 架构工具清掉 R8 6 条，薄字段前置 4 条、连接状态返回类型 2 条，648→642；R1–R4 仍为 29，新增 0。R5 实时报告去掉 Channels 对 `memory-batch` 的直读，五类回执的原位例外与无法静态判定的路径继续保留报告。
+- 构建、指定及新增快测 61 条、行为索引 11 条、行为清单 139 条、`check:arch`、`metrics` 和临时 npm 档案检查通过。已知缺陷脚本仍为 Desktop 4 条、Console 2 条预期失败。
+- 典型修改 3 从薄字段前置完成点独立实做并交付单独补丁。设置经生成表单和真实 Console 路由保存，验证默认 10、0 禁发、UTC 跨日、并发预留、未知发送、换目标、换账号和重启。9 个文件，含 Channels 源码 2、产物 6、测试 1，无 Console 或 Desktop 新联动，达标。
+- Electron 桌宠及设置窗口夹具都以 `SIGABRT` 退出，窗口断言未执行。生产 DSH 窗口、真实 QQ／微信联调和主人验收待隔离包验证。
+
 ## 审查结论
 
 <a id="concepts"></a>
