@@ -6,6 +6,7 @@ import type { PetCoreHost } from '../core/index.js';
 import {randomUUID} from 'node:crypto';
 import type {CareAction} from '../contracts/behavior.js';
 import type {CompanionFactActor} from '../contracts/interaction.js';
+import {isWorldChangeFor} from '../contracts/living.js';
 import {isVoiceRoute} from '../contracts/voice.js';
 import {sameBinding, type Binding} from './conversation.js';
 import {DEFAULT_CONVERSATION} from '../core/options.js';
@@ -55,9 +56,9 @@ export class DesktopFeatures {
     if(typeof ctx.on==='function') {
       this.subscriptions.push(ctx.on('pet/core.changed',operation=>{
         if(operation.startsWith('preferences.')||operation.startsWith('workspace.')||operation==='setQuiet'||operation==='reviseIdentity')void this.refresh();
-      }),ctx.on('pet/behavior.changed',change=>{
-        if(change.workspaceId===this.host.workspace.status().target?.id)this.restore(false);
-      }),ctx.on('pet/life.changed',()=>{void this.refresh();}),ctx.on('session/event',(session,entry)=>{
+      }),ctx.on('world.changed',change=>{
+        if(isWorldChangeFor(change,this.host.workspace.homeScope()))this.restore(false);
+      }),ctx.on('session/event',(session,entry)=>{
         if(['turn/start','turn/end'].includes(entry.type)&&session.header.cwd===this.host.workspace.status().target?.path)void this.refresh();
       },{global:true}));
     }

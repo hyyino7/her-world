@@ -381,7 +381,7 @@ export class CompanionBehavior {
                 const worldChanged = worldFingerprint !== bound.worldFingerprint;
                 bound.worldFingerprint = worldFingerprint;
                 if (bound.scope && worldChanged && (hadProjection || notifyFirst))
-                    this.living.changed(bound.scope, true);
+                    this.living.changed(bound.scope, true, reason === 'observation' ? this.presentationVersion() : undefined);
             }
             if (!this.publicationFault && (!changed || reason === 'observation' && !visibleChanged))
                 return;

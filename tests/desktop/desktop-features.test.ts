@@ -103,8 +103,9 @@ async function maintenanceFixture(t:TestContext) {
   let settings:CompanionSettings={...DEFAULT_COMPANION_SETTINGS,desktopWhisperEnabled:false,desktopBalanceEnabled:false};
   let sleeping=false,quiet=false,busy=false,visible=true,lifeRunning=false,calls=0;
   const frames:{type:string;value:any}[]=[];
+  const homeScope=()=>({workspaceId:'fixture',path:root,storageId:'fixture',bootId:'fixture-workspace',generation:1});
   const host={workspace:{status:()=>({state:'ready',target:{id:'fixture',path:root}}),companionSettings:()=>settings,
-    runtime:{policy:()=>({quiet}),identity:()=>({displayName:'Fixture'})}},native:{context:()=>({identity:'Fixture identity'})}} as unknown as PetCoreHost;
+    homeScope,runtime:{policy:()=>({quiet}),identity:()=>({displayName:'Fixture'})}},native:{context:()=>({identity:'Fixture identity'})}} as unknown as PetCoreHost;
   const lifetime = await planLease(host,()=>lifeRunning);
   const ctx={root:lifetime,[Context.isolate]:lifetime[Context.isolate],get(name:string){
     if(name==='petBehavior')return {restState:()=>({sleeping,pending:false})};
@@ -115,13 +116,13 @@ async function maintenanceFixture(t:TestContext) {
   const emit=(name:string,...args:any[])=>{for(const fn of events.get(name)??[])fn(...args);};
   const settled=async()=>{await features['maintenance'];await features['scheduling'];};
   t.after(async()=>{await features.close();await lifetime.fiber.dispose();t.mock.timers.reset();rmSync(root,{recursive:true,force:true});});
-  return {root,features,frames,events,emit,settled,calls:()=>calls,
+  return {root,features,frames,events,emit,settled,homeScope,calls:()=>calls,
     configure(next:Partial<typeof settings>){settings={...settings,...next};emit('pet/core.changed','workspace.saveCompanion');},
-    sleep(value:boolean){sleeping=value;emit('pet/behavior.changed',{workspaceId:'fixture'});},
+    sleep(value:boolean){sleeping=value;emit('world.changed',{...homeScope(),bodyOnly:true});},
     quiet(value:boolean){quiet=value;emit('pet/core.changed','preferences.setQuiet');},
     busy(value:boolean){busy=value;emit('session/event',{header:{cwd:root}},{type:value?'turn/start':'turn/end'});},
     visible(value:boolean){visible=value;features.restore(false);},
-    life(value:boolean){lifeRunning=value;emit('pet/life.changed');},
+    life(value:boolean){lifeRunning=value;emit('world.changed',homeScope());},
     async advance(ms:number){t.mock.timers.tick(ms);await settled();},
   };
 }
@@ -188,5 +189,6 @@ test('a failed due action waits for a real lifecycle change instead of retrying 
   f.configure({desktopWhisperEnabled:true,desktopWhisperMinutes:1});await f.settled();
   await f.advance(60_000);assert.equal(attempts,1);assert.equal(f.features['timer'],undefined);
   await f.advance(60*60_000);assert.equal(attempts,1);
-  f.emit('pet/life.changed');await f.settled();await f.advance(1);assert.equal(attempts,2);
+  f.emit('world.changed',{...f.homeScope(),generation:0});await f.settled();await f.advance(1);assert.equal(attempts,1);
+  f.emit('world.changed',f.homeScope());await f.settled();await f.advance(1);assert.equal(attempts,2);
 });

@@ -70,7 +70,7 @@
       "dependencies": ["core","memory","emotion","contracts","world","living","desktop","presentation"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petDesktop","petPlatform"],
       "publishes": [],
-      "subscribes": ["agent/assistant-stream","agent/error","pet/behavior.changed","pet/core.changed","pet/emotion.expression","pet/life.changed","session/event"],
+      "subscribes": ["agent/assistant-stream","agent/error","pet/core.changed","pet/emotion.expression","session/event","world.changed"],
       "generated": [
         {"file":"src/desktop/assets/life-animations.json","sources":["scripts/build/build-life-media.mjs"]},
         {"file":"src/desktop/platform/client.js","sources":["scripts/build/build-pet-platform.mjs","src/desktop/platform/browser-entry.js","src/console/client.js","scripts/lib/pet-hear-lifecycle.mjs","vendor/dsh-pet/platform/upstream/client.js","src/desktop/platform/playback-observer.js","src/desktop/platform/activity-playback.js","src/desktop/platform/presentation-lifecycle.js","src/presentation/playback.ts","src/presentation/room-transport.ts"]},

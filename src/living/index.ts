@@ -27,7 +27,7 @@ type Slots<T> = Map<symbol, Slot<T>>;
 interface Domain {
   worlds: Set<LivingWorld>;
   slots: {[K in Area]: Slots<Areas[K]>};
-  changes: Map<string, {valid: () => boolean; bodyOnly: boolean}[]>;
+  changes: Map<string, {valid: () => boolean; bodyOnly: boolean; bodyObservation?: WorldChanged['bodyObservation']}[]>;
   lastNotifiedBinding?: HomeBinding;
   core?: {areas: number; dispose(): void | Promise<void>};
 }
@@ -166,14 +166,15 @@ export class LivingWorld {
     } catch { /* Binding may already be unavailable during teardown. */ }
   }
 
-  changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: HomeBinding, bodyOnly = false) {
+  changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: HomeBinding, bodyOnly = false,
+    bodyObservation?: WorldChanged['bodyObservation']) {
     // Notification failures cannot invalidate completed domain work.
     try {
       const binding = expected ?? host.workspace.homeScope();
       if (!binding || !sameHomeBinding(host.workspace.homeScope(), binding)) return;
       const {workspaceId, path, storageId, bootId, generation} = binding;
       const key = JSON.stringify([workspaceId, path, storageId, bootId, generation]);
-      const notice = {valid, bodyOnly};
+      const notice = {valid, bodyOnly, bodyObservation};
       const pending = this.domain.changes.get(key);
       if (pending) { pending.push(notice); return; }
       const guards = [notice];
@@ -185,8 +186,10 @@ export class LivingWorld {
           const current = guards.filter(guard => guard.valid());
           if (!current.length) return;
           this.domain.lastNotifiedBinding = binding;
+          const observation = current.every(guard => guard.bodyObservation) ? current.at(-1)?.bodyObservation : undefined;
           ctx.emit('world.changed', {workspaceId, storageId, bootId, generation,
-            ...(current.every(guard => guard.bodyOnly) ? {bodyOnly:true} : {})});
+            ...(current.every(guard => guard.bodyOnly) ? {bodyOnly:true} : {}),
+            ...(observation ? {bodyObservation:observation} : {})});
         } catch { /* A failed observer has no effect on the committed result. */ }
       });
     } catch { /* Binding may already be unavailable during teardown. */ }
@@ -204,7 +207,8 @@ export interface CommandAdmission {
 export class LivingView {
   constructor(private readonly ports: LivingPorts = {}, readonly isCurrent = () => true,
     private readonly world?: LivingWorld, readonly isLatestGeneration = isCurrent,
-    readonly changed: (binding: HomeBinding, bodyOnly?: boolean) => void = () => {}) {}
+    readonly changed: (binding: HomeBinding, bodyOnly?: boolean,
+      bodyObservation?: WorldChanged['bodyObservation']) => void = () => {}) {}
 
   lookup<K extends Area>(area: K): AreaReference<Areas[K]> | undefined {
     if (this.world) return this.world.lookup(area);
@@ -366,7 +370,8 @@ export function mountLivingArea<K extends Area>(ctx: Context, host: PetCoreHost,
     const active = () => world.lookup(area)?.lease === registration?.lease && registration !== undefined;
     const view = new LivingView({}, () => registration?.lease.isCurrent() === true &&
       (ctx.fiber.state === FiberState.LOADING || ctx.fiber.state === FiberState.ACTIVE), world,
-      () => registration?.isLatestGeneration() === true, (binding, bodyOnly) => world.changed(ctx, host, active, binding, bodyOnly));
+      () => registration?.isLatestGeneration() === true,
+      (binding, bodyOnly, observation) => world.changed(ctx, host, active, binding, bodyOnly, observation));
     value = create(view);
     registration = world.register(area, value, ctx.fiber);
     ctx.on('pet/core.changed', () => world.bindingChanged(ctx, host, active));

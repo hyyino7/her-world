@@ -14,6 +14,8 @@ import {behaviorPresentation,companionFeelings,feelingLabels} from '../../dist/s
 
 export function fixture(root,getOrigin=()=> 'http://127.0.0.1',services={}) {
   let target={id:'a',path:root}, turns=[], requests=0;
+  let generation=0;
+  const homeScope=()=>({workspaceId:target.id,path:target.path,storageId:target.id,bootId:'fixture-workspace',generation});
   const chat={id:'native-session',snapshot:()=>({workspaceId:'a',sessionId:'native-session',messages:turns,reason:'completed',generating:false}),
     run:async(action,input)=>{if(action==='send'){requests++;turns=[...turns,{id:requests*2,role:'user',text:input.text},{id:requests*2+1,role:'assistant',text:'native reply'}];}return chat.snapshot();}};
   let chatOpens=0,presentation;
@@ -23,12 +25,12 @@ export function fixture(root,getOrigin=()=> 'http://127.0.0.1',services={}) {
   },webServer:{getOrigin},
     petCore:{workspace:{status:()=>({state:'ready',target}),companionSettings:()=>structuredClone(DEFAULT_COMPANION_SETTINGS),
       sessionStatus:session=>session.header.cwd===target.path?{state:'ready',target}:null,
-      storageId:()=>target.id,runtime:{identity:()=>({displayName:'大肥鱼',character:''}),store:{get:(table,key)=>store.get(table+key),put:(table,key,value)=>store.set(table+key,value)}}}},
+      storageId:()=>target.id,homeScope,runtime:{identity:()=>({displayName:'大肥鱼',character:''}),store:{get:(table,key)=>store.get(table+key),put:(table,key,value)=>store.set(table+key,value)}}}},
     petDesktop:{chat,openChat:async()=>{chatOpens++;},recordPlayback:receipt=>receipts.push(receipt),
       onPresentation:receive=>{presentation=receive;return()=>{presentation=undefined;};}}};
   const platform=new PetPlatform(ctx);
   return {platform,ctx,receipts,present:(type,value)=>presentation?.(type,value),publish:(name,...args)=>{for(const receive of events.get(name) ?? [])receive(...args);},
-    rebind(id){target={...target,id};},requests:()=>requests,chatOpens:()=>chatOpens};
+    rebind(id){generation++;target={...target,id};},requests:()=>requests,chatOpens:()=>chatOpens};
 }
 
 async function configureFixturePet(platform,display='none') {
@@ -166,7 +168,7 @@ test('normal host reports only verified playback transitions into Emotion and re
  const root=mkdtempSync(join(tmpdir(),'chatpet-presentation-receipt-'));
  let home={her:{kind:'idle',activity:'安静地待着',asleep:false},emotion:{feelings:[]}};
  const services={};
- const {platform,receipts,publish,present}=fixture(root,undefined,services);
+ const {platform,ctx,receipts,publish,present}=fixture(root,undefined,services);
  const request=(path,method='GET',body)=>platform.handle(new URL('http://localhost/chatpet-presentation/'+path),method,body?JSON.stringify(body):undefined,new AbortController().signal);
  try{
   platform.ownerAccess('a');await platform.refreshBehavior();
@@ -185,8 +187,8 @@ test('normal host reports only verified playback transitions into Emotion and re
     {id:playback,name:'wave',status:'ended',kind:'expression'}]);
   services.petBehavior={roomState:async()=>home};
   home={her:{kind:'eat',activity:'正在吃饭',asleep:false},emotion:{feelings:['anger']}};
-  publish('pet/behavior.changed',{workspaceId:'a',bootId:'test',revision:2});
-  await platform.refreshBehavior();
+  publish('world.changed',ctx.petCore.workspace.homeScope());
+  await platform.refreshing;
   assert.equal(platform.status().activity,undefined);
   assert.equal(platform.status().representation.action,'吃白饭');
  }finally{platform.close();rmSync(root,{recursive:true,force:true});}

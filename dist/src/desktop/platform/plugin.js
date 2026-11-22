@@ -8,6 +8,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { desktopHomePlayback, activityPresentation, eatingClips, physicalClips, sleepingClips, projectActivityConfig } from './activity.js';
 import { migratePresentation, resolvePresentationMigration } from './migration.js';
 import { companionFeelings } from '../../living/body/presentation.js';
+import { isWorldChangeFor } from '../../contracts/living.js';
 import { sameHomeBinding, withLivingCaller } from '../../living/index.js';
 const load = createRequire(import.meta.url);
 const root = dirname(load.resolve('her-world/package.json'));
@@ -70,6 +71,7 @@ function matches(value, token) {
 export class PetPlatform {
     ctx;
     bound;
+    homeBinding;
     directory = '';
     ownerToken = '';
     toolToken = '';
@@ -115,6 +117,7 @@ export class PetPlatform {
         this.setup?.playback.cancelAll();
         this.setup?.state.cancelAll();
         this.bound = undefined;
+        this.homeBinding = undefined;
         this.router = undefined;
         this.lookup = undefined;
         this.setup = undefined;
@@ -135,7 +138,8 @@ export class PetPlatform {
     }
     sync() {
         const target = this.selected();
-        if (this.bound && (target?.id !== this.bound.id || target?.path !== this.bound.path))
+        if (this.bound && (target?.id !== this.bound.id || target?.path !== this.bound.path ||
+            !sameHomeBinding(this.homeBinding, this.ctx.petCore.workspace.homeScope?.())))
             this.close();
     }
     ensure() {
@@ -154,6 +158,7 @@ export class PetPlatform {
         this.migration = migratePresentation(this.directory, this.ctx.petCore.workspace.companionSettings());
         this.scope = new AbortController();
         this.bound = { id: target.id, path: target.path };
+        const homeBinding = this.homeBinding = this.ctx.petCore.workspace.homeScope?.();
         this.ownerToken = randomBytes(32).toString('hex');
         this.toolToken = randomBytes(32).toString('hex');
         this.mediaToken = randomBytes(32).toString('hex');
@@ -277,17 +282,18 @@ export class PetPlatform {
             setup.menuRegistry.register({ owner: 'chatpet.room', labels: ['进入房间'], target: 'both' });
             setup.menuRegistry.register({ owner: 'chatpet.native-chat', labels: ['原生流式聊天'], target: 'both' });
             setup.state.writeSection('menu', { items: setup.menuRegistry.snapshot() });
-            this.cleanup.push(this.ctx.on('pet/behavior.changed', event => {
-                if (event.workspaceId !== target.id || scope.signal.aborted)
+            this.cleanup.push(this.ctx.on('world.changed', event => {
+                if (scope.signal.aborted || !isWorldChangeFor(event, homeBinding) ||
+                    !sameHomeBinding(homeBinding, this.ctx.petCore.workspace.homeScope?.()))
                     return;
                 const reading = this.behaviorRead;
-                if (event.reason === 'observation' && reading?.scope === scope && reading.bound === this.bound &&
-                    typeof event.bootId === 'string' && event.bootId && Number.isSafeInteger(event.revision) && event.revision >= 0) {
+                const observation = event.bodyObservation;
+                if (observation && reading?.scope === scope && reading.bound === this.bound) {
                     const previous = reading.observation;
-                    if (previous && previous.bootId !== event.bootId)
+                    if (previous && previous.bootId !== observation.bootId)
                         this.refreshAgain = true;
-                    if (!previous || previous.bootId !== event.bootId || event.revision > previous.revision)
-                        reading.observation = { bootId: event.bootId, revision: event.revision };
+                    if (!previous || previous.bootId !== observation.bootId || observation.revision > previous.revision)
+                        reading.observation = observation;
                     return;
                 }
                 void this.refreshBehavior();
@@ -442,7 +448,10 @@ export class PetPlatform {
                 this.refreshAgain = false;
                 await this.readBehavior();
             } while (this.refreshAgain && !scope.signal.aborted && this.scope === scope);
-        }).finally(() => {
+        }).finally(async () => {
+            // The world signal is queued after a Body commit. Let it claim a
+            // follow-up before releasing the refresh that was active at the commit.
+            await Promise.resolve();
             if (this.refreshing !== refresh)
                 return;
             this.refreshing = undefined;
@@ -458,13 +467,17 @@ export class PetPlatform {
         if (!this.bound || this.scope.signal.aborted)
             return;
         const bound = this.bound, scope = this.scope;
+        const current = () => this.bound === bound && !scope.signal.aborted &&
+            sameHomeBinding(this.homeBinding, this.ctx.petCore?.workspace.homeScope?.());
+        if (!current())
+            return;
         const reading = { bound, scope };
         this.behaviorRead = reading;
         let next;
         try {
             const service = this.ctx.get('petBehavior', false);
             next = service ? desktopHomePlayback(await service.roomState(bound.id)) : undefined;
-            if (this.bound !== bound || scope.signal.aborted)
+            if (!current())
                 return;
             const prior = this.behavior;
             this.behavior = next;
@@ -516,7 +529,7 @@ export class PetPlatform {
                 // A Body snapshot publishes its observation before resolving this very
                 // read. Only an observation not covered by that result needs another
                 // pass; external transitions and explicit refreshes retain their flag.
-                if (observed && this.bound === bound && !scope.signal.aborted &&
+                if (observed && current() &&
                     !(received?.bootId === observed.bootId && Number.isSafeInteger(received.revision) && received.revision >= observed.revision))
                     this.refreshAgain = true;
             }

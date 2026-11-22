@@ -13,6 +13,7 @@ export declare const inject: string[];
 export declare class PetPlatform {
     private ctx;
     private bound?;
+    private homeBinding?;
     private directory;
     private ownerToken;
     private toolToken;

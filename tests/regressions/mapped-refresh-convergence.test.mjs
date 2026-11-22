@@ -11,6 +11,7 @@ import net from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
 import tls from 'node:tls';
+import {Context} from '@deepseek-ai/cordis';
 
 // Guard the external app/network seams before importing the actual carrier.
 // ensure() registers its real listener; no presentation helper may be launched.
@@ -28,6 +29,7 @@ after(()=>{for(const undo of restore.reverse())undo();syncBuiltinESMExports();as
 
 const {PetPlatform}=await import(compiledURL('desktop/platform/plugin.js'));
 const {CompanionBehavior}=await import(compiledURL('living/body/plugin.js'));
+const {LivingView,LivingWorld}=await import(compiledURL('living/index.js'));
 const {DEFAULT_COMPANION_SETTINGS}=await import(compiledURL('core/companion-settings.js'));
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return{promise,resolve};};
 const snapshot=(revision=1,bootId='fixture-boot',label='Quiet rest')=>({
@@ -39,11 +41,13 @@ async function fixture(t,{real=false,direct=false,lifecycle=false}={}) {
   const root=mkdtempSync(join(tmpdir(),'mapped-refresh-'));
   t.mock.timers.enable({apis:['Date'],now:Date.parse('2026-11-14T05:00:00Z')});
   let target={id:'a',path:join(root,'a')},current=snapshot(),hook,reads=0,guardTrips=0,body,platform;
+  let generation=0,releaseWorld;
+  const homeScope=()=>({workspaceId:target.id,path:target.path,storageId:target.id,bootId:'workspace-boot',generation});
   const listeners=new Map(),fibers=[],warnings=[];
   const makeWorkspace=()=>{const dir=join(target.path,'.chatpet/data/pet-platform');mkdirSync(dir,{recursive:true});writeFileSync(join(dir,'main-config.jsonc'),'{"pets":[]}');};
   makeWorkspace();
   const services={petLife:{running:()=>true,bodyClockState:()=>({enabled:true,restoreElapsed:false})}};
-  const host={native:{},workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,
+  const host={native:{},workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,homeScope,
     companionSettings:()=>structuredClone(DEFAULT_COMPANION_SETTINGS),
     sessionStatus:session=>session?.header?.cwd===target.path?{state:'ready',target}:null,
     runtime:{config:{ownerActorId:'owner',companionId:'fish'},identity:()=>({displayName:'Fixture',companionId:'fish',character:''}),
@@ -62,7 +66,13 @@ async function fixture(t,{real=false,direct=false,lifecycle=false}={}) {
     if(names.length===1&&names[0]==='petBehavior'){fibers.push(fiber);if(services.petBehavior)fiber.mount();}
     return fiber;
   };
-  if(real){body=new CompanionBehavior(ctx,host,{plan:()=>services.petLife});await body.snapshot(target.id);await body.setAutonomy(target.id,true);}
+  if(real){
+    const {world,release}=LivingWorld.retain(new Context(),host,'body');releaseWorld=release;
+    const living=new LivingView({plan:()=>services.petLife},()=>true,undefined,undefined,
+      (scope,bodyOnly,observation)=>world.changed(ctx,host,()=>true,scope,bodyOnly,observation));
+    body=new CompanionBehavior(ctx,host,living);body.activate();
+    await body.snapshot(target.id);await body.setAutonomy(target.id,true);
+  }
   const actualRoomState=body?.roomState.bind(body);
   const service={async roomState(id){
     reads++;
@@ -82,13 +92,15 @@ async function fixture(t,{real=false,direct=false,lifecycle=false}={}) {
     }
     assert.fail('The actual platform refresh did not settle');
   };
-  const changed=(revision,bootId='fixture-boot',reason='observation',workspaceId=target.id)=>emit('pet/behavior.changed',{workspaceId,bootId,revision,reason});
-  t.after(async()=>{platform.close();await body?.close();rmSync(root,{recursive:true,force:true,maxRetries:5,retryDelay:20});assert.equal(guardTrips,0,'The event delivery guard must never stop a refresh pump');assert.deepEqual(forbidden,[]);});
+  const changed=(revision,bootId='fixture-boot',reason='observation',workspaceId=target.id)=>emit('world.changed',
+    {...homeScope(),workspaceId,bodyOnly:true,...(reason==='observation'?{bodyObservation:{bootId,revision}}:{})});
+  t.after(async()=>{platform.close();await body?.close();releaseWorld?.();rmSync(root,{recursive:true,force:true,maxRetries:5,retryDelay:20});assert.equal(guardTrips,0,'The event delivery guard must never stop a refresh pump');assert.deepEqual(forbidden,[]);});
   platform.ownerAccess(target.id);await drain();
-  assert.ok((listeners.get('pet/behavior.changed')?.size??0)>0,'The actual ensure() path registered its listener');
-  return {platform,body,service,services,ctx,fibers,warnings,drain,changed,
+  assert.ok((listeners.get('world.changed')?.size??0)>0,'The actual ensure() path registered its listener');
+  const bind=id=>{target={id,path:join(root,id)};generation++;makeWorkspace();};
+  return {platform,body,service,services,ctx,fibers,warnings,drain,changed,homeScope,bind,
     get reads(){return reads;},get target(){return target;},setHook:fn=>{hook=fn;},setCurrent:value=>{current=value;},
-    rebind(id){target={id,path:join(root,id)};makeWorkspace();platform.ownerAccess(id);},
+    rebind(id){bind(id);platform.ownerAccess(id);},
     unload(){services.petBehavior=undefined;for(const fiber of fibers)fiber.dispose();},
     reload(next=service){services.petBehavior=next;for(const fiber of fibers)fiber.mount();},
   };
@@ -138,7 +150,7 @@ for(const changedBoot of [false,true])test('actual listener: an in-flight '+(cha
 
 test('actual listener: unknown observation metadata conservatively requests another read',async t=>{
   const f=await fixture(t),before=f.reads;let first=true;
-  f.setHook(()=>{if(first){first=false;f.ctx.emit('pet/behavior.changed',{workspaceId:'a',reason:'observation'});}else f.changed(2);return snapshot(2);});
+  f.setHook(()=>{if(first){first=false;f.ctx.emit('world.changed',f.homeScope());}else f.changed(2);return snapshot(2);});
   await f.platform.refreshBehavior();await f.drain();assert.equal(f.reads,before+2);
 });
 
@@ -179,14 +191,32 @@ test('close during an in-flight read removes the actual listener and rejects its
   assert.equal(f.ctx.get('petBehavior'),f.service,'Presentation closure cannot replace the shared Body service');
 });
 
+test('returning to the same workspace rejects the old generation pulse and late snapshot',async t=>{
+  const f=await fixture(t),entered=deferred(),release=deferred();
+  const oldBinding=f.homeScope();
+  f.setHook(()=>{entered.resolve();return release.promise;});
+  const oldRefresh=f.platform.refreshBehavior();await entered.promise;
+  f.bind('b');f.bind('a');
+  f.ctx.emit('world.changed',oldBinding);
+  assert.equal(f.platform.refreshAgain,false);
+  release.resolve(snapshot(99,'obsolete-boot'));await oldRefresh;
+  assert.notEqual(f.platform.behavior.behavior.bootId,'obsolete-boot');
+  f.setHook(undefined);f.setCurrent(snapshot(2,'current-boot'));
+  f.platform.ownerAccess('a');await f.drain();
+  const reads=f.reads;f.ctx.emit('world.changed',oldBinding);await f.drain();
+  assert.equal(f.reads,reads);
+  f.changed(2,'current-boot','transition');await f.drain();
+  assert.equal(f.reads,reads+1);assert.equal(f.platform.behavior.behavior.bootId,'current-boot');
+});
+
 test('actual direct Body: a queued owner feed published after the observation read exits is included in the original refresh await',async t=>{
   const f=await fixture(t,{real:true,direct:true});
   await f.body.act(f.target.id,'water','tail-water','desktop');await f.drain();
   assert.equal(f.platform.behavior.her.kind,'drink');
   let action,injected=false;const transitions=[];
-  const stop=f.ctx.on('pet/behavior.changed',event=>{
-    if(!injected && event.reason==='observation') {injected=true;action=f.body.act(f.target.id,'feed','tail-feed','desktop');}
-    if(event.reason==='transition')transitions.push({reading:Boolean(f.platform.behaviorRead),refreshing:Boolean(f.platform.refreshing)});
+  const stop=f.ctx.on('world.changed',event=>{
+    if(!injected && event.bodyObservation) {injected=true;action=f.body.act(f.target.id,'feed','tail-feed','desktop');}
+    if(!event.bodyObservation)transitions.push({reading:Boolean(f.platform.behaviorRead),refreshing:Boolean(f.platform.refreshing)});
   });
   t.after(stop);f.body.binding.room.state.needs.thirst+=.02;t.mock.timers.setTime(Date.now()+10);
   await f.platform.refreshBehavior();assert.equal(injected,true);await action;
@@ -227,7 +257,8 @@ for(const rebind of [false,true])test('actual refresh tail: '+(rebind?'a replace
 test('Room, garden and actual Desktop settle together after reads and an owner action',async t=>{
   const f=await fixture(t,{real:true,direct:true});
   const readers=roomReaders(async()=>{t.mock.timers.setTime(Date.now()+1);return f.body.roomState(f.target.id);},async()=>{t.mock.timers.setTime(Date.now()+1);return f.body.garden(f.target.id,'state');});
-  const stop=f.ctx.on('pet/behavior.changed',event=>readers.changed(event));t.after(stop);
+  const stop=f.ctx.on('world.changed',event=>readers.changed({workspaceId:event.workspaceId,...f.body.presentationVersion(),
+    reason:event.bodyOnly?'transition':'world'}));t.after(stop);
   await readers.start();await readers.drain();await f.drain();
   assert.ok(readers.counts.main<=2&&readers.counts.garden<=2);
   await f.body.act(f.target.id,'water','shared-water','desktop');await readers.drain();await f.drain();

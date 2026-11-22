@@ -48,7 +48,7 @@ export declare class LivingWorld {
         lease: RegistrationLease;
     }) | undefined;
     bindingChanged(ctx: Context, host: PetCoreHost, valid: () => boolean): void;
-    changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: HomeBinding, bodyOnly?: boolean): void;
+    changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: HomeBinding, bodyOnly?: boolean, bodyObservation?: WorldChanged['bodyObservation']): void;
 }
 type AreaPorts = {
     [K in Area]?: () => Areas[K] | undefined;
@@ -66,8 +66,8 @@ export declare class LivingView {
     readonly isCurrent: () => boolean;
     private readonly world?;
     readonly isLatestGeneration: () => boolean;
-    readonly changed: (binding: HomeBinding, bodyOnly?: boolean) => void;
-    constructor(ports?: LivingPorts, isCurrent?: () => boolean, world?: LivingWorld | undefined, isLatestGeneration?: () => boolean, changed?: (binding: HomeBinding, bodyOnly?: boolean) => void);
+    readonly changed: (binding: HomeBinding, bodyOnly?: boolean, bodyObservation?: WorldChanged['bodyObservation']) => void;
+    constructor(ports?: LivingPorts, isCurrent?: () => boolean, world?: LivingWorld | undefined, isLatestGeneration?: () => boolean, changed?: (binding: HomeBinding, bodyOnly?: boolean, bodyObservation?: WorldChanged['bodyObservation']) => void);
     lookup<K extends Area>(area: K): AreaReference<Areas[K]> | undefined;
     get<K extends Area>(area: K): Areas[K] | undefined;
     private boundScope;

@@ -138,7 +138,7 @@ export class LivingWorld {
         }
         catch { /* Binding may already be unavailable during teardown. */ }
     }
-    changed(ctx, host, valid, expected, bodyOnly = false) {
+    changed(ctx, host, valid, expected, bodyOnly = false, bodyObservation) {
         // Notification failures cannot invalidate completed domain work.
         try {
             const binding = expected ?? host.workspace.homeScope();
@@ -146,7 +146,7 @@ export class LivingWorld {
                 return;
             const { workspaceId, path, storageId, bootId, generation } = binding;
             const key = JSON.stringify([workspaceId, path, storageId, bootId, generation]);
-            const notice = { valid, bodyOnly };
+            const notice = { valid, bodyOnly, bodyObservation };
             const pending = this.domain.changes.get(key);
             if (pending) {
                 pending.push(notice);
@@ -163,8 +163,10 @@ export class LivingWorld {
                     if (!current.length)
                         return;
                     this.domain.lastNotifiedBinding = binding;
+                    const observation = current.every(guard => guard.bodyObservation) ? current.at(-1)?.bodyObservation : undefined;
                     ctx.emit('world.changed', { workspaceId, storageId, bootId, generation,
-                        ...(current.every(guard => guard.bodyOnly) ? { bodyOnly: true } : {}) });
+                        ...(current.every(guard => guard.bodyOnly) ? { bodyOnly: true } : {}),
+                        ...(observation ? { bodyObservation: observation } : {}) });
                 }
                 catch { /* A failed observer has no effect on the committed result. */ }
             });
@@ -352,7 +354,7 @@ export function mountLivingArea(ctx, host, area, create, start, close = value =>
         ctx.effect(() => dispose);
         const active = () => world.lookup(area)?.lease === registration?.lease && registration !== undefined;
         const view = new LivingView({}, () => registration?.lease.isCurrent() === true &&
-            (ctx.fiber.state === 1 /* FiberState.LOADING */ || ctx.fiber.state === 2 /* FiberState.ACTIVE */), world, () => registration?.isLatestGeneration() === true, (binding, bodyOnly) => world.changed(ctx, host, active, binding, bodyOnly));
+            (ctx.fiber.state === 1 /* FiberState.LOADING */ || ctx.fiber.state === 2 /* FiberState.ACTIVE */), world, () => registration?.isLatestGeneration() === true, (binding, bodyOnly, observation) => world.changed(ctx, host, active, binding, bodyOnly, observation));
         value = create(view);
         registration = world.register(area, value, ctx.fiber);
         ctx.on('pet/core.changed', () => world.bindingChanged(ctx, host, active));
