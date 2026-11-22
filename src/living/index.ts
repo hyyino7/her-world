@@ -1,7 +1,7 @@
 import {Context, FiberState, type Fiber} from '@deepseek-ai/cordis';
 import type {PetCoreHost} from '../core/index.js';
 import {RegistrationTable} from '../core/tables/registry.js';
-import type {CompanionBinding} from '../core/tables/companion-ports.js';
+import type {HomeBinding} from '../core/workspace.js';
 import {Rejection, reject, text} from '../core/storage.js';
 import type {CallOptions, ContractError, Result} from '../contracts/common.js';
 import {FACT_DOMAIN_NAMES, factDomainOf, type CompanionFactSource} from '../contracts/interaction.js';
@@ -27,8 +27,8 @@ type Slots<T> = Map<symbol, Slot<T>>;
 interface Domain {
   worlds: Set<LivingWorld>;
   slots: {[K in Area]: Slots<Areas[K]>};
-  changes: Map<string, (() => boolean)[]>;
-  lastNotifiedBinding?: CompanionBinding;
+  changes: Map<string, {valid: () => boolean; bodyOnly: boolean}[]>;
+  lastNotifiedBinding?: HomeBinding;
   core?: {areas: number; dispose(): void | Promise<void>};
 }
 const domains = new WeakMap<Context, WeakMap<PetCoreHost, Domain>>();
@@ -37,15 +37,10 @@ declare module '@deepseek-ai/cordis' {
   interface Events {'world.changed'(value: WorldChanged): void}
 }
 
-function currentBinding(host: PetCoreHost): CompanionBinding | undefined {
-  const {state, target} = host.workspace.status();
-  if (state !== 'ready' || !target) return;
-  const storageId = host.workspace.storageId();
-  if (storageId) return {workspaceId:target.id,path:target.path,storageId};
-}
-
-function sameBinding(current: CompanionBinding | undefined, captured: CompanionBinding) {
-  return current?.workspaceId === captured.workspaceId && current.path === captured.path && current.storageId === captured.storageId;
+export function sameHomeBinding(current: HomeBinding | undefined, captured: HomeBinding | undefined) {
+  return current === captured || !!current && !!captured && current.workspaceId === captured.workspaceId &&
+    current.path === captured.path && current.storageId === captured.storageId &&
+    current.bootId === captured.bootId && current.generation === captured.generation;
 }
 
 export function serviceLabel(contextScope: Context, name: string) {
@@ -165,30 +160,33 @@ export class LivingWorld {
   bindingChanged(ctx: Context, host: PetCoreHost, valid: () => boolean) {
     if (!valid()) return;
     try {
-      const binding = currentBinding(host);
+      const binding = host.workspace.homeScope();
       if (!binding) this.domain.lastNotifiedBinding = undefined;
-      else if (!sameBinding(this.domain.lastNotifiedBinding, binding)) this.changed(ctx, host, valid, binding);
+      else if (!sameHomeBinding(this.domain.lastNotifiedBinding, binding)) this.changed(ctx, host, valid, binding);
     } catch { /* Binding may already be unavailable during teardown. */ }
   }
 
-  changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: CompanionBinding) {
+  changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: HomeBinding, bodyOnly = false) {
     // Notification failures cannot invalidate completed domain work.
     try {
-      const binding = expected ?? currentBinding(host);
-      if (!binding) return;
-      const {workspaceId, path, storageId} = binding;
-      const key = JSON.stringify([workspaceId, path, storageId]);
+      const binding = expected ?? host.workspace.homeScope();
+      if (!binding || !sameHomeBinding(host.workspace.homeScope(), binding)) return;
+      const {workspaceId, path, storageId, bootId, generation} = binding;
+      const key = JSON.stringify([workspaceId, path, storageId, bootId, generation]);
+      const notice = {valid, bodyOnly};
       const pending = this.domain.changes.get(key);
-      if (pending) { pending.push(valid); return; }
-      const guards = [valid];
+      if (pending) { pending.push(notice); return; }
+      const guards = [notice];
       this.domain.changes.set(key, guards);
       queueMicrotask(() => {
         this.domain.changes.delete(key);
         try {
-          if (sameBinding(currentBinding(host), binding) && guards.some(guard => guard())) {
-            this.domain.lastNotifiedBinding = binding;
-            ctx.emit('world.changed', {workspaceId, storageId});
-          }
+          if (!sameHomeBinding(host.workspace.homeScope(), binding)) return;
+          const current = guards.filter(guard => guard.valid());
+          if (!current.length) return;
+          this.domain.lastNotifiedBinding = binding;
+          ctx.emit('world.changed', {workspaceId, storageId, bootId, generation,
+            ...(current.every(guard => guard.bodyOnly) ? {bodyOnly:true} : {})});
         } catch { /* A failed observer has no effect on the committed result. */ }
       });
     } catch { /* Binding may already be unavailable during teardown. */ }
@@ -206,7 +204,7 @@ export interface CommandAdmission {
 export class LivingView {
   constructor(private readonly ports: LivingPorts = {}, readonly isCurrent = () => true,
     private readonly world?: LivingWorld, readonly isLatestGeneration = isCurrent,
-    readonly changed: (binding: CompanionBinding) => void = () => {}) {}
+    readonly changed: (binding: HomeBinding, bodyOnly?: boolean) => void = () => {}) {}
 
   lookup<K extends Area>(area: K): AreaReference<Areas[K]> | undefined {
     if (this.world) return this.world.lookup(area);
@@ -218,10 +216,10 @@ export class LivingView {
   get<K extends Area>(area: K): Areas[K] | undefined { return this.lookup(area)?.value; }
 
   private boundScope(host: PetCoreHost, workspaceId: string) {
-    const binding = currentBinding(host);
+    const binding = host.workspace.homeScope();
     if (!this.isCurrent() || binding?.workspaceId !== workspaceId) reject('STALE_BINDING', '生活工作区已切换或组件已停止');
     const validate = () => {
-      if (!this.isCurrent() || !sameBinding(currentBinding(host), binding)) reject('STALE_BINDING', '生活工作区或组件已切换');
+      if (!this.isCurrent() || !sameHomeBinding(host.workspace.homeScope(), binding)) reject('STALE_BINDING', '生活工作区或组件已切换');
     };
     return {binding, validate};
   }
@@ -368,7 +366,7 @@ export function mountLivingArea<K extends Area>(ctx: Context, host: PetCoreHost,
     const active = () => world.lookup(area)?.lease === registration?.lease && registration !== undefined;
     const view = new LivingView({}, () => registration?.lease.isCurrent() === true &&
       (ctx.fiber.state === FiberState.LOADING || ctx.fiber.state === FiberState.ACTIVE), world,
-      () => registration?.isLatestGeneration() === true, binding => world.changed(ctx, host, active, binding));
+      () => registration?.isLatestGeneration() === true, (binding, bodyOnly) => world.changed(ctx, host, active, binding, bodyOnly));
     value = create(view);
     registration = world.register(area, value, ctx.fiber);
     ctx.on('pet/core.changed', () => world.bindingChanged(ctx, host, active));

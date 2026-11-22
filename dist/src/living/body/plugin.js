@@ -11,7 +11,7 @@ import { resolveActivityPlayback } from './playback.js';
 import { gardenHomeProjection } from './garden-receipt.js';
 import { LifeControlFileError, readLifeControl } from '../plan/control-file.js';
 import { readEconomyFileEvidence, readEconomyJournalEvidence } from '../economy/adoption.js';
-import { LivingView, livingCaller, mountLivingArea, settleCleanup } from '../index.js';
+import { LivingView, livingCaller, mountLivingArea, sameHomeBinding, settleCleanup } from '../index.js';
 const owners = new WeakMap();
 /** The only home/garden runtime writer. It does not create agents or model turns. */
 export class CompanionBehavior {
@@ -146,14 +146,14 @@ export class CompanionBehavior {
             synchronize();
         }));
     }
-    enqueue(work, observed = () => true) {
+    enqueue(work, observed = () => true, scope = this.host?.workspace.homeScope?.()) {
         const caller = livingCaller();
         let admitted = true;
         const validate = () => {
             try {
-                if (this.closed || !this.living.isCurrent())
-                    throw Error('身体工作区已切换或组件已停止');
                 caller?.();
+                if (this.closed || !this.living.isCurrent() || !sameHomeBinding(this.host?.workspace.homeScope?.(), scope))
+                    reject('STALE_BINDING', '身体工作区已切换或组件已停止');
             }
             catch (error) {
                 admitted = false;
@@ -181,7 +181,7 @@ export class CompanionBehavior {
         }
         if (this.awaitingRecovery)
             return;
-        const bound = this.binding, now = Date.now();
+        const bound = this.binding, scope = this.host.workspace.homeScope?.(), now = Date.now();
         // A queue operation that did not advance physics cannot consume an overdue
         // boundary by rearming from stale needs at a later observation time.
         const at = this.deadlineAt !== undefined && this.deadlineAt <= now ? this.deadlineAt : bound.room.nextWakeAt(now, this.conditions);
@@ -205,7 +205,7 @@ export class CompanionBehavior {
                 this.advanceRoom(bound);
                 this.deadlineAt = undefined;
                 this.publish();
-            }).catch(error => { this.fault = String(error); });
+            }, undefined, scope).catch(error => { this.fault = String(error); });
         }, Math.min(5 * 60_000, Math.max(1, at - Date.now())));
         this.timer.unref();
     }
@@ -235,8 +235,11 @@ export class CompanionBehavior {
     synchronize() {
         const status = this.host.workspace.status(), target = status.state === 'ready' ? status.target : null;
         const storageId = target ? this.host.workspace.storageId() : undefined;
-        if (this.binding?.id === target?.id && this.binding?.path === target?.path && this.binding?.storageId === storageId)
+        const scope = this.host.workspace.homeScope?.();
+        if (this.binding && this.binding.id === target?.id && this.binding.path === target.path && this.binding.storageId === storageId) {
+            this.binding.scope = scope;
             return;
+        }
         if (status.state !== 'migration-required')
             this.binding?.room.flush();
         this.binding = undefined;
@@ -260,7 +263,7 @@ export class CompanionBehavior {
                 throw Error('身体数据目录无效');
         }
         const id = target.id;
-        this.binding = { id, path: target.path, storageId,
+        this.binding = { id, path: target.path, storageId, scope,
             room: new CompanionRoom(directory, () => this.ctx.get('petEmotion')?.roomSnapshot(id), legacyFile => {
                 const economy = this.living.get('economy');
                 if (!economy) {
@@ -373,8 +376,8 @@ export class CompanionBehavior {
                 })).digest('hex') : presentationFingerprint;
                 const worldChanged = worldFingerprint !== bound.worldFingerprint;
                 bound.worldFingerprint = worldFingerprint;
-                if (worldChanged && (hadProjection || notifyFirst))
-                    this.living.changed({ workspaceId: bound.id, path: bound.path, storageId: bound.storageId });
+                if (bound.scope && worldChanged && (hadProjection || notifyFirst))
+                    this.living.changed(bound.scope, true);
             }
             if (!this.publicationFault && (!changed || reason === 'observation' && !visibleChanged))
                 return;
@@ -395,6 +398,7 @@ export class CompanionBehavior {
             }
         }
     }
+    presentationVersion() { return { bootId: this.bootId, revision: this.revision }; }
     currentBound(workspaceId) {
         const status = this.host.workspace.status(), bound = this.binding;
         return !this.closed && this.living.isCurrent() && bound?.id === workspaceId && status.state === 'ready' && status.target?.id === workspaceId &&

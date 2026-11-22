@@ -20,7 +20,11 @@ export interface WorldSnapshot {
 }
 
 /** Invalidate the previous snapshot. This signal is not a persistence receipt. */
-export type WorldChanged = Pick<WorldSnapshot, 'workspaceId' | 'storageId'>;
+export type WorldChanged = Pick<WorldSnapshot, 'workspaceId' | 'storageId'> & {
+  readonly bootId: string;
+  readonly generation: number;
+  readonly bodyOnly?: true;
+};
 
 export interface WorldCommandRequest {
   workspaceId: string;

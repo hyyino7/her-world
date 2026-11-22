@@ -21,7 +21,7 @@ import { readFactReferences } from './facts.js';
 import { createLifeSourceAdapter } from './tool-policy.js';
 import { recordGardenPause } from '../economy/garden-clock.js';
 import { lifeDirectories, readLifeControl, readLifeSettings, safeLifeFile } from './control-file.js';
-import { InFlight, LivingView, mountLivingArea, settleCleanup, withLivingCaller } from '../index.js';
+import { InFlight, LivingView, mountLivingArea, sameHomeBinding, settleCleanup, withLivingCaller } from '../index.js';
 import { lookupLifeOutlet } from '../outlets.js';
 /** The upstream fact layer is the only state writer. World owns scheduling,
  * journal and native home recovery; Core owns every model step and Memory. */
@@ -88,8 +88,13 @@ export class CompanionLife {
     scheduleTick() {
         if (!this.isOpen() || this.timer)
             return;
+        const scope = this.host.workspace.homeScope();
         this.timer = setTimeout(() => {
             this.timer = undefined;
+            if (!sameHomeBinding(this.host.workspace.homeScope(), scope)) {
+                this.scheduleTick();
+                return;
+            }
             void this.enqueue(() => this.tick()).catch(error => { this.fault = String(error); });
         }, 0);
         this.timer.unref();
@@ -109,8 +114,14 @@ export class CompanionLife {
     enqueue(work, { finishOnClose = false } = {}) {
         if (!this.isOpen())
             return Promise.reject(Error('生活组件已停止'));
-        const next = this.serial.then(() => { if (!finishOnClose)
-            this.assertOpen(); return work(); });
+        const scope = this.host.workspace.homeScope();
+        const next = this.serial.then(() => {
+            if (!finishOnClose)
+                this.assertOpen();
+            if (!sameHomeBinding(this.host.workspace.homeScope(), scope))
+                reject('STALE_BINDING', '生活工作区已切换');
+            return work();
+        });
         this.serial = next.catch(() => { });
         return next;
     }
@@ -126,7 +137,7 @@ export class CompanionLife {
             return false;
         const current = this.current();
         return current?.id === bound.id && current.path === bound.path
-            && this.host.workspace.homeScope()?.generation === bound.scope.generation
+            && sameHomeBinding(this.host.workspace.homeScope(), bound.scope)
             && this.host.workspace.storageId() === bound.plan.storageId
             && this.host.workspace.runtime.identity().companionId === bound.plan.companionId;
     }
@@ -176,18 +187,18 @@ export class CompanionLife {
         this.assertOpen();
         if (this.binding ? this.isCurrentBinding(this.binding) : !this.current())
             return;
+        const scope = this.host.workspace.homeScope();
         await this.stopRuntime();
         this.assertOpen();
+        if (!sameHomeBinding(this.host.workspace.homeScope(), scope))
+            reject('STALE_BINDING', '生活工作区已切换');
         this.binding = undefined;
         this.enabled = false;
         this.restoredClock = false;
         this.pauses = undefined;
         this.fault = undefined;
         const current = this.current();
-        if (!current)
-            return;
-        const scope = this.host.workspace.homeScope();
-        if (!scope)
+        if (!current || !scope)
             return;
         const directory = this.directory(current.path);
         for (const name of ['home.json', 'life.json'])
@@ -224,7 +235,7 @@ export class CompanionLife {
         }
     }
     notifyWorld(bound) {
-        this.living.changed({ workspaceId: bound.id, path: bound.path, storageId: bound.plan.storageId });
+        this.living.changed(bound.scope);
     }
     async startRuntime(resumed = false) {
         if (this.runtime || !this.binding || !this.enabled || !this.isOpen())
@@ -466,7 +477,7 @@ export class CompanionLife {
         if (!this.enabled || !this.binding)
             return;
         const bound = this.binding;
-        const body = this.living.lookup('body'), validate = this.guardArea(body);
+        const body = this.living.lookup('body'), validate = this.guardArea(body, () => this.assertCurrentBinding(bound));
         let advanced = false;
         if (body) {
             const behavior = body.value;
@@ -480,7 +491,7 @@ export class CompanionLife {
             validate();
         }
         await this.startRuntime();
-        this.assertOpen();
+        validate();
         if (advanced)
             this.runtime?.reschedulePlan();
         this.runtime?.notifyFacts();
@@ -493,12 +504,11 @@ export class CompanionLife {
             this.scheduleTick();
     }
     async resumeAcceptedPlan(bound, body = this.living.lookup('body')) {
-        const current = this.current();
-        if (!this.enabled || !this.isOpen() || this.binding !== bound || current?.id !== bound.id || current.path !== bound.path)
+        if (!this.enabled || !this.isOpen() || !this.isCurrentBinding(bound))
             return;
         const saved = bound.plan.read();
         if (saved.plan?.resumeOnEnable && saved.plan.status === 'paused') {
-            const validate = this.guardArea(body);
+            const validate = this.guardArea(body, () => this.assertCurrentBinding(bound));
             await bound.plan.control(saved.revision, 'resume', 'Autonomous life resumed', body?.value, bound.id, validate);
             validate();
             bound.plan.markAutoResume(false);

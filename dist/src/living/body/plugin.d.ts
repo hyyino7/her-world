@@ -55,6 +55,10 @@ export declare class CompanionBehavior {
     private publicBehavior;
     private presentHome;
     private publish;
+    presentationVersion(): {
+        bootId: `${string}-${string}-${string}-${string}-${string}`;
+        revision: number;
+    };
     private currentBound;
     private refreshEmotion;
     promptLine(workspaceId: string): string;

@@ -72,22 +72,24 @@ export class CompanionEconomy {
         check(initializing || status.state === 'ready' && status.target?.id === target.id && status.target.path === target.path, 'Economy requires the current bound workspace');
         const storageId = this.host.workspace.storageId(), companionId = this.host.workspace.runtime.config.companionId;
         const key = canonical({ path: target.path, storageId, companionId });
+        const scope = this.host.workspace.homeScope?.();
         this.preparationFailure = undefined;
         if (this.current?.key === key) {
             this.current.store.validate(initializing);
             this.current.binding.target = target;
+            this.current.binding.scope = scope;
             return this.current.store;
         }
         this.current?.store.close();
         this.current = undefined;
         const metadata = this.host.workspace.runtime.store;
-        const binding = { target };
+        const binding = { target, scope };
         try {
             const store = new EconomyStore({ workspacePath: target.path, storageId, companionId,
                 loadLegacyGarden: () => this.retainedGarden(target, legacyFile),
                 walletChanged: () => {
-                    const { id, path } = binding.target;
-                    this.living.changed({ workspaceId: id, path, storageId });
+                    if (binding.scope)
+                        this.living.changed(binding.scope);
                 },
                 guard: () => {
                     this.assertOpen();

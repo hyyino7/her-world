@@ -224,6 +224,11 @@ test('3E 事实流按原编号跨区回读，缺区保留确认，原生日志�
   assert.deepEqual(await worldFacts.readFacts(f.id, ids), reordered);
 });
 
+function expectedWorldNotice(core, bodyOnly = false) {
+  const {workspaceId,storageId,bootId,generation}=core.workspace.homeScope();
+  return {workspaceId,storageId,bootId,generation,...(bodyOnly ? {bodyOnly:true} : {})};
+}
+
 test('3E 世界通知覆盖三区，合并同批交易，读快照和旧租约不产生回声', async t => {
   const f = await cordisFixture(t);
   const changes = [], read = () => f.economy.worldSnapshot(f.id);
@@ -231,7 +236,7 @@ test('3E 世界通知覆盖三区，合并同批交易，读快照和旧租约�
   await delay(15);
   const off = f.ctx.on('world.changed', change => changes.push(change));
   t.after(off);
-  const expected = {workspaceId:f.id,storageId:f.core.workspace.storageId()};
+  const expected = expectedWorldNotice(f.core);
   const before = await read();
   await Promise.all([f.ownerAction({kind:'grant',amount:7}, 'world-notice-7'),
     f.ownerAction({kind:'grant',amount:3}, 'world-notice-3')]);
@@ -242,7 +247,7 @@ test('3E 世界通知覆盖三区，合并同批交易，读快照和旧租约�
   assert.deepEqual(changes, []);
 
   await f.body.act(f.id, 'water', 'world-notice-water');
-  assert.deepEqual(changes.splice(0), [expected]);
+  assert.deepEqual(changes.splice(0), [expectedWorldNotice(f.core,true)]);
   assert.ok((await read()).body.snapshot.needs.thirst < before.body.snapshot.needs.thirst);
   const {revision} = await f.life.readPlan(f.id);
   await f.life.updatePlan(f.id, revision, {goal:'Rest',reason:'Fixture',steps:[],nextConsiderAt:null});
@@ -323,7 +328,7 @@ test('3E 生活区先装载后绑定，首次就绪只通知一次', async t => 
 
   await selectWorkspace(core, target);
   await delay(0);
-  assert.deepEqual(changes.splice(0), [{workspaceId:target.id,storageId:core.workspace.storageId()}]);
+  assert.deepEqual(changes.splice(0), [expectedWorldNotice(core)]);
   const snapshot = await read();
   assert.equal(snapshot.body.available, true);
   assert.equal((await read()).body.snapshot.revision, snapshot.body.snapshot.revision);
@@ -346,7 +351,7 @@ test('3E 生活区运行中切换绑定，只通知新工作区一次', async t 
   await delay(0);
   const storageId = core.workspace.storageId();
   assert.notEqual(storageId, prior.storageId);
-  assert.deepEqual(changes.splice(0), [{workspaceId:target.id,storageId}]);
+  assert.deepEqual(changes.splice(0), [expectedWorldNotice(core)]);
   await assert.rejects(read(first.id));
   const next = await read(target.id);
   assert.equal(next.workspaceId, target.id);
@@ -380,7 +385,7 @@ test('3E 同一 Repo 换 DSH 工作区 ID 后，复用钱包的提交通知新�
   assert.equal(purchased.balance, funded.balance - price);
   assert.equal(economy.prepare(next), store);
   assert.deepEqual((await economy.worldSnapshot(next.id)).wallet, purchased);
-  assert.deepEqual(changes, [{workspaceId:next.id,storageId}]);
+  assert.deepEqual(changes, [expectedWorldNotice(core)]);
 });
 
 test('3E 仅确认事实投递时，世界通知无回声且旧身体事件照常推进修订', async t => {

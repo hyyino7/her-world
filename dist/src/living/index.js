@@ -8,16 +8,10 @@ import { installLivingPrompt } from './prompt-context.js';
 const bodyService = 'petBehavior', lifeService = 'petLife', economyService = 'petEconomy';
 const services = { body: bodyService, plan: lifeService, economy: economyService };
 const domains = new WeakMap();
-function currentBinding(host) {
-    const { state, target } = host.workspace.status();
-    if (state !== 'ready' || !target)
-        return;
-    const storageId = host.workspace.storageId();
-    if (storageId)
-        return { workspaceId: target.id, path: target.path, storageId };
-}
-function sameBinding(current, captured) {
-    return current?.workspaceId === captured.workspaceId && current.path === captured.path && current.storageId === captured.storageId;
+export function sameHomeBinding(current, captured) {
+    return current === captured || !!current && !!captured && current.workspaceId === captured.workspaceId &&
+        current.path === captured.path && current.storageId === captured.storageId &&
+        current.bootId === captured.bootId && current.generation === captured.generation;
 }
 export function serviceLabel(contextScope, name) {
     const defaults = contextScope.root[Context.isolate];
@@ -136,36 +130,41 @@ export class LivingWorld {
         if (!valid())
             return;
         try {
-            const binding = currentBinding(host);
+            const binding = host.workspace.homeScope();
             if (!binding)
                 this.domain.lastNotifiedBinding = undefined;
-            else if (!sameBinding(this.domain.lastNotifiedBinding, binding))
+            else if (!sameHomeBinding(this.domain.lastNotifiedBinding, binding))
                 this.changed(ctx, host, valid, binding);
         }
         catch { /* Binding may already be unavailable during teardown. */ }
     }
-    changed(ctx, host, valid, expected) {
+    changed(ctx, host, valid, expected, bodyOnly = false) {
         // Notification failures cannot invalidate completed domain work.
         try {
-            const binding = expected ?? currentBinding(host);
-            if (!binding)
+            const binding = expected ?? host.workspace.homeScope();
+            if (!binding || !sameHomeBinding(host.workspace.homeScope(), binding))
                 return;
-            const { workspaceId, path, storageId } = binding;
-            const key = JSON.stringify([workspaceId, path, storageId]);
+            const { workspaceId, path, storageId, bootId, generation } = binding;
+            const key = JSON.stringify([workspaceId, path, storageId, bootId, generation]);
+            const notice = { valid, bodyOnly };
             const pending = this.domain.changes.get(key);
             if (pending) {
-                pending.push(valid);
+                pending.push(notice);
                 return;
             }
-            const guards = [valid];
+            const guards = [notice];
             this.domain.changes.set(key, guards);
             queueMicrotask(() => {
                 this.domain.changes.delete(key);
                 try {
-                    if (sameBinding(currentBinding(host), binding) && guards.some(guard => guard())) {
-                        this.domain.lastNotifiedBinding = binding;
-                        ctx.emit('world.changed', { workspaceId, storageId });
-                    }
+                    if (!sameHomeBinding(host.workspace.homeScope(), binding))
+                        return;
+                    const current = guards.filter(guard => guard.valid());
+                    if (!current.length)
+                        return;
+                    this.domain.lastNotifiedBinding = binding;
+                    ctx.emit('world.changed', { workspaceId, storageId, bootId, generation,
+                        ...(current.every(guard => guard.bodyOnly) ? { bodyOnly: true } : {}) });
                 }
                 catch { /* A failed observer has no effect on the committed result. */ }
             });
@@ -196,11 +195,11 @@ export class LivingView {
     }
     get(area) { return this.lookup(area)?.value; }
     boundScope(host, workspaceId) {
-        const binding = currentBinding(host);
+        const binding = host.workspace.homeScope();
         if (!this.isCurrent() || binding?.workspaceId !== workspaceId)
             reject('STALE_BINDING', '生活工作区已切换或组件已停止');
         const validate = () => {
-            if (!this.isCurrent() || !sameBinding(currentBinding(host), binding))
+            if (!this.isCurrent() || !sameHomeBinding(host.workspace.homeScope(), binding))
                 reject('STALE_BINDING', '生活工作区或组件已切换');
         };
         return { binding, validate };
@@ -353,7 +352,7 @@ export function mountLivingArea(ctx, host, area, create, start, close = value =>
         ctx.effect(() => dispose);
         const active = () => world.lookup(area)?.lease === registration?.lease && registration !== undefined;
         const view = new LivingView({}, () => registration?.lease.isCurrent() === true &&
-            (ctx.fiber.state === 1 /* FiberState.LOADING */ || ctx.fiber.state === 2 /* FiberState.ACTIVE */), world, () => registration?.isLatestGeneration() === true, binding => world.changed(ctx, host, active, binding));
+            (ctx.fiber.state === 1 /* FiberState.LOADING */ || ctx.fiber.state === 2 /* FiberState.ACTIVE */), world, () => registration?.isLatestGeneration() === true, (binding, bodyOnly) => world.changed(ctx, host, active, binding, bodyOnly));
         value = create(view);
         registration = world.register(area, value, ctx.fiber);
         ctx.on('pet/core.changed', () => world.bindingChanged(ctx, host, active));

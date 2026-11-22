@@ -7,6 +7,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { PetCoreHost, WorkspaceTarget } from '../../core/index.js';
+import type { HomeBinding } from '../../core/workspace.js';
 import { bytesDigest, canonical, check, digest, integer, Rejection } from '../../core/storage.js';
 import { registerWorldContext } from '../../core/native/prompt.js';
 import { OWNER_LIFE_TOOL_SOURCES } from '../../core/native/conversation.js';
@@ -36,7 +37,7 @@ export const economyStateToolDeclaration = {
 /** One synchronous ledger per active Core binding. Body owns effect receipts;
  * this service owns money/items and never creates another assistant runtime. */
 export class CompanionEconomy {
-  private current?: {key:string;binding:{target:WorkspaceTarget};store:EconomyStore};
+  private current?: {key:string;binding:{target:WorkspaceTarget;scope?:HomeBinding};store:EconomyStore};
   private preparationFailure?: {key:string;error:unknown};
   private closed=false;
   private readonly living: LivingView;
@@ -74,21 +75,22 @@ export class CompanionEconomy {
       'Economy requires the current bound workspace');
     const storageId=this.host.workspace.storageId(), companionId=this.host.workspace.runtime.config.companionId;
     const key=canonical({path:target.path,storageId,companionId});
+    const scope=this.host.workspace.homeScope?.();
     this.preparationFailure=undefined;
     if(this.current?.key===key) {
       this.current.store.validate(initializing);
       this.current.binding.target=target;
+      this.current.binding.scope=scope;
       return this.current.store;
     }
     this.current?.store.close();this.current=undefined;
     const metadata=this.host.workspace.runtime.store;
-    const binding={target};
+    const binding={target,scope};
     try {
       const store=new EconomyStore({workspacePath:target.path,storageId,companionId,
         loadLegacyGarden:()=>this.retainedGarden(target,legacyFile),
         walletChanged:()=>{
-          const {id,path}=binding.target;
-          this.living.changed({workspaceId:id,path,storageId});
+          if(binding.scope)this.living.changed(binding.scope);
         },
         guard:()=>{this.assertOpen();check(this.host.workspace.status().state!=='migration-required','migration-required');
           check(metadata.persisted(),'Core database is absent or moved');
