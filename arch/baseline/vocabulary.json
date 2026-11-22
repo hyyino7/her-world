@@ -13782,6 +13782,2896 @@
     },
     {
       "rule": "R8",
+      "file": "src/contracts/common.ts",
+      "line": 5,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/core/tables/capabilities.ts\",\"scope\":\"<module>\"}",
+      "expression": "\"core\" | \"emotion\" | \"memory\" | \"life\" | \"desktop\" | \"qq\" | \"bilibili\" | \"voice\" | \"console\"",
+      "values": [
+        "bilibili",
+        "console",
+        "core",
+        "desktop",
+        "emotion",
+        "life",
+        "memory",
+        "qq",
+        "voice"
+      ],
+      "shape": "union",
+      "relation": "重复",
+      "other": {
+        "file": "src/core/tables/capabilities.ts",
+        "scope": "<module>",
+        "line": 20,
+        "column": 19,
+        "shape": "object table",
+        "table": "moduleIds",
+        "keyUse": "Object.hasOwn",
+        "values": [
+          "bilibili",
+          "console",
+          "core",
+          "desktop",
+          "emotion",
+          "life",
+          "memory",
+          "qq",
+          "voice"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/core/tables/capabilities.ts",
+      "line": 20,
+      "column": 19,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/common.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ core : true , emotion : true , memory : true , life : true , desktop : true , qq : true , bilibili : true , voice : true , console : true , }",
+      "values": [
+        "bilibili",
+        "console",
+        "core",
+        "desktop",
+        "emotion",
+        "life",
+        "memory",
+        "qq",
+        "voice"
+      ],
+      "shape": "object table",
+      "table": "moduleIds",
+      "keyUse": "Object.hasOwn",
+      "relation": "重复",
+      "other": {
+        "file": "src/contracts/common.ts",
+        "scope": "<module>",
+        "line": 5,
+        "column": 24,
+        "shape": "union",
+        "values": [
+          "bilibili",
+          "console",
+          "core",
+          "desktop",
+          "emotion",
+          "life",
+          "memory",
+          "qq",
+          "voice"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/common.ts",
+      "line": 7,
+      "column": 3,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/core/tables/capabilities.ts\",\"scope\":\"<module>\"}",
+      "expression": "| \"core.conversation\" | \"memory.lifecycle\" | \"life.pursuits\" | \"life.economy\" | \"emotion.expression\" | \"desktop.presentation\" | \"desktop.body\" | \"desktop.room\" | \"channel.qq\" | \"content.bilibili\" | \"voice.speech\" | \"console.operations\"",
+      "values": [
+        "channel.qq",
+        "console.operations",
+        "content.bilibili",
+        "core.conversation",
+        "desktop.body",
+        "desktop.presentation",
+        "desktop.room",
+        "emotion.expression",
+        "life.economy",
+        "life.pursuits",
+        "memory.lifecycle",
+        "voice.speech"
+      ],
+      "shape": "union",
+      "relation": "重复",
+      "other": {
+        "file": "src/core/tables/capabilities.ts",
+        "scope": "<module>",
+        "line": 5,
+        "column": 23,
+        "shape": "object table",
+        "table": "capabilityIds",
+        "keyUse": "Object.hasOwn",
+        "values": [
+          "channel.qq",
+          "console.operations",
+          "content.bilibili",
+          "core.conversation",
+          "desktop.body",
+          "desktop.presentation",
+          "desktop.room",
+          "emotion.expression",
+          "life.economy",
+          "life.pursuits",
+          "memory.lifecycle",
+          "voice.speech"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/core/tables/capabilities.ts",
+      "line": 5,
+      "column": 23,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/common.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ \"core.conversation\" : true , \"memory.lifecycle\" : true , \"life.pursuits\" : true , \"life.economy\" : true , \"emotion.expression\" : true , \"desktop.presentation\" : true , \"desktop.body\" : true , \"desktop.room\" : true , \"channel.qq\" : true , \"content.bilibili\" : true , \"voice.speech\" : true , \"console.operations\" : true , }",
+      "values": [
+        "channel.qq",
+        "console.operations",
+        "content.bilibili",
+        "core.conversation",
+        "desktop.body",
+        "desktop.presentation",
+        "desktop.room",
+        "emotion.expression",
+        "life.economy",
+        "life.pursuits",
+        "memory.lifecycle",
+        "voice.speech"
+      ],
+      "shape": "object table",
+      "table": "capabilityIds",
+      "keyUse": "Object.hasOwn",
+      "relation": "重复",
+      "other": {
+        "file": "src/contracts/common.ts",
+        "scope": "<module>",
+        "line": 7,
+        "column": 3,
+        "shape": "union",
+        "values": [
+          "channel.qq",
+          "console.operations",
+          "content.bilibili",
+          "core.conversation",
+          "desktop.body",
+          "desktop.presentation",
+          "desktop.room",
+          "emotion.expression",
+          "life.economy",
+          "life.pursuits",
+          "memory.lifecycle",
+          "voice.speech"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/common.ts",
+      "line": 16,
+      "column": 18,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "\"owner\" | \"companion\" | \"system\" | \"external\"",
+      "values": [
+        "companion",
+        "external",
+        "owner",
+        "system"
+      ],
+      "shape": "union",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 21,
+        "column": 21,
+        "shape": "object table",
+        "table": "FACT_ACTORS",
+        "keyUse": "keyof",
+        "values": [
+          "companion",
+          "owner",
+          "system"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 21,
+      "column": 21,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/common.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ owner : true , companion : true , system : true }",
+      "values": [
+        "companion",
+        "owner",
+        "system"
+      ],
+      "shape": "object table",
+      "table": "FACT_ACTORS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/common.ts",
+        "scope": "<module>",
+        "line": 16,
+        "column": 18,
+        "shape": "union",
+        "values": [
+          "companion",
+          "external",
+          "owner",
+          "system"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/desktop/platform/plugin.ts",
+      "line": 579,
+      "column": 88,
+      "scope": "PetPlatform/handle",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "\"owner\" | \"companion\"",
+      "values": [
+        "companion",
+        "owner"
+      ],
+      "shape": "union",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 21,
+        "column": 21,
+        "shape": "object table",
+        "table": "FACT_ACTORS",
+        "keyUse": "keyof",
+        "values": [
+          "companion",
+          "owner",
+          "system"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 21,
+      "column": 21,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/handle\"}",
+      "expression": "{ owner : true , companion : true , system : true }",
+      "values": [
+        "companion",
+        "owner",
+        "system"
+      ],
+      "shape": "object table",
+      "table": "FACT_ACTORS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/desktop/platform/plugin.ts",
+        "scope": "PetPlatform/handle",
+        "line": 579,
+        "column": 88,
+        "shape": "union",
+        "values": [
+          "companion",
+          "owner"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/desktop/platform/plugin.ts",
+      "line": 631,
+      "column": 52,
+      "scope": "PetPlatform/handle",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"sleep\" , \"wake\" , \"pet\" ]",
+      "values": [
+        "pet",
+        "sleep",
+        "wake"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 10,
+        "column": 29,
+        "shape": "object table",
+        "table": "BODY_ACTIONS",
+        "keyUse": "按键索引",
+        "values": [
+          "command",
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "poke",
+          "sleep",
+          "talk",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 10,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/handle\"}",
+      "expression": "{ command : { role : 1 } , pet : { role : 2 , care : { order : 3 , label : \"摸摸头\" } , feedback : true } , poke : { role : 3 , feedback : true } , feed : { role : 4 , care : { order : 1 , label : \"免费基础餐食\" } , plan : 4 , feedback : true } , water : { role : 5 , care : { order : 2 , label : \"倒杯水\" } , plan : 3 , feedback : true } , play : { role : 6 , care : { order : 4 , label : \"一起玩\" } , plan : 5 , feedback : true } , talk : { role : 7 , feedback : true } , sleep : { role : 8 , care : { order : 5 , label : \"去睡觉\" } , plan : 1 } , wake : { role : 9 , care : { order : 6 , label : \"叫醒\" } , plan : 2 } , lamp : { role : 10 } , }",
+      "values": [
+        "command",
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "sleep",
+        "talk",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "BODY_ACTIONS",
+      "keyUse": "按键索引",
+      "relation": "子集",
+      "other": {
+        "file": "src/desktop/platform/plugin.ts",
+        "scope": "PetPlatform/handle",
+        "line": 631,
+        "column": 52,
+        "shape": "array",
+        "values": [
+          "pet",
+          "sleep",
+          "wake"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/desktop/platform/plugin.ts",
+      "line": 631,
+      "column": 52,
+      "scope": "PetPlatform/handle",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"sleep\" , \"wake\" , \"pet\" ]",
+      "values": [
+        "pet",
+        "sleep",
+        "wake"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/handle\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/desktop/platform/plugin.ts",
+        "scope": "PetPlatform/handle",
+        "line": 631,
+        "column": 52,
+        "shape": "array",
+        "values": [
+          "pet",
+          "sleep",
+          "wake"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/playback.ts",
+      "line": 175,
+      "column": 28,
+      "scope": "resolveActivityPlayback",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"pet\" , \"poke\" ]",
+      "values": [
+        "pet",
+        "poke"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 10,
+        "column": 29,
+        "shape": "object table",
+        "table": "BODY_ACTIONS",
+        "keyUse": "按键索引",
+        "values": [
+          "command",
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "poke",
+          "sleep",
+          "talk",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 10,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
+      "expression": "{ command : { role : 1 } , pet : { role : 2 , care : { order : 3 , label : \"摸摸头\" } , feedback : true } , poke : { role : 3 , feedback : true } , feed : { role : 4 , care : { order : 1 , label : \"免费基础餐食\" } , plan : 4 , feedback : true } , water : { role : 5 , care : { order : 2 , label : \"倒杯水\" } , plan : 3 , feedback : true } , play : { role : 6 , care : { order : 4 , label : \"一起玩\" } , plan : 5 , feedback : true } , talk : { role : 7 , feedback : true } , sleep : { role : 8 , care : { order : 5 , label : \"去睡觉\" } , plan : 1 } , wake : { role : 9 , care : { order : 6 , label : \"叫醒\" } , plan : 2 } , lamp : { role : 10 } , }",
+      "values": [
+        "command",
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "sleep",
+        "talk",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "BODY_ACTIONS",
+      "keyUse": "按键索引",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/playback.ts",
+        "scope": "resolveActivityPlayback",
+        "line": 175,
+        "column": 28,
+        "shape": "array",
+        "values": [
+          "pet",
+          "poke"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/playback.ts",
+      "line": 175,
+      "column": 28,
+      "scope": "resolveActivityPlayback",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"pet\" , \"poke\" ]",
+      "values": [
+        "pet",
+        "poke"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/playback.ts",
+        "scope": "resolveActivityPlayback",
+        "line": 175,
+        "column": 28,
+        "shape": "array",
+        "values": [
+          "pet",
+          "poke"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 225,
+      "column": 40,
+      "scope": "CompanionRoom/gardenUnavailable",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"body\" , \"hold\" , \"room\" , \"move\" ]",
+      "values": [
+        "body",
+        "hold",
+        "move",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/gardenUnavailable",
+        "line": 225,
+        "column": 40,
+        "shape": "array",
+        "values": [
+          "body",
+          "hold",
+          "move",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 225,
+      "column": 40,
+      "scope": "CompanionRoom/gardenUnavailable",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"body\" , \"hold\" , \"room\" , \"move\" ]",
+      "values": [
+        "body",
+        "hold",
+        "move",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/gardenUnavailable",
+        "line": 225,
+        "column": 40,
+        "shape": "array",
+        "values": [
+          "body",
+          "hold",
+          "move",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 232,
+      "column": 82,
+      "scope": "CompanionRoom/gardenUnavailable",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"economy\" , \"read\" ]",
+      "values": [
+        "economy",
+        "read"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/gardenUnavailable",
+        "line": 232,
+        "column": 82,
+        "shape": "array",
+        "values": [
+          "economy",
+          "read"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 232,
+      "column": 82,
+      "scope": "CompanionRoom/gardenUnavailable",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"economy\" , \"read\" ]",
+      "values": [
+        "economy",
+        "read"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/gardenUnavailable",
+        "line": 232,
+        "column": 82,
+        "shape": "array",
+        "values": [
+          "economy",
+          "read"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 238,
+      "column": 44,
+      "scope": "CompanionRoom/gardenUnavailable",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" , \"move\" ]",
+      "values": [
+        "hold",
+        "move",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/gardenUnavailable",
+        "line": 238,
+        "column": 44,
+        "shape": "array",
+        "values": [
+          "hold",
+          "move",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 238,
+      "column": 44,
+      "scope": "CompanionRoom/gardenUnavailable",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" , \"move\" ]",
+      "values": [
+        "hold",
+        "move",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/gardenUnavailable",
+        "line": 238,
+        "column": 44,
+        "shape": "array",
+        "values": [
+          "hold",
+          "move",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 384,
+      "column": 81,
+      "scope": "CompanionRoom/publicExecution",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"room\" , \"hold\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/publicExecution\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/publicExecution",
+        "line": 384,
+        "column": 81,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 384,
+      "column": 81,
+      "scope": "CompanionRoom/publicExecution",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"room\" , \"hold\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/publicExecution\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/publicExecution",
+        "line": 384,
+        "column": 81,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 541,
+      "column": 54,
+      "scope": "CompanionRoom/dispatchExecution",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchExecution\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/dispatchExecution",
+        "line": 541,
+        "column": 54,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 541,
+      "column": 54,
+      "scope": "CompanionRoom/dispatchExecution",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchExecution\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/dispatchExecution",
+        "line": 541,
+        "column": 54,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 567,
+      "column": 34,
+      "scope": "CompanionRoom/dispatchExecution",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"sleep\" , \"wake\" ]",
+      "values": [
+        "sleep",
+        "wake"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 10,
+        "column": 29,
+        "shape": "object table",
+        "table": "BODY_ACTIONS",
+        "keyUse": "按键索引",
+        "values": [
+          "command",
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "poke",
+          "sleep",
+          "talk",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 10,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchExecution\"}",
+      "expression": "{ command : { role : 1 } , pet : { role : 2 , care : { order : 3 , label : \"摸摸头\" } , feedback : true } , poke : { role : 3 , feedback : true } , feed : { role : 4 , care : { order : 1 , label : \"免费基础餐食\" } , plan : 4 , feedback : true } , water : { role : 5 , care : { order : 2 , label : \"倒杯水\" } , plan : 3 , feedback : true } , play : { role : 6 , care : { order : 4 , label : \"一起玩\" } , plan : 5 , feedback : true } , talk : { role : 7 , feedback : true } , sleep : { role : 8 , care : { order : 5 , label : \"去睡觉\" } , plan : 1 } , wake : { role : 9 , care : { order : 6 , label : \"叫醒\" } , plan : 2 } , lamp : { role : 10 } , }",
+      "values": [
+        "command",
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "sleep",
+        "talk",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "BODY_ACTIONS",
+      "keyUse": "按键索引",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/dispatchExecution",
+        "line": 567,
+        "column": 34,
+        "shape": "array",
+        "values": [
+          "sleep",
+          "wake"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 567,
+      "column": 34,
+      "scope": "CompanionRoom/dispatchExecution",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"sleep\" , \"wake\" ]",
+      "values": [
+        "sleep",
+        "wake"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchExecution\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/dispatchExecution",
+        "line": 567,
+        "column": 34,
+        "shape": "array",
+        "values": [
+          "sleep",
+          "wake"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 805,
+      "column": 37,
+      "scope": "CompanionRoom/animationContext",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/animationContext\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/animationContext",
+        "line": 805,
+        "column": 37,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 805,
+      "column": 37,
+      "scope": "CompanionRoom/animationContext",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/animationContext\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/animationContext",
+        "line": 805,
+        "column": 37,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 823,
+      "column": 42,
+      "scope": "CompanionRoom/animationContext",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ feed : \"eat\" , water : \"drink\" , wake : \"wake\" }",
+      "values": [
+        "feed",
+        "wake",
+        "water"
+      ],
+      "shape": "labels",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 10,
+        "column": 29,
+        "shape": "object table",
+        "table": "BODY_ACTIONS",
+        "keyUse": "按键索引",
+        "values": [
+          "command",
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "poke",
+          "sleep",
+          "talk",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 10,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/animationContext\"}",
+      "expression": "{ command : { role : 1 } , pet : { role : 2 , care : { order : 3 , label : \"摸摸头\" } , feedback : true } , poke : { role : 3 , feedback : true } , feed : { role : 4 , care : { order : 1 , label : \"免费基础餐食\" } , plan : 4 , feedback : true } , water : { role : 5 , care : { order : 2 , label : \"倒杯水\" } , plan : 3 , feedback : true } , play : { role : 6 , care : { order : 4 , label : \"一起玩\" } , plan : 5 , feedback : true } , talk : { role : 7 , feedback : true } , sleep : { role : 8 , care : { order : 5 , label : \"去睡觉\" } , plan : 1 } , wake : { role : 9 , care : { order : 6 , label : \"叫醒\" } , plan : 2 } , lamp : { role : 10 } , }",
+      "values": [
+        "command",
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "sleep",
+        "talk",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "BODY_ACTIONS",
+      "keyUse": "按键索引",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/animationContext",
+        "line": 823,
+        "column": 42,
+        "shape": "labels",
+        "values": [
+          "feed",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 823,
+      "column": 42,
+      "scope": "CompanionRoom/animationContext",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ feed : \"eat\" , water : \"drink\" , wake : \"wake\" }",
+      "values": [
+        "feed",
+        "wake",
+        "water"
+      ],
+      "shape": "labels",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/animationContext\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/animationContext",
+        "line": 823,
+        "column": 42,
+        "shape": "labels",
+        "values": [
+          "feed",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 918,
+      "column": 67,
+      "scope": "CompanionRoom/preserveAcceptedSleepWait",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/preserveAcceptedSleepWait\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/preserveAcceptedSleepWait",
+        "line": 918,
+        "column": 67,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 918,
+      "column": 67,
+      "scope": "CompanionRoom/preserveAcceptedSleepWait",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"hold\" , \"room\" ]",
+      "values": [
+        "hold",
+        "room"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/preserveAcceptedSleepWait\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/preserveAcceptedSleepWait",
+        "line": 918,
+        "column": 67,
+        "shape": "array",
+        "values": [
+          "hold",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 950,
+      "column": 39,
+      "scope": "CompanionRoom/tickAvailable",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"economy\" , \"read\" ]",
+      "values": [
+        "economy",
+        "read"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/tickAvailable",
+        "line": 950,
+        "column": 39,
+        "shape": "array",
+        "values": [
+          "economy",
+          "read"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 950,
+      "column": 39,
+      "scope": "CompanionRoom/tickAvailable",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"economy\" , \"read\" ]",
+      "values": [
+        "economy",
+        "read"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/tickAvailable",
+        "line": 950,
+        "column": 39,
+        "shape": "array",
+        "values": [
+          "economy",
+          "read"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 953,
+      "column": 70,
+      "scope": "CompanionRoom/tickAvailable",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"economy\" , \"read\" ]",
+      "values": [
+        "economy",
+        "read"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/tickAvailable",
+        "line": 953,
+        "column": 70,
+        "shape": "array",
+        "values": [
+          "economy",
+          "read"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 953,
+      "column": 70,
+      "scope": "CompanionRoom/tickAvailable",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"economy\" , \"read\" ]",
+      "values": [
+        "economy",
+        "read"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/tickAvailable",
+        "line": 953,
+        "column": 70,
+        "shape": "array",
+        "values": [
+          "economy",
+          "read"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 1044,
+      "column": 22,
+      "scope": "CompanionRoom/act",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"talk\" , \"lamp\" , \"visit\" , \"pet\" , \"poke\" , \"feed\" , \"water\" , \"play\" ]",
+      "values": [
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "talk",
+        "visit",
+        "water"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/act\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/act",
+        "line": 1044,
+        "column": 22,
+        "shape": "array",
+        "values": [
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "poke",
+          "talk",
+          "visit",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 1050,
+      "column": 20,
+      "scope": "CompanionRoom/act",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"go\" , \"place\" ]",
+      "values": [
+        "go",
+        "place"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/act\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/act",
+        "line": 1050,
+        "column": 20,
+        "shape": "array",
+        "values": [
+          "go",
+          "place"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 1076,
+      "column": 124,
+      "scope": "CompanionRoom/act",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"command\" , \"go\" , \"place\" , \"sleep\" , \"wake\" ]",
+      "values": [
+        "command",
+        "go",
+        "place",
+        "sleep",
+        "wake"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/act\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/act",
+        "line": 1076,
+        "column": 124,
+        "shape": "array",
+        "values": [
+          "command",
+          "go",
+          "place",
+          "sleep",
+          "wake"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
+      "line": 1081,
+      "column": 11,
+      "scope": "CompanionRoom/act",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"visit\" , \"pet\" , \"feed\" , \"play\" , \"talk\" , \"lamp\" ]",
+      "values": [
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "talk",
+        "visit"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/act\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/act",
+        "line": 1081,
+        "column": 11,
+        "shape": "array",
+        "values": [
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "talk",
+          "visit"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/room/plugin.ts",
+      "line": 131,
+      "column": 32,
+      "scope": "Room/tools",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"state\" , \"visit\" , \"careNow\" , \"auto\" , \"till\" , \"plant\" , \"water\" , \"fertilize\" , \"harvest\" , \"sell\" , \"buySeed\" , \"buyCompost\" ]",
+      "values": [
+        "auto",
+        "buyCompost",
+        "buySeed",
+        "careNow",
+        "fertilize",
+        "harvest",
+        "plant",
+        "sell",
+        "state",
+        "till",
+        "visit",
+        "water"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 82,
+        "column": 39,
+        "shape": "object table",
+        "table": "PLAN_GARDEN_OPERATIONS",
+        "keyUse": "keyof",
+        "values": [
+          "buyCompost",
+          "buySeed",
+          "fertilize",
+          "harvest",
+          "plant",
+          "sell",
+          "till",
+          "visit",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 82,
+      "column": 39,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/room/plugin.ts\",\"scope\":\"Room/tools\"}",
+      "expression": "{ visit : { branch : \"noFields\" , order : 1 } , till : { branch : \"plot\" , order : 1 } , plant : { branch : \"plotAndCrop\" , order : 1 } , water : { branch : \"plot\" , order : 2 } , fertilize : { branch : \"plot\" , order : 3 } , harvest : { branch : \"plot\" , order : 4 } , sell : { branch : \"cropTrade\" , order : 1 } , buySeed : { branch : \"cropTrade\" , order : 2 } , buyCompost : { branch : \"quantity\" , order : 1 } , }",
+      "values": [
+        "buyCompost",
+        "buySeed",
+        "fertilize",
+        "harvest",
+        "plant",
+        "sell",
+        "till",
+        "visit",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "PLAN_GARDEN_OPERATIONS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/room/plugin.ts",
+        "scope": "Room/tools",
+        "line": 131,
+        "column": 32,
+        "shape": "array",
+        "values": [
+          "auto",
+          "buyCompost",
+          "buySeed",
+          "careNow",
+          "fertilize",
+          "harvest",
+          "plant",
+          "sell",
+          "state",
+          "till",
+          "visit",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 10,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ command : { role : 1 } , pet : { role : 2 , care : { order : 3 , label : \"摸摸头\" } , feedback : true } , poke : { role : 3 , feedback : true } , feed : { role : 4 , care : { order : 1 , label : \"免费基础餐食\" } , plan : 4 , feedback : true } , water : { role : 5 , care : { order : 2 , label : \"倒杯水\" } , plan : 3 , feedback : true } , play : { role : 6 , care : { order : 4 , label : \"一起玩\" } , plan : 5 , feedback : true } , talk : { role : 7 , feedback : true } , sleep : { role : 8 , care : { order : 5 , label : \"去睡觉\" } , plan : 1 } , wake : { role : 9 , care : { order : 6 , label : \"叫醒\" } , plan : 2 } , lamp : { role : 10 } , }",
+      "values": [
+        "command",
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "sleep",
+        "talk",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "BODY_ACTIONS",
+      "keyUse": "按键索引",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 10,
+        "column": 29,
+        "shape": "object table",
+        "table": "BODY_ACTIONS",
+        "keyUse": "按键索引",
+        "values": [
+          "command",
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "poke",
+          "sleep",
+          "talk",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 3,
+        "column": 29,
+        "shape": "object table",
+        "table": "FACT_DOMAINS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 3,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ body : { ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true } , economy : { purchase : true , sale : true , \"money-grant\" : true , \"item-gift\" : true , \"reading-import\" : true } , }",
+      "values": [
+        "body",
+        "economy"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 57,
+      "column": 27,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ hold : { target : false , executable : false } , room : { target : true , executable : false } , move : { target : true , executable : true } , garden : { target : false , executable : true } , body : { target : false , executable : true } , economy : { target : false , executable : true } , read : { target : false , executable : true } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "PLAN_KINDS",
+      "keyUse": "keyof",
+      "relation": "重复",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "重复",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 57,
+        "column": 27,
+        "shape": "object table",
+        "table": "PLAN_KINDS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 3,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ body : { ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true } , economy : { purchase : true , sale : true , \"money-grant\" : true , \"item-gift\" : true , \"reading-import\" : true } , }",
+      "values": [
+        "body",
+        "economy"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/plan/plan-tools.ts",
+        "scope": "<module>",
+        "line": 66,
+        "column": 26,
+        "shape": "object table",
+        "table": "planStepBranches",
+        "keyUse": "Object.entries",
+        "values": [
+          "body",
+          "economy",
+          "garden",
+          "hold",
+          "move",
+          "read",
+          "room"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plan-tools.ts",
+      "line": 66,
+      "column": 26,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ hold : { kind : { type : \"string\" , required : true , description : \"Continue an activity at the current position without a new body/garden operation.\" } , ... timedActivityFields , } , room : { kind : { type : \"string\" , required : true , description : \"Stay at the target position until duration/until, or explicit control when last. For arrival-only travel use move.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state; do not invent a location.\" } , spot : { type : \"string\" , required : true , description : \"Exact spot identifier belonging to the selected room in room_state.\" } , ... timedActivityFields , } , move : { kind : { type : \"string\" , required : true , description : \"Travel to room/spot and finish on actual arrival, including when already there. No durationMinutes/until.\" } , room : { type : \"string\" , required : true , description : \"Exact existing room identifier from room_state.\" } , spot : { type : \"string\" , required : true , description : \"Exact existing spot in the selected room.\" } , } , body : { kind : { type : \"string\" , required : true } , action : { type : \"string\" , enum : PLAN_BODY_ACTIONS , required : true , description : \"Existing bodily action. feed and water are free basic food/drinking water; paid catalog foods require kind=economy and type=consume. No durationMinutes/until; completion follows the actual body result.\" } , } , garden : { kind : { type : \"string\" , required : true } , garden : gardenOperation , } , economy : { kind : { type : \"string\" , required : true } , economy : { type : \"object\" , required : true , properties : { type : { type : \"string\" , enum : PLAN_ECONOMY_OPERATION_NAMES , required : true } , itemId : { type : \"string\" , required : true , description : \"Stable item id returned by the economy catalog. Actual holdings, configured prices and quantities are validated by the program.\" } , quantity : { type : \"integer\" , required : true , description : \"Positive whole-item count. consume requires exactly one food item; a stable operation receipt prevents duplicate effects or payment.\" } , } , additionalProperties : false } , } , read : { kind : { type : \"string\" , required : true } , reading : { type : \"object\" , required : true , properties : { itemId : { type : \"string\" , required : true , description : \"Owned reading item id from the economy library.\" } , segment : { type : \"integer\" , required : true , description : \"Nonnegative actual segment number from the reading catalog. The step waits for the model to read returned text and explicitly confirm that segment; an animation cannot finish it.\" } , } , additionalProperties : false } , } , }",
+      "values": [
+        "body",
+        "economy",
+        "garden",
+        "hold",
+        "move",
+        "read",
+        "room"
+      ],
+      "shape": "object table",
+      "table": "planStepBranches",
+      "keyUse": "Object.entries",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 3,
+        "column": 29,
+        "shape": "object table",
+        "table": "FACT_DOMAINS",
+        "keyUse": "keyof",
+        "values": [
+          "body",
+          "economy"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
       "file": "src/channels/group-social.ts",
       "line": 50,
       "column": 63,
@@ -14110,5 +17000,6 @@
       "expression": "status ? : string ;",
       "shape": "bare string"
     }
-  ]
+  ],
+  "objectTables": true
 }
