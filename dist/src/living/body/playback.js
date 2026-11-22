@@ -1,6 +1,4 @@
 import { animationAssets, animationSlots, animationStickers } from './animation-map.js';
-import { animationSlotAllowed } from './animation-slots.js';
-export { animationSlotAllowed, requirePresentationSlot } from './animation-slots.js';
 const feelings = new Set(['happy', 'calm', 'sweet', 'heartache', 'worry', 'sad', 'jealous', 'anger', 'boredom']);
 // Single-clip movement rows identify the registered gaits. Combined rows may
 // describe several real phases, but cannot manufacture those phase changes.
@@ -105,7 +103,7 @@ function clipsFor(slot, kind, foodSlot) {
         gap = true;
     return { ids, gap, match, uncovered };
 }
-export function resolveActivityPlayback(home) {
+export function resolveActivityPlayback(home, animationSlotAllowed) {
     if (!home?.her)
         return;
     const her = home.her, activity = home.behavior ?? {}, context = activity.animationContext ?? {};
@@ -170,10 +168,10 @@ export function resolveActivityPlayback(home) {
     return result;
 }
 /** Playback is attached by the carriers to their existing home response. */
-export function withHomePlayback(home) {
+export function withHomePlayback(home, animationSlotAllowed) {
     if (!home?.her || home.playback)
         return home;
-    return { ...home, playback: resolveActivityPlayback(home) };
+    return { ...home, playback: resolveActivityPlayback(home, animationSlotAllowed) };
 }
 /** Self-contained for both generated carriers: no resolver/table is inlined.
  * Unknown starts skip historical one-shots; loops share a cosmetic clock. */

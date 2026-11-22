@@ -9,7 +9,7 @@ import {setTimeout as wait} from 'node:timers/promises';
 import {isDeepStrictEqual} from 'node:util';
 import type {NativeSession} from '../conversation.js';
 import type {} from '../plugin.js';
-import {activityPresentation,eatingClips,physicalClips,sleepingClips,projectActivityConfig} from './activity.js';
+import {desktopHomePlayback,activityPresentation,eatingClips,physicalClips,sleepingClips,projectActivityConfig} from './activity.js';
 import {migratePresentation,resolvePresentationMigration,type PresentationMigrationReceipt} from './migration.js';
 import { companionFeelings } from '../../living/body/presentation.js';
 import type { PlaybackReceipt } from '../../emotion/index.js';
@@ -365,7 +365,7 @@ export class PetPlatform {
     let next:any;
     try {
       const service=(this.ctx as any).get('petBehavior',false);
-      next=service ? await service.roomState(bound.id) : undefined;
+      next=service ? desktopHomePlayback(await service.roomState(bound.id)) : undefined;
       if(this.bound!==bound || scope.signal.aborted)return;
       const prior=this.behavior;
       this.behavior=next;
@@ -686,7 +686,7 @@ export class PetPlatform {
         if(behavior && (sleepingClips.has(requested) || requested==='睡觉-起来')) {
           const result=await bodyAction(requested==='睡觉-起来' ? 'wake' : 'sleep');
           await this.refreshBehavior();
-          return json({ok:true,accepted:true,home:result?.home,behavior:this.behavior?.behavior});
+          return json({ok:true,accepted:true,home:desktopHomePlayback(result?.home),behavior:this.behavior?.behavior});
         }
         const eatingRequested=eatingClips.has(requested);
         const isEating=()=>her?.kind==='eat';

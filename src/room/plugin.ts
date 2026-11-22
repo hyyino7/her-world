@@ -16,6 +16,13 @@ import { CONTRACT_VERSION } from '../contracts/version.js';
 import { RoomChat } from './chat.js';
 import { roomPhoto, type PhotoLook, type PhotoView } from './photo.js';
 import { roomAsset, roomPrefix } from './assets.js';
+import { animationSlotAllowed } from '../living/body/animation-slots.js';
+import { withHomePlayback } from '../living/body/playback.js';
+
+const roomHomePlayback = (home:unknown) => withHomePlayback(home,animationSlotAllowed);
+function roomPlaybackReply<T extends {home?: unknown}>(result:T):T {
+  return result.home ? {...result,home:roomHomePlayback(result.home)} : result;
+}
 import {isRoomEndpoint, roomVoiceRoute} from '../presentation/room-transport.js';
 
 const output = {schema:{type:'string' as const}, render: (_:unknown, text:string) => [{type:'text' as const, text}]};
@@ -82,8 +89,8 @@ export class Room {
     const reply=async (task:Promise<unknown>)=>{const value=await task;validate();return value;};
     const storageId=binding.storageId;
     const behavior = this.ctx.petBehavior;
-    if (endpoint === 'roomState') return reply(withLivingCaller(validate,()=>behavior.roomState(workspaceId)));
-    if (endpoint === 'roomGarden') return reply(withLivingCaller(validate,()=>behavior.garden(workspaceId,'state')));
+    if (endpoint === 'roomState') return reply(withLivingCaller(validate,()=>behavior.roomState(workspaceId)).then(roomHomePlayback));
+    if (endpoint === 'roomGarden') return reply(withLivingCaller(validate,()=>behavior.garden(workspaceId,'state')).then(roomPlaybackReply));
     if (endpoint === 'roomHistory') return reply(this.chat.history(workspaceId,validate));
     if (endpoint === 'roomVoice') {
       const host=this.ctx.petCore;
@@ -110,9 +117,10 @@ export class Room {
       actor:{kind:'owner',id:this.ctx.petCore.workspace.runtime?.config?.ownerActorId ?? 'owner',channel:'room'}}) : endpoint === 'roomPlant' ? behavior.garden(workspaceId, 'act', {...data,requestId:key}) :
       behavior.garden(workspaceId, 'control', {...data, requestId:careRequestId}));
     validate();
-    this.receipts.set(key,{fingerprint,result});
+    const projected=roomPlaybackReply(result);
+    this.receipts.set(key,{fingerprint,result:projected});
     if (this.receipts.size > 256) this.receipts.delete(this.receipts.keys().next().value!);
-    return result;
+    return projected;
   }
   watching(id:string) { return this.chat.watching(id); }
   toolScope(agent?: Agent) {
@@ -139,7 +147,7 @@ export class Room {
         if(factIds){if(factIds.length<1||factIds.length>16)throw Error('Expected 1–16 fact IDs');
           const facts=await withLivingCaller(validate,()=>behavior.readFacts(id,factIds));validate();return JSON.stringify({facts});}
         const state=await withLivingCaller(validate,()=>behavior.roomState(id));validate();
-        return JSON.stringify((view??(exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id)?'overview':'full'))==='overview'?roomOverview(state):state);}});
+        return JSON.stringify((view??(exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id)?'overview':'full'))==='overview'?roomOverview(state):roomHomePlayback(state));}});
     const act = defineTool({name:'room_action',description:'在自己的房间移动到 room_state 里的 room/spot，或进行日常互动。睡着需先 wake，不舒服时不能移动。talk 的 text 是给房间的留言。',parameters:{
       action:{type:'string',enum:ROLE_ACTIONS,required:true}, room:{type:'string'},spot:{type:'string'},text:{type:'string'},on:{type:'boolean'}},output,
       execute:async (input,exec) => {
@@ -171,7 +179,7 @@ export class Room {
         const home=await withLivingCaller(validate,()=>behavior.roomState(id));
         const garden=await withLivingCaller(validate,()=>behavior.garden(id,'state'));
         validate();
-        const image = await roomPhoto(home, garden, view as PhotoView, look as PhotoLook, exec.signal);
+        const image = await roomPhoto(roomHomePlayback(home), roomPlaybackReply(garden), view as PhotoView, look as PhotoLook, exec.signal);
         validate();
         const block = (await this.chat.images.admit(image,validate)).find(part=>part.type === 'image');
         validate();

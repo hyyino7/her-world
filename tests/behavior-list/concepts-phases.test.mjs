@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {fixture} from './fixture.mjs';
+import {loadPlayback} from '../fixtures/playback.mjs';
+
+const {resolveActivityPlayback}=await loadPlayback();
 
 const phase = snapshot => snapshot.behavior.phase;
 
@@ -14,7 +17,7 @@ test('阅读的待取文、已取文和确认终态投影到身体与播放', as
   await f.ownerAction({kind:'gift',itemId},'gift');
   const operationId = 'read', reading = {itemId,segment:0};
   const snapshot = () => f.body.snapshot('world');
-  const presentation = ({behavior,home}) => [behavior.presentationKind,behavior.readingState,home.playback.kind];
+  const presentation = ({behavior,home}) => [behavior.presentationKind,behavior.readingState,resolveActivityPlayback(home).kind];
   await f.body.startPlanned('world',{operationId,kind:'read',activity:title,reading});
   let current = await snapshot();
   assert.deepEqual(presentation(current),['reading-wait','unread','reading-wait']);

@@ -16,6 +16,10 @@ export function compiledURL(path) {
   return new URL(path, emittedRoot);
 }
 
-export function loadPlayback() {
-  return import(playbackURL);
+export async function loadPlayback() {
+  const media=await import(playbackURL);
+  if (media.animationSlotAllowed) return media;
+  const {animationSlotAllowed}=await import(compiledURL('living/body/animation-slots.js'));
+  return {...media,resolveActivityPlayback:home=>media.resolveActivityPlayback(home,animationSlotAllowed),
+    withHomePlayback:home=>media.withHomePlayback(home,animationSlotAllowed)};
 }

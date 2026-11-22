@@ -4,6 +4,8 @@ import { estimateTokens } from '#dsh-world/console/snapshot';
 import { desktopAppearanceDefaults } from '../desktop/appearance.js';
 import { BODY_ACTIONS, CARE_ACTIONS, isCareAction } from '../contracts/behavior.js';
 import { isRoomEndpoint } from '../presentation/room-transport.js';
+import { animationSlotAllowed } from '../living/body/animation-slots.js';
+import { withHomePlayback } from '../living/body/playback.js';
 const messages = {
     STALE_BINDING: '工作区绑定已改变，请刷新。',
     STALE_REVISION: '设置已被其他操作修改，请刷新后重新编辑。',
@@ -274,10 +276,11 @@ export function settingsHandler(getHost, getWorkspaces, getDesktop, getWorldModu
                     fail('CANCELLED');
                 if (getLife?.() !== life || host.workspace.status().target?.id !== workspaceId)
                     fail('STALE_BINDING');
-                return { ok: true, value: endpoint === 'lifeView' ? { ...value,
+                const projected = 'home' in value ? { ...value, home: withHomePlayback(value.home, animationSlotAllowed) } : value;
+                return { ok: true, value: endpoint === 'lifeView' ? { ...projected,
                         roomAvailable: Boolean(getRoom?.()), channelsAvailable: Boolean(getChannels?.()),
                         careActions: CARE_ACTIONS.map(action => ({ action, label: BODY_ACTIONS[action].care.label })),
-                    } : value };
+                    } : projected };
             }
             if (endpoint === 'snapshot') {
                 object(body.input, []);

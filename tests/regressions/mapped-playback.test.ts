@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {animationAssets,animationSlots,animationStickers,animationRoomAliases} from '../../src/living/body/animation-map.js';
-import {resolveActivityPlayback,sampleActivityPlayback,animationSlotAllowed,requirePresentationSlot} from '../../src/living/body/playback.js';
+import {animationAllocation,animationAssets,animationSlots,animationStickers,animationRoomAliases} from '../fixtures/playback.js';
+import {resolveActivityPlayback,sampleActivityPlayback,animationSlotAllowed,requirePresentationSlot} from '../fixtures/playback.js';
 const home=(kind='idle',context:any={})=>({now:2000,her:{kind,activity:'Actual activity',spot:'sofa',pose:'stand'},behavior:{activityId:'accepted',phase:'working',startedAt:1000,animationContext:context},emotion:{feelings:[] as string[],updatedAt:0}});
 const clip=(s:any,at=2000)=>sampleActivityPlayback(resolveActivityPlayback(s)!,at)!;
 
 test('the generated runtime index covers the approved name map without extra assets',()=>{
-  const design=JSON.parse(readFileSync('src/living/body/animation-allocation.json','utf8'));
+  const design=JSON.parse(readFileSync(animationAllocation,'utf8'));
   assert.deepEqual(Object.keys(animationAssets),design.assets.map((row:any)=>row.id));
   assert.deepEqual(Object.keys(animationSlots),design.slots.map((row:any)=>row.id));
   assert.deepEqual(Object.keys(animationStickers),design.stickers.map((row:any)=>row.label));

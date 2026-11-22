@@ -1,4 +1,3 @@
-export { animationSlotAllowed, requirePresentationSlot } from './animation-slots.js';
 /** Read-only media selection. Accepted domain work owns effects and completion. */
 export interface ActivityClip {
     roomClip: string;
@@ -54,9 +53,13 @@ export interface ActivityPlayback {
         gap?: boolean;
     };
 }
-export declare function resolveActivityPlayback(home: any): ActivityPlayback | undefined;
+type SlotAdmission = (slot: unknown, context: {
+    kind: ActivityPlayback['kind'];
+    foodSlot?: string;
+}) => boolean;
+export declare function resolveActivityPlayback(home: any, animationSlotAllowed: SlotAdmission): ActivityPlayback | undefined;
 /** Playback is attached by the carriers to their existing home response. */
-export declare function withHomePlayback(home: any): any;
+export declare function withHomePlayback(home: any, animationSlotAllowed: SlotAdmission): any;
 /** Self-contained for both generated carriers: no resolver/table is inlined.
  * Unknown starts skip historical one-shots; loops share a cosmetic clock. */
 export declare function sampleActivityPlayback(playback: ActivityPlayback, now?: number): {
@@ -70,3 +73,4 @@ export declare function sampleActivityPlayback(playback: ActivityPlayback, now?:
     durationMs: number;
     mirror?: boolean;
 } | undefined;
+export {};

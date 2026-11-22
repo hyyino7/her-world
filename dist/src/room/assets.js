@@ -161,6 +161,13 @@ export async function roomAsset(request) {
             blob = await openAsBlob(file, { type });
         }
         else if (name === 'activity-playback.js')
+            blob = new Blob([`
+      import {resolveActivityPlayback as resolve} from './media-playback.js';
+      import {animationSlotAllowed} from './animation-slots.js';
+      export const resolveActivityPlayback = home => resolve(home,animationSlotAllowed);
+      export {sampleActivityPlayback} from './media-playback.js';
+    `], { type });
+        else if (name === 'media-playback.js')
             blob = await openAsBlob(sharedPlayback, { type });
         else if (name === 'animation-map.js')
             blob = await openAsBlob(sharedAnimationMap, { type });

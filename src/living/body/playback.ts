@@ -1,6 +1,4 @@
 import {animationAssets,animationSlots,animationStickers,type AnimationSlot} from './animation-map.js';
-import {animationSlotAllowed} from './animation-slots.js';
-export {animationSlotAllowed,requirePresentationSlot} from './animation-slots.js';
 
 /** Read-only media selection. Accepted domain work owns effects and completion. */
 export interface ActivityClip {
@@ -20,6 +18,7 @@ export interface ActivityPlayback {
   slotId?:string;match?:string;uncovered?:string[];
   feedback?:{id:string;at:number;until:number;text?:string;sticker?:string;slotId?:string;gap?:boolean};
 }
+type SlotAdmission = (slot:unknown, context:{kind:ActivityPlayback['kind']; foodSlot?:string}) => boolean;
 const feelings=new Set(['happy','calm','sweet','heartache','worry','sad','jealous','anger','boredom']);
 // Single-clip movement rows identify the registered gaits. Combined rows may
 // describe several real phases, but cannot manufacture those phase changes.
@@ -97,7 +96,7 @@ function clipsFor(slot:AnimationSlot|undefined,kind:string,foodSlot:string|undef
   return {ids,gap,match,uncovered};
 }
 
-export function resolveActivityPlayback(home:any):ActivityPlayback|undefined {
+export function resolveActivityPlayback(home:any,animationSlotAllowed:SlotAdmission):ActivityPlayback|undefined {
   if(!home?.her)return;
   const her=home.her,activity=home.behavior??{},context:ActivityAnimationContext=activity.animationContext??{};
   const kind=currentKind(home),interaction=liveInteraction(home,context);
@@ -152,9 +151,9 @@ export function resolveActivityPlayback(home:any):ActivityPlayback|undefined {
 }
 
 /** Playback is attached by the carriers to their existing home response. */
-export function withHomePlayback(home:any) {
+export function withHomePlayback(home:any,animationSlotAllowed:SlotAdmission) {
   if(!home?.her || home.playback)return home;
-  return {...home,playback:resolveActivityPlayback(home)};
+  return {...home,playback:resolveActivityPlayback(home,animationSlotAllowed)};
 }
 
 /** Self-contained for both generated carriers: no resolver/table is inlined.

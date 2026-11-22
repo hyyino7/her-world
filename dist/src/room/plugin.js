@@ -11,6 +11,12 @@ import { CONTRACT_VERSION } from '../contracts/version.js';
 import { RoomChat } from './chat.js';
 import { roomPhoto } from './photo.js';
 import { roomAsset, roomPrefix } from './assets.js';
+import { animationSlotAllowed } from '../living/body/animation-slots.js';
+import { withHomePlayback } from '../living/body/playback.js';
+const roomHomePlayback = (home) => withHomePlayback(home, animationSlotAllowed);
+function roomPlaybackReply(result) {
+    return result.home ? { ...result, home: roomHomePlayback(result.home) } : result;
+}
 import { isRoomEndpoint, roomVoiceRoute } from '../presentation/room-transport.js';
 const output = { schema: { type: 'string' }, render: (_, text) => [{ type: 'text', text }] };
 export const roomStateDeclaration = {
@@ -82,9 +88,9 @@ export class Room {
         const storageId = binding.storageId;
         const behavior = this.ctx.petBehavior;
         if (endpoint === 'roomState')
-            return reply(withLivingCaller(validate, () => behavior.roomState(workspaceId)));
+            return reply(withLivingCaller(validate, () => behavior.roomState(workspaceId)).then(roomHomePlayback));
         if (endpoint === 'roomGarden')
-            return reply(withLivingCaller(validate, () => behavior.garden(workspaceId, 'state')));
+            return reply(withLivingCaller(validate, () => behavior.garden(workspaceId, 'state')).then(roomPlaybackReply));
         if (endpoint === 'roomHistory')
             return reply(this.chat.history(workspaceId, validate));
         if (endpoint === 'roomVoice') {
@@ -119,10 +125,11 @@ export class Room {
             actor: { kind: 'owner', id: this.ctx.petCore.workspace.runtime?.config?.ownerActorId ?? 'owner', channel: 'room' } }) : endpoint === 'roomPlant' ? behavior.garden(workspaceId, 'act', { ...data, requestId: key }) :
             behavior.garden(workspaceId, 'control', { ...data, requestId: careRequestId }));
         validate();
-        this.receipts.set(key, { fingerprint, result });
+        const projected = roomPlaybackReply(result);
+        this.receipts.set(key, { fingerprint, result: projected });
         if (this.receipts.size > 256)
             this.receipts.delete(this.receipts.keys().next().value);
-        return result;
+        return projected;
     }
     watching(id) { return this.chat.watching(id); }
     toolScope(agent) {
@@ -158,7 +165,7 @@ export class Room {
                 }
                 const state = await withLivingCaller(validate, () => behavior.roomState(id));
                 validate();
-                return JSON.stringify((view ?? (exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id) ? 'overview' : 'full')) === 'overview' ? roomOverview(state) : state);
+                return JSON.stringify((view ?? (exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id) ? 'overview' : 'full')) === 'overview' ? roomOverview(state) : roomHomePlayback(state));
             } });
         const act = defineTool({ name: 'room_action', description: '在自己的房间移动到 room_state 里的 room/spot，或进行日常互动。睡着需先 wake，不舒服时不能移动。talk 的 text 是给房间的留言。', parameters: {
                 action: { type: 'string', enum: ROLE_ACTIONS, required: true }, room: { type: 'string' }, spot: { type: 'string' }, text: { type: 'string' }, on: { type: 'boolean' }
@@ -196,7 +203,7 @@ export class Room {
                 const home = await withLivingCaller(validate, () => behavior.roomState(id));
                 const garden = await withLivingCaller(validate, () => behavior.garden(id, 'state'));
                 validate();
-                const image = await roomPhoto(home, garden, view, look, exec.signal);
+                const image = await roomPhoto(roomHomePlayback(home), roomPlaybackReply(garden), view, look, exec.signal);
                 validate();
                 const block = (await this.chat.images.admit(image, validate)).find(part => part.type === 'image');
                 validate();

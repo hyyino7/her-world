@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import type {Context} from '@deepseek-ai/cordis';
 import type {PetCoreHost} from '../../src/core/index.js';
-import {resolveActivityPlayback,sampleActivityPlayback} from '../../src/living/body/playback.js';
+import {resolveActivityPlayback,sampleActivityPlayback,withHomePlayback} from '../fixtures/playback.js';
 import {projectActivityConfig} from '../../src/desktop/platform/activity.js';
 import {CompanionBehavior} from '../../src/living/body/plugin.js';
 import {emptyHomeState} from '#feiyu-home';
@@ -84,20 +84,20 @@ async function bodyFixture(t:TestContext){
 test('real Body observations, immediate care and restart retain one accepted activity',async t=>{
   const f=await bodyFixture(t),acceptedAt=Date.now();
   await f.body.startPlanned('world',{operationId:'quiet',kind:'hold',activity:'Rest quietly'});
-  const before=await f.body.roomState('world'),saved=readFileSync(join(f.directory,'home.json'),'utf8');
+  const before=await f.body.roomState('world').then(withHomePlayback),saved=readFileSync(join(f.directory,'home.json'),'utf8');
   assert.equal(JSON.parse(saved).plannedExecutions.quiet.executionStartedAt,acceptedAt);
   assert.equal(before.behavior.animationContext?.startedAt,acceptedAt);
   assert.equal(before.playback!.startedAt,acceptedAt,'A new hold uses its actual persisted execution onset');
   t.mock.timers.setTime(acceptedAt+1250);
-  for(let i=0;i<3;i++)assert.equal((await f.body.roomState('world')).playback!.key,before.playback!.key);
+  for(let i=0;i<3;i++)assert.equal((await f.body.roomState('world').then(withHomePlayback)).playback!.key,before.playback!.key);
   const water=await f.body.roomAction('world',{action:'water'},'主人');
-  assert.equal(water.home.playback.key,before.playback!.key);assert.equal(water.home.behavior.activityId,'quiet');
+  assert.equal(withHomePlayback(water.home).playback.key,before.playback!.key);assert.equal(water.home.behavior.activityId,'quiet');
   assert.ok(water.fact,'Care still commits an immediate fact');
   assert.notEqual(readFileSync(join(f.directory,'home.json'),'utf8'),saved);
   const garden=await f.body.garden('world','state');
-  if(garden.home)assert.equal(garden.home.playback.key,before.playback!.key);
+  if(garden.home)assert.equal(withHomePlayback(garden.home).playback.key,before.playback!.key);
   t.mock.timers.setTime(acceptedAt+2750);
-  await f.reopen();const resumed=await f.body.roomState('world');
+  await f.reopen();const resumed=await f.body.roomState('world').then(withHomePlayback);
   assert.equal(resumed.playback!.activityId,'quiet');assert.equal(resumed.playback!.kind,'rest');
   assert.equal(resumed.behavior.animationContext?.startedAt,acceptedAt);
   assert.equal(resumed.playback!.startedAt,acceptedAt,'Restart retains the original hold onset instead of its new observation time');
@@ -110,8 +110,8 @@ test('real Body observations, immediate care and restart retain one accepted act
 test('real route exposes its persisted departure, not snapshot time, as visual onset',async t=>{
   const f=await bodyFixture(t);
   await f.body.startPlanned('world',{operationId:'trip',kind:'room',activity:'Go to kitchen',room:'kitchen',spot:'sink'});
-  const start=await f.body.roomState('world');assert.equal(start.playback!.kind,'walk');assert.ok(start.playback!.startedAt>0);
-  t.mock.timers.tick(200);const next=await f.body.roomState('world');
+  const start=await f.body.roomState('world').then(withHomePlayback);assert.equal(start.playback!.kind,'walk');assert.ok(start.playback!.startedAt>0);
+  t.mock.timers.tick(200);const next=await f.body.roomState('world').then(withHomePlayback);
   assert.equal(next.playback!.startedAt,start.playback!.startedAt);assert.equal(next.playback!.key,start.playback!.key);
 });
 
@@ -119,5 +119,5 @@ test('a newly perceived head touch uses its real persisted reaction onset',async
   const f=await bodyFixture(t),result=await f.body.roomAction('world',{action:'pet'},'主人');
   assert.match(result.home.her.kind,/^react_/);
   assert.equal(result.home.behavior.startedAt,Date.now());
-  assert.equal(sampleActivityPlayback(result.home.playback,Date.now())!.complete,false);
+  assert.equal(sampleActivityPlayback(withHomePlayback(result.home).playback,Date.now())!.complete,false);
 });
