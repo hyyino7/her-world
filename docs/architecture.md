@@ -83,7 +83,7 @@
 
 另有伙伴工具声明表（`core/tables/tools.ts`，挂在 `host.native.toolTable`）：各模块在工具定义旁声明可用来源和可选的历史概览，Life 名单和历史瘦身由它派生。三个登记口共用 `core/tables/registry.ts` 的登记表。
 
-另有伙伴判定登记口（`core/tables/companion-ports.ts`，挂在 `host.native.companionPorts`），复用同一个登记表，让第一层不再读生活服务：Body 登记「身体可用」，Plan 登记「此会话由 Life 自带相册」和「仍是运行中的 Life home」，Room 登记「此会话正在看电视」，`LivingWorld` 在首个可见区挂载时登记活动只读接口（`living/plan/activity-reader.ts`）。生产方只在挂载时按 Cordis 根和隔离标签判断对 Core 是否可见，读取时核对租约；读不到登记时等同服务不在。Memory 另提供向下调用的 `host.native.requestReviewCompaction(sessionId)`，由 Life 回顾完成和 Bridge 整理调用。
+另有伙伴判定登记口（`core/tables/companion-ports.ts`，挂在 `host.native.companionPorts`），复用同一个登记表，让第一层不再读生活服务：Body 登记「身体可用」，Plan 登记「此会话由 Life 自带相册」和「仍是运行中的 Life home」，Room 登记「此会话正在看电视」和「打开 Room 窗口」，`LivingWorld` 在首个可见区挂载时登记活动只读接口（`living/plan/activity-reader.ts`）。生产方只在挂载时按 Cordis 根和隔离标签判断对 Core 是否可见，读取时核对租约；读不到登记时等同服务不在。Memory 另提供向下调用的 `host.native.requestReviewCompaction(sessionId)`，由 Life 回顾完成和 Bridge 整理调用。
 
 **每张表的契约（契约测试在 `tests/core/tables*.test.ts`）：**
 
@@ -233,6 +233,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 共用物 | 现在 | 新 |
 | --- | --- | --- |
 | 图片准入与便携副本 | `presentation/images.ts` | Desktop 和 Room 各自执行磁盘操作。桌宠保留 1 MiB 编码上限，Room 电视帧保留 2.5 MiB 原始字节上限，房间照片与附件副本按 Room 编码上限校验 |
+| Room 传输 | `presentation/room-transport.ts` 声明九个端点、超时和只读拍照子集 | 构建生成原生窗口与 Console 使用的子集；浏览器和拍照通过现有 Room 路径加载。各入口保留自己的身份和窗口准入 |
 | **语音**（Desktop、Room、Channels 都用） | 通过 2.2 的语音调用表获得 `contracts/voice.ts` 接口。Voice 保留 `petVoice` 兼容服务，识别缺能力时仍可合成。 | Her World 活动语音闭包放在 `dist/src/voice/upstream/`，旧 Desktop 深路径转发到同一实现。识别和合成各自共享一份登记表。 |
 | 房间模型 `CompanionRoom` | `living/body/room.ts`，属第二层·身体区 | Room 只读快照 |
 

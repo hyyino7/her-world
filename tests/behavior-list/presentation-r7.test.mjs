@@ -32,6 +32,7 @@ function resources(f,active) {
   }
   assert.equal(Boolean(toolTable.getRegistration('room_state')),active.has('room'));
   assert.equal(Boolean(companionPorts.get('watchingTelevision')),active.has('room'));
+  assert.equal(Boolean(companionPorts.get('openRoomWindow')),active.has('room'));
   for(const key of ['desktop','channels'])assert.equal(Boolean(lookupLifeOutlet(f.ctx,f.core,key)),active.has(key),key);
 }
 

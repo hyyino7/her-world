@@ -200,9 +200,11 @@ export function apply(ctx:Context) {
     const server = (scope as unknown as {webServer:{register(route:{kind:'prefix';path:string;resource:typeof roomAsset}):()=>void}}).webServer;
     scope.effect(() => server.register({kind:'prefix',path:roomPrefix,resource:roomAsset}));
   });
+  const ports=host.native.companionPorts;
+  if(ports.scopeFor(ctx,'petRoom'))
+    ctx.effect(()=>ports.register('openRoomWindow',workspaceId=>room.open(workspaceId)).revoke);
   ctx.effect(() => {
     const source = host.native.sourceTable.register(room.chat.sourceAdapter());
-    const ports = host.native.companionPorts;
     const television = ports.scopeFor(ctx, 'petRoom') && ports.register('watchingTelevision', id => room.watching(id));
     return async () => {
       try { await source.revoke(); }

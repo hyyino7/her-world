@@ -17,6 +17,11 @@ interface Ports {
     activities: ActivityReader;
     lifeOwnsAlbum(sessionId: string): boolean;
     watchingTelevision(sessionId: string): boolean;
+    openRoomWindow(workspaceId: string): Promise<{
+        running: boolean;
+        ready: boolean;
+        workspaceId: string | null;
+    }>;
     isRunningLifeHome(sessionId: string): boolean;
     applyHomeArrival(scope: HomeBinding, sessionId: string): boolean;
 }

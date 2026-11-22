@@ -7,6 +7,7 @@ export class CompanionPorts {
         activities: new RegistrationTable(),
         lifeOwnsAlbum: new RegistrationTable(),
         watchingTelevision: new RegistrationTable(),
+        openRoomWindow: new RegistrationTable(),
         isRunningLifeHome: new RegistrationTable(),
         applyHomeArrival: new RegistrationTable(),
     };
