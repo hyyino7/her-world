@@ -3,6 +3,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent';
 import { bridgeRoute } from '#dsh-world/ecosystem/bridge/route';
 import type { Push } from '#dsh-world/ecosystem/shared/outlets';
 import type { WorldChanged } from '../contracts/living.js';
+import { type ConsoleOperation } from '../core/tables/console.js';
 import type { PetCoreHost } from '../core/index.js';
 import { LocalBridge } from './bridge.js';
 import { createMessaging } from './messaging.js';
@@ -53,7 +54,7 @@ export declare class CompanionChannels {
     qqConnection(): ReturnType<Binding['messaging']['qqConnection']>;
     compact(): "生活会话或记忆整理未启用" | "当前没有待整理的已完成对话" | undefined;
     reach(workspaceId: string, push: Push): Promise<PromiseSettledResult<string>[]>;
-    request(id: string, operation: string, input: Record<string, unknown>): Promise<{
+    request(id: string, operation: string, input: Record<string, unknown>, validate?: () => void): Promise<{
         quota: {
             ok: boolean;
             message?: string;
@@ -240,6 +241,9 @@ export declare class CompanionChannels {
     }>;
     close(): Promise<Binding | undefined>;
 }
+export declare function channelsConsoleOperations(channels: Pick<CompanionChannels, 'request'>): {
+    operations: Record<string, ConsoleOperation>;
+};
 export declare const name = "60-Channels";
 export declare const inject: string[];
 export declare function apply(ctx: Context, config?: {

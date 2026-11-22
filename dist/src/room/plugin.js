@@ -18,7 +18,8 @@ const roomHomePlayback = (home) => withHomePlayback(home, animationSlotAllowed, 
 function roomPlaybackReply(result) {
     return result.home ? { ...result, home: roomHomePlayback(result.home) } : result;
 }
-import { isRoomEndpoint, roomVoiceRoute } from '../presentation/room-transport.js';
+import { isRoomEndpoint, ROOM_ENDPOINTS, roomVoiceRoute } from '../presentation/room-transport.js';
+import { fail, object, requiredText } from '../core/tables/console.js';
 const output = { schema: { type: 'string' }, render: (_, text) => [{ type: 'text', text }] };
 export const roomStateDeclaration = {
     name: 'room_state', sources: OWNER_LIFE_TOOL_SOURCES,
@@ -217,12 +218,36 @@ export class Room {
     async close() { this.closed = true; this.lifetime.abort(); for (const stop of this.subscriptions.splice(0))
         stop(); this.closeWindow(); this.receipts.clear(); await this.chat.close(); }
 }
+export function roomConsoleOperations(room) {
+    const operations = {
+        roomOpen(call) {
+            const input = object(call.input, ['workspaceId']);
+            const id = requiredText(input.workspaceId, 200);
+            call.checkBinding(id);
+            call.validate();
+            return room.open(id);
+        },
+    };
+    for (const endpoint of ROOM_ENDPOINTS)
+        operations[endpoint] = call => {
+            const input = object(call.input, ['workspaceId', 'data']);
+            const id = requiredText(input.workspaceId, 200);
+            call.checkBinding(id);
+            const { data } = input;
+            if (!data || typeof data !== 'object' || Array.isArray(data))
+                fail('INVALID_ARGUMENT');
+            call.validate();
+            return room.request(id, endpoint, data, call.requestId, call.signal);
+        };
+    return { operations };
+}
 export const name = '50-Room';
 export const inject = ['petCore', 'petWorld', 'petBehavior', 'agents', 'sessions', 'tools', 'workspaceRegistry', 'sessionController'];
 export function apply(ctx) {
     const room = new Room(ctx);
     ctx.provide('petRoom', room);
     const host = ctx.petCore;
+    ctx.effect(() => host.native.consoleOperations.register('room', roomConsoleOperations(room), ctx).revoke);
     const tools = ctx.tools;
     for (const tool of room.tools()) {
         tools.register(tool, { when: ({ agent }) => !!room.toolScope(agent) });

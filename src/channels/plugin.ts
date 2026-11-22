@@ -6,6 +6,7 @@ import type {Push} from '#dsh-world/ecosystem/shared/outlets';
 import type {WorldChanged} from '../contracts/living.js';
 import {CONTRACT_VERSION} from '../contracts/version.js';
 import {digest} from '../core/storage.js';
+import {object, requiredText, type ConsoleOperation} from '../core/tables/console.js';
 import type {PetCoreHost} from '../core/index.js';
 import type {HomeBinding} from '../core/workspace.js';
 import {sameHomeBinding} from '../living/index.js';
@@ -104,11 +105,14 @@ export class CompanionChannels {
     const deliveries = await Promise.allSettled([bound.bridge.reach(push,home),bound.messaging.reach(push,home)]);
     return deliveries.flatMap(result => result.status === 'fulfilled' ? result.value : [result]);
   }
-  request(id: string, operation: string, input: Record<string, unknown>) {
+  request(id: string, operation: string, input: Record<string, unknown>, validate?: () => void) {
     return this.serial(async () => {
+      validate?.();
       const bound = await this.reconcile();
+      validate?.();
       if (!bound || bound.id !== id || !this.current(bound)) throw {code:'STALE_BINDING'};
-      if (['groupState','groupSettings','groupSlang','groupResearch','qzoneState','qzoneSettings','qzoneDraft','qzoneRemove'].includes(operation)) {
+      if (!Object.hasOwn(channelOperations, operation)) throw {code:'INVALID_ARGUMENT'};
+      if (channelOperations[operation].group) {
         const response = await bound.messaging.group(operation, input);
         if (!this.current(bound)) throw {code:'STALE_BINDING'};
         return response;
@@ -120,7 +124,7 @@ export class CompanionChannels {
       } else if (operation === 'messagingSettings') {
         if (!isDeepStrictEqual(input.expected, bound.messaging.status().config)) throw {code:'STALE_REVISION'};
         await bound.messaging.configure(input.next as Parameters<typeof bound.messaging.configure>[0]);
-      } else if (operation !== 'channelStatus') throw {code:'INVALID_ARGUMENT'};
+      }
       if (!this.current(bound)) throw {code:'STALE_BINDING'};
       return {bridge:bound.bridge.status(), messaging:bound.messaging.status()};
     });
@@ -132,6 +136,32 @@ export class CompanionChannels {
   }
 }
 
+const channelOperations: Readonly<Record<string, {fields: readonly string[]; group?: true}>> = {
+  channelStatus: {fields: []},
+  bridgeSettings: {fields: ['expected', 'next']},
+  messagingSettings: {fields: ['expected', 'next']},
+  groupState: {fields: ['groupId'], group: true},
+  groupSettings: {fields: ['groupId', 'expected', 'next'], group: true},
+  groupSlang: {fields: ['groupId', 'content', 'meaning', 'usage', 'status'], group: true},
+  groupResearch: {fields: ['groupId', 'content'], group: true},
+  qzoneState: {fields: [], group: true},
+  qzoneSettings: {fields: ['expected', 'next'], group: true},
+  qzoneDraft: {fields: ['text'], group: true},
+  qzoneRemove: {fields: ['id'], group: true},
+};
+
+export function channelsConsoleOperations(channels: Pick<CompanionChannels, 'request'>) {
+  const operations: Record<string, ConsoleOperation> = {};
+  for (const [endpoint, {fields}] of Object.entries(channelOperations)) operations[endpoint] = call => {
+    const input = object(call.input, ['workspaceId', ...fields]);
+    const id = requiredText(input.workspaceId, 200);
+    call.checkBinding(id);
+    call.validate();
+    return channels.request(id, endpoint, input, call.validate);
+  };
+  return {operations};
+}
+
 export const name = '60-Channels';
 export const inject = ['petCore','webServer','sessionController','agents','sessions','sessionPersistence','agentPresets','workspaceRegistry'];
 export function apply(ctx: Context, config: {deviceDirectory?:string} = {}) {
@@ -140,6 +170,7 @@ export function apply(ctx: Context, config: {deviceDirectory?:string} = {}) {
   const host = ctx.petCore;
   const channels = new CompanionChannels(ctx, host, services, config.deviceDirectory ?? profile?.dir ?? '');
   ctx.provide('petChannels', channels);
+  ctx.effect(() => host.native.consoleOperations.register('channels', channelsConsoleOperations(channels), ctx).revoke);
   ctx.effect(() => registerLifeOutlet(ctx, host, 'channels', {
     reach: (workspaceId, push) => channels.reach(workspaceId, push),
   }).revoke);

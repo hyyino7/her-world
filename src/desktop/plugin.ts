@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { SessionPolicyRow } from '../contracts/tables.js';
 import { CONTRACT_VERSION } from '../contracts/version.js';
+import {object, type ConsoleOperation} from '../core/tables/console.js';
 import { registerLifeOutlet } from '../living/outlets.js';
 import { desktopFor, registerDesktop, type Desktop } from './index.js';
 
@@ -36,11 +37,27 @@ const desktopPolicies: readonly SessionPolicyRow[] = [
   },
 ];
 
+export function desktopConsoleOperations(desktop: Pick<Desktop, 'start' | 'closeWindow' | 'status'>) {
+  const windowOperation = (open: boolean): ConsoleOperation => async call => {
+    const input = object(call.input, ['workspaceId']);
+    call.checkBinding(input.workspaceId, open);
+    call.validate();
+    if (open) await desktop.start();
+    else await desktop.closeWindow();
+    return desktop.status();
+  };
+  return {
+    operations: {desktopOpen: windowOperation(true), desktopClose: windowOperation(false)},
+    status: () => desktop.status(),
+  };
+}
+
 export function apply(ctx: Context): void {
   const host = ctx.petCore;
   registerDesktop(ctx, host);
   const desktop = desktopFor(host);
   ctx.provide('petDesktop', desktop);
+  ctx.effect(() => host.native.consoleOperations.register('desktop', desktopConsoleOperations(desktop), ctx).revoke);
   ctx.effect(() => registerLifeOutlet(ctx, host, 'desktop', {
     pause: () => desktop.features?.pause(),
     restore: () => desktop.features?.restore(false),

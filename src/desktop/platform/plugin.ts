@@ -16,6 +16,7 @@ import type { PlaybackReceipt } from '../../emotion/index.js';
 import type { CompanionFactActor } from '../../contracts/interaction.js';
 import type { CareAction } from '../../contracts/behavior.js';
 import {isWorldChangeFor} from '../../contracts/living.js';
+import {fail, object, requiredText, type ConsoleOperation} from '../../core/tables/console.js';
 import type {HomeBinding} from '../../core/workspace.js';
 import { sameHomeBinding, withLivingCaller } from '../../living/index.js';
 
@@ -799,9 +800,42 @@ export class PetPlatform {
     } finally {res.off('close',stop);}
   }
 }
+export function platformConsoleOperations(platform: Pick<PetPlatform,
+  'ownerAccess' | 'controlAccess' | 'standaloneAccess' | 'saveTiming' | 'resolveMigration' | 'status'>) {
+  const access = (operation: (workspaceId: string) => unknown): ConsoleOperation => call => {
+    const {workspaceId} = object(call.input, ['workspaceId']);
+    call.checkBinding(workspaceId, true);
+    call.validate();
+    return operation(workspaceId as string);
+  };
+  const operations: Record<string, ConsoleOperation> = {
+    presentationTiming(call) {
+      const input = object(call.input, ['workspaceId', 'expected', 'eventsRefreshSec']);
+      const id = requiredText(input.workspaceId, 200);
+      call.checkBinding(id);
+      call.validate();
+      return platform.saveTiming(id, input.expected, input.eventsRefreshSec);
+    },
+    presentationMigration(call) {
+      const input = object(call.input, ['workspaceId', 'field', 'choice', 'expectedConfigHash']);
+      const id = requiredText(input.workspaceId, 200);
+      call.checkBinding(id);
+      if (input.choice !== 'legacy' && input.choice !== 'current') fail('INVALID_ARGUMENT');
+      const field = requiredText(input.field, 300), hash = requiredText(input.expectedConfigHash, 64);
+      call.validate();
+      return platform.resolveMigration(id, field, input.choice, hash);
+    },
+    petPlatformAccess: access(id => platform.ownerAccess(id)),
+    petControlAccess: access(id => platform.controlAccess(id)),
+    petStandaloneAccess: access(id => platform.standaloneAccess(id)),
+  };
+  return {operations, status: () => platform.status()};
+}
+
 export function apply(ctx:Context) {
   const platform=new PetPlatform(ctx);
   ctx.provide('petPlatform',platform);
+  ctx.effect(() => ctx.petCore.native.consoleOperations.register('platform', platformConsoleOperations(platform), ctx).revoke);
   const web=(ctx as any).webServer;
   ctx.effect(()=>web.register({kind:'prefix',path:route,handler:(req:IncomingMessage,res:ServerResponse)=>platform.http(req,res)}));
   const off=ctx.on('pet/core.changed',()=>platform.identityChanged());

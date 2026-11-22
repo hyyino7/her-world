@@ -1,3 +1,4 @@
+import { fail, requiredText, type ConsoleOperation } from '../core/tables/console.js';
 import { ROOM_MOOD_DIMENSIONS } from '../contracts/emotion.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../core/index.js';
@@ -317,11 +318,32 @@ declare module '@deepseek-ai/cordis' {
   interface Context { petEmotion: CompanionEmotion }
   interface Events { 'pet/emotion.expression'(value: ExpressionEvent): void; 'pet/emotion.changed'(workspaceId:string,snapshot:EmotionSnapshot):void }
 }
+export function emotionConsoleOperations(emotion: Pick<CompanionEmotion, 'current' | 'catalog' | 'read' | 'update'>) {
+  const update = (write: boolean): ConsoleOperation => call => {
+    const raw = call.input as Record<string, unknown>;
+    if (!raw || typeof raw !== 'object') fail('INVALID_ARGUMENT');
+    const id = requiredText(raw.workspaceId, 200);
+    call.checkBinding(id);
+    const {workspaceId: _id, ...input} = raw;
+    return write ? emotion.update(id, input as unknown as EmotionUpdate, call.validate) : emotion.read(id);
+  };
+  return {
+    operations: {emotionState: update(false), emotionUpdate: update(true)},
+    status(workspaceId: string) {
+      const current = emotion.current(workspaceId);
+      const label = (asset: {name: string; label?: string}) => asset.label || asset.name;
+      return {current: current ? {mood: current.mood, at: current.at} : null,
+        actions: emotion.catalog.actions.map(label), stickers: emotion.catalog.stickers.map(label)};
+    },
+  };
+}
+
 export function apply(ctx: Context): void {
   const host = ctx.petCore;
   installEmotion(ctx, host);
   const emotion = emotionFor(host);
   ctx.provide('petEmotion', emotion);
+  ctx.effect(() => host.native.consoleOperations.register('emotion', emotionConsoleOperations(emotion), ctx).revoke);
   const unsubscribe = emotion.onExpression(value => ctx.emit('pet/emotion.expression', value));
   const changed=emotion.onChanged((id,snapshot)=>ctx.emit('pet/emotion.changed',id,snapshot));
   ctx.effect(() => async () => {

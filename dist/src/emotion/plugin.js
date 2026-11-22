@@ -1,3 +1,4 @@
+import { fail, requiredText } from '../core/tables/console.js';
 import { ROOM_MOOD_DIMENSIONS } from '../contracts/emotion.js';
 import { OWNER_LIFE_TOOL_SOURCES } from '../core/native/conversation.js';
 import { registerWorldPrompt, registerWorldContext } from '../core/native/prompt.js';
@@ -371,11 +372,32 @@ export function installEmotion(ctx, host) {
 }
 export const name = '20-Emotion';
 export const inject = ['petCore', 'petWorld', 'systemPrompt', 'agents', 'tools'];
+export function emotionConsoleOperations(emotion) {
+    const update = (write) => call => {
+        const raw = call.input;
+        if (!raw || typeof raw !== 'object')
+            fail('INVALID_ARGUMENT');
+        const id = requiredText(raw.workspaceId, 200);
+        call.checkBinding(id);
+        const { workspaceId: _id, ...input } = raw;
+        return write ? emotion.update(id, input, call.validate) : emotion.read(id);
+    };
+    return {
+        operations: { emotionState: update(false), emotionUpdate: update(true) },
+        status(workspaceId) {
+            const current = emotion.current(workspaceId);
+            const label = (asset) => asset.label || asset.name;
+            return { current: current ? { mood: current.mood, at: current.at } : null,
+                actions: emotion.catalog.actions.map(label), stickers: emotion.catalog.stickers.map(label) };
+        },
+    };
+}
 export function apply(ctx) {
     const host = ctx.petCore;
     installEmotion(ctx, host);
     const emotion = emotionFor(host);
     ctx.provide('petEmotion', emotion);
+    ctx.effect(() => host.native.consoleOperations.register('emotion', emotionConsoleOperations(emotion), ctx).revoke);
     const unsubscribe = emotion.onExpression(value => ctx.emit('pet/emotion.expression', value));
     const changed = emotion.onChanged((id, snapshot) => ctx.emit('pet/emotion.changed', id, snapshot));
     ctx.effect(() => async () => {

@@ -1,3 +1,4 @@
+import { fail, object, requiredText, type ConsoleOperation } from '../../core/tables/console.js';
 import {reviewDiaryStatus} from './review-completion.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
@@ -658,13 +659,14 @@ export class CompanionLife {
     durableWrite(file, JSON.stringify({version:1, enabled, preferences, pauses}, null, 2));
     this.pauses=pauses;
   }
-  control(workspaceId: string, enabled: boolean) {
+  control(workspaceId: string, enabled: boolean, validate?: () => void) {
     return this.enqueue(async () => {
       // A queued pause may finish on its existing binding during disposal.
       if (this.isOpen()) await this.synchronize();
       if (enabled) this.assertOpen();
       const bound = this.binding;
       if (bound?.id !== workspaceId) throw Error('生活工作区已切换');
+      validate?.();
       const changed=enabled!==this.enabled;
       const pauses=changed ? recordGardenPause(this.pauses,enabled,Date.now()) : this.pauses;
       this.writeControl(bound,enabled,this.preferences,pauses);
@@ -683,9 +685,9 @@ export class CompanionLife {
       return {enabled, running: this.running()};
     }, {finishOnClose: !enabled});
   }
-  act(workspaceId: string, action: string, requestId?:string, channel='settings') {
+  act(workspaceId: string, action: string, requestId?:string, channel='settings', validate?: () => void) {
     if (!isCareAction(action)) return Promise.reject(Error('未知的生活动作'));
-    return this.forwardToBody(body=>body.act(workspaceId,action,requestId,channel));
+    return this.forwardToBody(body=>body.act(workspaceId,action,requestId,channel),validate);
   }
   private behavior() {
     this.assertOpen();
@@ -693,8 +695,8 @@ export class CompanionLife {
     if (!behavior) throw Error('共享身体组件尚未启用');
     return behavior;
   }
-  private forwardToBody<T>(work:(body:CompanionBehavior)=>Promise<T>):Promise<T> {
-    const body=this.behavior(), validate=this.guardArea(body);
+  private forwardToBody<T>(work:(body:CompanionBehavior)=>Promise<T>, caller?: () => void):Promise<T> {
+    const body=this.behavior(), validate=this.guardArea(body,caller);
     return this.inFlight.run(async()=>{
       const result=await withLivingCaller(validate,()=>work(body.value));
       validate();return result;
@@ -708,7 +710,7 @@ export class CompanionLife {
   garden(workspaceId: string, operation: 'state' | 'act' | 'control', input?: unknown) {
     return this.forwardToBody(body=>body.garden(workspaceId,operation,input));
   }
-  settings(workspaceId: string, expected: unknown, next: unknown) {
+  settings(workspaceId: string, expected: unknown, next: unknown, validate?: () => void) {
     return this.enqueue(async () => {
       await this.synchronize();
       this.assertOpen();
@@ -717,6 +719,7 @@ export class CompanionLife {
       const preferences = parseLifePreferences(next);
       if (JSON.stringify(parseLifePreferences(expected)) !== JSON.stringify(this.preferences)) throw {code: 'STALE_REVISION'};
       const before = this.preferences;
+      validate?.();
       this.writeControl(bound,this.enabled,preferences,this.pauses);
       this.preferences = preferences;
       if (before.wake !== preferences.wake || before.review !== preferences.review) this.runtime?.reschedule();
@@ -747,11 +750,39 @@ export interface Config { agentPreset?: string }
 declare module '@deepseek-ai/cordis' {
   interface Context { petLife: CompanionLife }
 }
+export function lifeConsoleOperations(life: Pick<CompanionLife, 'snapshot' | 'control' | 'act' | 'settings'>) {
+  const lifeView: ConsoleOperation = call => {
+    const {workspaceId} = object(call.input, ['workspaceId']);
+    call.checkBinding(workspaceId, true);
+    return life.snapshot(workspaceId as string);
+  };
+  const lifeControl: ConsoleOperation = call => {
+    const {workspaceId, enabled} = object(call.input, ['workspaceId', 'enabled']);
+    call.checkBinding(workspaceId, true);
+    if (typeof enabled !== 'boolean') fail('INVALID_ARGUMENT');
+    return life.control(workspaceId as string, enabled, call.validate);
+  };
+  const lifeAction: ConsoleOperation = call => {
+    const {workspaceId, action} = object(call.input, ['workspaceId', 'action']);
+    call.checkBinding(workspaceId, true);
+    if (!isCareAction(action)) fail('INVALID_ARGUMENT');
+    return life.act(workspaceId as string, action, call.requestId, 'settings', call.validate);
+  };
+  const lifePreferences: ConsoleOperation = call => {
+    const {workspaceId, expected, next} = object(call.input, ['workspaceId', 'expected', 'next']);
+    const id = requiredText(workspaceId, 200);
+    call.checkBinding(id);
+    return life.settings(id, expected, next, call.validate);
+  };
+  return {operations: {lifeView, lifeControl, lifeAction, lifePreferences}};
+}
+
 export function apply(ctx: Context, config: Config = {}) {
   const host = ctx.petCore;
   return mountLivingArea(ctx,host,'plan',view=>new CompanionLife(ctx,host,config.agentPreset ?? 'standard',view),(life,view)=>{
     life.activate();
     ctx.provide('petLife', life);
+    ctx.effect(() => host.native.consoleOperations.register('life', lifeConsoleOperations(life), ctx).revoke);
     life.registerSource();
     ctx.effect(() => host.workspace.runtime.capabilityTable.register({
       id: 'life.pursuits', owner: 'life', contractVersion: CONTRACT_VERSION, order: 3,

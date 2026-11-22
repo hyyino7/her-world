@@ -1,3 +1,4 @@
+import { fail, object, requiredText } from '../../core/tables/console.js';
 import { reviewDiaryStatus } from './review-completion.js';
 import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -774,7 +775,7 @@ export class CompanionLife {
         durableWrite(file, JSON.stringify({ version: 1, enabled, preferences, pauses }, null, 2));
         this.pauses = pauses;
     }
-    control(workspaceId, enabled) {
+    control(workspaceId, enabled, validate) {
         return this.enqueue(async () => {
             // A queued pause may finish on its existing binding during disposal.
             if (this.isOpen())
@@ -784,6 +785,7 @@ export class CompanionLife {
             const bound = this.binding;
             if (bound?.id !== workspaceId)
                 throw Error('生活工作区已切换');
+            validate?.();
             const changed = enabled !== this.enabled;
             const pauses = changed ? recordGardenPause(this.pauses, enabled, Date.now()) : this.pauses;
             this.writeControl(bound, enabled, this.preferences, pauses);
@@ -806,10 +808,10 @@ export class CompanionLife {
             return { enabled, running: this.running() };
         }, { finishOnClose: !enabled });
     }
-    act(workspaceId, action, requestId, channel = 'settings') {
+    act(workspaceId, action, requestId, channel = 'settings', validate) {
         if (!isCareAction(action))
             return Promise.reject(Error('未知的生活动作'));
-        return this.forwardToBody(body => body.act(workspaceId, action, requestId, channel));
+        return this.forwardToBody(body => body.act(workspaceId, action, requestId, channel), validate);
     }
     behavior() {
         this.assertOpen();
@@ -818,8 +820,8 @@ export class CompanionLife {
             throw Error('共享身体组件尚未启用');
         return behavior;
     }
-    forwardToBody(work) {
-        const body = this.behavior(), validate = this.guardArea(body);
+    forwardToBody(work, caller) {
+        const body = this.behavior(), validate = this.guardArea(body, caller);
         return this.inFlight.run(async () => {
             const result = await withLivingCaller(validate, () => work(body.value));
             validate();
@@ -834,7 +836,7 @@ export class CompanionLife {
     garden(workspaceId, operation, input) {
         return this.forwardToBody(body => body.garden(workspaceId, operation, input));
     }
-    settings(workspaceId, expected, next) {
+    settings(workspaceId, expected, next, validate) {
         return this.enqueue(async () => {
             await this.synchronize();
             this.assertOpen();
@@ -845,6 +847,7 @@ export class CompanionLife {
             if (JSON.stringify(parseLifePreferences(expected)) !== JSON.stringify(this.preferences))
                 throw { code: 'STALE_REVISION' };
             const before = this.preferences;
+            validate?.();
             this.writeControl(bound, this.enabled, preferences, this.pauses);
             this.preferences = preferences;
             if (before.wake !== preferences.wake || before.review !== preferences.review)
@@ -870,11 +873,40 @@ export class CompanionLife {
 }
 export const name = '40-Life';
 export const inject = ['petCore', 'petWorld', 'agents', 'sessions', 'tools', 'systemPrompt'];
+export function lifeConsoleOperations(life) {
+    const lifeView = call => {
+        const { workspaceId } = object(call.input, ['workspaceId']);
+        call.checkBinding(workspaceId, true);
+        return life.snapshot(workspaceId);
+    };
+    const lifeControl = call => {
+        const { workspaceId, enabled } = object(call.input, ['workspaceId', 'enabled']);
+        call.checkBinding(workspaceId, true);
+        if (typeof enabled !== 'boolean')
+            fail('INVALID_ARGUMENT');
+        return life.control(workspaceId, enabled, call.validate);
+    };
+    const lifeAction = call => {
+        const { workspaceId, action } = object(call.input, ['workspaceId', 'action']);
+        call.checkBinding(workspaceId, true);
+        if (!isCareAction(action))
+            fail('INVALID_ARGUMENT');
+        return life.act(workspaceId, action, call.requestId, 'settings', call.validate);
+    };
+    const lifePreferences = call => {
+        const { workspaceId, expected, next } = object(call.input, ['workspaceId', 'expected', 'next']);
+        const id = requiredText(workspaceId, 200);
+        call.checkBinding(id);
+        return life.settings(id, expected, next, call.validate);
+    };
+    return { operations: { lifeView, lifeControl, lifeAction, lifePreferences } };
+}
 export function apply(ctx, config = {}) {
     const host = ctx.petCore;
     return mountLivingArea(ctx, host, 'plan', view => new CompanionLife(ctx, host, config.agentPreset ?? 'standard', view), (life, view) => {
         life.activate();
         ctx.provide('petLife', life);
+        ctx.effect(() => host.native.consoleOperations.register('life', lifeConsoleOperations(life), ctx).revoke);
         life.registerSource();
         ctx.effect(() => host.workspace.runtime.capabilityTable.register({
             id: 'life.pursuits', owner: 'life', contractVersion: CONTRACT_VERSION, order: 3,

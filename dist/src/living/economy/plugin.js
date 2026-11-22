@@ -1,3 +1,4 @@
+import { fail, object, requiredText } from '../../core/tables/console.js';
 import { economyOverview, economyPage } from './tool-context.js';
 import { InFlight, LivingView, mountLivingArea, settleCleanup, withLivingCaller } from '../index.js';
 import { defineTool } from '@deepseek-ai/dsh-tools';
@@ -381,6 +382,29 @@ export function apply(ctx) {
             status: () => service.capabilityStatus(),
         }).revoke);
         ctx.provide('petEconomy', service);
+        ctx.effect(() => host.native.consoleOperations.register('economy', { operations: {
+                async economyView(call) {
+                    const { workspaceId } = object(call.input, ['workspaceId']);
+                    const id = requiredText(workspaceId, 200);
+                    call.checkBinding(id, true);
+                    const registered = call.getWorkspaces()?.get(id), binding = host.workspace.status();
+                    if (!registered || binding.target?.path !== registered.path)
+                        fail('STALE_BINDING');
+                    const validate = () => {
+                        call.validate();
+                        const current = host.workspace.status();
+                        if (call.getWorkspaces()?.get(id) !== registered || current.revision !== binding.revision
+                            || current.sourceRevision !== binding.sourceRevision)
+                            fail('STALE_BINDING');
+                    };
+                    if (await registered.status() !== 'ok')
+                        fail('NOT_FOUND');
+                    validate();
+                    const value = await service.snapshot(id, validate, { includeWritableKeys: true });
+                    validate();
+                    return value;
+                },
+            } }, ctx).revoke);
         installEconomyAccessGuard(ctx, () => {
             const directory = service.protectedDirectory();
             return directory ? [directory, economyAdoptionPath(resolve(directory, '../../..'))] : undefined;

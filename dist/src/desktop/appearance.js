@@ -61,7 +61,10 @@ function animationSettings(value) {
 }
 // Every supplied section replaces the packaged section after validation.
 // Object sections also accept just the values being overridden.
-export function parseDesktopAppearance(raw) {
+export function parseDesktopAppearance(...input) {
+    if (!input.length)
+        return desktopAppearanceDefaults();
+    const [raw] = input;
     check(record(raw), 'Invalid desktop appearance');
     const result = {};
     for (const [key, override] of Object.entries(raw)) {

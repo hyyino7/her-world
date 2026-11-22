@@ -3,6 +3,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent';
 import { type ToolDefinition } from '@deepseek-ai/dsh-tools';
 import { RoomWindow } from './window.js';
 import { RoomChat } from './chat.js';
+import { type ConsoleOperation } from '../core/tables/console.js';
 export declare const roomStateDeclaration: {
     name: string;
     sources: readonly ("life" | "owner" | "review")[];
@@ -54,6 +55,9 @@ export declare class Room {
     tools(): ToolDefinition[];
     close(): Promise<void>;
 }
+export declare function roomConsoleOperations(room: Pick<Room, 'open' | 'request'>): {
+    operations: Record<string, ConsoleOperation>;
+};
 export declare const name = "50-Room";
 export declare const inject: string[];
 declare module '@deepseek-ai/cordis' {

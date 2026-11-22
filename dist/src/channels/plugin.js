@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { bridgeRoute, compactRoute } from '#dsh-world/ecosystem/bridge/route';
 import { CONTRACT_VERSION } from '../contracts/version.js';
 import { digest } from '../core/storage.js';
+import { object, requiredText } from '../core/tables/console.js';
 import { sameHomeBinding } from '../living/index.js';
 import { readRunningLifeHome, registerLifeOutlet } from '../living/outlets.js';
 import { bridgePrefix, LocalBridge, privateDeviceDirectory } from './bridge.js';
@@ -115,12 +116,16 @@ export class CompanionChannels {
         const deliveries = await Promise.allSettled([bound.bridge.reach(push, home), bound.messaging.reach(push, home)]);
         return deliveries.flatMap(result => result.status === 'fulfilled' ? result.value : [result]);
     }
-    request(id, operation, input) {
+    request(id, operation, input, validate) {
         return this.serial(async () => {
+            validate?.();
             const bound = await this.reconcile();
+            validate?.();
             if (!bound || bound.id !== id || !this.current(bound))
                 throw { code: 'STALE_BINDING' };
-            if (['groupState', 'groupSettings', 'groupSlang', 'groupResearch', 'qzoneState', 'qzoneSettings', 'qzoneDraft', 'qzoneRemove'].includes(operation)) {
+            if (!Object.hasOwn(channelOperations, operation))
+                throw { code: 'INVALID_ARGUMENT' };
+            if (channelOperations[operation].group) {
                 const response = await bound.messaging.group(operation, input);
                 if (!this.current(bound))
                     throw { code: 'STALE_BINDING' };
@@ -137,8 +142,6 @@ export class CompanionChannels {
                     throw { code: 'STALE_REVISION' };
                 await bound.messaging.configure(input.next);
             }
-            else if (operation !== 'channelStatus')
-                throw { code: 'INVALID_ARGUMENT' };
             if (!this.current(bound))
                 throw { code: 'STALE_BINDING' };
             return { bridge: bound.bridge.status(), messaging: bound.messaging.status() };
@@ -150,6 +153,31 @@ export class CompanionChannels {
         return this.refresh();
     }
 }
+const channelOperations = {
+    channelStatus: { fields: [] },
+    bridgeSettings: { fields: ['expected', 'next'] },
+    messagingSettings: { fields: ['expected', 'next'] },
+    groupState: { fields: ['groupId'], group: true },
+    groupSettings: { fields: ['groupId', 'expected', 'next'], group: true },
+    groupSlang: { fields: ['groupId', 'content', 'meaning', 'usage', 'status'], group: true },
+    groupResearch: { fields: ['groupId', 'content'], group: true },
+    qzoneState: { fields: [], group: true },
+    qzoneSettings: { fields: ['expected', 'next'], group: true },
+    qzoneDraft: { fields: ['text'], group: true },
+    qzoneRemove: { fields: ['id'], group: true },
+};
+export function channelsConsoleOperations(channels) {
+    const operations = {};
+    for (const [endpoint, { fields }] of Object.entries(channelOperations))
+        operations[endpoint] = call => {
+            const input = object(call.input, ['workspaceId', ...fields]);
+            const id = requiredText(input.workspaceId, 200);
+            call.checkBinding(id);
+            call.validate();
+            return channels.request(id, endpoint, input, call.validate);
+        };
+    return { operations };
+}
 export const name = '60-Channels';
 export const inject = ['petCore', 'webServer', 'sessionController', 'agents', 'sessions', 'sessionPersistence', 'agentPresets', 'workspaceRegistry'];
 export function apply(ctx, config = {}) {
@@ -158,6 +186,7 @@ export function apply(ctx, config = {}) {
     const host = ctx.petCore;
     const channels = new CompanionChannels(ctx, host, services, config.deviceDirectory ?? profile?.dir ?? '');
     ctx.provide('petChannels', channels);
+    ctx.effect(() => host.native.consoleOperations.register('channels', channelsConsoleOperations(channels), ctx).revoke);
     ctx.effect(() => registerLifeOutlet(ctx, host, 'channels', {
         reach: (workspaceId, push) => channels.reach(workspaceId, push),
     }).revoke);
