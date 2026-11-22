@@ -35,7 +35,7 @@ export async function eventually(check, label) {
 // Cordis owns every plugin and subscription. The host supplies a scripted loop,
 // workspace registry, and disk-backed session persistence in a disposable directory.
 export async function cordisFixture(t, {crop = false, now = new Date(2026,10,15,22,59), legacyGarden = false,
-  order = Object.keys(livingEntries), io = {}, existing} = {}) {
+  order = Object.keys(livingEntries), io = {}, existing, memory = false} = {}) {
   t.mock.timers.enable({apis:['Date'], now:Number(now)});
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'her-world-entries-')));
   const repo = existing?.repo ?? join(root, 'workspace'), id = existing?.target.id ?? 'world';
@@ -217,7 +217,8 @@ export async function cordisFixture(t, {crop = false, now = new Date(2026,10,15,
       scope.on('session/flush',session=>writeFileSync(logFile(session.id),JSON.stringify({header:session.header,events:session.snapshotEvents()})));
     }});
     const config = existing?.config ?? {dataDir:join(root,'core'),companionId:'fish',scopeId:'owner',ownerActorId:'owner',
-      displayName:'Fixture',character:'Synthetic companion'};
+      displayName:'Fixture',character:'Synthetic companion',
+      ...(memory?{memory:{python:resolve('.venv/bin/python'),dataDir:join(repo,'.chatpet/data/memory')}}:{})};
     await ctx.plugin(existing?.corePlugin ?? corePlugin,config);
     const core = ctx.petCore, request = label=>core.operator.request(label);
     if (!existing && core.workspace.status().state!=='ready') {

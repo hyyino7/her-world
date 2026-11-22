@@ -1478,6 +1478,50 @@
       "name": "设置页保存种子和堆肥价格，排除只读价格并用原请求重试",
       "l1Stage": "阶段 2",
       "families": []
+    },
+    {
+      "id": "3-SAFETY-01",
+      "categories": [
+        "送达与记忆召回分开"
+      ],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "六个外围入口全关时原生聊天、Memory、身体与钱包仍可用",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-SAFETY-02",
+      "categories": [
+        "计划续行"
+      ],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "反序挂载、逐关和重载六个外围入口时在途生活计划继续且可撤销资源随入口切换",
+      "l1Stage": "阶段 3",
+      "families": [
+        "关闭后晚到的录音与取消"
+      ]
+    },
+    {
+      "id": "3-SAFETY-03",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 写入后截断回包，重载后凭原号核对 Body 持久回执且只生效一次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-SAFETY-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 在已收到请求但尚未准入写入时取消，Body 没有回执或效果",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }
