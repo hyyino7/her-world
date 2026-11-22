@@ -107,7 +107,7 @@
 
 - **一个常驻实例**：`LivingWorld`（`living/index.ts`）按 Cordis 根、Core 实例和服务隔离标签分组，三个生活入口里先加载的那个创建，最后一个卸载时释放；每个区仍留在自己入口的作用域里，卸载哪个入口只停哪个区（6.2）。
 - 对外四样（世界快照、命令、事实流、`world.changed`）的定义在 5.2。
-- 三个区之间经实例查找，不再通过 Cordis 服务名互相查找；区之间仍互发的三个旧事件（Life 订阅 `pet/behavior.changed`、`pet/economy.fact`，Body 订阅 `pet/life.changed`）改成直接调用，归阶段 3，和第三层改用 `world.changed`、退掉旧事件一起做。
+- 三个区之间经实例查找。Body 的实际转场和 Economy 新提交的事实给当前 Plan 排队。Plan 在控制和启停边界安排 Body 串行同步，显式暂停会等待在场的 Body 停下原计划与自治。通知核对工作区绑定代次和双方租约。外部呈现订阅 `world.changed`。
 - **合并目录不等于合并事务。** 身体文件和经济数据库仍然分开提交，「身体效果已生效、库存结算失败后重启补结算」的现有协议原样保留，不改。
 
 ### 2.4 第三层「呈现与连接」管什么
@@ -215,7 +215,7 @@ Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射
 
 ### 5.2 第二层对外
 
-四样契约的类型在 `contracts/living.ts`，经 `./contracts` 导出，挂在已有的三个门面服务上，不新增服务名。旧服务名的其余成员和三个旧事件（`pet/behavior.changed`、`pet/life.changed`、`pet/economy.fact`）是阶段性兼容入口，第三层改用四样归阶段 3。
+四样契约的类型在 `contracts/living.ts`，经 `./contracts` 导出，挂在已有的三个门面服务上。旧服务名的其余成员用于仍依赖现有门面的入口。
 
 - **世界快照** `WorldSnapshot`：`petBehavior.worldSnapshot(workspaceId)` 为主入口，`petEconomy.worldSnapshot` 委托同一实现，只挂 Economy 时也能读钱包、身体部分为 `{available:false}`。内容是身体投影（`BehaviorSnapshot`）加钱包只读视图 `WalletView`（余额、库存、持有读物和书签），返回独立副本。
 - **命令** `WorldCommands`：照料（`petBehavior`）、执行计划步骤和阅读确认（`petLife`）、购买和出售（`petEconomy`），各门面的 `worldCommands` 只挂本区的命令；每条带请求 ID，复用原入口的准入、绑定复核和去重。错误语义沿用 `ContractError`：`effect` 有三种（`none / partial / unknown`），`retry` 有四种（`never / refresh / same_request / reconcile`）。
@@ -290,7 +290,7 @@ Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射
 | 定义处 | 取值 | 转换点及损失 | 同名不同义 |
 | --- | --- | --- | --- |
 | `living/body/room.ts:89-90,105-115`、`vendor/feiyu-room-template/home-state.js:489,1704-1722` | 上游 JS 状态，本地 `state:any`。含路线、停留、睡眠、身体需要和 `kind`。 | 上游 `homeView` 将持久状态投影为当前画面，位置按当前时间求值。Body 公布的 `home` 保留 `any`，另提供原精度 `needs`（`BehaviorSnapshot.needs`，以 `BodyMetric` 为键）。 | `her.kind` 描述此刻身体状态，`PlannedActivity.kind` 描述要执行的操作类别。 |
-| `BehaviorActivity`（`contracts/behavior.ts:153`）及忙碌判定 `companionBusy`（`living/body/activity.ts:17`） | `activityId`、开放 `kind`、`BodyPhase`、`busy`，附呈现和阅读提示。 | 所有公开的 `behavior` 由 Body 的 `publicBehavior(her)` 一处组装（`living/body/plugin.ts:234-237`），快照、`roomState()`、`act`、`roomAction`、`garden` 回执的 `busy` 都用同一份画面里的 `her` 算（2B4-01 固定）。`behaviorPresentation` 和 `resolveActivityPlayback` 仍各自再分类（已知问题 4，阶段 3）。 | `busy` 只回答「能不能发起一次新投喂」：睡着、走路、或 `kind` 不在七项空闲白名单（`activity.ts:8`）里为真；正在吃饭时为真，但吃饭素材仍放行、不再投喂。它和呈现分类器的白名单不同，后者管画面选什么分类。「能否被打断」按动作而异，没有统一输出，留到阶段 3。 |
+| `BehaviorActivity`（`contracts/behavior.ts`）及吃饭准入 `feedAdmission`（`living/body/activity.ts`） | `activityId`、开放 `kind`、`BodyPhase`、`busy`、`interruptibility.feed`，附呈现和阅读提示。 | Body 的 `publicBehavior(her)` 给快照和公开回执组装同一份投影。发起吃饭由 Body 在串行队列中用同一规则重新判断。 | 睡眠、移动与忙碌拒绝新投喂。正在吃饭时允许重复播放。空闲且符合原插入条件时允许开始。呈现分类器另负责选择画面。 |
 
 **拥有者**第二层。**统一方式**：第三层读 `behavior.busy`，不再解释原始 `her.kind` 判断忙碌（`desktop/platform/plugin.ts:682`）；上游 `any` 留在 Body 适配器里，公开快照仍带 `home:any`，第三层其余读取归阶段 3。
 
@@ -346,7 +346,7 @@ Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射
 **第二层拥有**：
 
 - **命令与执行。** `BodyAction` 是一份基础表（`contracts/behavior.ts:10`）；执行统一到 `PlannedActivity → PlannedExecution → BehaviorActivity`，`ActivityLabel / OperationId / CurrentActivityId` 三种职责用类型别名标明。照料、计划、阅读等各自的词表一份，工具 schema、入口校验、设置页白名单和按钮都从它派生。
-- **身体状态契约。** 2b 已落地「忙不忙、当前活动」和有损的阶段转换：`companionBusy`、`bodyPhaseOf`（`living/body/activity.ts`），所有公开回执的 `behavior.busy` 一处组装，Desktop 的吃饭守卫只读这个结果。「能否被打断」现在按动作而异、没有消费方，留到阶段 3 和第三层改读一起定；`room/assets.ts` 仍按 `playback.kind` 显示提示文字，归阶段 3。
+- **身体状态契约。** Body 统一组装 `behavior.busy`、当前活动与阶段，并以 `behavior.interruptibility.feed` 说明目标为吃饭时可开始、已呈现或拒绝。桌宠吃饭入口在 Body 串行执行中复核请求绑定、取消、呈现准入和原编号。已提交的同号请求返回原回执。
 - **表现意图。** `living/body/presentation.ts` 的 `classifyActivity` 从活动、阶段和情绪派生两端共用的意图。休息按 `anger`、`boredom`、其余声明顺序选择情绪，保留输入次序和自由文字。触摸继续依据有效的主人互动和单一已知情绪。
 - **语义许可。** `living/body/animation-slots.ts` 用现有活动许可规则校验 `presentationSlot`。构建从同一份素材分配生成槽 ID 集合和第三层的素材索引，第二层只读取槽 ID。
 

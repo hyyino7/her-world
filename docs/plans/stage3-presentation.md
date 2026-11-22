@@ -155,6 +155,18 @@
 - 典型修改 3 从薄字段前置完成点独立实做并交付单独补丁。设置经生成表单和真实 Console 路由保存，验证默认 10、0 禁发、UTC 跨日、并发预留、未知发送、换目标、换账号和重启。9 个文件，含 Channels 源码 2、产物 6、测试 1，无 Console 或 Desktop 新联动，达标。
 - Electron 桌宠及设置窗口夹具都以 `SIGABRT` 退出，窗口断言未执行。生产 DSH 窗口、真实 QQ／微信联调和主人验收待隔离包验证。
 
+<a id="desktop-execution"></a>
+### 第五批 · Desktop（含 PetPlatform）
+
+- A：两个 Room 开窗入口使用 Room 登记。Desktop 和 PetPlatform 改为显式宿主服务、事件与按需模块加载，保留可选服务和原作用域过滤。媒体清单按真实生成源登记。
+- B：Body 在串行队列中以目标动作、绑定代次和请求编号判断吃饭。提交前复核取消、显示面及占用锁，准入读失败时拒绝。同号可核对已提交回执。旧四条红项转绿，另验证写后取消、Body 缺席、A→B→A 和锁变化。输出 `interruptibility.feed`，清除已知问题 11。
+- C：Desktop 和 PetPlatform 订阅 `world.changed`，合并在途刷新并剔除旧绑定通知与回包。观察通知只补读尚未覆盖的版本，实际转场仍刷新。
+- D：生活三区按当前租约和绑定直调，验证异步合并、显式暂停等待、提交后通知失败、缺席与换绑。缺 Body 且已有原执行时按旧约定报告无法暂停该执行，禁用状态仍落盘，运行时仍停止。仓内生产、订阅及声明已退役三路旧事件。
+- E：Core 从已有便携默认值派生布尔校验，Desktop IPC 复用。旧外观、设备键和数值边界沿用原约定。合成副本验证 `desktop-session` 随选中的 Core 恢复。
+- 基线工具删除 R1 2 条、R2 5 条、R3 1 条（29→21）及 R8 6 条（642→636），新增 0。保留项见[逐条例外请批](#desktop-exception-review)。
+- 构建、指定及新增快测 194 条、行为索引 11 条、行为清单 147 条、架构检查、度量及临时 npm 档案（987 项、711 个本地引用）通过。已知缺陷脚本只剩 Console 2 条预期失败。
+- `test:pet-platform-window` 的旧夹具缺少 Core `runtime.identity()`，也假定空配置已有桌宠，现已补身份并通过模板配置两只。沙箱内 PetPlatform 和独立窗口的 Electron 都以 `SIGABRT` 退出。独立窗口脚本随后因缺少离线报告报 `ENOENT`，未抵达在线回环；其在线夹具仍期望旧本地 helper。生产 DSH 窗口、实机渲染和隔离安装验收留待主人验证。
+
 ## 审查结论
 
 <a id="concepts"></a>
@@ -255,9 +267,24 @@
 | `arch/baseline/rules.json:398` | R1 | `src/voice/plugin.ts:9`（列 50） | `import ( "../desktop/upstream/host/" + part + ".js" )` | Voice 批尝试清，复用上游构建接点并验实装只加载一份 registry；已安装 provider 依赖旧路径且不能等价搬迁时，保留明确例外。 |
 | `arch/baseline/rules.json:408` | R1 | `src/voice/plugin.ts:21`（列 22） | `src/desktop/upstream/host/voice/speech-registry.js` | Voice 批尝试清，与识别路由共用一份上游 provider registry；包内闭包或原生旧路径不能等价搬迁时，保留明确例外。 |
 
+<a id="desktop-exception-review"></a>
+#### Desktop 批长期例外请批
+
+下列 R1 行沿用已存在的基线。临时 npm 档案核对了本地依赖闭包，实机窗口仍待验收。
+
+| 调用点 | 保留理由 |
+| --- | --- |
+| `src/desktop/platform/migration.ts:28` | 从发行包根加载上游配置迁移工具。此入口在旧外观迁移时复用上游 JSONC 解析与校验，保留源码和发行包中的相同加载路径。 |
+| `src/desktop/platform/plugin.ts:41` | 从发行包根加载固定版本的 PetPlatform 运行时。相对路径取决于源码与编译树的位置，改成包子路径会涉及包导出。 |
+| `src/desktop/standalone.mjs:8` | npm bin 指向源码 CLI，便携默认值在编译后的 Core。解包后直接执行 CLI 可以解析这条引用。 |
+| `src/core/companion-settings.ts:2` | Core 即使未挂载 Desktop 也要验证旧的完整外观。现有校验依赖包内 Desktop 素材、标签和上游校验，便携标量规则已经独立收拢。 |
+| `src/console/settings.ts:9` | Console 回包沿用基于现有 Desktop 素材生成的外观默认值。设置窄切片保留同一份来源，Console 运维接线仍按第六批处理。 |
+
+生成源 `build-life-media.mjs` 已按实际生成的 Desktop 清单登记，原 R1 清除。R5 对这份生产脚本新报告 14 个无法静态判定的既有调用，8 读、6 写。其余 Desktop 路径判断继续按下表报告。已拍板的 `desktop-session` Core 原位例外以合成恢复验证；R8 的设备键、跨进程命令及迁移兼容项按下方各条去向保留。
+
 ### R5 存储报告
 
-全仓保存 324 条，当前实时报告共 319 条。第三层和 Desktop 自有生成源相关 **109 条**。明确报告违规 **29 条（13 写，16 读）**，未判定 **80 条（32 写，48 读）**。按调用身份和出现次数核对，第三层当前报告与快照一致，部分源码行号有变化，以下列当前行号。棘轮命令只处理 R1–R4、R8（`scripts/arch/check.mjs:41–44`）。
+方案定稿时全仓保存 324 条，实时报告共 319 条。第三层和 Desktop 自有生成源相关 **109 条**。明确报告违规 **29 条（13 写，16 读）**，未判定 **80 条（32 写，48 读）**。以下位置按当时的报告与快照对照。棘轮命令只处理 R1–R4、R8（`scripts/arch/check.mjs:41–44`）。
 
 | 基线位置 | 当前调用点 | 访问及目标 | 去向建议 |
 | --- | --- | --- | --- |
