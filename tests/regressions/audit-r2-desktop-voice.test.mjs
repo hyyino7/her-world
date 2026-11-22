@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {EventEmitter} from 'node:events';
+import {join} from 'node:path';
 import {createContext,runInContext} from 'node:vm';
 
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
@@ -111,4 +113,50 @@ test('R2-4: explicit hide and Escape revoke voice before the native window becom
   const f=chatFixture();await settle();f.snapshot('a');const before=f.disposed.length;
   await f.element('hide').onclick();assert.ok(f.disposed.length>before);
   const middle=f.disposed.length;f.listeners.get('keydown')({key:'Escape',isComposing:false});assert.ok(f.disposed.length>middle);
+});
+
+test('compact voice forwards request cancellation and window hide by request ID', async () => {
+  const frames=[], input=new EventEmitter();
+  let protocol, window;
+  class BrowserWindow extends EventEmitter {
+    webContents=Object.assign(new EventEmitter(),{setWindowOpenHandler(){}});
+    constructor() { super(); window=this; }
+    setVisibleOnAllWorkspaces() {}
+    loadFile() {}
+  }
+  const electron={BrowserWindow,app:{setPath(){},on(){},whenReady:async()=>{}},
+    screen:{getPrimaryDisplay:()=>({workArea:{}})},ipcMain:{handle(){}},
+    protocol:{registerSchemesAsPrivileged(){},handle(_scheme,fn){protocol=fn;}}};
+  const modules={'electron':electron,'node:readline':{createInterface:()=>input},'node:path':{join},
+    'node:fs':{mkdtempSync:()=>'/fixture'},'node:os':{tmpdir:()=>'/fixture'}};
+  const process={env:{CHATPET_CHAT_ONLY:'1'},stdin:{},stdout:{on(){},write:line=>frames.push(JSON.parse(line))}};
+  const context=createContext({process,__dirname:'/fixture',require:name=>modules[name]??{},
+    AbortController,AbortSignal,Buffer,URL,Request,Response});
+  runInContext(readFileSync('src/desktop/helper/main.cjs','utf8'),context);
+  await settle();
+  const start=signal=>protocol(new Request('dsh-pet-bridge://dsh-pet/dsh-pet-7340/voice/hear',{
+    method:'POST',body:'{"audio":"AA=="}',signal,
+  }));
+  const respond=(id,text)=>input.emit('line',JSON.stringify({type:'response',value:{id,ok:true,result:{text}}}));
+  const caller=new AbortController(), first=start(caller.signal);
+  await settle();
+  const firstRequest=frames.at(-1);
+  assert.equal(firstRequest.cancellableVoice,true);
+  caller.abort();
+  assert.deepEqual(frames.at(-1),{type:'voice-cancel',id:firstRequest.id});
+  assert.equal((await first).status,400);
+
+  const hidden=start();
+  await settle();
+  const hiddenRequest=frames.at(-1);
+  window.emit('hide');
+  assert.deepEqual(frames.at(-1),{type:'voice-cancel',id:hiddenRequest.id});
+  assert.equal((await hidden).status,400);
+
+  const reopened=start();
+  await settle();
+  const reopenedRequest=frames.at(-1);
+  respond(hiddenRequest.id,'old transcript');
+  respond(reopenedRequest.id,'current transcript');
+  assert.deepEqual(await (await reopened).json(),{text:'current transcript'});
 });

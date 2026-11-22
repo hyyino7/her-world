@@ -25,6 +25,7 @@ export class Desktop {
     clock;
     work;
     bodyBinding;
+    chatVoice = new Map();
     chat;
     features;
     constructor(native, host) {
@@ -266,6 +267,8 @@ export class Desktop {
                 this.settingsChanged();
                 return;
             }
+            if (msg.type === 'voice-cancel')
+                this.chatVoice.get(msg.id)?.abort();
             if (msg.type === 'request')
                 void this.handle(msg);
         });
@@ -288,6 +291,7 @@ export class Desktop {
     }
     async handle(msg) {
         const child = this.child;
+        let voice;
         try {
             const target = this.target();
             if (!this.bodyCurrent()) {
@@ -302,7 +306,11 @@ export class Desktop {
             else if (msg.action === 'desktop-api') {
                 if (!this.features)
                     throw Error('桌宠功能尚未就绪');
-                result = await this.features.request(data);
+                if (msg.cancellableVoice) {
+                    voice = new AbortController();
+                    this.chatVoice.set(msg.id, voice);
+                }
+                result = await this.features.request(data, voice?.signal);
             }
             else if (msg.action === 'preferences') {
                 result = this.host.workspace.companionSettings();
@@ -329,6 +337,10 @@ export class Desktop {
             if (child === this.child)
                 this.push('response', { id: msg.id, ok: false, error: e instanceof Error ? e.message : '操作失败' });
         }
+        finally {
+            if (voice && this.chatVoice.get(msg.id) === voice)
+                this.chatVoice.delete(msg.id);
+        }
     }
     async closeWindow() {
         this.closeChat();
@@ -342,6 +354,9 @@ export class Desktop {
         const child = this.child;
         this.child = undefined;
         this.bodyBinding = undefined;
+        for (const voice of this.chatVoice.values())
+            voice.abort();
+        this.chatVoice.clear();
         this.readyReject?.(Error('小窗已关闭，操作已取消'));
         this.readyReject = undefined;
         this.ready = undefined;

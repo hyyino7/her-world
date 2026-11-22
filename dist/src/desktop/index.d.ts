@@ -34,6 +34,7 @@ export declare class Desktop {
     private clock?;
     private work?;
     private bodyBinding?;
+    private readonly chatVoice;
     readonly chat: Conversation;
     features?: DesktopFeatures;
     constructor(native: HostServices, host: PetCoreHost);

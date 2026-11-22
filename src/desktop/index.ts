@@ -37,6 +37,7 @@ export class Desktop {
   private clock?: NodeJS.Timeout;
   private work?: Work;
   private bodyBinding?: Binding;
+  private readonly chatVoice = new Map<number, AbortController>();
   readonly chat: Conversation;
   features?: DesktopFeatures;
   constructor(private native: HostServices, private host: PetCoreHost) {
@@ -193,6 +194,7 @@ export class Desktop {
         if(!this.bodyCurrent()){this.closeChat();return;}
         clearTimeout(timeout); done(); this.push('show-chat',true); this.settingsChanged(); return;
       }
+      if (msg.type === 'voice-cancel') this.chatVoice.get(msg.id)?.abort();
       if (msg.type === 'request') void this.handle(msg);
     });
     const closed = (message: string) => {
@@ -204,8 +206,9 @@ export class Desktop {
     try { await this.ready; }
     finally { if(this.child===child)this.readyReject=undefined; }
   }
-  private async handle(msg: { id: number; action: string; input?: Record<string, unknown> }) {
+  private async handle(msg: { id: number; action: string; input?: Record<string, unknown>; cancellableVoice?: boolean }) {
     const child = this.child;
+    let voice: AbortController | undefined;
     try {
       const target = this.target();
       if (!this.bodyCurrent()) { await this.closeWindow(); return; }
@@ -215,7 +218,11 @@ export class Desktop {
         result = await this.chat.run('open', {sessionId:String(data.sessionId),workspaceId:target.id});
       } else if (msg.action === 'desktop-api') {
         if (!this.features) throw Error('桌宠功能尚未就绪');
-        result = await this.features.request(data);
+        if (msg.cancellableVoice) {
+          voice = new AbortController();
+          this.chatVoice.set(msg.id, voice);
+        }
+        result = await this.features.request(data, voice?.signal);
       } else if (msg.action === 'preferences') {
         result = this.host.workspace.companionSettings();
       } else if (msg.action === 'identity') {
@@ -231,6 +238,8 @@ export class Desktop {
       if (child === this.child) this.push('response', { id: msg.id, ok: true, result });
     } catch (e) {
       if (child === this.child) this.push('response', { id: msg.id, ok: false, error: e instanceof Error ? e.message : '操作失败' });
+    } finally {
+      if (voice && this.chatVoice.get(msg.id) === voice) this.chatVoice.delete(msg.id);
     }
   }
   async closeWindow() {
@@ -240,6 +249,8 @@ export class Desktop {
   closeChat() {
     clearTimeout(this.tick); clearTimeout(this.clock); this.tick = undefined; this.clock = undefined;
     const child = this.child; this.child = undefined; this.bodyBinding = undefined;
+    for (const voice of this.chatVoice.values()) voice.abort();
+    this.chatVoice.clear();
     this.readyReject?.(Error('小窗已关闭，操作已取消')); this.readyReject=undefined; this.ready=undefined;
     this.chat.invalidate();
     if (this.work) this.work.entered = false;
