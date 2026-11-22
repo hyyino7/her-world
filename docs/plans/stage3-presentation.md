@@ -90,7 +90,7 @@
 - **改什么**　运维及两个旧钱包写 RPC 由各拥有者登记，共用 owner、绑定、取消、原号校验，撤销责任归 Console 入口。把旧路由下线／重载测试转绿。错误码由 `ContractError` 统一，Console 保留旧响应字段并传 `effect/retry`，测试旧配置、有无 Desktop 和迟到响应（`src/console/plugin.ts:12–43`、`src/console/settings.ts:19,73–105,294–312,413–424`、`src/contracts/common.ts:21`、`src/core/storage.ts:11`）。
 - **试点**　第 7 题从薄声明完成点开独立度量分支，试加数字控件「最近心情保留分钟数」，经设置页保存、owner RPC 和 Core 配置落盘，重启后实际让 Emotion 读写两条分处阈值两边的合成记录，验一留一删，并测旧档缺省与越界。定位 `src/console/client.js:1027–1032,1055–1058`、`src/console/settings.ts:359–364`、`src/core/workspace.ts:92–100,530–536`、`src/emotion/recent.ts:68–79`。试验仅度量，普通字段基线至少 3 个手写文件，按减半上限 1 文件、1 层判，含新操作时对照至少 5 个手写文件、上限 2。测试和产物另列，业务接线也计数。未达收住字段扩展。5b 提请延期，记录到阶段 4 的聊天平台接入复测，判法仍只要求不改第一层（`docs/product.md:106–108,115,120–128,428`）。
 - **数据细批**　钱包登记和原号只读核查、`0004` 及两份备份核验、浏览器导出／清源／回插工具、旧页切换和演练分开，按[经济附录](#economy-migration)验。**不做**　整页字段 DSL、通用存储句柄、真数据日常工作区写入。**高风险**　`src/core/storage.ts`、`src/core/workspace.ts`、`scripts/migrate/`，条件性 `scripts/lib/offline-backup.mjs`，细批先批。**规模**　路由／字段每次 5–12 文件／180–480 行，数据每次 5–13／200–570。
-- **验收**　构建后 `node --test tests/behavior-list/concepts-economy-settings.test.mjs tests/behavior-list/domains.test.mjs dist/tests/core/settings.test.js tests/migrate/normal.test.mjs tests/migrate/crash.test.mjs tests/migrate/rollback.test.mjs tests/migrate/refusals.test.mjs`。新增三工具及原号查证的快测文件名在细批定下后写入命令。现有 `tests/manual/companion-settings-window.cjs` 用夹具宿主调用处理器（`tests/manual/companion-settings-window.cjs:95–110`、`docs/development.md:169`），另用实际包和隔离 DSH Connection 验生产设置窗。
+- **验收**　构建后 `node --test tests/behavior-list/concepts-economy-settings.test.mjs tests/behavior-list/domains.test.mjs dist/tests/core/settings.test.js tests/migrate/normal.test.mjs tests/migrate/crash.test.mjs tests/migrate/rollback.test.mjs tests/migrate/refusals.test.mjs tests/behavior-list/console-wallet.test.mjs tests/migrate/browser-wallet.test.mjs tests/migrate/console-wallet.test.mjs tests/regressions/mapped-sleeping-inventory.test.mjs dist/tests/core/workspace.test.js`。从本地 `v0.4.0` 标签准备已构建的检出后，另跑 `HER_WORLD_040_ROOT=/absolute/v0.4.0 node --test tests/migrate/wallet-rollback-040.mjs`。再跑 `pnpm run test:behavior-list`、`pnpm run check:arch`、`pnpm run metrics`。现有 `tests/manual/companion-settings-window.cjs` 用夹具宿主调用处理器（`tests/manual/companion-settings-window.cjs:95–110`、`docs/development.md:178`），另用实际包和隔离 DSH Connection 验生产设置窗。
 
 ### 合入与发版依赖
 
@@ -177,8 +177,25 @@
 - 构建、快测 73 条、补充回归 50 条、行为清单 151 条、`check:arch`、`metrics` 通过。Memory 额外 RSS 探测因沙箱 `/bin/ps` EPERM 未通过。实际安装包的 DSH 设置窗、隔离激活与主人验收待做。
 - 典型修改 7 独立补丁跑通 30 分钟保存与重启，Emotion 清理 35 分钟前的记录，保留 15 分钟前的记录；旧档缺省与越界通过。3 个手写文件、2 层，超过 1 文件／1 层门槛，停止扩字段；另 1 测试、6 产物。
 - 5b 按拍板 3 延至阶段 4 聊天平台接入复测。
-- **数据细批待主人单独批准。** Economy／Body 增加持久登记、原号只读查证及显式重试，再接入旧钱包写 RPC。批准 `src/core/storage-migration.ts` 和 `scripts/migrate/` 增加 `0004`、耐久证明与续做校验，`src/core/workspace.ts` 仅核绑定和迁移门禁。若双备份锚定、Core 存储或打包确有缺口，`scripts/lib/offline-backup.mjs`、`src/core/storage.ts` 或 `package.json` 的 `files/exports/imports` 按缺口另批。
+- **数据细批已获合成副本范围的批准。** Economy／Body 增加持久登记、原号只读查证及显式重试，再接入旧钱包写 RPC。批准 `src/core/storage-migration.ts` 和 `scripts/migrate/` 增加 `0004`、耐久证明与续做校验，`src/core/workspace.ts` 仅核绑定和迁移门禁。若双备份锚定、Core 存储或打包确有缺口，`scripts/lib/offline-backup.mjs`、`src/core/storage.ts` 或 `package.json` 的 `files/exports/imports` 按缺口另批。
 - 批准授权 profile/origin 的停写排空、私有导出、清源、回插与旧页切换。合成 v3 先验双备份、导入续做、部分提交和断点清源／回插，再用主人提供的隔离副本和一次性克隆验 RC、正式包。放行前在停写下换回旧包、恢复旧备份并按原值回插，再核原号、余额、库存及 Body 效果。详见[数据附录](#economy-migration)。
+
+<a id="console-data-execution"></a>
+### 第六批 · Console 数据细批
+
+- 钱包统一登记两条旧写 RPC。只读查证区分已提交、部分提交、无证据和同号异内容。以原号显式重试部分投喂，确认可放弃时保留终态编号。普通刷新及重启保持原效果与库存预留，Life 可继续。
+- `0004` 保持 `0003` 的目标判法。已采用钱包在同事务写入登记和证明，未采用且零条写独立证明，新装写无旧来源标记。续做核对两份备份和原导出。结清后历史校验仍可用。
+- 私有导出、逐源清源和回插均通过合成断点演练。新版客户端读取钱包待办。用实际 v0.4.0 代码复现两个旧标签可在 RPC 拒绝后竞写，合成冻结适配能拒绝未排空和未知来源。同一合成安装实际切包、回退及原号重放通过。
+- 实机停在导出前。缺少能核验 v0.4.0 旧标签独占冻结和 Economy／Body 排空，并持续守到清源放行的生产适配。原副本在此之前保持停写。现有备份器、Repo 存储、Core 存储和打包声明可以复用。
+- 构建通过。指定和新增快测 155/155，迁移套件 205/205，v0.4.0 旧页与回退演练 2/2，行为索引 11/11，行为清单 153/153。`check:arch`、`metrics` 通过，R1 保留 9 条，R8 从 594 减至 590，新增 0。提交尺寸用 `git diff --numstat --find-renames` 核算。`dist/src` 与工具生成的基线随补丁交付，按项目约定计量。
+
+**主人隔离副本操作清单**（实机停写证据完成后执行）
+
+1. **备份**。隔断旧标签和其他写入口，证实 Economy／Body 排空。无法证实时停。导出授权来源，在 v0.4.0 下建并核对旧备份，封存同轮锚。
+2. **换 RC**。保持原副本停业务写，用同一安装核旧／RC 指纹。需要开启窗口时用独立 profile 和一次性克隆。
+3. **迁移**。在 RC 同源码执行 `plan`、带导出和双备份锚的 `run`、`status`。中断用原轮 `--resume`。
+4. **核对**。确认 `segment=settled`、原号、余额、库存和 Body，验克隆新页面。主人确认后逐源清旧键，再放行。
+5. **回退**。放行前保持停写，换回 v0.4.0，验锚、恢复旧备份，核对后按原值回插。私有导出和同目录暂存件留至主人关闭回退窗口。
 
 ## 审查结论
 
