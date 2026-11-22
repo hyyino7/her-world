@@ -1,3 +1,4 @@
+import { ROOM_MOOD_DIMENSIONS } from '../contracts/emotion.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../core/index.js';
 import { OWNER_LIFE_TOOL_SOURCES } from '../core/native/conversation.js';
@@ -196,7 +197,7 @@ export function installEmotion(ctx: Context, host: PetCoreHost): void {
     '有可靠经历或自己的新感受时，可用本轮回复末尾的 pet-expression 更新情绪；当前有 pet_emotion_update 工具时也可带快照的 revision 和 contentHash 维护。没有变化不必写。更新情绪不需要另一次模型调用。',
     '用户对动作的反馈先留在近期记录；仅在当前会话确有记忆写入工具时，可用真实原话保存明确的长期偏好。长期动作偏好需 pet_memory_remember 的 playback_id。访客不因此获得主人工具。不要仅凭旧台账再提交长期记忆。',
     '同轮兼容方式：正常正文后另起一行写 <pet-expression> 加一行内 JSON，无需代码围栏。字段均可省略：mood、reason、feelings、action、sticker。action/sticker选清单name。roomMood仅在有可靠的房间数值时填写，文字情绪不要求数值，也不按文字编造分数。',
-    'roomMood如提供则为 {"mood":76,"dims":{"happy":68}}；总体mood与各维度范围0到100。兼容维度是happy、calm、sweet、heartache、worry、sad、jealous。anger/boredom保留语义feelings，不替换成这些维度。feedback仅用本轮真实用户评价：{"playbackId":"真实记录id","quote":"逐字原话"}。',
+    `roomMood如提供则为 {"mood":76,"dims":{"happy":68}}；总体mood与各维度范围0到100。兼容维度是${ROOM_MOOD_DIMENSIONS.join('、')}。anger/boredom保留语义feelings，不替换成这些维度。feedback仅用本轮真实用户评价：{"playbackId":"真实记录id","quote":"逐字原话"}。`,
   ].join('\n');
   const string={type:'string' as const,required:true as const};
   const updateTool=defineTool({name:'pet_emotion_update',description:'维护同一陪伴者的当前情绪。用快照的revision/contentHash防止覆盖新修改。文字状态无需房间数值。愤怒和无聊可用feelings的anger、boredom，情绪变化不自动改变实际行为。',

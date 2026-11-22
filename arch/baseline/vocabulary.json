@@ -4249,13 +4249,13 @@
       "other": {
         "file": "src/contracts/emotion.ts",
         "scope": "<module>",
-        "line": 22
+        "line": 26
       }
     },
     {
       "rule": "R8",
       "file": "src/contracts/emotion.ts",
-      "line": 22,
+      "line": 26,
       "column": 11,
       "scope": "<module>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EmotionEditor\"}",
@@ -5979,36 +5979,9 @@
       "rule": "R8",
       "file": "src/contracts/emotion.ts",
       "line": 2,
-      "column": 35,
+      "column": 37,
       "scope": "<module>",
-      "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/emotion/index.ts",
-        "scope": "<module>",
-        "line": 13
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/emotion/index.ts",
-      "line": 13,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
+      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
       "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
       "values": [
         "calm",
@@ -6020,237 +5993,6 @@
         "worry"
       ],
       "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/contracts/emotion.ts",
-        "scope": "<module>",
-        "line": 2
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/emotion.ts",
-      "line": 2,
-      "column": 35,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/body/presentation.ts",
-        "scope": "<module>",
-        "line": 6
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/presentation.ts",
-      "line": 6,
-      "column": 80,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
-      "expression": "{ happy : \"开心\" , calm : \"平静\" , sweet : \"甜蜜\" , heartache : \"心疼\" , worry : \"担心\" , sad : \"难过\" , jealous : \"吃醋\" , anger : \"生气\" , boredom : \"无聊\" , }",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "labels",
-      "relation": "重复",
-      "other": {
-        "file": "src/contracts/emotion.ts",
-        "scope": "<module>",
-        "line": 2
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/emotion.ts",
-      "line": 2,
-      "column": 35,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"behaviorPresentation\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/presentation.ts",
-        "scope": "behaviorPresentation",
-        "line": 23
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/presentation.ts",
-      "line": 23,
-      "column": 15,
-      "scope": "behaviorPresentation",
-      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "happy"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/contracts/emotion.ts",
-        "scope": "<module>",
-        "line": 2
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/emotion.ts",
-      "line": 2,
-      "column": 35,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/presentation/playback.ts",
-        "scope": "<module>",
-        "line": 22
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/presentation/playback.ts",
-      "line": 22,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/contracts/emotion.ts",
-        "scope": "<module>",
-        "line": 2
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/emotion.ts",
-      "line": 8,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
-      "expression": "\"happy\" | \"calm\" | \"sweet\" | \"heartache\" | \"worry\" | \"sad\" | \"jealous\"",
-      "values": [
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/emotion/index.ts",
-        "scope": "<module>",
-        "line": 13
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/emotion/index.ts",
-      "line": 13,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
-      "values": [
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/contracts/emotion.ts",
-        "scope": "<module>",
-        "line": 8
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/emotion.ts",
-      "line": 8,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
-      "expression": "\"happy\" | \"calm\" | \"sweet\" | \"heartache\" | \"worry\" | \"sad\" | \"jealous\"",
-      "values": [
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "union",
       "relation": "子集",
       "other": {
         "file": "src/living/body/presentation.ts",
@@ -6282,17 +6024,17 @@
       "other": {
         "file": "src/contracts/emotion.ts",
         "scope": "<module>",
-        "line": 8
+        "line": 2
       }
     },
     {
       "rule": "R8",
       "file": "src/contracts/emotion.ts",
-      "line": 8,
-      "column": 24,
+      "line": 2,
+      "column": 37,
       "scope": "<module>",
       "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "\"happy\" | \"calm\" | \"sweet\" | \"heartache\" | \"worry\" | \"sad\" | \"jealous\"",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
       "values": [
         "calm",
         "happy",
@@ -6302,7 +6044,7 @@
         "sweet",
         "worry"
       ],
-      "shape": "union",
+      "shape": "array",
       "relation": "子集",
       "other": {
         "file": "src/presentation/playback.ts",
@@ -6334,7 +6076,7 @@
       "other": {
         "file": "src/contracts/emotion.ts",
         "scope": "<module>",
-        "line": 8
+        "line": 2
       }
     },
     {
@@ -6630,13 +6372,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 314
+        "line": 315
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 314,
+      "line": 315,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/core/native/agent.ts\",\"scope\":\"<module>\"}",
@@ -8953,110 +8695,6 @@
     {
       "rule": "R8",
       "file": "src/emotion/index.ts",
-      "line": 13,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
-      "values": [
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/presentation.ts",
-        "scope": "<module>",
-        "line": 6
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/presentation.ts",
-      "line": 6,
-      "column": 80,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
-      "expression": "{ happy : \"开心\" , calm : \"平静\" , sweet : \"甜蜜\" , heartache : \"心疼\" , worry : \"担心\" , sad : \"难过\" , jealous : \"吃醋\" , anger : \"生气\" , boredom : \"无聊\" , }",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/emotion/index.ts",
-        "scope": "<module>",
-        "line": 13
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/emotion/index.ts",
-      "line": 13,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
-      "values": [
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/presentation/playback.ts",
-        "scope": "<module>",
-        "line": 22
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/presentation/playback.ts",
-      "line": 22,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/emotion/index.ts",
-        "scope": "<module>",
-        "line": 13
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/emotion/index.ts",
       "line": 50,
       "column": 11,
       "scope": "<module>",
@@ -9073,13 +8711,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "CompanionEmotion/recordPlayback",
-        "line": 67
+        "line": 68
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 67,
+      "line": 68,
       "column": 10,
       "scope": "CompanionEmotion/recordPlayback",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -9117,13 +8755,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "installEmotion/<callback>",
-        "line": 187
+        "line": 188
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 187,
+      "line": 188,
       "column": 20,
       "scope": "installEmotion/<callback>",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -9145,7 +8783,7 @@
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 314,
+      "line": 315,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"<module>\"}",
@@ -9185,13 +8823,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 314
+        "line": 315
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 314,
+      "line": 315,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"<module>\"}",
@@ -9232,7 +8870,7 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 314
+        "line": 315
       }
     },
     {

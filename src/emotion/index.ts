@@ -1,5 +1,6 @@
 import type { CompanionSettings } from '../core/companion-settings.js';
 import type { StreamChunk } from '@deepseek-ai/dsh-llm';
+import { ROOM_MOOD_DIMENSIONS, type EmotionRoomMood } from '../contracts/emotion.js';
 
 /** The same strict threshold applies on a timer, after dragging and after an animation ends. */
 export function workAnimationEligible(startedAt: number | null, now: number, delaySeconds: number): boolean {
@@ -10,8 +11,7 @@ export interface ExpressionAsset { name: string; description: string; label?: st
 export interface ExpressionCatalog { actions: ExpressionAsset[]; stickers: ExpressionAsset[] }
 /** Shared semantic vocabulary; optional Room scores remain a separate legacy representation. */
 export { COMPANION_FEELINGS } from '../contracts/emotion.js';
-const roomDimensions = ['happy', 'calm', 'sweet', 'heartache', 'worry', 'sad', 'jealous'] as const;
-export interface RoomMood { mood: number; dims: Partial<Record<typeof roomDimensions[number], number>> }
+export type RoomMood = EmotionRoomMood;
 export function readRoomMood(value: unknown): RoomMood | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return;
   const raw = value as Record<string, unknown>;
@@ -20,7 +20,7 @@ export function readRoomMood(value: unknown): RoomMood | undefined {
   const dims: RoomMood['dims'] = {};
   if (raw.dims !== undefined) {
     if (!raw.dims || typeof raw.dims !== 'object' || Array.isArray(raw.dims)) return;
-    for (const key of roomDimensions) {
+    for (const key of ROOM_MOOD_DIMENSIONS) {
       const dimension = (raw.dims as Record<string, unknown>)[key];
       if (dimension === undefined) continue;
       if (!score(dimension)) return;

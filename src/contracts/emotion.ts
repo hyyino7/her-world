@@ -1,11 +1,15 @@
 /** Emotion is companion state, independent of a display or an autonomous Life turn. */
-export const COMPANION_FEELINGS = ['happy', 'calm', 'sweet', 'heartache', 'worry', 'sad', 'jealous', 'anger', 'boredom'] as const;
+export const ROOM_MOOD_DIMENSIONS = ['happy', 'calm', 'sweet', 'heartache', 'worry', 'sad', 'jealous'] as const;
+export const COMPANION_FEELINGS = [...ROOM_MOOD_DIMENSIONS, 'anger', 'boredom'] as const;
 export type CompanionFeeling = typeof COMPANION_FEELINGS[number];
+export function isCompanionFeeling(value: unknown): value is CompanionFeeling {
+  return COMPANION_FEELINGS.some(feeling => feeling === value);
+}
 export interface EmotionDependency { id: string; revision: string }
 export interface EmotionDependencies { sources: EmotionDependency[]; memories: EmotionDependency[] }
 export interface EmotionRoomMood {
   mood: number;
-  dims: Partial<Record<'happy' | 'calm' | 'sweet' | 'heartache' | 'worry' | 'sad' | 'jealous', number>>;
+  dims: Partial<Record<typeof ROOM_MOOD_DIMENSIONS[number], number>>;
 }
 export interface EmotionState {
   mood: string;
