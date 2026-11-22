@@ -145,13 +145,15 @@ export class EconomyStore {
     try {const stat=lstatSync(this.databasePath);check(stat.isFile()&&!stat.isSymbolicLink()&&stat.dev===this.databaseFile.dev&&stat.ino===this.databaseFile.ino&&readFileSync(this.lockPath,'utf8')===this.lockToken,'Economy database or lease changed');}
     catch(error) {unavailable(`Economy storage is missing or changed; recover it before continuing (${String(error)})`);}
   }
+  private factWritten=false;
   private transaction<T>(fn:()=>T):T {
     this.ensure();this.db.exec('BEGIN IMMEDIATE');
-    this.walletDirty=false;
+    this.walletDirty=false;this.factWritten=false;
     let result: T;
     try {result=fn();this.db.exec('COMMIT');}
     catch(error){this.db.exec('ROLLBACK');throw error;}
     if(this.walletDirty)try {this.options.walletChanged?.();}catch { /* The wallet has committed. */ }
+    if(this.factWritten)try {this.options.factsCommitted?.();}catch { /* The fact has committed. */ }
     return result;
   }
   private meta<T>(key:string):T|undefined {const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get(key);return row?json<T>(row.value):undefined;}
@@ -206,6 +208,7 @@ export class EconomyStore {
     const fact:NewCompanionFact={version:1,id:`economy:${digest(requestId).slice(7)}`,requestId,domain:'economy',type,
       occurredAt:new Date().toISOString(),actor:clone(actor),result:{status:'completed',summary,before,after},operationId:requestId};
     this.db.prepare('INSERT INTO interaction_facts(id,request_id,value) VALUES(?,?,?)').run(fact.id,requestId,canonical(fact));
+    this.factWritten=true;
   }
   pendingFacts():CompanionFact[] {
     this.ensure();return this.db.prepare('SELECT value FROM interaction_facts WHERE acknowledged=0 ORDER BY sequence').all().map(row=>json<CompanionFact>(row.value));

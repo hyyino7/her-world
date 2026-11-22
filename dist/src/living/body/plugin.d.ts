@@ -1,11 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { randomUUID } from 'node:crypto';
 import type { PetCoreHost } from '../../core/index.js';
-import { type BehaviorActivity, type BehaviorChange, type BehaviorSnapshot, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
+import { type BehaviorActivity, type BehaviorSnapshot, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
 import { CompanionRoom } from './room.js';
 import type { CompanionFactSource } from '../../contracts/interaction.js';
 import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomInteractionContext } from './room.js';
+import type { CompanionLife } from '../plan/plugin.js';
 import { LivingView, type LivingPorts, type RecordCommandEffect } from '../index.js';
 export type { PlannedActivity, PlannedExecution } from '../../contracts/behavior.js';
 type VersionedBehavior = BehaviorActivity & {
@@ -36,6 +37,7 @@ export declare class CompanionBehavior {
     readonly worldFacts: CompanionFactSource;
     constructor(ctx: Context, host: PetCoreHost, ports?: LivingPorts | LivingView);
     activate(): void;
+    syncLifeClock(life: Pick<CompanionLife, 'bodyClockState' | 'running'>, current: () => boolean): Promise<void>;
     private enqueue;
     private arm;
     private advanceRoom;
@@ -134,9 +136,6 @@ export declare const inject: string[];
 declare module '@deepseek-ai/cordis' {
     interface Context {
         petBehavior: CompanionBehavior;
-    }
-    interface Events {
-        'pet/behavior.changed'(value: BehaviorChange): void;
     }
 }
 export declare function apply(ctx: Context): void;

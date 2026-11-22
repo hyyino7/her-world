@@ -92,6 +92,9 @@ export class CompanionEconomy {
         walletChanged:()=>{
           if(binding.scope)this.living.changed(binding.scope);
         },
+        factsCommitted:()=>{
+          if(binding.scope)this.notifyFacts(binding.scope);
+        },
         guard:()=>{this.assertOpen();check(this.host.workspace.status().state!=='migration-required','migration-required');
           check(metadata.persisted(),'Core database is absent or moved');
           check(this.host.workspace.storageId()===storageId,'Economy binding changed');}});
@@ -225,10 +228,13 @@ export class CompanionEconomy {
   async acknowledgeFacts(workspaceId:string,ids:readonly string[]):Promise<void> {
     const store=this.bound(workspaceId);store.acknowledgeFacts(ids);check(this.bound(workspaceId)===store,'Economy binding changed');
   }
-  private notifyFacts(workspaceId:string):void {
+  private notifyFacts(scope:HomeBinding):void {
     // Publication is a hint. A committed fact remains available to Life after
     // listener failure, unload or restart; notification cannot undo settlement.
-    try {this.ctx.emit('pet/economy.fact',workspaceId);}
+    try {
+      const plan=this.living.lookup('plan');
+      if(plan)plan.value.noticeDomainChange(scope,()=>!this.closed && this.living.isCurrent() && plan.isCurrent());
+    }
     catch(error){try {this.ctx.logger('chatpet-economy').warn('Committed economic facts await delivery',error);}catch {}}
   }
   async ownerAction(workspaceId:string,action:any,requestId:string,signal:AbortSignal,validate:()=>void=()=>{},trustedActor?:CompanionFactActor,
@@ -274,7 +280,6 @@ export class CompanionEconomy {
       }
       default:throw Error('Unknown economic action');
     }
-    this.notifyFacts(workspaceId);
     return finish();
   }
   async settings(workspaceId:string,expectedVersion:string,next:EconomyConfigurationPatch,requestId:string,signal:AbortSignal,validate:()=>void=()=>{}) {
@@ -304,7 +309,6 @@ export const name='22-Economy';
 export const inject=['petCore','petWorld','tools','systemPrompt','agents'];
 declare module '@deepseek-ai/cordis' {
   interface Context {petEconomy:CompanionEconomy}
-  interface Events {'pet/economy.fact'(workspaceId:string):void}
 }
 export function apply(ctx:Context) {
   const host=ctx.petCore;

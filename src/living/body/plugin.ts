@@ -6,7 +6,7 @@ import { buildHomePromptLine } from '#feiyu-home';
 import { check, digest, reject, text } from '../../core/storage.js';
 import type { PetCoreHost } from '../../core/index.js';
 import type { HomeBinding } from '../../core/workspace.js';
-import { isCareAction, type BehaviorActivity, type BehaviorChange, type BehaviorSnapshot, type CompanionExpression, type CurrentActivityId, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
+import { isCareAction, type BehaviorActivity, type BehaviorSnapshot, type CompanionExpression, type CurrentActivityId, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
 import { bodyPhaseOf, feedAdmission } from './activity.js';
 import { CompanionRoom } from './room.js';
 import { behaviorPresentation } from './presentation.js';
@@ -15,6 +15,7 @@ import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomInteractionContext } from './room.js';
 import {gardenHomeProjection} from './garden-receipt.js';
 import { LifeControlFileError, readLifeControl } from '../plan/control-file.js';
+import type { CompanionLife } from '../plan/plugin.js';
 import { readEconomyFileEvidence, readEconomyJournalEvidence } from '../economy/adoption.js';
 import { LivingView, livingCaller, mountLivingArea, sameHomeBinding, settleCleanup, type LivingPorts, type RecordCommandEffect } from '../index.js';
 export type { PlannedActivity, PlannedExecution } from '../../contracts/behavior.js';
@@ -83,11 +84,8 @@ export class CompanionBehavior {
         ...(event.feelings ? {feelings:[...event.feelings]} : {})};
       refresh(event.workspaceId);
     }));
-    let stopLife: (()=>void) | undefined;
-    this.subscriptions.push(()=>stopLife?.());
     this.subscriptions.push(living.watch(ctx,'plan',(plan,observed)=>{
       if(!plan) {
-        stopLife?.();stopLife=undefined;
         void this.enqueue(()=>{
           if(!observed()||living.get('plan'))return;
           this.synchronize();
@@ -95,25 +93,26 @@ export class CompanionBehavior {
         },observed).catch(error=>{this.fault=String(error);});
         return;
       }
-      const {value:life}=plan;
-      const current=()=>observed() && plan.isCurrent();
-      const synchronize=()=>{
-        if(!current())return;
-        void this.enqueue(async validate=>{
-          if(!current())return;
-          const status=this.host.workspace.status(),admission=status.target?life.bodyClockState?.(status.target.id):undefined;
-          if(!this.binding && !life.running() && !admission?.enabled)return;
-          this.synchronize();const bound=this.binding;if(!bound)return;
-          await this.refreshEmotion(bound.id);validate();
-          if(!current()||this.currentBound(bound.id)!==bound)return;
-          this.autonomous=admission?.enabled ?? life.running();
-          if(admission || this.autonomous)bound.room.setAutonomy(this.autonomous,Date.now(),admission?.restoreElapsed);
-          else bound.room.suspendAutonomy();
-          this.publish('transition',false);
-        },current).catch(error=>{this.fault=String(error);});
-      };
-      stopLife=ctx.on('pet/life.changed',synchronize);synchronize();
+      void this.syncLifeClock(plan.value,()=>observed() && plan.isCurrent());
     }));
+  }
+  syncLifeClock(life: Pick<CompanionLife,'bodyClockState'|'running'>, current: () => boolean) {
+    const scope=this.host.workspace.homeScope?.();
+    const active=()=>current() && sameHomeBinding(this.host.workspace.homeScope?.(),scope);
+    return this.enqueue(async validate=>{
+      if(!active())return;
+      const target=this.host.workspace.status().target,admission=target?life.bodyClockState?.(target.id):undefined;
+      if(!this.binding && !life.running() && !admission?.enabled)return;
+      this.synchronize();const bound=this.binding;if(!bound)return;
+      await this.refreshEmotion(bound.id);
+      if(!active())return;
+      validate();
+      if(this.currentBound(bound.id)!==bound)return;
+      this.autonomous=admission?.enabled ?? life.running();
+      if(admission || this.autonomous)bound.room.setAutonomy(this.autonomous,Date.now(),admission?.restoreElapsed);
+      else bound.room.suspendAutonomy();
+      this.publish('transition',false);
+    },active,scope).catch(error=>{if(active())this.fault=String(error);});
   }
   private enqueue<T>(work: (validate:()=>void) => T | Promise<T>, observed=()=>true,
     scope = this.host?.workspace.homeScope?.()): Promise<T> {
@@ -288,8 +287,10 @@ export class CompanionBehavior {
         if(bound.scope && worldChanged && (hadProjection || notifyFirst))
           this.living.changed(bound.scope,true,reason==='observation'?this.presentationVersion():undefined);
       }
-      if(!this.publicationFault && (!changed || reason==='observation' && !visibleChanged))return;
-      this.ctx.emit('pet/behavior.changed', {workspaceId:bound.id,bootId:this.bootId,revision:this.revision,reason});
+      if(changed && reason==='transition' && bound.scope) {
+        const scope=bound.scope, plan=this.living.lookup('plan');
+        if(plan)plan.value.noticeDomainChange(scope,()=>this.living.isCurrent() && plan.isCurrent());
+      }
       this.publicationFault=undefined;
     } catch(error) {
       // Body work and its durable receipt have already committed. A failed
@@ -491,7 +492,6 @@ export const name = '25-Behavior';
 export const inject = ['petCore'];
 declare module '@deepseek-ai/cordis' {
   interface Context {petBehavior: CompanionBehavior}
-  interface Events {'pet/behavior.changed'(value: BehaviorChange): void}
 }
 export function apply(ctx: Context) {
   const host=ctx.petCore;

@@ -68,6 +68,7 @@ export interface EconomyStoreOptions {
   /** Guard the existing Core binding/lease before every database operation. */
   guard?: () => void;
   walletChanged?: () => void;
+  factsCommitted?: () => void;
 }
 export interface ReadingSegment {
   itemId: string; title: string; version: string; segment: number; totalSegments: number;

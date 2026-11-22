@@ -43,6 +43,7 @@ export class CompanionLife {
     fault;
     serial = Promise.resolve();
     timer;
+    tickGuards = [];
     subscriptions = [];
     sourceRegistration;
     timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -74,10 +75,6 @@ export class CompanionLife {
         });
         const changed = () => this.scheduleTick();
         this.subscriptions.push(ctx.on('pet/core.changed', changed));
-        this.subscriptions.push(ctx.on('pet/behavior.changed', event => { if (event.reason !== 'observation')
-            changed(); }));
-        this.subscriptions.push(ctx.on('pet/economy.fact', changed));
-        this.subscriptions.push(ctx.on('pet/life.changed', changed));
         this.scheduleTick();
     }
     registerSource() {
@@ -85,19 +82,35 @@ export class CompanionLife {
             && (!('facts' in message.source) || this.runtime.acceptsFactMessage(id, message))));
     }
     /** Domain changes and native alarms wake Life; an idle world needs no pump. */
-    scheduleTick() {
-        if (!this.isOpen() || this.timer)
+    noticeDomainChange(scope, sourceCurrent) {
+        this.scheduleTick(scope, sourceCurrent);
+    }
+    scheduleTick(scope = this.host.workspace.homeScope(), sourceCurrent = () => true) {
+        const current = () => sourceCurrent() && sameHomeBinding(this.host.workspace.homeScope(), scope);
+        if (!this.isOpen() || !current())
             return;
-        const scope = this.host.workspace.homeScope();
+        this.tickGuards.push(current);
+        if (this.timer)
+            return;
         this.timer = setTimeout(() => {
             this.timer = undefined;
-            if (!sameHomeBinding(this.host.workspace.homeScope(), scope)) {
-                this.scheduleTick();
-                return;
-            }
-            void this.enqueue(() => this.tick()).catch(error => { this.fault = String(error); });
+            const guards = this.tickGuards.splice(0);
+            if (guards.some(guard => guard()))
+                void this.enqueue(async () => { if (guards.some(guard => guard()))
+                    await this.tick(); }).catch(error => { this.fault = String(error); });
         }, 0);
         this.timer.unref();
+    }
+    notifyLife(scope, synchronizeBody = true) {
+        if (!this.isOpen() || !sameHomeBinding(this.host.workspace.homeScope(), scope))
+            return;
+        this.noticeDomainChange(scope, () => this.isOpen());
+        if (!synchronizeBody)
+            return;
+        const body = this.living.lookup('body');
+        if (body)
+            void body.value.syncLifeClock(this, () => this.isOpen() && body.isCurrent() &&
+                sameHomeBinding(this.host.workspace.homeScope(), scope));
     }
     native() { return this.ctx; }
     isOpen() { return !this.closed && this.living.isCurrent(); }
@@ -157,7 +170,7 @@ export class CompanionLife {
         if (!current || current.id !== workspaceId)
             return;
         if (this.binding?.id === current.id && this.binding.path === current.path
-            && this.binding.plan.storageId === this.host.workspace.storageId())
+            && sameHomeBinding(this.host.workspace.homeScope(), this.binding.scope))
             return { enabled: this.enabled, restoreElapsed: this.enabled && this.restoredClock, ...(this.pauses && { pauses: this.pauses }) };
         const saved = readLifeControl(current.path);
         const enabled = saved?.enabled ?? false;
@@ -211,7 +224,7 @@ export class CompanionLife {
         const storageId = scope.storageId;
         const home = createHomeStore(createLifeStore(directory, this.timeZone), directory, this.host.workspace, scope, () => {
             this.living.changed(scope);
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(scope);
         });
         const bound = { id: current.id, path: current.path, directory, library: this.host.records.getLibrary(current.id),
             plan: new PersistentLifePlan(directory, this.host.workspace.runtime.identity().companionId, storageId, this.timeZone, () => this.isCurrentBinding(bound), () => this.notifyWorld(bound)), scope, home };
@@ -428,7 +441,7 @@ export class CompanionLife {
         }
         if (active()) {
             this.notifyWorld(bound);
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
         }
     }
     async stopRuntime(pausing) {
@@ -461,11 +474,12 @@ export class CompanionLife {
         if (runtime && this.runtime === runtime) {
             this.drainingRuntime = runtime;
             this.runtime = undefined;
-            if (this.binding)
+            if (this.binding) {
                 this.notifyWorld(this.binding);
+                this.notifyLife(this.binding.scope);
+            }
             const id = this.living.isLatestGeneration() ? this.binding?.home.sessionId() : undefined;
-            await settleCleanup(() => { if (this.living.isLatestGeneration())
-                this.ctx.emit('pet/life.changed'); }, () => runtime.stop(), async () => { if (id)
+            await settleCleanup(() => runtime.stop(), async () => { if (id)
                 await this.native().get('sessionController').cancel({ sessionId: id }); }, async () => {
                 try {
                     await runtime.settled();
@@ -662,7 +676,7 @@ export class CompanionLife {
             const result = await bound.plan.commit(expectedRevision, draft, body?.value, workspaceId, admit);
             admit();
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return { enabled: this.enabled, running: this.running(), ...result };
         });
     }
@@ -672,7 +686,7 @@ export class CompanionLife {
             validate();
             const result = bound.plan.keep(expectedRevision, reason, nextConsiderAt);
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return result;
         });
     }
@@ -723,7 +737,7 @@ export class CompanionLife {
             await bound.plan.advance(workspaceId, body.value, admit);
             admit();
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return { execution, ...bound.plan.read() };
         });
     }
@@ -739,7 +753,7 @@ export class CompanionLife {
             const result = await bound.plan.control(expectedRevision, action, reason, body?.value, workspaceId, admit);
             admit();
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return result;
         });
     }
@@ -779,8 +793,7 @@ export class CompanionLife {
             if (changed)
                 this.notifyWorld(bound);
             // Body observes committed intent now, before native home/model startup.
-            if (this.isOpen())
-                this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope, enabled);
             if (enabled) {
                 await this.resumeAcceptedPlan(bound);
                 await this.startRuntime(true);
@@ -849,6 +862,7 @@ export class CompanionLife {
         this.closed = true;
         clearTimeout(this.timer);
         this.timer = undefined;
+        this.tickGuards = [];
         const subscriptions = this.subscriptions.splice(0);
         return this.closing = settleCleanup(() => this.sourceRegistration?.revoke(), ...subscriptions, () => { if (subscriptions.length)
             this.publishRest(); }, () => this.stopRuntime(), async () => { await this.serial; }, () => this.inFlight.settled()).finally(() => { this.binding = undefined; });

@@ -681,7 +681,7 @@ if (process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1]))
     const f = await clockFixture(t);
     t.mock.timers.tick(2*hour);
     let published = false;
-    const dispose = f.ctx.on('pet/life.changed',()=>{
+    const dispose = f.ctx.on('world.changed',()=>{
       if (!published && JSON.parse(readControl(f)).enabled===false) {
         published = true;
         t.mock.timers.tick(hour);

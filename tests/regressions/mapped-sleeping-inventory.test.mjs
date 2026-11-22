@@ -29,6 +29,7 @@ const {createCore}=await import(compiledURL('core/index.js'));
 const {digest}=await import(compiledURL('core/storage.js'));
 const {CompanionBehavior}=await import(compiledURL('living/body/plugin.js'));
 const {CompanionEconomy}=await import(compiledURL('living/economy/plugin.js'));
+const {LivingView}=await import(compiledURL('living/index.js'));
 const {PersistentLifePlan}=await import(compiledURL('living/plan/plan.js'));
 const {settingsHandler}=await import(compiledURL('console/settings.js'));
 const meal='food:improved-meal',requestId='sleeping-inventory-meal';
@@ -49,10 +50,12 @@ async function fixture(t) {
   const logger=Object.assign(()=>logger,{warn:(...args)=>warnings.push(args),info(){},error(){}});
   const ctx={get:name=>services.get(name),on(name,receive){const set=listeners.get(name)??new Set();listeners.set(name,set);set.add(receive);return()=>set.delete(receive);},
     emit(name,...args){for(const receive of listeners.get(name)??[])receive(...args);},logger};
-  services.set('petLife',{running:()=>true,bodyClockState:()=>({enabled:true,restoreElapsed:false})});
+  services.set('petLife',{running:()=>true,bodyClockState:()=>({enabled:true,restoreElapsed:false}),noticeDomainChange(){}});
   const start=()=>{
     economy=new CompanionEconomy(ctx,host,{body:()=>body,plan:()=>services.get('petLife')});services.set('petEconomy',economy);
-    body=new CompanionBehavior(ctx,host,{economy:()=>economy,plan:()=>services.get('petLife')});services.set('petBehavior',body);
+    const view=new LivingView({economy:()=>economy,plan:()=>services.get('petLife')},undefined,undefined,undefined,
+      binding=>ctx.emit('world.changed',binding));
+    body=new CompanionBehavior(ctx,host,view);body.activate();services.set('petBehavior',body);
   };
   start();
   const signal=new AbortController().signal,peer={signal,principal:{kind:'owner'}};
@@ -159,7 +162,7 @@ test('a failed atomic Body checkpoint commits neither refusal receipt nor fact a
 
 test('a lost Settings response after the refusal checkpoint retains the same terminal result for an awake retry',async t=>{
   const f=await fixture(t),caller=new AbortController();let committed=false;
-  const stop=f.ctx.on('pet/behavior.changed',()=>{
+  const stop=f.ctx.on('world.changed',()=>{
     if(f.state().plannedExecutions[operation(requestId)]?.status==='failed'){committed=true;caller.abort();}
   });
   const result=await f.handler('economyAction',{requestId,input:{workspaceId:'workspace',action:{kind:'feed',itemId:meal,quantity:1}}},caller.signal,f.peer);

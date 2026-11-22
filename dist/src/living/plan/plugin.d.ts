@@ -29,6 +29,7 @@ export declare class CompanionLife {
     private fault?;
     private serial;
     private timer?;
+    private tickGuards;
     private subscriptions;
     private sourceRegistration?;
     readonly timeZone: string;
@@ -36,7 +37,9 @@ export declare class CompanionLife {
     activate(): void;
     registerSource(): void;
     /** Domain changes and native alarms wake Life; an idle world needs no pump. */
+    noticeDomainChange(scope: HomeBinding, sourceCurrent: () => boolean): void;
     private scheduleTick;
+    private notifyLife;
     private native;
     private isOpen;
     private assertOpen;
@@ -258,9 +261,6 @@ export interface Config {
 declare module '@deepseek-ai/cordis' {
     interface Context {
         petLife: CompanionLife;
-    }
-    interface Events {
-        'pet/life.changed'(): void;
     }
 }
 export declare function apply(ctx: Context, config?: Config): void;

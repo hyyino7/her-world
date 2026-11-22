@@ -191,10 +191,12 @@ export class EconomyStore {
             unavailable(`Economy storage is missing or changed; recover it before continuing (${String(error)})`);
         }
     }
+    factWritten = false;
     transaction(fn) {
         this.ensure();
         this.db.exec('BEGIN IMMEDIATE');
         this.walletDirty = false;
+        this.factWritten = false;
         let result;
         try {
             result = fn();
@@ -209,6 +211,11 @@ export class EconomyStore {
                 this.options.walletChanged?.();
             }
             catch { /* The wallet has committed. */ }
+        if (this.factWritten)
+            try {
+                this.options.factsCommitted?.();
+            }
+            catch { /* The fact has committed. */ }
         return result;
     }
     meta(key) { const row = this.db.prepare('SELECT value FROM meta WHERE key=?').get(key); return row ? json(row.value) : undefined; }
@@ -277,6 +284,7 @@ export class EconomyStore {
         const fact = { version: 1, id: `economy:${digest(requestId).slice(7)}`, requestId, domain: 'economy', type,
             occurredAt: new Date().toISOString(), actor: clone(actor), result: { status: 'completed', summary, before, after }, operationId: requestId };
         this.db.prepare('INSERT INTO interaction_facts(id,request_id,value) VALUES(?,?,?)').run(fact.id, requestId, canonical(fact));
+        this.factWritten = true;
     }
     pendingFacts() {
         this.ensure();

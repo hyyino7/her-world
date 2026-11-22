@@ -91,6 +91,10 @@ export class CompanionEconomy {
                     if (binding.scope)
                         this.living.changed(binding.scope);
                 },
+                factsCommitted: () => {
+                    if (binding.scope)
+                        this.notifyFacts(binding.scope);
+                },
                 guard: () => {
                     this.assertOpen();
                     check(this.host.workspace.status().state !== 'migration-required', 'migration-required');
@@ -244,11 +248,13 @@ export class CompanionEconomy {
         store.acknowledgeFacts(ids);
         check(this.bound(workspaceId) === store, 'Economy binding changed');
     }
-    notifyFacts(workspaceId) {
+    notifyFacts(scope) {
         // Publication is a hint. A committed fact remains available to Life after
         // listener failure, unload or restart; notification cannot undo settlement.
         try {
-            this.ctx.emit('pet/economy.fact', workspaceId);
+            const plan = this.living.lookup('plan');
+            if (plan)
+                plan.value.noticeDomainChange(scope, () => !this.closed && this.living.isCurrent() && plan.isCurrent());
         }
         catch (error) {
             try {
@@ -314,7 +320,6 @@ export class CompanionEconomy {
             }
             default: throw Error('Unknown economic action');
         }
-        this.notifyFacts(workspaceId);
         return finish();
     }
     async settings(workspaceId, expectedVersion, next, requestId, signal, validate = () => { }) {

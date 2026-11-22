@@ -98,12 +98,8 @@ export class CompanionBehavior {
                 ...(event.feelings ? { feelings: [...event.feelings] } : {}) };
             refresh(event.workspaceId);
         }));
-        let stopLife;
-        this.subscriptions.push(() => stopLife?.());
         this.subscriptions.push(living.watch(ctx, 'plan', (plan, observed) => {
             if (!plan) {
-                stopLife?.();
-                stopLife = undefined;
                 void this.enqueue(() => {
                     if (!observed() || living.get('plan'))
                         return;
@@ -114,36 +110,36 @@ export class CompanionBehavior {
                 }, observed).catch(error => { this.fault = String(error); });
                 return;
             }
-            const { value: life } = plan;
-            const current = () => observed() && plan.isCurrent();
-            const synchronize = () => {
-                if (!current())
-                    return;
-                void this.enqueue(async (validate) => {
-                    if (!current())
-                        return;
-                    const status = this.host.workspace.status(), admission = status.target ? life.bodyClockState?.(status.target.id) : undefined;
-                    if (!this.binding && !life.running() && !admission?.enabled)
-                        return;
-                    this.synchronize();
-                    const bound = this.binding;
-                    if (!bound)
-                        return;
-                    await this.refreshEmotion(bound.id);
-                    validate();
-                    if (!current() || this.currentBound(bound.id) !== bound)
-                        return;
-                    this.autonomous = admission?.enabled ?? life.running();
-                    if (admission || this.autonomous)
-                        bound.room.setAutonomy(this.autonomous, Date.now(), admission?.restoreElapsed);
-                    else
-                        bound.room.suspendAutonomy();
-                    this.publish('transition', false);
-                }, current).catch(error => { this.fault = String(error); });
-            };
-            stopLife = ctx.on('pet/life.changed', synchronize);
-            synchronize();
+            void this.syncLifeClock(plan.value, () => observed() && plan.isCurrent());
         }));
+    }
+    syncLifeClock(life, current) {
+        const scope = this.host.workspace.homeScope?.();
+        const active = () => current() && sameHomeBinding(this.host.workspace.homeScope?.(), scope);
+        return this.enqueue(async (validate) => {
+            if (!active())
+                return;
+            const target = this.host.workspace.status().target, admission = target ? life.bodyClockState?.(target.id) : undefined;
+            if (!this.binding && !life.running() && !admission?.enabled)
+                return;
+            this.synchronize();
+            const bound = this.binding;
+            if (!bound)
+                return;
+            await this.refreshEmotion(bound.id);
+            if (!active())
+                return;
+            validate();
+            if (this.currentBound(bound.id) !== bound)
+                return;
+            this.autonomous = admission?.enabled ?? life.running();
+            if (admission || this.autonomous)
+                bound.room.setAutonomy(this.autonomous, Date.now(), admission?.restoreElapsed);
+            else
+                bound.room.suspendAutonomy();
+            this.publish('transition', false);
+        }, active, scope).catch(error => { if (active())
+            this.fault = String(error); });
     }
     enqueue(work, observed = () => true, scope = this.host?.workspace.homeScope?.()) {
         const caller = livingCaller();
@@ -383,9 +379,11 @@ export class CompanionBehavior {
                 if (bound.scope && worldChanged && (hadProjection || notifyFirst))
                     this.living.changed(bound.scope, true, reason === 'observation' ? this.presentationVersion() : undefined);
             }
-            if (!this.publicationFault && (!changed || reason === 'observation' && !visibleChanged))
-                return;
-            this.ctx.emit('pet/behavior.changed', { workspaceId: bound.id, bootId: this.bootId, revision: this.revision, reason });
+            if (changed && reason === 'transition' && bound.scope) {
+                const scope = bound.scope, plan = this.living.lookup('plan');
+                if (plan)
+                    plan.value.noticeDomainChange(scope, () => this.living.isCurrent() && plan.isCurrent());
+            }
             this.publicationFault = undefined;
         }
         catch (error) {

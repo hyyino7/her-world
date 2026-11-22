@@ -32,7 +32,7 @@ async function fixture(t:TestContext,enabled:boolean,sleeping=false) {
       homeScope(){return {workspaceId:target.id,path:target.path,storageId:this.storageId(),bootId:'fixture-boot',generation:0};},
       readCompanionHome:()=>undefined,
       runtime:{config:{companionId:'fixture-fish',ownerActorId:'fixture-owner'},identity:()=>({companionId:'fixture-fish',displayName:'Fixture'}),policy:()=>({quiet:false})}}} as unknown as PetCoreHost;
-  const body={restState:()=>({sleeping,pending:false}),setAutonomy:async()=>{},setReconsiderConditions:async()=>{}};
+  const body={restState:()=>({sleeping,pending:false}),setAutonomy:async()=>{},setReconsiderConditions:async()=>{},syncLifeClock:async()=>{}};
   const controller={async create(){nativeOpens++;throw Error('Fixture native session provider is unavailable');},cancel(){}};
   const logger=Object.assign(()=>({warn(...args:unknown[]){warnings.push(args);},info(){},error(){},debug(){}}),{warn(){},error(){}});
   const lifetime = new Context();

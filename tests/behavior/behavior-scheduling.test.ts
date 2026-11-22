@@ -7,9 +7,10 @@ import type {Context} from '@deepseek-ai/cordis';
 import type {PetCoreHost} from '../../src/core/index.js';
 import {CompanionLife} from '../../src/living/plan/plugin.js';
 import {CompanionBehavior} from '../../src/living/body/plugin.js';
+import {LivingView} from '../../src/living/index.js';
 import {CompanionRecordLibrary} from '../../src/core/records.js';
 import {PersistentLifePlan} from '../../src/living/plan/plan.js';
-import type {BehaviorChange} from '../../src/contracts/behavior.js';
+import type {WorldChanged} from '../../src/contracts/living.js';
 import {emptyHomeState,nextHomeBoundary} from '#feiyu-home';
 import {createGarden} from '#feiyu-garden';
 
@@ -36,10 +37,10 @@ async function fixture(t:TestContext,needs:Record<string,number>={}) {
     readCompanionHome:()=>({sessionId:'fixture-home'}),
     runtime:{config:{ownerActorId:'owner',companionId:'fish'},identity:()=>({companionId:'fish',displayName:'Fixture'}),store:{meta:()=>undefined}},
   }} as unknown as PetCoreHost;
-  const handlers=new Map<string,Set<(...args:any[])=>unknown>>(),changes:BehaviorChange[]=[];
+  const handlers=new Map<string,Set<(...args:any[])=>unknown>>(),changes:WorldChanged[]=[];
   const counters={ticks:0,reschedules:0,factNotices:0};
   let life:CompanionLife,behavior:CompanionBehavior;
-  const emit=(name:string,...args:any[])=>{if(name==='pet/behavior.changed')changes.push(args[0]);for(const handler of handlers.get(name)??[])handler(...args);};
+  const emit=(name:string,...args:any[])=>{for(const handler of handlers.get(name)??[])handler(...args);};
   const logger=Object.assign(()=>({warn(){},error(){},info(){}}),{warn(){},error(){}});
   const ctx={logger,tools:{register:()=>()=>{}},effect:()=>()=>{},
     on(name:string,handler:(...args:any[])=>unknown){const list=handlers.get(name)??new Set();list.add(handler);handlers.set(name,list);return()=>list.delete(handler);},
@@ -51,7 +52,13 @@ async function fixture(t:TestContext,needs:Record<string,number>={}) {
       if(name==='sessionController')return{cancel(){}};
     },
   } as unknown as Context;
-  behavior=new CompanionBehavior(ctx,host,{plan:()=>life});
+  const openBody=(observe=false)=>{
+    const view=new LivingView({plan:()=>life,observe},undefined,undefined,undefined,binding=>changes.push(binding));
+    const body=new CompanionBehavior(ctx,host,view);
+    body.activate();
+    return body;
+  };
+  behavior=openBody();
   life=new CompanionLife(ctx,host,'standard',{body:()=>behavior});
   t.after(async()=>{await life.close();await behavior.close();rmSync(root,{recursive:true,force:true});});
   const internal=life as any;
@@ -91,7 +98,7 @@ async function fixture(t:TestContext,needs:Record<string,number>={}) {
     // Cordis delivers the already existing optional Life service when Body is
     // mounted again. Run the production lifecycle callback, including its
     // transition publication, rather than manually waking the planner.
-    behavior=new CompanionBehavior(ctx,host,{plan:()=>life,observe:true});
+    behavior=openBody(true);
     return{saved,snapshot:await behavior.snapshot(workspace.id)};
   };
   await behavior.setAutonomy(workspace.id,true);await settle();

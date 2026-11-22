@@ -23,6 +23,7 @@ export declare class EconomyStore {
     /** Validate wallet admission, including retained evidence, when reusing the open Store. */
     validate(initializing?: boolean): void;
     private ensure;
+    private factWritten;
     private transaction;
     private meta;
     private requiredMeta;

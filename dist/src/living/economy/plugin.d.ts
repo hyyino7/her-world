@@ -153,8 +153,5 @@ declare module '@deepseek-ai/cordis' {
     interface Context {
         petEconomy: CompanionEconomy;
     }
-    interface Events {
-        'pet/economy.fact'(workspaceId: string): void;
-    }
 }
 export declare function apply(ctx: Context): void;
