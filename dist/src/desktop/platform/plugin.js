@@ -795,8 +795,12 @@ export class PetPlatform {
         if (rest === 'chat/memory')
             return json({ ok: true, orphans: [] }, method === 'GET' ? 200 : 405);
         if (rest.startsWith('voice/')) {
-            const voice = this.ctx.get('petVoice', false);
-            return voice ? voice.handle({ rest, method, body: raw, signal }) : json({ ok: false, message: '语音组件未启用' }, 503);
+            const voice = this.ctx.petCore.native.voiceTable.lookup(this.ctx, AbortSignal.any([signal, this.scope.signal]));
+            if (!voice)
+                return json({ ok: false, message: '语音组件未启用' }, 503);
+            const result = await voice.handle({ rest, method, body: raw });
+            voice.assertCurrent();
+            return result;
         }
         if (rest === 'sleep' || rest === 'wake') {
             if (method !== 'POST')

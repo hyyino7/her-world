@@ -32,6 +32,7 @@ export class Room {
     ctx;
     chat;
     closed = false;
+    voiceLifetime = new AbortController();
     receipts = new Map();
     subscriptions = [];
     window;
@@ -70,17 +71,18 @@ export class Room {
         if (endpoint === 'roomHistory')
             return this.chat.history(workspaceId);
         if (endpoint === 'roomVoice') {
-            const voice = this.ctx.get('petVoice'), storageId = this.ctx.petCore.workspace.storageId();
+            const host = this.ctx.petCore, storageId = host.workspace.storageId();
+            const voice = host.native.voiceTable.lookup(this.ctx, AbortSignal.any([signal, this.voiceLifetime.signal]));
             if (!voice)
                 throw Error('语音组件尚未启用');
             const operation = data.operation;
             if (!['hear', 'speak', 'voices'].includes(String(operation)))
                 throw Error('无效的房间语音操作');
             const response = await voice.handle({ rest: 'voice/' + operation, method: operation === 'voices' ? 'GET' : 'POST',
-                body: operation === 'voices' ? undefined : JSON.stringify(data.payload), signal });
+                body: operation === 'voices' ? undefined : JSON.stringify(data.payload) });
+            voice.assertCurrent();
             this.assert(workspaceId);
-            signal.throwIfAborted();
-            if (this.ctx.get('petVoice') !== voice || this.ctx.petCore.workspace.storageId() !== storageId)
+            if (host.workspace.storageId() !== storageId)
                 throw Error('房间语音工作区已切换');
             if (response.kind === 'json')
                 return response.obj;
@@ -178,7 +180,7 @@ export class Room {
             } });
         return [state, act, garden, photo];
     }
-    async close() { this.closed = true; for (const stop of this.subscriptions.splice(0))
+    async close() { this.closed = true; this.voiceLifetime.abort(); for (const stop of this.subscriptions.splice(0))
         stop(); this.closeWindow(); this.receipts.clear(); await this.chat.close(); }
 }
 export const name = '50-Room';

@@ -13,6 +13,7 @@ import { SourceAdapterTable } from '../tables/sources.js';
 import { RegistrationTable } from '../tables/registry.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts, type CompanionBinding } from '../tables/companion-ports.js';
+import { VoiceTable } from '../tables/voice.js';
 
 export const OWNER_LIFE_TOOL_SOURCES = Object.freeze(COMPANION_TOOL_SOURCES.filter(
   source => source === 'owner' || source === 'life' || source === 'review',
@@ -88,6 +89,7 @@ export class CoreNative {
   readonly toolTable = new CompanionToolTable();
   readonly sourceTable = new SourceAdapterTable<NativeSourceContext>(this.toolTable);
   readonly companionPorts = new CompanionPorts();
+  readonly voiceTable = new VoiceTable();
   private readonly playbackProviders = new RegistrationTable<ResolvePlaybackEvidence>();
   private readonly reviewCompaction = new RegistrationTable<(sessionId: string) => void>();
   resolveNativeScope?: (sessionId: string) => NativeScope | undefined;

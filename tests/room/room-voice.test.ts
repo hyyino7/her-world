@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Context } from '@deepseek-ai/cordis';
+import { Context } from '@deepseek-ai/cordis';
+import { VoiceTable } from '../../src/core/tables/voice.js';
+import type { VoiceProvider } from '../../src/contracts/voice.js';
 import { Room } from '../../src/room/plugin.js';
 import { roomAsset } from '../../src/room/assets.js';
 
@@ -23,14 +25,16 @@ test('Room voice delegates hear/speak to the shared service and never admits its
   const root=mkdtempSync(join(tmpdir(),'room-voice-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
   const audio=join(root,'voice.mp3');writeFileSync(audio,'audio fixture');
   let workspace='a', called=0, complete!:()=>void;
-  const service={async handle(input:{rest:string;method:string;body?:string;signal:AbortSignal}) {
-    called++;assert.equal(input.method,'POST');assert.equal(input.signal.aborted,false);
-    if(input.rest==='voice/hear')return {kind:'json',obj:{ok:true,text:'spoken text'}};
+  const service:VoiceProvider={availability:()=>({speak:true,hear:true}),async handle(input) {
+    called++;assert.equal(input.method,'POST');assert.equal(input.signal?.aborted,false);
+    if(input.rest==='voice/hear')return {kind:'json',status:200,obj:{ok:true,text:'spoken text'}};
     await new Promise<void>(resolve=>{complete=resolve;});
     return {kind:'file',file:audio,contentType:'audio/mpeg'};
   }};
-  const context={on:()=>()=>{},get:(name:string)=>name==='petVoice'?service:undefined,
-    petCore:{workspace:{status:()=>({state:'ready',target:{id:workspace,path:root}}),storageId:()=>workspace},native:{}},
+  const scope=new Context(),voiceTable=new VoiceTable();
+  t.after(voiceTable.register(scope,service).revoke);
+  const context={on:()=>()=>{},root:scope,[Context.isolate]:scope[Context.isolate],
+    petCore:{workspace:{status:()=>({state:'ready',target:{id:workspace,path:root}}),storageId:()=>workspace},native:{voiceTable}},
   } as unknown as Context;
   const room=new Room(context),signal=new AbortController().signal;
   assert.deepEqual(await room.request('a','roomVoice',{operation:'hear',payload:{audio:'AQI='}},'hear',signal),{ok:true,text:'spoken text'});

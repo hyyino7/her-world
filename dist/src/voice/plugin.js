@@ -1,7 +1,9 @@
 import { lstatSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
+import { isDeepStrictEqual } from 'node:util';
 import { CONTRACT_VERSION } from '../contracts/version.js';
+import { isVoiceRoute } from '../contracts/voice.js';
 import { digest } from '../core/storage.js';
 const requireUpstream = createRequire(import.meta.url);
 export class CompanionVoice {
@@ -9,6 +11,7 @@ export class CompanionVoice {
     directory;
     recognizer;
     lifetime = new AbortController();
+    stopped = false;
     scope;
     constructor(host, directory, recognizer) {
         this.host = host;
@@ -25,27 +28,29 @@ export class CompanionVoice {
         return typeof service?.transcribe === 'function' && typeof service.resolve === 'function'
             && typeof service.listProviders === 'function' && service.listProviders().length > 0;
     }
-    binding() {
-        const state = this.host.workspace.status();
-        return state.state === 'ready' && state.target ? { workspaceId: state.target.id, id: this.host.workspace.storageId() } : undefined;
+    availability() {
+        const speak = !this.stopped && this.host.workspace.status().state === 'ready';
+        return { speak, hear: speak && this.canTranscribe() };
     }
     refresh() {
-        const target = this.binding();
-        if (this.scope && (this.scope.id !== target?.id || this.scope.workspaceId !== target?.workspaceId))
+        if (this.scope && !isDeepStrictEqual(this.scope.binding, this.host.workspace.homeScope()))
             this.release();
     }
     release() { this.lifetime.abort(); this.lifetime = new AbortController(); this.scope = undefined; }
+    stop() { this.stopped = true; this.release(); }
     async handle(input) {
+        if (this.stopped)
+            throw new DOMException('语音组件已撤销', 'AbortError');
         this.refresh();
-        const bound = this.binding();
-        if (!bound?.id || !this.directory)
+        const bound = this.host.workspace.homeScope();
+        if (!bound?.storageId || !this.directory)
             throw Error('语音需要已绑定的工作区');
-        if (!['voice/hear', 'voice/speak', 'voice/voices'].includes(input.rest))
+        if (!isVoiceRoute(input.rest))
             throw Error('语音操作无效');
         if (input.body && Buffer.byteLength(input.body) > 1_048_576)
             throw Error('音频过长');
         if (!this.scope) {
-            const root = join(this.directory, digest(bound.id));
+            const root = join(this.directory, digest(bound.storageId));
             for (const path of [this.directory, root, join(root, 'voice-cache')]) {
                 mkdirSync(path, { recursive: true, mode: 0o700 });
                 if (!lstatSync(path).isDirectory())
@@ -57,11 +62,12 @@ export class CompanionVoice {
                 import('./upstream/host/voice/hear.js'),
             ])
                 .then(([out, mic]) => ({ voice: out.createVoiceService({ userRoot: root }), speech: mic.createHearService({ speechToText: this.recognizer }) }));
-            this.scope = { id: bound.id, workspaceId: bound.workspaceId, tools };
+            this.scope = { binding: bound, tools };
         }
         const signal = input.signal ? AbortSignal.any([this.lifetime.signal, input.signal]) : this.lifetime.signal;
         const tools = await this.scope.tools;
         const { handleVoiceRoutes } = await import('./upstream/host/routes/voice.js');
+        this.refresh();
         signal.throwIfAborted();
         const result = await handleVoiceRoutes(tools, { ...input, signal });
         this.refresh();
@@ -77,15 +83,21 @@ export function apply(ctx, config = {}) {
     const voice = new CompanionVoice(host, config.deviceDirectory ?? join(services.profileContext.dir, 'chatpet-voice'), () => services.get('speechToText'));
     ctx.provide('petVoice', voice);
     ctx.on('pet/core.changed', () => voice.refresh());
-    ctx.effect(() => () => voice.release());
+    ctx.effect(() => {
+        const registration = host.native.voiceTable.register(ctx, voice);
+        return () => {
+            const revoked = registration.revoke();
+            voice.stop();
+            return revoked;
+        };
+    });
     ctx.effect(() => host.workspace.runtime.capabilityTable.register({
         id: 'voice.speech', owner: 'voice', contractVersion: CONTRACT_VERSION, order: 8,
         status: () => {
-            const bound = host.workspace.status().state === 'ready';
-            const hear = bound && voice.canTranscribe();
-            return { state: !bound ? 'unavailable' : hear ? 'ready' : 'degraded',
-                reason: !bound ? 'Bind a workspace to use speech' : hear ? null : 'Speech recognition provider is unavailable',
-                supportedOperations: !bound ? [] : hear ? ['speak', 'hear'] : ['speak'] };
+            const { speak, hear } = voice.availability();
+            return { state: !speak ? 'unavailable' : hear ? 'ready' : 'degraded',
+                reason: !speak ? 'Bind a workspace to use speech' : hear ? null : 'Speech recognition provider is unavailable',
+                supportedOperations: !speak ? [] : hear ? ['speak', 'hear'] : ['speak'] };
         },
     }).revoke);
 }

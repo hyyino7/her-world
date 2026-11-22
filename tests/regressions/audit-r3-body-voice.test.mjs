@@ -60,9 +60,10 @@ function synthesisFixture(t,{external=false,holdEvery=false}={}) {
   const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
   const exports={};runInNewContext(code,{exports,require:name=>{assert.ok(modules[name],name);return modules[name];},Date,AbortSignal,setTimeout,clearTimeout});
   const service=exports.createVoiceService({userRoot:'/fixture-root',synthesize});
-  const host={workspace:{status:()=>({state:'ready',target:{id:'a'}}),storageId:()=>'a'}};
+  const binding={workspaceId:'a',storageId:'a',path:'/fixture-root',bootId:'fixture',generation:0};
+  const host={workspace:{homeScope:()=>binding}};
   const voice=new CompanionVoice(host,'/unused-device-cache',()=>undefined);
-  voice.scope={id:'a',workspaceId:'a',tools:Promise.resolve({voice:service,speech:{}})};
+  voice.scope={binding,tools:Promise.resolve({voice:service,speech:{}})};
   t.after(()=>{for(const gate of pending)gate.resolve();voice.release();});
   const speak=(text,signal)=>{const work=voice.handle({rest:'voice/speak',method:'POST',body:JSON.stringify({text}),signal});void work.catch(()=>{});return work;};
   return {voice,service,speak,files,calls,pending,started,prunes:()=>pruneCount};

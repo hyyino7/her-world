@@ -67,6 +67,7 @@ export async function createMessaging(ctx, host, options) {
         search: web ? query => web.search({ query, maxResults: 5 }) : undefined });
     const receipt = (id) => digest([options.storageId, id.channel, id.accountId, id.conversationType, id.conversationId, id.speakerId, id.platformMessageId]);
     let qq, qqHome, qqError = null;
+    let qqVoice;
     let wx, unregister, wxFile = null, wxError = null;
     async function qqStart() {
         if (!active() || !config.qq.enabled)
@@ -87,22 +88,26 @@ export async function createMessaging(ctx, host, options) {
                     homes.owns(session.id) });
             const home = qqHome;
             const qqAccount = config.qq.accountId;
-            const qqActive = () => active() && config.qq.enabled && config.qq.accountId === qqAccount;
+            const voiceLifetime = qqVoice = new AbortController();
+            const qqActive = () => active() && !voiceLifetime.signal.aborted && config.qq.enabled && config.qq.accountId === qqAccount;
             const inbox = createQQInbox({ store, storageId: options.storageId, active: qqActive, allowed, owner,
                 probe: submission => probeQQAdmission(ctx, submission, qqActive) });
             qq = openQQ({ settings: config.qq, qzone: createQzoneLedger(options.dataDirectory, qqAccount),
                 active: qqActive, allowed, owner, inbox, transport, async speak(text) {
-                    const voice = ctx.get('petVoice');
-                    check(voice && active(), '语音未启用');
+                    const voice = host.native.voiceTable.lookup(ctx, voiceLifetime.signal);
+                    check(voice && qqActive(), '语音未启用');
                     const response = await voice.handle({ rest: 'voice/speak', method: 'POST', body: JSON.stringify({ text }) });
+                    voice.assertCurrent();
                     check(response.kind === 'file' && response.contentType === 'audio/mpeg' && safeFile(response.file)
-                        && lstatSync(response.file).size <= 4 * 1024 * 1024 && active(), '合成音频不可用');
+                        && lstatSync(response.file).size <= 4 * 1024 * 1024 && qqActive(), '合成音频不可用');
                     return readFileSync(response.file);
                 }, groupQuote: id => groups.quoteTarget(id), decideGroup: (id, trigger, recovering) => groups.decision(id, trigger, recovering), groupResponse: (id, text, mode) => groups.response(id, text, mode),
                 observeGroup: (id, message, flags) => groups.receive(id, message, flags), ask: (text, id, history, mode, delivery) => home.ask(text, id, history, mode, delivery) });
             qqError = null;
         }
         catch (error) {
+            qqVoice?.abort();
+            qqVoice = undefined;
             qqHome?.stop();
             qqHome = undefined;
             qqError = error instanceof Error && error.message.includes('环境变量') ? 'QQ 凭据环境变量未设置' : 'QQ SDK 或本机 WebSocket 适配器不可用';
@@ -201,7 +206,7 @@ export async function createMessaging(ctx, host, options) {
             wxError = '微信适配器接口启动失败，请检查设备目录和路由';
         }
     }
-    async function stopQQ() { groups.unbind(); qqHome?.stop(); qqHome = undefined; const prev = qq; qq = undefined; await prev?.close(); }
+    async function stopQQ() { qqVoice?.abort(); qqVoice = undefined; groups.unbind(); qqHome?.stop(); qqHome = undefined; const prev = qq; qq = undefined; await prev?.close(); }
     async function stopWechat() { unregister?.(); unregister = undefined; const prev = wx; wx = undefined; wxFile = null; await prev?.stop(); }
     await qqStart();
     wxStart();

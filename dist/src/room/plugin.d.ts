@@ -27,6 +27,7 @@ export declare class Room {
     private ctx;
     readonly chat: RoomChat;
     private closed;
+    private readonly voiceLifetime;
     private receipts;
     private subscriptions;
     readonly window: RoomWindow;

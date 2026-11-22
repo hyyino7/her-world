@@ -12,18 +12,6 @@
       "reason": "本地依赖未声明模块归属"
     },
     {
-      "rule": "R2",
-      "file": "src/channels/messaging.ts",
-      "line": 94,
-      "column": 21,
-      "scope": "createMessaging/qqStart/speak",
-      "target": "petVoice",
-      "expression": "ctx . get ( \"petVoice\" )",
-      "from": "channels",
-      "to": "voice",
-      "reason": "服务读取未获准或方向违规"
-    },
-    {
       "rule": "R1",
       "file": "src/console/plugin.ts",
       "line": 3,
@@ -204,7 +192,7 @@
     {
       "rule": "R1",
       "file": "src/desktop/features.ts",
-      "line": 16,
+      "line": 17,
       "column": 50,
       "scope": "upstream",
       "target": "?",
@@ -214,24 +202,12 @@
     {
       "rule": "R2",
       "file": "src/desktop/features.ts",
-      "line": 67,
+      "line": 69,
       "column": 43,
       "scope": "DesktopFeatures/get",
       "target": "?",
       "expression": "this . ctx . get ( name as never )",
       "reason": "无法静态判定"
-    },
-    {
-      "rule": "R2",
-      "file": "src/desktop/features.ts",
-      "line": 142,
-      "column": 23,
-      "scope": "DesktopFeatures/request",
-      "target": "petVoice",
-      "expression": "this . ctx . get ( \"petVoice\" )",
-      "from": "desktop",
-      "to": "voice",
-      "reason": "服务读取未获准或方向违规"
     },
     {
       "rule": "R2",
@@ -308,18 +284,6 @@
       "reason": "服务读取未获准或方向违规"
     },
     {
-      "rule": "R2",
-      "file": "src/desktop/platform/plugin.ts",
-      "line": 648,
-      "column": 19,
-      "scope": "PetPlatform/handle",
-      "target": "petVoice",
-      "expression": "( this . ctx as any ) . get ( \"petVoice\" , false )",
-      "from": "desktop",
-      "to": "voice",
-      "reason": "服务读取未获准或方向违规"
-    },
-    {
       "rule": "R1",
       "file": "src/desktop/standalone.mjs",
       "line": 8,
@@ -360,30 +324,6 @@
       "from": "room",
       "to": "desktop",
       "reason": "依赖方向违规"
-    },
-    {
-      "rule": "R2",
-      "file": "src/room/plugin.ts",
-      "line": 72,
-      "column": 19,
-      "scope": "Room/request",
-      "target": "petVoice",
-      "expression": "this . ctx . get ( \"petVoice\" )",
-      "from": "room",
-      "to": "voice",
-      "reason": "服务读取未获准或方向违规"
-    },
-    {
-      "rule": "R2",
-      "file": "src/room/plugin.ts",
-      "line": 79,
-      "column": 11,
-      "scope": "Room/request",
-      "target": "petVoice",
-      "expression": "this . ctx . get ( \"petVoice\" )",
-      "from": "room",
-      "to": "voice",
-      "reason": "服务读取未获准或方向违规"
     },
     {
       "rule": "R1",

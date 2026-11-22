@@ -9,6 +9,7 @@ import { type CompanionToolDeclaration, type SourceAdmission } from '../../contr
 import { SourceAdapterTable } from '../tables/sources.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts, type CompanionBinding } from '../tables/companion-ports.js';
+import { VoiceTable } from '../tables/voice.js';
 export declare const OWNER_LIFE_TOOL_SOURCES: readonly ("life" | "owner" | "review")[];
 export interface NativeScope extends CompanionBinding {
     guest: boolean;
@@ -36,6 +37,7 @@ export declare class CoreNative {
     readonly toolTable: CompanionToolTable;
     readonly sourceTable: SourceAdapterTable<NativeSourceContext>;
     readonly companionPorts: CompanionPorts;
+    readonly voiceTable: VoiceTable;
     private readonly playbackProviders;
     private readonly reviewCompaction;
     resolveNativeScope?: (sessionId: string) => NativeScope | undefined;

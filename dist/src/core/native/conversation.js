@@ -6,6 +6,7 @@ import { SourceAdapterTable } from '../tables/sources.js';
 import { RegistrationTable } from '../tables/registry.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts } from '../tables/companion-ports.js';
+import { VoiceTable } from '../tables/voice.js';
 export const OWNER_LIFE_TOOL_SOURCES = Object.freeze(COMPANION_TOOL_SOURCES.filter(source => source === 'owner' || source === 'life' || source === 'review'));
 export function matchesNativeScope(current, expected) {
     return !!current && current.workspaceId === expected.workspaceId && current.path === expected.path
@@ -45,6 +46,7 @@ export class CoreNative {
     toolTable = new CompanionToolTable();
     sourceTable = new SourceAdapterTable(this.toolTable);
     companionPorts = new CompanionPorts();
+    voiceTable = new VoiceTable();
     playbackProviders = new RegistrationTable();
     reviewCompaction = new RegistrationTable();
     resolveNativeScope;

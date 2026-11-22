@@ -6,6 +6,7 @@ import type { PetCoreHost } from '../core/index.js';
 import {randomUUID} from 'node:crypto';
 import type {CareAction} from '../contracts/behavior.js';
 import type {CompanionFactActor} from '../contracts/interaction.js';
+import {isVoiceRoute} from '../contracts/voice.js';
 import {sameBinding, type Binding} from './conversation.js';
 import {DEFAULT_CONVERSATION} from '../core/options.js';
 import {readLifeEnabled} from '../living/outlets.js';
@@ -42,6 +43,7 @@ export class DesktopFeatures {
   private lastBalance = Date.now();
   private checking = false;
   private closed = false;
+  private readonly voiceLifetime = new AbortController();
   private timer?: NodeJS.Timeout;
   private maintenance?: Promise<void>;
   private scheduling:Promise<void>=Promise.resolve();
@@ -132,16 +134,18 @@ export class DesktopFeatures {
     if (old?.path !== target.path || old.sleeping !== sleeping) this.lastDream = Date.now();
     this.publish('sleep', sleeping ? {sleeping, pending, start:'sleep-start',loop:'sleep-loop',end:'sleep-end'} : {sleeping, pending});
   }
-  async request(input: {path?: unknown; method?: unknown; body?: unknown; actor?:CompanionFactActor}) {
+  async request(input: {path?: unknown; method?: unknown; body?: unknown; actor?:CompanionFactActor}, signal?: AbortSignal) {
     if(this.closed)throw Error('桌宠组件正在关闭');
     const target = this.target();
     const path = String(input.path ?? ''), method = String(input.method ?? 'GET');
     const url = new URL(path, 'https://pet.local/');
     const rest = url.pathname.replace(/^\//, '');
-    if (['voice/hear','voice/speak','voice/voices'].includes(rest)) {
-      const service = this.ctx.get('petVoice');
+    if (isVoiceRoute(rest)) {
+      const lifetime = this.voiceLifetime.signal;
+      const service = this.host.native.voiceTable.lookup(this.ctx, signal ? AbortSignal.any([signal, lifetime]) : lifetime);
       if (!service) throw Error('语音组件尚未启用');
       const result = await service.handle({rest,method,body:typeof input.body === 'string' ? input.body : undefined});
+      service.assertCurrent();
       if (!this.same(target)) throw Error('桌宠工作区已切换');
       return result.kind === 'file' ? {audio:readFileSync(result.file).toString('base64'), mediaType:result.contentType} : result.obj;
     }
@@ -308,6 +312,7 @@ export class DesktopFeatures {
   pause() {this.generation?.abort.abort(Error('碎碎念已取消'));this.lastWhisper=Date.now();void this.refresh();}
   async close() {
     this.closed=true;this.scheduleRevision++;clearTimeout(this.timer);this.timer=undefined;
+    this.voiceLifetime.abort();
     for(const stop of this.subscriptions.splice(0))stop();
     this.pause();await Promise.all([this.whispering?.catch(()=>{}),this.maintenance,this.scheduling]);
   }
