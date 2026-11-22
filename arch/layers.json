@@ -97,7 +97,7 @@
       "dependencies": ["core","memory","emotion","contracts","world","living","room"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petRoom"],
       "publishes": [],
-      "subscribes": ["pet/behavior.changed","pet/core.changed"],
+      "subscribes": ["pet/core.changed","world.changed"],
       "generated": []
     },
     "channels": {

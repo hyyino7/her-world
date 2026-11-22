@@ -46,6 +46,7 @@ for (const {action, plotId} of jobs) test(`Room ${action.type} stays JSON-safe t
   writeFileSync(join(directory, 'garden.json'), JSON.stringify(garden));
   const target = {id: 'fixture', path: root, sessionIds: []};
   const host = {native: {}, workspace: {status: () => ({state: 'ready', target}), storageId: () => target.id,
+    homeScope: () => ({workspaceId:target.id,path:target.path,storageId:target.id,bootId:'fixture',generation:0}),
     runtime:{config:{ownerActorId:'owner',companionId:'fish'},identity:()=>({displayName:'Fixture'}),store:{meta:()=>undefined}}}} as unknown as PetCoreHost;
   const events: unknown[] = [];
   const ctx = {petCore: host, get petBehavior() {return behavior;},

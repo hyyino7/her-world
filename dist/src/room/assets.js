@@ -61,12 +61,14 @@ let companionExpectedVersion = null;
 let companionAppliedVersion = null;
 function refreshCompanionRoom(change) {
   if (!change || typeof change.bootId !== 'string' || !Number.isSafeInteger(change.revision)) return;
-  if (companionAppliedVersion?.bootId === change.bootId && companionAppliedVersion.revision >= change.revision) return;
+  const forced = change.reason === 'world';
+  if (!forced && companionAppliedVersion?.bootId === change.bootId && companionAppliedVersion.revision >= change.revision) return;
   if (companionExpectedVersion?.bootId === change.bootId && companionExpectedVersion.revision > change.revision) return;
   companionExpectedVersion = {bootId:change.bootId,revision:change.revision};
-  if (requestInFlight) companionRefreshPending = true;
+  if (requestInFlight && forced) companionExplicitRefreshPending = true;
+  else if (requestInFlight) companionRefreshPending = true;
   else requestViewRefresh();
-  gardenController?.changed(change);
+  gardenController?.changed(forced ? undefined : change);
 }`);
     replace('function applyState(next) {\n  if (!next) return;', `function applyState(next) {
   if (!next) return;

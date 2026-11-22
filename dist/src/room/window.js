@@ -4,6 +4,7 @@ import { createInterface } from 'node:readline';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import { sameHomeBinding } from '../living/index.js';
 export const ROOM_ENDPOINTS = ['roomState', 'roomAction', 'roomGarden', 'roomPlant', 'roomCare', 'roomChat', 'roomTelevision', 'roomHistory', 'roomVoice'];
 /** Presentation-only process. Owner state and every native turn stay in DSH. */
 export class RoomWindow {
@@ -20,22 +21,28 @@ export class RoomWindow {
     status() { return { running: !!this.child, ready: this.loaded, workspaceId: this.bound?.workspaceId ?? null }; }
     reconcile() {
         const current = this.host.binding(), old = this.bound;
-        if (old && (!current || current.workspaceId !== old.workspaceId || current.storageId !== old.storageId || current.path !== old.path))
+        if (old && !sameHomeBinding(current, old))
             this.closeWindow();
     }
-    changed(change) {
+    changed(change, version) {
         this.reconcile();
-        if (!this.child || this.bound?.workspaceId !== change.workspaceId)
+        const bound = this.bound;
+        if (!this.child || !bound || bound.workspaceId !== change.workspaceId || bound.storageId !== change.storageId ||
+            bound.bootId !== change.bootId || bound.generation !== change.generation)
             return;
-        this.send({ type: 'changed', change });
+        this.send({ type: 'changed', change: { workspaceId: bound.workspaceId, ...version, reason: change.bodyOnly ? 'transition' : 'world' } });
     }
     async open(workspaceId) {
         this.reconcile();
         const bound = this.host.binding();
         if (!bound || bound.workspaceId !== workspaceId)
             throw Error('房间工作区已切换');
-        if (this.child) {
+        const active = this.child;
+        if (active) {
             await this.ready;
+            this.reconcile();
+            if (this.child !== active)
+                throw Error('房间工作区已切换');
             this.send({ type: 'focus' });
             return this.status();
         }
@@ -124,18 +131,22 @@ export class RoomWindow {
                 throw Error('房间请求仍在执行');
             const abort = new AbortController();
             this.requests.set(message.requestId, abort);
+            const signal = AbortSignal.any([abort.signal, this.lifetime.signal]);
             let value;
             try {
-                value = await this.host.request(this.bound.workspaceId, message.endpoint, message.data, message.requestId, AbortSignal.any([abort.signal, this.lifetime.signal]));
+                value = await this.host.request(this.bound.workspaceId, message.endpoint, message.data, message.requestId, signal);
+                signal.throwIfAborted();
             }
             finally {
-                this.requests.delete(message.requestId);
+                if (this.requests.get(message.requestId) === abort)
+                    this.requests.delete(message.requestId);
             }
             this.reconcile();
             if (this.child === child)
                 this.send({ type: 'response', id, ok: true, value });
         }
         catch (error) {
+            this.reconcile();
             if (this.child === child)
                 this.send({ type: 'response', id, ok: false, error: error instanceof Error ? error.message : '房间操作失败' });
         }

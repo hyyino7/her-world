@@ -219,7 +219,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 - **世界快照** `WorldSnapshot`：`petBehavior.worldSnapshot(workspaceId)` 为主入口，`petEconomy.worldSnapshot` 委托同一实现，只挂 Economy 时也能读钱包、身体部分为 `{available:false}`。内容是身体投影（`BehaviorSnapshot`）加钱包只读视图 `WalletView`（余额、库存、持有读物和书签），返回独立副本。
 - **命令** `WorldCommands`：照料（`petBehavior`）、执行计划步骤和阅读确认（`petLife`）、购买和出售（`petEconomy`），各门面的 `worldCommands` 只挂本区的命令；每条带请求 ID，复用原入口的准入、绑定复核和去重。错误语义沿用 `ContractError`：`effect` 有三种（`none / partial / unknown`），`retry` 有四种（`never / refresh / same_request / reconcile`）。
 - **事实流**：`CompanionFactSource`，`petBehavior.worldFacts` 聚合身体和钱包的事实。事实的准备、验证、确认在第二层的 `living/prompt-context.ts`，仍在 Core 的原生作用域登记两段、调用第一层的 `acknowledgePromptFacts`；「原生日志落盘之后才确认事实」的顺序不变，确认前复核绑定、三区租约和准备结果。
-- **变更信号**：一个事件 `world.changed`（`{workspaceId, storageId}`），只表示「去读快照」。三区可见状态实际变化、首次绑定和切换绑定时发，同一轮微任务内按绑定合并，卸载后的旧租约不发。它不是落盘回执（Cordis 的 `emit` 不等待返回），订阅方自己处理异步错误；目前 `src/` 里还没有订阅方。
+- **变更信号**：`world.changed` 携带 `workspaceId/storageId` 和 `homeScope()` 的 `bootId/generation`。三区可见状态变化、首次绑定和切换绑定时发，同一微任务内按绑定代次合并，出队时复核原绑定与产出区租约。Room 按代次刷新，IPC 继续使用 Body 的 `bootId/revision` 拦住落后画面；仅 Body 变化的通知可由已覆盖的快照吸收。此事件只通知刷新，Cordis 的 `emit` 不等待订阅者或返回业务回执。
 - **生活出口**：`living/outlets.ts` 的 `registerLifeOutlet`。Desktop 登记暂停、恢复、呈现，Channels 登记主动消息送达，各自在入口登记、卸载时撤销；Life 在启动、休息和通知时用 `lookupLifeOutlet` 按租约取当前的出口，没有登记就跳过，和原来缺服务时一样。呈现出错时记原样警告，照样试 Channels。登记复用 `RegistrationTable`，按提供方的隔离标签区分。
 - **启用意图读口**：同一文件的 `readLifeEnabled`，Desktop 判断「Life 是否接管自主」时读它：有 Plan 时读持久的生活开关（`bodyClockState`），读不到再看 Plan 是否在运行；没有 Plan 就当作未接管，桌宠恢复自主，`control.json` 不变。
 

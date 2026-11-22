@@ -211,7 +211,12 @@ export function settingsHandler(getHost, getWorkspaces, getDesktop, getWorldModu
                     fail('STALE_BINDING');
                 if (!input.data || typeof input.data !== 'object' || Array.isArray(input.data))
                     fail('INVALID_ARGUMENT');
-                const value = await room.request(id, endpoint, input.data, body.requestId, AbortSignal.any([signal, peer.signal]));
+                const roomSignal = AbortSignal.any([signal, peer.signal]);
+                const value = await room.request(id, endpoint, input.data, body.requestId, roomSignal).catch(error => {
+                    if (roomSignal.aborted)
+                        fail('CANCELLED');
+                    throw error;
+                });
                 if (getRoom?.() !== room || host.workspace.status().target?.id !== id)
                     fail('STALE_BINDING');
                 if (signal.aborted || peer.signal.aborted)

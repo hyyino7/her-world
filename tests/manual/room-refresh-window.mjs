@@ -1,3 +1,4 @@
+import {LivingView} from '../../dist/src/living/index.js';
 // The actual Room process, preload, scene and Behavior share only a disposable
 // workspace. The native event path has no periodic Room poll.
 import {createServer} from 'node:http';
@@ -19,7 +20,8 @@ let target={id:'fixture',path:temporary,sessionIds:[]},origin,behavior,room,read
 let emotion={label:'初始心情',feelings:['calm'],updatedAt:1};
 const events=new Map(),views=[];
 const emit=(name,...args)=>{for(const listener of events.get(name) ?? [])listener(...args);};
-const host={native:{},workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,runtime:{config:{companionId:'fixture'},identity:()=>({displayName:'Fixture'}),store:{meta:()=>undefined}}}};
+const host={native:{},workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,
+ homeScope:()=>({workspaceId:target.id,path:target.path,storageId:target.id,bootId:'fixture',generation:0}),runtime:{config:{companionId:'fixture'},identity:()=>({displayName:'Fixture'}),store:{meta:()=>undefined}}}};
 const registry={get:id=>id===target.id?target:undefined,archivedSessionIds:[]};
 const ctx={petCore:host,workspaceRegistry:registry,
   get(name){return name==='petBehavior'?behavior:name==='petEmotion'?{read:async()=>{},roomSnapshot:()=>emotion}:name==='webServer'?{getOrigin:()=>origin}:undefined;},
@@ -51,7 +53,9 @@ let held=false,heldReady,releaseHeld;
 try{
  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
  origin='http://127.0.0.1:'+server.address().port;
- behavior=new CompanionBehavior(ctx,host);room=new Room(ctx);
+ const living=new LivingView({},()=>true,undefined,undefined,({workspaceId,storageId,bootId,generation},bodyOnly)=>
+   emit('world.changed',{workspaceId,storageId,bootId,generation,bodyOnly}));
+ behavior=new CompanionBehavior(ctx,host,living);behavior.activate();room=new Room(ctx);
  const request=room.request.bind(room);
  room.request=async(...args)=>{
    const value=await request(...args);if(args[1]==='roomState'){reads++;if(held){held=false;heldReady();await new Promise(resolve=>{releaseHeld=resolve;});}}
@@ -59,7 +63,7 @@ try{
  };
  await room.open(target.id);await until(()=>ready && reads>=1,'initial snapshot, native subscription and scene');
  await delay(50);const before=reads;
- room.window.changed({workspaceId:'another-workspace',bootId:behavior.bootId,revision:1000});
+ emit('world.changed',{...host.workspace.homeScope(),workspaceId:'another-workspace'});
  await delay(70);assert.equal(reads,before,'unrelated workspace changes do not wake this Room');
  const started=Date.now(),result=await behavior.act(target.id,'feed');
  await until(()=>views.some(view=>view.at>=started && view.activity.includes(result.home.her.activity)),'body event appears through native notification',1000);

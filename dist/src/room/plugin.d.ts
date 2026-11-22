@@ -27,7 +27,7 @@ export declare class Room {
     private ctx;
     readonly chat: RoomChat;
     private closed;
-    private readonly voiceLifetime;
+    private readonly lifetime;
     private receipts;
     private subscriptions;
     readonly window: RoomWindow;
@@ -43,11 +43,14 @@ export declare class Room {
         ready: boolean;
         workspaceId: string | null;
     };
+    private binding;
     private assert;
-    request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
+    private admission;
+    request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, caller: AbortSignal): Promise<unknown>;
     watching(id: string): boolean;
     toolScope(agent?: Agent): string | undefined;
     private checked;
+    private toolAdmission;
     tools(): ToolDefinition[];
     close(): Promise<void>;
 }

@@ -1,12 +1,9 @@
 import type { BehaviorChange } from '../contracts/behavior.js';
+import type { WorldChanged } from '../contracts/living.js';
+import type { HomeBinding } from '../core/workspace.js';
 export declare const ROOM_ENDPOINTS: readonly ["roomState", "roomAction", "roomGarden", "roomPlant", "roomCare", "roomChat", "roomTelevision", "roomHistory", "roomVoice"];
-interface Binding {
-    workspaceId: string;
-    storageId: string;
-    path: string;
-}
 interface Host {
-    binding(): Binding | undefined;
+    binding(): HomeBinding | undefined;
     origin(): string | undefined;
     request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
 }
@@ -26,7 +23,7 @@ export declare class RoomWindow {
         workspaceId: string | null;
     };
     reconcile(): void;
-    changed(change: BehaviorChange): void;
+    changed(change: WorldChanged, version: Pick<BehaviorChange, 'bootId' | 'revision'>): void;
     open(workspaceId: string): Promise<{
         running: boolean;
         ready: boolean;

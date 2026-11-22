@@ -41,14 +41,14 @@ export declare class RoomChat {
     watching(id: string): boolean;
     sourceAdapter(): SourceAdapter<TelevisionSourceContext>;
     private agent;
-    history(workspaceId: string): Promise<{
+    history(workspaceId: string, validate: () => void): Promise<{
         ok: boolean;
         messages: {
             role: "user" | "assistant";
             text: string;
         }[];
     }>;
-    reply(workspaceId: string, television: boolean, data: Record<string, unknown>, requestId: string, caller: AbortSignal): Promise<{
+    reply(workspaceId: string, television: boolean, data: Record<string, unknown>, requestId: string, caller: AbortSignal, current: () => void): Promise<{
         ok: boolean;
         reply: string;
     }>;

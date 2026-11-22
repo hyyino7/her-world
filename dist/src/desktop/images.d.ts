@@ -18,7 +18,7 @@ export declare class DesktopImages {
     constructor(host: PetCoreHost, attachments: () => NativeAttachments | undefined, component?: 'desktop' | 'room', maxEncodedSize?: number);
     private directory;
     private validate;
-    admit(image: Encoded): Promise<UserMessage['content']>;
-    restore(): Promise<void>;
+    admit(image: Encoded, validateBinding?: () => void): Promise<UserMessage['content']>;
+    restore(validateBinding?: () => void): Promise<void>;
 }
 export {};

@@ -33,13 +33,14 @@ test('Room voice delegates hear/speak to the shared service and never admits its
   }};
   const scope=new Context(),voiceTable=new VoiceTable();
   t.after(voiceTable.register(scope,service).revoke);
-  const context={on:()=>()=>{},root:scope,[Context.isolate]:scope[Context.isolate],
-    petCore:{workspace:{status:()=>({state:'ready',target:{id:workspace,path:root}}),storageId:()=>workspace},native:{voiceTable}},
+  const context={on:()=>()=>{},get:()=>undefined,root:scope,[Context.isolate]:scope[Context.isolate],
+    petCore:{workspace:{status:()=>({state:'ready',target:{id:workspace,path:root}}),storageId:()=>workspace,
+      homeScope:()=>({workspaceId:workspace,path:root,storageId:workspace,bootId:'fixture',generation:0})},native:{voiceTable}},
   } as unknown as Context;
   const room=new Room(context),signal=new AbortController().signal;
   assert.deepEqual(await room.request('a','roomVoice',{operation:'hear',payload:{audio:'AQI='}},'hear',signal),{ok:true,text:'spoken text'});
   const pending=room.request('a','roomVoice',{operation:'speak',payload:{text:'reply'}},'speak',signal);
   await new Promise(resolve=>setImmediate(resolve));workspace='b';complete();
-  await assert.rejects(pending,/工作区已切换/);assert.equal(called,2);
+  await assert.rejects(pending,/工作区或身体组件已切换/);assert.equal(called,2);
   assert.equal(readFileSync(audio,'utf8'),'audio fixture');
 });

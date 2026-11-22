@@ -119,16 +119,19 @@ export class RoomChat {
             },
         };
     }
-    async agent(workspaceId, create) {
+    async agent(workspaceId, create, validate) {
         this.binding(workspaceId);
         await this.ctx.get('petTranscripts')?.restore();
-        await this.images.restore();
+        validate();
+        await this.images.restore(validate);
+        validate();
         let id = this.existing(workspaceId);
         if (!id && create) {
             const prefix = this.prefix(), workspace = this.binding(workspaceId);
             const used = [...workspace.sessionIds, ...this.native.workspaceRegistry.archivedSessionIds].filter(id => id.startsWith(prefix));
             const next = Math.max(0, ...used.map(id => Number(id.slice(prefix.length))).filter(Number.isSafeInteger)) + 1;
             id = (await this.native.sessionController.create({ workspaceId, sessionId: prefix + next })).sessionId;
+            validate();
             if (this.existing(workspaceId) !== id)
                 throw Error('房间会话归属已变化');
         }
@@ -137,29 +140,34 @@ export class RoomChat {
         const title = (this.ctx.petCore.workspace.runtime.identity().displayName || '伙伴') + ' · 房间私聊';
         if (this.ctx.get('sessionTitle') && this.titles.get(id) !== title) {
             await this.native.sessionController.rename({ sessionId: id, title });
+            validate();
             this.titles.set(id, title);
         }
         const { agent, error } = await this.native.sessionController.resolveAgent(id);
+        validate();
         if (error || !agent || this.existing(workspaceId) !== id || this.ctx.petWorld.sessionStatus(agent.session)?.state !== 'ready')
             throw Error(error?.message ?? '房间会话不属于当前工作区');
         return agent;
     }
-    async history(workspaceId) {
-        const agent = await this.agent(workspaceId, false);
+    async history(workspaceId, validate) {
+        const agent = await this.agent(workspaceId, false, validate);
+        validate();
         return { ok: true, messages: agent ? roomHistory(agent.session.snapshotEvents()) : [] };
     }
-    async reply(workspaceId, television, data, requestId, caller) {
+    async reply(workspaceId, television, data, requestId, caller, current) {
         if (this.busy)
             throw Error('她还在想上一句，稍等一下');
         this.busy = true;
         const signal = AbortSignal.any([this.stopping.signal, caller, AbortSignal.timeout(300000)]);
+        const validate = () => { signal.throwIfAborted(); current(); };
         try {
-            signal.throwIfAborted();
+            validate();
             const frame = television ? televisionImage(data.image) : undefined;
             if (!frame && (typeof data.text !== 'string' || !data.text.trim() || data.text.trim().length > 500))
                 throw Error('请输入 1 至 500 字的房间消息');
             const text = frame ? televisionPrompt : data.text.trim();
-            const agent = await this.agent(workspaceId, true);
+            const agent = await this.agent(workspaceId, true, validate);
+            validate();
             if (!agent)
                 throw Error('房间聊天服务未就绪');
             const events = agent.session.snapshotEvents();
@@ -167,8 +175,8 @@ export class RoomChat {
             const prior = events.flatMap(event => event.type === 'agent/inbox/spliced' ? event.data.inserted : event.type === 'user/message' ? [event.data] : [])
                 .find(message => (message.source.kind === 'chatpet-room-tv' || message.source.kind === 'user') &&
                 'rpcId' in message.source && message.source.rpcId === rpcId);
-            const content = [{ type: 'text', text }, ...(frame ? await this.images.admit(frame) : [])];
-            signal.throwIfAborted();
+            const content = [{ type: 'text', text }, ...(frame ? await this.images.admit(frame, validate) : [])];
+            validate();
             if (this.existing(workspaceId) !== agent.id)
                 throw Error('房间会话已切换');
             if (prior && digest(prior.content) !== digest(content))
@@ -193,7 +201,7 @@ export class RoomChat {
                     signal.removeEventListener('abort', cancel);
                 }
             }
-            signal.throwIfAborted();
+            validate();
             if (this.existing(workspaceId) !== agent.id)
                 throw Error('房间会话已切换');
             const result = nativeResult(agent.session.snapshotEvents(), message.id);

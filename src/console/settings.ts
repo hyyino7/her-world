@@ -195,7 +195,11 @@ export function settingsHandler(getHost: () => PetCoreHost | undefined, getWorks
         if (!room) fail('UNAVAILABLE');
         if (host.workspace.status().target?.id !== id) fail('STALE_BINDING');
         if (!input.data || typeof input.data !== 'object' || Array.isArray(input.data)) fail('INVALID_ARGUMENT');
-        const value = await room.request(id, endpoint, input.data as Record<string, unknown>, body.requestId, AbortSignal.any([signal, peer.signal]));
+        const roomSignal=AbortSignal.any([signal,peer.signal]);
+        const value=await room.request(id,endpoint,input.data as Record<string,unknown>,body.requestId,roomSignal).catch(error=>{
+          if(roomSignal.aborted)fail('CANCELLED');
+          throw error;
+        });
         if (getRoom?.() !== room || host.workspace.status().target?.id !== id) fail('STALE_BINDING');
         if (signal.aborted || peer.signal.aborted) fail('CANCELLED');
         return {ok:true, value};

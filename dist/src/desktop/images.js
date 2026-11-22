@@ -35,12 +35,14 @@ export class DesktopImages {
             || !image.data || Buffer.from(image.data, 'base64').toString('base64') !== image.data)
             throw Error('图片无效或过大');
     }
-    async admit(image) {
+    async admit(image, validateBinding = () => { }) {
+        validateBinding();
         this.validate(image);
         const directory = this.directory(), native = this.attachments();
         if (!native)
             throw Error('原生图片附件服务暂不可用');
         const content = await native.admitPromptContent([{ type: 'image', ...image }]);
+        validateBinding();
         if (this.directory() !== directory)
             throw Error('工作区已切换');
         const name = createHash('sha256').update(image.mediaType + '\n' + image.data).digest('hex') + '.json', file = join(directory, name);
@@ -57,7 +59,8 @@ export class DesktopImages {
         }
         return content;
     }
-    async restore() {
+    async restore(validateBinding = () => { }) {
+        validateBinding();
         const directory = this.directory();
         if (this.restored === directory)
             return;
@@ -77,6 +80,7 @@ export class DesktopImages {
             if (expected !== name)
                 throw Error('图片副本内容已变化');
             const content = await native.admitPromptContent([{ type: 'image', ...value.image }]);
+            validateBinding();
             if (!isDeepStrictEqual(content, value.content))
                 throw Error('当前原生附件格式与图片副本不一致');
         }
