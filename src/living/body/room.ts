@@ -13,7 +13,7 @@ import { initialBodyState } from './initial-state.js';
 import { BODY_METRICS, BODY_METRIC_NAMES, FEEDBACK_ACTIONS, ROLE_ACTIONS, PLAN_KINDS, isPlanKind, isPlanBodyAction, isPlanEconomyOperation, isPlanGardenOperation,
   PlannedAdmissionWaitError, type PlannedAdmissionWait, type PlannedActivity, type PlannedExecution,
   type BehaviorAnimationContext, type BodyMetric, type ExecutionPhase, type ExecutionStatus, type FeedbackAction, type PlanKind, type PlanTradeOperation, type ReadingState } from '../../contracts/behavior.js';
-import { requirePresentationSlot, animationSlotAllowed } from './playback.js';
+import { requirePresentationSlot, animationSlotAllowed } from './animation-slots.js';
 import { canonical, digest } from '../../core/storage.js';
 import type { BodyFactType, CompanionFact, CompanionFactActor, NewCompanionFact } from '../../contracts/interaction.js';
 import {gardenHomeProjection,gardenReceiptProjection,gardenReceiptText} from './garden-receipt.js';

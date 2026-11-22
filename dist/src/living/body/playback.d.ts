@@ -1,3 +1,4 @@
+export { animationSlotAllowed, requirePresentationSlot } from './animation-slots.js';
 /** Read-only media selection. Accepted domain work owns effects and completion. */
 export interface ActivityClip {
     roomClip: string;
@@ -5,15 +6,6 @@ export interface ActivityClip {
     mode: 'loop' | 'once' | 'static';
     durationMs: number;
     mirror?: boolean;
-}
-export interface AnimationSlotContext {
-    kind: string;
-    action?: string;
-    economy?: {
-        type: string;
-    };
-    garden?: Record<string, unknown>;
-    foodSlot?: string;
 }
 export interface ActivityAnimationContext {
     slotId?: string;
@@ -62,11 +54,9 @@ export interface ActivityPlayback {
         gap?: boolean;
     };
 }
-/** One admission rule shared by plan parsing, Body and item metadata. A slot is
- * cosmetic authority only; it cannot grant an item or a new business action. */
-export declare function animationSlotAllowed(value: unknown, input: string | AnimationSlotContext): boolean;
-export declare function requirePresentationSlot(value: unknown, context: string | AnimationSlotContext): string;
 export declare function resolveActivityPlayback(home: any): ActivityPlayback | undefined;
+/** Playback is attached by the carriers to their existing home response. */
+export declare function withHomePlayback(home: any): any;
 /** Self-contained for both generated carriers: no resolver/table is inlined.
  * Unknown starts skip historical one-shots; loops share a cosmetic clock. */
 export declare function sampleActivityPlayback(playback: ActivityPlayback, now?: number): {

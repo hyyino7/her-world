@@ -10,7 +10,7 @@ import { applyRoomAction, normalizeRoomState, roomView } from '#feiyu-room/room-
 import { randomUUID } from 'node:crypto';
 import { initialBodyState } from './initial-state.js';
 import { BODY_METRICS, BODY_METRIC_NAMES, FEEDBACK_ACTIONS, ROLE_ACTIONS, PLAN_KINDS, isPlanKind, isPlanBodyAction, isPlanEconomyOperation, isPlanGardenOperation, PlannedAdmissionWaitError } from '../../contracts/behavior.js';
-import { requirePresentationSlot, animationSlotAllowed } from './playback.js';
+import { requirePresentationSlot, animationSlotAllowed } from './animation-slots.js';
 import { canonical, digest } from '../../core/storage.js';
 import { gardenHomeProjection, gardenReceiptProjection, gardenReceiptText } from './garden-receipt.js';
 // 离线时饥饿、口渴和如厕需求有上限，体力有单独的 energyFloor，疼痛不随离线时间变化。

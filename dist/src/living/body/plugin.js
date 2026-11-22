@@ -7,7 +7,7 @@ import { isCareAction } from '../../contracts/behavior.js';
 import { bodyPhaseOf, companionBusy } from './activity.js';
 import { CompanionRoom } from './room.js';
 import { behaviorPresentation } from './presentation.js';
-import { resolveActivityPlayback } from './playback.js';
+import { withHomePlayback } from './playback.js';
 import { gardenHomeProjection } from './garden-receipt.js';
 import { LifeControlFileError, readLifeControl } from '../plan/control-file.js';
 import { readEconomyFileEvidence, readEconomyJournalEvidence } from '../economy/adoption.js';
@@ -333,9 +333,8 @@ export class CompanionBehavior {
     publicBehavior(her) {
         return { ...this.activity(), busy: companionBusy(her), revision: this.revision, bootId: this.bootId };
     }
-    presentHome(home, behavior = this.publicBehavior(home.her)) {
-        const projected = { ...home, behavior: { ...behavior } };
-        return { ...projected, playback: resolveActivityPlayback(projected) };
+    behaviorHome(home, behavior = this.publicBehavior(home.her)) {
+        return { ...home, behavior: { ...behavior } };
     }
     publish(reason = 'transition', notifyFirst = reason === 'transition') {
         const bound = this.binding;
@@ -440,7 +439,7 @@ export class CompanionBehavior {
             const execution = JSON.stringify(bound.room.plannedState());
             this.advanceRoom(bound);
             this.publish(execution === JSON.stringify(bound.room.plannedState()) ? 'observation' : 'transition');
-            const home = this.presentHome(bound.room.view());
+            const home = withHomePlayback(this.behaviorHome(bound.room.view()));
             const { revision, bootId, ...behavior } = home.behavior;
             return { workspaceId, storageId: bound.storageId, bootId, revision,
                 autonomyEnabled: this.autonomous, behavior, home, needs: structuredClone(bound.room.state.needs), presentation: behaviorPresentation(home, this.expression), fault: this.fault ?? this.publicationFault ?? null,
@@ -490,7 +489,7 @@ export class CompanionBehavior {
             recordEffect?.('partial');
             this.publish();
             const behavior = this.publicBehavior(result.home.her);
-            return { ...result, home: { ...this.presentHome(result.home, behavior), presentation: behaviorPresentation(result.home, this.expression) }, behavior };
+            return { ...result, home: { ...withHomePlayback(this.behaviorHome(result.home, behavior)), presentation: behaviorPresentation(result.home, this.expression) }, behavior };
         });
     }
     act(workspaceId, action, requestId = randomUUID(), channel = 'desktop', recordEffect) {
@@ -516,7 +515,7 @@ export class CompanionBehavior {
             this.publish(operation === 'state' && execution === JSON.stringify(bound.room.plannedState()) ? 'observation' : 'transition');
             const home = 'home' in result ? result.home : undefined;
             const behavior = this.publicBehavior((home || bound.room.view()).her);
-            return { ...result, behavior, ...(home ? { home: this.presentHome(home, behavior) } : {}) };
+            return { ...result, behavior, ...(home ? { home: withHomePlayback(this.behaviorHome(home, behavior)) } : {}) };
         });
     }
     setAutonomy(workspaceId, enabled) {

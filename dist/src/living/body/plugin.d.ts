@@ -53,7 +53,7 @@ export declare class CompanionBehavior {
     private checked;
     private activity;
     private publicBehavior;
-    private presentHome;
+    private behaviorHome;
     private publish;
     presentationVersion(): {
         bootId: `${string}-${string}-${string}-${string}-${string}`;

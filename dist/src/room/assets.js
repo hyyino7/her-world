@@ -10,6 +10,8 @@ export const roomPrefix = '/chatpet-room';
 const root = fileURLToPath(new URL('../../../vendor/feiyu-room-template/public/room/', import.meta.url));
 const sharedPlayback = fileURLToPath(new URL('../living/body/playback.js', import.meta.url));
 const sharedAnimationMap = fileURLToPath(new URL('../living/body/animation-map.js', import.meta.url));
+const sharedAnimationSlots = fileURLToPath(new URL('../living/body/animation-slots.js', import.meta.url));
+const sharedAnimationSlotIds = fileURLToPath(new URL('../living/body/animation-slot-ids.js', import.meta.url));
 const localVoice = fileURLToPath(new URL('../../../src/room/voice-client.js', import.meta.url));
 const localIdentity = fileURLToPath(new URL('../../../src/room/identity-client.js', import.meta.url));
 const sharedVoice = fileURLToPath(new URL('../../../src/desktop/helper/upstream/shared-core.js', import.meta.url));
@@ -162,6 +164,10 @@ export async function roomAsset(request) {
             blob = await openAsBlob(sharedPlayback, { type });
         else if (name === 'animation-map.js')
             blob = await openAsBlob(sharedAnimationMap, { type });
+        else if (name === 'animation-slots.js')
+            blob = await openAsBlob(sharedAnimationSlots, { type });
+        else if (name === 'animation-slot-ids.js')
+            blob = await openAsBlob(sharedAnimationSlotIds, { type });
         else if (name === 'voice-client.js' || name === 'shared-core.js' || name === 'identity-client.js')
             blob = await openAsBlob(name === 'voice-client.js' ? localVoice : name === 'identity-client.js' ? localIdentity : sharedVoice, { type });
         else {

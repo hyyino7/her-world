@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { withLivingCaller } from '../index.js';
 import { createLifeStore, LIFE_STATE_MAX_BYTES } from '#dsh-world/life/lifeStore';
 import { PLAN_KINDS, isPlanKind, isPlanBodyAction, isPlanEconomyOperation, isPlanGardenOperation, isBodyMetric, PlannedAdmissionWaitError } from '../../contracts/behavior.js';
-import { requirePresentationSlot } from '../body/playback.js';
+import { requirePresentationSlot } from '../body/animation-slots.js';
 import { gardenReceiptText } from '../body/garden-receipt.js';
 export const expiredDispatchDeadline = 'The activity absolute deadline elapsed before Body admission; revise the original plan explicitly';
 const object = (v) => !!v && typeof v === 'object' && !Array.isArray(v);

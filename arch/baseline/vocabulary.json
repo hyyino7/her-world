@@ -5744,13 +5744,13 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/publish",
-        "line": 248
+        "line": 247
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 248,
+      "line": 247,
       "column": 26,
       "scope": "CompanionBehavior/publish",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -6051,13 +6051,13 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "<module>",
-        "line": 27
+        "line": 23
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 27,
+      "line": 23,
       "column": 24,
       "scope": "<module>",
       "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
@@ -6255,13 +6255,13 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "<module>",
-        "line": 27
+        "line": 23
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 27,
+      "line": 23,
       "column": 24,
       "scope": "<module>",
       "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
@@ -8591,13 +8591,13 @@
       "other": {
         "file": "src/room/assets.ts",
         "scope": "roomAsset",
-        "line": 140
+        "line": 142
       }
     },
     {
       "rule": "R8",
       "file": "src/room/assets.ts",
-      "line": 140,
+      "line": 142,
       "column": 8,
       "scope": "roomAsset",
       "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/handle\"}",
@@ -8631,13 +8631,13 @@
       "other": {
         "file": "src/room/assets.ts",
         "scope": "roomAsset",
-        "line": 140
+        "line": 142
       }
     },
     {
       "rule": "R8",
       "file": "src/room/assets.ts",
-      "line": 140,
+      "line": 142,
       "column": 8,
       "scope": "roomAsset",
       "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/handle\"}",
@@ -8671,13 +8671,13 @@
       "other": {
         "file": "src/room/assets.ts",
         "scope": "roomAsset",
-        "line": 140
+        "line": 142
       }
     },
     {
       "rule": "R8",
       "file": "src/room/assets.ts",
-      "line": 140,
+      "line": 142,
       "column": 8,
       "scope": "roomAsset",
       "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/http\"}",
@@ -8972,13 +8972,13 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "<module>",
-        "line": 27
+        "line": 23
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 27,
+      "line": 23,
       "column": 24,
       "scope": "<module>",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -9345,13 +9345,13 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "resolveActivityPlayback",
-        "line": 188
+        "line": 130
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 188,
+      "line": 130,
       "column": 40,
       "scope": "resolveActivityPlayback",
       "target": "{\"file\":\"src/living/body/activity.ts\",\"scope\":\"<module>\"}",
@@ -9420,7 +9420,7 @@
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 27,
+      "line": 23,
       "column": 24,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
@@ -9468,13 +9468,13 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "<module>",
-        "line": 27
+        "line": 23
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 27,
+      "line": 23,
       "column": 24,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"behaviorPresentation\"}",
@@ -9516,13 +9516,13 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "<module>",
-        "line": 27
+        "line": 23
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 175,
+      "line": 117,
       "column": 28,
       "scope": "resolveActivityPlayback",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/act\"}",
@@ -9562,13 +9562,13 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "resolveActivityPlayback",
-        "line": 175
+        "line": 117
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 384,
+      "line": 383,
       "column": 42,
       "scope": "CompanionBehavior/garden",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -9604,13 +9604,13 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/garden",
-        "line": 384
+        "line": 383
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 384,
+      "line": 383,
       "column": 42,
       "scope": "CompanionBehavior/garden",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/garden\"}",
@@ -9646,7 +9646,7 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/garden",
-        "line": 384
+        "line": 383
       }
     },
     {
@@ -12798,7 +12798,7 @@
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 175,
+      "line": 117,
       "column": 28,
       "scope": "resolveActivityPlayback",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -12858,7 +12858,7 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "resolveActivityPlayback",
-        "line": 175,
+        "line": 117,
         "column": 28,
         "shape": "array",
         "values": [
@@ -12870,7 +12870,7 @@
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 175,
+      "line": 117,
       "column": 28,
       "scope": "resolveActivityPlayback",
       "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
@@ -12940,7 +12940,7 @@
       "other": {
         "file": "src/living/body/playback.ts",
         "scope": "resolveActivityPlayback",
-        "line": 175,
+        "line": 117,
         "column": 28,
         "shape": "array",
         "values": [
@@ -15440,37 +15440,7 @@
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 9,
-      "column": 3,
-      "scope": "<module>",
-      "target": "kind",
-      "expression": "kind : string ;",
-      "shape": "bare string"
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 9,
-      "column": 15,
-      "scope": "<module>",
-      "target": "action",
-      "expression": "action ? : string ;",
-      "shape": "bare string"
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 9,
-      "column": 40,
-      "scope": "<module>",
-      "target": "type",
-      "expression": "type : string",
-      "shape": "bare string"
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 14,
+      "line": 13,
       "column": 27,
       "scope": "<module>",
       "target": "action",
@@ -15480,7 +15450,7 @@
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 14,
+      "line": 13,
       "column": 101,
       "scope": "<module>",
       "target": "kind",
@@ -15490,7 +15460,7 @@
     {
       "rule": "R8",
       "file": "src/living/body/playback.ts",
-      "line": 17,
+      "line": 16,
       "column": 60,
       "scope": "<module>",
       "target": "kind",

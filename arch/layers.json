@@ -60,7 +60,8 @@
       "publishes": ["pet/behavior.changed","pet/economy.fact","pet/life.changed","world.changed"],
       "subscribes": ["agent/disposed","agent/pre-step","internal/status","pet/behavior.changed","pet/core.changed","pet/economy.fact","pet/emotion.changed","pet/emotion.expression","pet/life.changed","session/event","tools/pre-execute","tools/result"],
       "generated": [
-        {"file":"src/living/body/animation-map.ts","sources":["scripts/build/build-animation-map.mjs","scripts/lib/webm-metadata.mjs"]}
+        {"file":"src/living/body/animation-map.ts","sources":["scripts/build/build-animation-map.mjs","scripts/lib/webm-metadata.mjs"]},
+        {"file":"src/living/body/animation-slot-ids.ts","sources":["scripts/build/build-animation-map.mjs"]}
       ]
     },
     "desktop": {

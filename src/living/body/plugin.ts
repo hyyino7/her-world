@@ -10,7 +10,7 @@ import { isCareAction, type BehaviorActivity, type BehaviorChange, type Behavior
 import { bodyPhaseOf, companionBusy } from './activity.js';
 import { CompanionRoom } from './room.js';
 import { behaviorPresentation } from './presentation.js';
-import { resolveActivityPlayback } from './playback.js';
+import { withHomePlayback } from './playback.js';
 import type { CompanionFactActor, CompanionFactSource } from '../../contracts/interaction.js';
 import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomInteractionContext } from './room.js';
@@ -247,9 +247,8 @@ export class CompanionBehavior {
   private publicBehavior(her: Parameters<typeof companionBusy>[0]): VersionedBehavior {
     return {...this.activity(),busy:companionBusy(her),revision:this.revision,bootId:this.bootId};
   }
-  private presentHome(home:any,behavior=this.publicBehavior(home.her)) {
-    const projected={...home,behavior:{...behavior}};
-    return {...projected,playback:resolveActivityPlayback(projected)};
+  private behaviorHome(home:any,behavior=this.publicBehavior(home.her)) {
+    return {...home,behavior:{...behavior}};
   }
   private publish(reason:'observation'|'transition'='transition',notifyFirst = reason==='transition') {
     const bound = this.binding; if (!bound || this.closed || !this.living.isCurrent()) return;
@@ -332,7 +331,7 @@ export class CompanionBehavior {
       const bound=this.checked(workspaceId);if(bound!==before)throw Error('身体工作区已切换');
       const execution=JSON.stringify(bound.room.plannedState());this.advanceRoom(bound);
       this.publish(execution===JSON.stringify(bound.room.plannedState())?'observation':'transition');
-      const home=this.presentHome(bound.room.view());
+      const home=withHomePlayback(this.behaviorHome(bound.room.view()));
       const {revision,bootId,...behavior}=home.behavior as VersionedBehavior;
       return {workspaceId,storageId:bound.storageId,bootId,revision,
         autonomyEnabled:this.autonomous,behavior,home,needs:structuredClone(bound.room.state.needs),presentation:behaviorPresentation(home,this.expression),fault:this.fault ?? this.publicationFault ?? null,
@@ -375,7 +374,7 @@ export class CompanionBehavior {
       recordEffect?.('partial');
       this.publish();
       const behavior=this.publicBehavior(result.home.her);
-      return {...result,home:{...this.presentHome(result.home,behavior),presentation:behaviorPresentation(result.home,this.expression)},behavior};
+      return {...result,home:{...withHomePlayback(this.behaviorHome(result.home,behavior)),presentation:behaviorPresentation(result.home,this.expression)},behavior};
     });
   }
   act(workspaceId: string, action: string, requestId:string = randomUUID(), channel = 'desktop', recordEffect?: RecordCommandEffect) {
@@ -396,7 +395,7 @@ export class CompanionBehavior {
       this.publish(operation==='state' && execution===JSON.stringify(bound.room.plannedState())?'observation':'transition');
       const home='home' in result ? result.home : undefined;
       const behavior=this.publicBehavior((home || bound.room.view()).her);
-      return {...result,behavior,...(home ? {home:this.presentHome(home,behavior)} : {})};
+      return {...result,behavior,...(home ? {home:withHomePlayback(this.behaviorHome(home,behavior))} : {})};
     });
   }
   setAutonomy(workspaceId: string, enabled: boolean) {

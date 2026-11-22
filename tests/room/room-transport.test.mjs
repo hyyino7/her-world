@@ -122,3 +122,31 @@ test('Console registers the Room subset in the owner RPC table and keeps lifeDat
   assert.deepEqual(await request('lifeDates', {workspaceId:'fixture'}), {ok:true,value:['today']});
   assert.deepEqual(dates, [['fixture','dates']]);
 });
+
+test('Room 播放模块及其依赖均从现有静态路由加载',async()=>{
+  const modules = new Map();
+  async function browserModule(url) {
+    if (modules.has(url)) return modules.get(url);
+    const response = await roomAsset(new Request(url));
+    assert.equal(response.status,200,url);
+    assert.match(response.headers.get('content-type'),/javascript/);
+    const js = await response.text();
+    const dependencies = new Map();
+    for (const {fileName} of ts.preProcessFile(js).importedFiles)
+      dependencies.set(fileName,await browserModule(new URL(fileName,url).href));
+    const exports = {};
+    const code = ts.transpileModule(js, {
+      compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS},
+    }).outputText;
+    runInNewContext(code,{exports,require(specifier) {
+      assert.ok(dependencies.has(specifier),specifier);
+      return dependencies.get(specifier);
+    }});
+    modules.set(url,exports);
+    return exports;
+  }
+  const media = await browserModule('http://localhost/chatpet-room/activity-playback.js');
+  const activity = media.resolveActivityPlayback({her:{asleep:true},behavior:{startedAt:1000}});
+  assert.equal(media.sampleActivityPlayback(activity,1500).roomClip,'sleep_in');
+  assert.equal(media.sampleActivityPlayback(activity,15000).roomClip,'sleep_loop');
+});
