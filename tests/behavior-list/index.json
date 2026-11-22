@@ -1632,6 +1632,24 @@
       "name": "Room 图片拒绝越过目录所有者的符号链接",
       "l1Stage": "阶段 3",
       "families": []
+    },
+    {
+      "id": "3-CHANNELS-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/channels.test.mjs",
+      "name": "Channels 只刷新当前绑定并跟随 home 写入、运行、暂停和卸载",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CHANNELS-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/channels.test.mjs",
+      "name": "钱包的 world.changed 刷新不发送 QQ 主动消息",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }

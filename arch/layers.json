@@ -118,9 +118,9 @@
       "root": "src/channels/",
       "services": ["petChannels"],
       "dependencies": ["core","memory","emotion","contracts","world","living","channels"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petChannels"],
+      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petEconomy","petChannels"],
       "publishes": [],
-      "subscribes": ["agent/pre-step","pet/core.changed","pet/life.changed","session/event"],
+      "subscribes": ["agent/pre-step","pet/core.changed","session/event","world.changed"],
       "generated": []
     },
     "voice": {

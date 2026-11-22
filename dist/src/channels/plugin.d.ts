@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import { bridgeRoute } from '#dsh-world/ecosystem/bridge/route';
 import type { Push } from '#dsh-world/ecosystem/shared/outlets';
+import type { WorldChanged } from '../contracts/living.js';
 import type { PetCoreHost } from '../core/index.js';
 import { LocalBridge } from './bridge.js';
 import { createMessaging } from './messaging.js';
@@ -39,7 +40,7 @@ export declare class CompanionChannels {
     private target;
     private current;
     private reconcile;
-    refresh(): Promise<Binding | undefined>;
+    refresh(change?: WorldChanged): Promise<Binding | undefined>;
     get local(): {
         start: () => void;
         stop: () => void;
@@ -49,7 +50,7 @@ export declare class CompanionChannels {
         checkToken: (value: string | undefined) => boolean;
         faults: () => string[];
     } | undefined;
-    qqConnection(): 'off' | 'online' | 'unavailable';
+    qqConnection(): ReturnType<Binding['messaging']['qqConnection']>;
     compact(): "生活会话或记忆整理未启用" | "当前没有待整理的已完成对话" | undefined;
     reach(workspaceId: string, push: Push): Promise<PromiseSettledResult<string>[]>;
     request(id: string, operation: string, input: Record<string, unknown>): Promise<{

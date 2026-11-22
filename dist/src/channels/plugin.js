@@ -2,7 +2,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { bridgeRoute, compactRoute } from '#dsh-world/ecosystem/bridge/route';
 import { CONTRACT_VERSION } from '../contracts/version.js';
 import { digest } from '../core/storage.js';
-import { registerLifeOutlet } from '../living/outlets.js';
+import { sameHomeBinding } from '../living/index.js';
+import { readRunningLifeHome, registerLifeOutlet } from '../living/outlets.js';
 import { bridgePrefix, LocalBridge, privateDeviceDirectory } from './bridge.js';
 import { createMessaging } from './messaging.js';
 import { isCompanionHome, resolveCompanionHome } from '../core/companion-foundation.js';
@@ -34,7 +35,10 @@ export class CompanionChannels {
         const target = this.target();
         return target?.id === binding.id && target.path === binding.path && this.host.workspace.storageId() === binding.storageId;
     }
-    async reconcile() {
+    async reconcile(expected) {
+        const sameScope = () => !expected || sameHomeBinding(this.host.workspace.homeScope(), expected);
+        if (!sameScope())
+            return;
         if (this.bound && !this.current(this.bound)) {
             const previous = this.bound;
             this.bound = undefined;
@@ -42,7 +46,9 @@ export class CompanionChannels {
             await previous.messaging.close();
         }
         // Closing an old adapter can await external cleanup. Capture the current
-        // root afterwards, rather than reopening a root which has already moved.
+        // root afterwards, and discard a world notice if its binding has moved.
+        if (!sameScope())
+            return;
         const current = this.target(), storageId = current ? this.host.workspace.storageId() : undefined;
         if (!current || !storageId || !this.profileDir)
             return;
@@ -50,7 +56,8 @@ export class CompanionChannels {
             const { id, path } = current, binding = { id, path, storageId };
             const deviceDirectory = privateDeviceDirectory(privateDeviceDirectory(this.profileDir, 'chatpet-channels'), digest(storageId));
             const dataDirectory = companionChannelDirectory(path, deviceDirectory);
-            const active = () => this.current(binding);
+            let initializing = true;
+            const active = () => this.current(binding) && (!initializing || sameScope());
             const isHome = (sessionId) => active() && isCompanionHome(this.ctx, this.host, sessionId);
             const ownerHome = async () => {
                 if (!active())
@@ -67,25 +74,33 @@ export class CompanionChannels {
                 await messaging.close();
                 return;
             }
+            initializing = false;
             this.bound = { ...binding, messaging, bridge };
         }
         this.bound.bridge.sync(true);
         return this.bound;
     }
-    refresh() { return this.serial(() => this.reconcile()); }
+    async refresh(change) {
+        if (!change)
+            return this.serial(() => this.reconcile());
+        const binding = this.host.workspace.homeScope();
+        if (!binding || change.workspaceId !== binding.workspaceId || change.storageId !== binding.storageId ||
+            change.bootId !== binding.bootId || change.generation !== binding.generation)
+            return;
+        return this.serial(() => this.reconcile(binding));
+    }
     get local() { return this.bound && this.current(this.bound) ? this.bound.bridge.current : undefined; }
     qqConnection() {
         const bound = this.bound;
         if (!bound || !this.current(bound))
             return 'off';
-        const state = bound.messaging.qqConnection();
-        return state;
+        return bound.messaging.qqConnection();
     }
     compact() {
-        const home = this.ctx.get('petLife')?.homeSessionId();
+        const home = readRunningLifeHome(this.ctx, this.host);
         if (!home || !this.local || !this.host.native.memoryFor(home))
             return '生活会话或记忆整理未启用';
-        if (!this.host.workspace.runtime.store.get('memory-batch', home)?.turns)
+        if (!this.host.native.hasPendingReviewCompaction(home))
             return '当前没有待整理的已完成对话';
         this.host.native.requestReviewCompaction(home);
         return undefined;
@@ -94,7 +109,7 @@ export class CompanionChannels {
         const bound = this.bound;
         if (!bound || bound.id !== workspaceId || !this.current(bound) || this.host.workspace.runtime.policy().quiet)
             return [];
-        const home = this.ctx.get('petLife')?.homeSessionId();
+        const home = readRunningLifeHome(this.ctx, this.host);
         if (!home)
             return [];
         const deliveries = await Promise.allSettled([bound.bridge.reach(push, home), bound.messaging.reach(push, home)]);
@@ -148,9 +163,9 @@ export function apply(ctx, config = {}) {
     }).revoke);
     ctx.effect(() => services.webServer.register(bridgeRoute(bridgePrefix, () => channels.local)));
     ctx.effect(() => services.webServer.register(compactRoute(bridgePrefix, () => channels.local, () => channels.compact())));
-    const refresh = () => { void channels.refresh().catch(error => ctx.logger.warn('Channel refresh failed', error)); };
-    ctx.on('pet/core.changed', refresh);
-    ctx.on('pet/life.changed', refresh);
+    const refresh = (change) => { void channels.refresh(change).catch(error => ctx.logger.warn('Channel refresh failed', error)); };
+    ctx.on('pet/core.changed', () => refresh());
+    ctx.on('world.changed', refresh);
     refresh();
     ctx.effect(() => async () => { await channels.close(); });
     ctx.effect(() => host.workspace.runtime.capabilityTable.register({

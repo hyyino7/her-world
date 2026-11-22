@@ -6,6 +6,7 @@ import { createWechatModule } from '#dsh-world/adapters/wechat-scoped';
 import { createQqHome } from '#dsh-world/adapters/qq-home';
 import { conversationKey, speakerIdentity } from '#dsh-world/ecosystem/shared/identity';
 import { check, digest } from '../core/storage.js';
+import { isRunningLifeHome } from '../living/outlets.js';
 import { privateDeviceDirectory } from './bridge.js';
 import { channelUsage } from './usage.js';
 import { createChannelHomes } from './sessions.js';
@@ -239,7 +240,7 @@ export async function createMessaging(ctx, host, options) {
             }
         },
         async reach(push, homeId) {
-            if (!active() || !homeId || !ctx.get('petLife')?.isHome(homeId) || host.workspace.runtime.policy().quiet ||
+            if (!active() || !homeId || !isRunningLifeHome(ctx, host, homeId) || host.workspace.runtime.policy().quiet ||
                 push.kind !== 'reach' || !push.deliveryId || !push.text.trim())
                 return [];
             const senders = ['qq', 'wechat'].filter(platform => {

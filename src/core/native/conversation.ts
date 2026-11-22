@@ -91,7 +91,10 @@ export class CoreNative {
   readonly companionPorts = new CompanionPorts();
   readonly voiceTable = new VoiceTable();
   private readonly playbackProviders = new RegistrationTable<ResolvePlaybackEvidence>();
-  private readonly reviewCompaction = new RegistrationTable<(sessionId: string) => void>();
+  private readonly reviewCompaction = new RegistrationTable<{
+    request(sessionId: string): void;
+    hasPending?(sessionId: string): boolean;
+  }>();
   resolveNativeScope?: (sessionId: string) => NativeScope | undefined;
   attachGuest?: (context: Context) => void;
   private readonly turns = new Map<string, NativeTurn>();
@@ -133,11 +136,14 @@ export class CoreNative {
     // The current component switch applies at the next turn, including retained chats.
     return this.memoryEnabled ? this.memory : undefined;
   }
-  registerReviewCompaction(request: (sessionId: string) => void) {
-    return this.reviewCompaction.register('review', request);
+  registerReviewCompaction(request: (sessionId: string) => void, hasPending?: (sessionId: string) => boolean) {
+    return this.reviewCompaction.register('review', {request, hasPending});
+  }
+  hasPendingReviewCompaction(sessionId: string): boolean {
+    return this.reviewCompaction.get('review')?.value.hasPending?.(sessionId) ?? false;
   }
   requestReviewCompaction(sessionId: string): void {
-    this.reviewCompaction.get('review')?.value(sessionId);
+    this.reviewCompaction.get('review')?.value.request(sessionId);
   }
   /** Native DSH owns the turn. Core retains only input references and selected policy metadata. */
   observeInputs(sessionId: string, turn: number, messages: readonly UserMessage[], scope = this.current(sessionId)): string[] {

@@ -54,7 +54,8 @@ export declare class CoreNative {
     setMemoryEnabledForNewSessions(enabled: boolean): void;
     memoryEnabledForNewSessions(): boolean;
     memoryFor(_sessionId: string): NativeMemory | undefined;
-    registerReviewCompaction(request: (sessionId: string) => void): import("../../contracts/tables.js").TableRegistration;
+    registerReviewCompaction(request: (sessionId: string) => void, hasPending?: (sessionId: string) => boolean): import("../../contracts/tables.js").TableRegistration;
+    hasPendingReviewCompaction(sessionId: string): boolean;
     requestReviewCompaction(sessionId: string): void;
     /** Native DSH owns the turn. Core retains only input references and selected policy metadata. */
     observeInputs(sessionId: string, turn: number, messages: readonly UserMessage[], scope?: NativeScope): string[];

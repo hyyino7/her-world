@@ -10,6 +10,7 @@ import type {Push} from '#dsh-world/ecosystem/shared/outlets';
 import {conversationKey, speakerIdentity, type SpeakerIdentity} from '#dsh-world/ecosystem/shared/identity';
 import type {PetCoreHost} from '../core/index.js';
 import {check, digest} from '../core/storage.js';
+import {isRunningLifeHome} from '../living/outlets.js';
 import {privateDeviceDirectory} from './bridge.js';
 import {channelUsage} from './usage.js';
 import {createChannelHomes} from './sessions.js';
@@ -199,7 +200,7 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
       if(updateWX){await stopWechat();wxError=null;wxStart();}
     },
     async reach(push:Push & {deliveryId?:string},homeId?:string):Promise<PromiseSettledResult<string>[]> {
-      if(!active() || !homeId || !ctx.get('petLife')?.isHome(homeId) || host.workspace.runtime.policy().quiet ||
+      if(!active() || !homeId || !isRunningLifeHome(ctx,host,homeId) || host.workspace.runtime.policy().quiet ||
         push.kind!=='reach' || !push.deliveryId || !push.text.trim())return [];
       const senders=(['qq','wechat'] as const).filter(platform=>{
         const prefs=config[platform];return prefs.enabled && prefs.ownerReach && prefs.allowPrivate.includes(prefs.ownerSpeakerId);

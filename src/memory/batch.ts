@@ -11,7 +11,10 @@ export function installMemoryBatch(ctx: Context, host: PetCoreHost): () => Promi
   const store = host.workspace.runtime.store;
   const running = new Map<string, { abort: AbortController; done: Promise<void> }>();
   const reviews = new Set<string>();
-  const requests = host.native.registerReviewCompaction(id => { if (host.native.memoryFor(id)) reviews.add(id); });
+  const requests = host.native.registerReviewCompaction(
+    id => { if (host.native.memoryFor(id)) reviews.add(id); },
+    id => Boolean(store.get<Pending>('memory-batch', id)?.turns),
+  );
   const matches = (row: Pending) => {
     const status = host.workspace.status();
     return status.state === 'ready' && status.target?.id === row.workspaceId && status.target.path === row.path;

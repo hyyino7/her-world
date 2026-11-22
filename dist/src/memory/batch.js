@@ -6,7 +6,7 @@ export function installMemoryBatch(ctx, host) {
     const running = new Map();
     const reviews = new Set();
     const requests = host.native.registerReviewCompaction(id => { if (host.native.memoryFor(id))
-        reviews.add(id); });
+        reviews.add(id); }, id => Boolean(store.get('memory-batch', id)?.turns));
     const matches = (row) => {
         const status = host.workspace.status();
         return status.state === 'ready' && status.target?.id === row.workspaceId && status.target.path === row.path;

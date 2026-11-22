@@ -200,7 +200,10 @@ export class CompanionLife {
     this.preferences=settings?.preferences ?? {...defaultLifePreferences};
     const storageId=scope.storageId;
     const home = createHomeStore(createLifeStore(directory,this.timeZone),directory,this.host.workspace,scope,
-      ()=>this.ctx.emit('pet/life.changed'));
+      ()=>{
+        this.living.changed(scope);
+        this.ctx.emit('pet/life.changed');
+      });
     const bound: Bound = {id: current.id, path: current.path, directory, library: this.host.records.getLibrary(current.id),
       plan:new PersistentLifePlan(directory,this.host.workspace.runtime.identity().companionId,storageId,this.timeZone,
         ()=>this.isCurrentBinding(bound),()=>this.notifyWorld(bound)),scope,home};
@@ -365,10 +368,17 @@ export class CompanionLife {
     try {
       await runtime.start({resumed});
     } catch (error) {
-      runtime.stop(); if(this.runtime===runtime)this.runtime = undefined;
+      runtime.stop();
+      if(this.runtime===runtime) {
+        this.runtime = undefined;
+        this.notifyWorld(bound);
+      }
       throw error;
     }
-    if(active())this.ctx.emit('pet/life.changed');
+    if(active()) {
+      this.notifyWorld(bound);
+      this.ctx.emit('pet/life.changed');
+    }
   }
   private async stopRuntime(pausing?: Bound) {
     const runtime = this.runtime;
@@ -395,6 +405,7 @@ export class CompanionLife {
     if(runtime && this.runtime===runtime){
       this.drainingRuntime = runtime;
       this.runtime = undefined;
+      if(this.binding)this.notifyWorld(this.binding);
       const id = this.living.isLatestGeneration() ? this.binding?.home.sessionId() : undefined;
       await settleCleanup(
         ()=>{if(this.living.isLatestGeneration())this.ctx.emit('pet/life.changed');},

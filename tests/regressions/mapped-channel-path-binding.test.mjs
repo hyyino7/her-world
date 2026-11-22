@@ -124,6 +124,28 @@ test('late real group research cannot return sources from the old root after a p
   await checked;await f.channels.refresh();assert.equal(f.channels.bound.path,f.paths.b);
 });
 
+test('queued world notice cannot reuse the same workspace after its binding generation changes',async t=>{
+  const entered=deferred(),result=deferred();
+  const f=await fixture(t,{search:()=>{entered.resolve();return result.promise;}});
+  await f.configure({qq:{accountId:'12345',allowGroups:['6789']}});
+  await f.channels.request('same-native-workspace','groupSlang',{
+    groupId:'6789',content:'fixtureword',status:'candidate',meaning:'',usage:''});
+  const waiting=f.channels.request('same-native-workspace','groupResearch',{groupId:'6789',content:'fixtureword'});
+  await entered.promise;
+  const original=f.host.workspace.homeScope();
+  const queued=f.channels.refresh(original);
+  await f.bind('b');
+  await f.bind('a');
+  const current=f.host.workspace.homeScope();
+  assert.equal(current.storageId,original.storageId);
+  assert.equal(current.path,original.path);
+  assert.notEqual(current.generation,original.generation);
+  result.resolve({sources:[]});
+  await waiting;
+  assert.equal(await queued,undefined);
+  assert.equal((await f.channels.refresh(current)).path,f.paths.a);
+});
+
 test('a real settings commit cannot acknowledge the replacement root during adapter restart',async t=>{
   const f=await fixture(t);await f.channels.refresh();
   const expected=(await f.status()).messaging.config;
