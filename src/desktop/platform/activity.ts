@@ -1,7 +1,8 @@
 import { resolveActivityPlayback, sampleActivityPlayback, withHomePlayback, type ActivityPlayback } from '../../presentation/playback.js';
+import {classifyActivity} from '../../living/body/presentation.js';
 import {animationSlotAllowed} from '../../living/body/animation-slots.js';
 
-export const desktopHomePlayback = (home:unknown) => withHomePlayback(home,animationSlotAllowed);
+export const desktopHomePlayback = (home:unknown) => withHomePlayback(home,animationSlotAllowed,classifyActivity);
 
 /** Semantic exclusions from the shipped catalogue; these clips assert a physical activity. */
 export const eatingClips = new Set([
@@ -17,7 +18,7 @@ export const lifeActivityClips = Object.freeze({
 });
 export const physicalClips=new Set([...eatingClips,...sleepingClips,...Object.values(lifeActivityClips),'轻快摇摆舞','睡觉-起来','打瞌睡被惊醒','晨间刷牙']);
 export function activityPresentation(state:any, expression?:string) {
-  const playback:ActivityPlayback|undefined=state?.playback ?? resolveActivityPlayback(state,animationSlotAllowed);
+  const playback:ActivityPlayback|undefined=state?.playback ?? resolveActivityPlayback(state,animationSlotAllowed,classifyActivity);
   if(!playback)return {exclusive:false,action:undefined,notice:undefined,gap:false};
   const selected=sampleActivityPlayback(playback,state.now ?? Date.now());
   return {exclusive:true,action:selected?.desktopClip ?? '待机呼吸休闲',gap:playback.gap,

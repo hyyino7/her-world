@@ -1551,6 +1551,15 @@
       "families": []
     },
     {
+      "id": "3-ROOM-04",
+      "categories": [],
+      "level": "L2",
+      "file": "dist/tests/regressions/mapped-playback.test.js",
+      "name": "mixed feelings share the same priority and sampled Room and Desktop frames",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-VOICE-01",
       "categories": [],
       "level": "L1",

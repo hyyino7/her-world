@@ -57,9 +57,17 @@ type SlotAdmission = (slot: unknown, context: {
     kind: ActivityPlayback['kind'];
     foodSlot?: string;
 }) => boolean;
-export declare function resolveActivityPlayback(home: any, animationSlotAllowed: SlotAdmission): ActivityPlayback | undefined;
+type ActivityIntent = {
+    kind: ActivityPlayback['kind'];
+    rest: boolean;
+    feeling?: string;
+    touchFeeling?: string;
+    namedRestHint: boolean;
+};
+type ActivityClassifier = (home: unknown) => ActivityIntent;
+export declare function resolveActivityPlayback(home: any, animationSlotAllowed: SlotAdmission, classify: ActivityClassifier): ActivityPlayback | undefined;
 /** Playback is attached by the carriers to their existing home response. */
-export declare function withHomePlayback(home: any, animationSlotAllowed: SlotAdmission): any;
+export declare function withHomePlayback(home: any, animationSlotAllowed: SlotAdmission, classify: ActivityClassifier): any;
 /** Self-contained for both generated carriers: no resolver/table is inlined.
  * Unknown starts skip historical one-shots; loops share a cosmetic clock. */
 export declare function sampleActivityPlayback(playback: ActivityPlayback, now?: number): {

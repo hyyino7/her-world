@@ -12,6 +12,8 @@ const sharedPlayback = fileURLToPath(new URL('../presentation/playback.js', impo
 const sharedAnimationMap = fileURLToPath(new URL('../presentation/animation-map.js', import.meta.url));
 const sharedAnimationSlots = fileURLToPath(new URL('../living/body/animation-slots.js', import.meta.url));
 const sharedAnimationSlotIds = fileURLToPath(new URL('../living/body/animation-slot-ids.js', import.meta.url));
+const activityIntent = fileURLToPath(new URL('../living/body/presentation.js', import.meta.url));
+const emotionContract = fileURLToPath(new URL('../contracts/emotion.js', import.meta.url));
 const localVoice = fileURLToPath(new URL('../../../src/room/voice-client.js', import.meta.url));
 const localIdentity = fileURLToPath(new URL('../../../src/room/identity-client.js', import.meta.url));
 const sharedVoice = fileURLToPath(new URL('../../../src/desktop/helper/upstream/shared-core.js', import.meta.url));
@@ -164,7 +166,8 @@ export async function roomAsset(request) {
             blob = new Blob([`
       import {resolveActivityPlayback as resolve} from './media-playback.js';
       import {animationSlotAllowed} from './animation-slots.js';
-      export const resolveActivityPlayback = home => resolve(home,animationSlotAllowed);
+      import {classifyActivity} from './activity-intent.js';
+      export const resolveActivityPlayback = home => resolve(home,animationSlotAllowed,classifyActivity);
       export {sampleActivityPlayback} from './media-playback.js';
     `], { type });
         else if (name === 'media-playback.js')
@@ -175,6 +178,14 @@ export async function roomAsset(request) {
             blob = await openAsBlob(sharedAnimationSlots, { type });
         else if (name === 'animation-slot-ids.js')
             blob = await openAsBlob(sharedAnimationSlotIds, { type });
+        else if (name === 'activity-intent.js') {
+            const source = await readFile(activityIntent, 'utf8'), imported = '../../contracts/emotion.js';
+            if (source.split(imported).length !== 2)
+                throw Error('Room activity intent import changed');
+            blob = new Blob([source.replace(imported, './emotion-contract.js')], { type });
+        }
+        else if (name === 'emotion-contract.js')
+            blob = await openAsBlob(emotionContract, { type });
         else if (name === 'voice-client.js' || name === 'shared-core.js' || name === 'identity-client.js')
             blob = await openAsBlob(name === 'voice-client.js' ? localVoice : name === 'identity-client.js' ? localIdentity : sharedVoice, { type });
         else {

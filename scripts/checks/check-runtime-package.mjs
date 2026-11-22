@@ -159,10 +159,11 @@ try {
   const {roomAsset}=await import(pathToFileURL(join(root,'dist/src/room/assets.js')));
   const {resolveActivityPlayback,sampleActivityPlayback}=await import(pathToFileURL(join(root,'dist/src/presentation/playback.js')));
   const {animationSlotAllowed}=await import(pathToFileURL(join(root,'dist/src/living/body/animation-slots.js')));
-  const sleeping=resolveActivityPlayback({her:{kind:'sleep',asleep:true,spot:'bed'},behavior:{activityId:'sleep-fixture',phase:'sleeping',startedAt:1000}},animationSlotAllowed);
+  const {classifyActivity}=await import(pathToFileURL(join(root,'dist/src/living/body/presentation.js')));
+  const sleeping=resolveActivityPlayback({her:{kind:'sleep',asleep:true,spot:'bed'},behavior:{activityId:'sleep-fixture',phase:'sleeping',startedAt:1000}},animationSlotAllowed,classifyActivity);
   assert.equal(sampleActivityPlayback(sleeping,1500).roomClip,'sleep_in');
   assert.equal(sampleActivityPlayback(sleeping,15000).roomClip,'sleep_loop');
-  const meal=resolveActivityPlayback({her:{kind:'eat'},behavior:{activityId:'meal',phase:'working'}},animationSlotAllowed);
+  const meal=resolveActivityPlayback({her:{kind:'eat'},behavior:{activityId:'meal',phase:'working'}},animationSlotAllowed,classifyActivity);
   assert.equal(sampleActivityPlayback(meal,15000).desktopClip,'吃白饭');
   const sharedCode=await roomAsset(new Request('http://localhost/chatpet-room/media-playback.js'));
   assert.equal(sharedCode.status,200);assert.match(await sharedCode.text(),/export function sampleActivityPlayback/);

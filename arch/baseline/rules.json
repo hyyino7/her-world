@@ -62,7 +62,7 @@
     {
       "rule": "R2",
       "file": "src/console/plugin.ts",
-      "line": 22,
+      "line": 23,
       "column": 76,
       "scope": "apply/settingsHandler:callback2",
       "target": "petDesktop",
@@ -74,7 +74,7 @@
     {
       "rule": "R2",
       "file": "src/console/plugin.ts",
-      "line": 24,
+      "line": 25,
       "column": 11,
       "scope": "apply/settingsHandler:callback6",
       "target": "petRoom",
@@ -86,7 +86,7 @@
     {
       "rule": "R2",
       "file": "src/console/plugin.ts",
-      "line": 25,
+      "line": 26,
       "column": 11,
       "scope": "apply/settingsHandler:callback7",
       "target": "petChannels",
@@ -98,7 +98,7 @@
     {
       "rule": "R2",
       "file": "src/console/plugin.ts",
-      "line": 26,
+      "line": 27,
       "column": 11,
       "scope": "apply/settingsHandler:callback8",
       "target": "petPlatform",
@@ -122,7 +122,7 @@
     {
       "rule": "R1",
       "file": "src/console/settings.ts",
-      "line": 70,
+      "line": 74,
       "column": 28,
       "scope": "settingsHandler/<callback>",
       "target": "src/channels/plugin.js",
@@ -134,7 +134,7 @@
     {
       "rule": "R1",
       "file": "src/console/settings.ts",
-      "line": 71,
+      "line": 75,
       "column": 28,
       "scope": "settingsHandler/<callback>",
       "target": "src/desktop/platform/plugin.js",
@@ -146,7 +146,7 @@
     {
       "rule": "R1",
       "file": "src/console/settings.ts",
-      "line": 71,
+      "line": 75,
       "column": 150,
       "scope": "settingsHandler/<callback>",
       "target": "src/desktop/platform/plugin.js",
@@ -317,7 +317,7 @@
       "rule": "R1",
       "file": "src/room/shot-browser.cjs",
       "line": 18,
-      "column": 29,
+      "column": 51,
       "scope": "main",
       "target": "dist/src/room/assets.js",
       "expression": "import ( \"../../dist/src/room/assets.js\" )",

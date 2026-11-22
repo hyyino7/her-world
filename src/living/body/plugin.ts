@@ -373,7 +373,8 @@ export class CompanionBehavior {
       recordEffect?.('partial');
       this.publish();
       const behavior=this.publicBehavior(result.home.her);
-      return {...result,home:{...this.behaviorHome(result.home,behavior),presentation:behaviorPresentation(result.home,this.expression)},behavior};
+      const home=this.behaviorHome(result.home,behavior);
+      return {...result,home:{...home,presentation:behaviorPresentation(home,this.expression)},behavior};
     });
   }
   act(workspaceId: string, action: string, requestId:string = randomUUID(), channel = 'desktop', recordEffect?: RecordCommandEffect) {

@@ -4,6 +4,7 @@ import { estimateTokens } from '#dsh-world/console/snapshot';
 import { desktopAppearanceDefaults } from '../desktop/appearance.js';
 import { BODY_ACTIONS, CARE_ACTIONS, isCareAction } from '../contracts/behavior.js';
 import { isRoomEndpoint } from '../presentation/room-transport.js';
+import { classifyActivity } from '../living/body/presentation.js';
 import { animationSlotAllowed } from '../living/body/animation-slots.js';
 import { withHomePlayback } from '../presentation/playback.js';
 const messages = {
@@ -276,7 +277,7 @@ export function settingsHandler(getHost, getWorkspaces, getDesktop, getWorldModu
                     fail('CANCELLED');
                 if (getLife?.() !== life || host.workspace.status().target?.id !== workspaceId)
                     fail('STALE_BINDING');
-                const projected = 'home' in value ? { ...value, home: withHomePlayback(value.home, animationSlotAllowed) } : value;
+                const projected = 'home' in value ? { ...value, home: withHomePlayback(value.home, animationSlotAllowed, classifyActivity) } : value;
                 return { ok: true, value: endpoint === 'lifeView' ? { ...projected,
                         roomAvailable: Boolean(getRoom?.()), channelsAvailable: Boolean(getChannels?.()),
                         careActions: CARE_ACTIONS.map(action => ({ action, label: BODY_ACTIONS[action].care.label })),

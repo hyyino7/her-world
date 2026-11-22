@@ -20,6 +20,7 @@ export async function loadPlayback() {
   const media=await import(playbackURL);
   if (media.animationSlotAllowed) return media;
   const {animationSlotAllowed}=await import(compiledURL('living/body/animation-slots.js'));
-  return {...media,resolveActivityPlayback:home=>media.resolveActivityPlayback(home,animationSlotAllowed),
-    withHomePlayback:home=>media.withHomePlayback(home,animationSlotAllowed)};
+  const {classifyActivity}=await import(compiledURL('living/body/presentation.js'));
+  return {...media,resolveActivityPlayback:home=>media.resolveActivityPlayback(home,animationSlotAllowed,classifyActivity),
+    withHomePlayback:home=>media.withHomePlayback(home,animationSlotAllowed,classifyActivity)};
 }

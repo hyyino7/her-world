@@ -1,27 +1,48 @@
-import { COMPANION_FEELINGS } from '../../contracts/emotion.js';
+import { COMPANION_FEELINGS, isCompanionFeeling } from '../../contracts/emotion.js';
 /** Shared semantic names; displays choose their own existing assets. */
 export const companionFeelings = COMPANION_FEELINGS;
 export const feelingLabels = {
     happy: '开心', calm: '平静', sweet: '甜蜜', heartache: '心疼', worry: '担心', sad: '难过', jealous: '吃醋', anger: '生气', boredom: '无聊',
 };
-export function behaviorPresentation(home, expression) {
+/** The actual activity takes precedence. A live touch still needs a single known feeling. */
+export function classifyActivity(home) {
     const her = home?.her;
-    const feelings = (home?.emotion?.feelings ?? []).filter((value) => companionFeelings.includes(value));
-    const base = { activity: her?.activity || her?.kind || '安静地待着', feelings,
-        emotionLabel: home?.emotion?.label || feelings.map((value) => feelingLabels[value]).join('、'), ...(expression ? { expression } : {}) };
+    const behavior = home?.behavior;
+    const planned = her?.kind === 'planned' ? behavior?.presentationKind : undefined;
+    const physical = her?.asleep ? 'sleep' : (her?.walking || her?.kind === 'walk') ? 'walk' : undefined;
+    const kind = physical ?? (planned === 'read' ? (behavior?.readingState === 'offered' ? 'read' : 'reading-wait')
+        : planned || (her?.kind === 'read' ? 'reading-wait' : her?.kind || 'idle'));
+    const rest = ['rest', 'idle', 'free'].includes(kind);
+    const values = Array.isArray(home?.emotion?.feelings) ? home.emotion.feelings : [];
+    const feelings = values.filter(isCompanionFeeling);
+    const feeling = feelings.includes('anger') ? 'anger' : feelings.includes('boredom') ? 'boredom'
+        : companionFeelings.find(value => feelings.includes(value));
+    const distinct = [...new Set(values.filter(value => typeof value === 'string'))];
+    const touchFeeling = distinct.length === 1 && isCompanionFeeling(distinct[0]) ? distinct[0] : undefined;
+    const requested = behavior?.animationContext?.slotId;
+    const namedRestHint = rest && typeof requested === 'string' && requested.startsWith('rest.')
+        && isCompanionFeeling(requested.slice(5));
+    return { kind, physical, rest, feelings, feeling, touchFeeling, namedRestHint };
+}
+/** Preserve the legacy semantic response built from the common activity intent. */
+export function behaviorPresentation(home, expression, intent = classifyActivity(home)) {
+    const her = home?.her;
+    const { physical, feelings, feeling } = intent;
+    const base = {
+        activity: her?.activity || her?.kind || '安静地待着', feelings,
+        emotionLabel: home?.emotion?.label || feelings.map(value => feelingLabels[value]).join('、'),
+        ...(expression ? { expression } : {}),
+    };
     if (!her)
         return { ...base, action: 'idle', exclusive: false };
-    if (her.asleep)
-        return { ...base, action: 'sleep', exclusive: true };
-    if (her.walking || her.kind === 'walk')
-        return { ...base, action: 'walk', exclusive: true };
+    if (physical)
+        return { ...base, action: physical, exclusive: true };
     if (['eat', 'react_happy', 'react_pout', 'idle_look'].includes(her.kind))
         return { ...base, action: her.kind, exclusive: true };
     if (!['idle', 'play'].includes(her.kind))
         return { ...base, action: 'activity', exclusive: true, fallback: true };
     if (expression?.action)
         return { ...base, action: 'expression', exclusive: true };
-    const feeling = ['anger', 'boredom', ...companionFeelings].find(value => feelings.includes(value));
     return feeling ? { ...base, action: 'emotion/' + feeling, exclusive: true,
         fallback: !['happy', 'anger', 'boredom'].includes(feeling) } : { ...base, action: 'idle', exclusive: false };
 }

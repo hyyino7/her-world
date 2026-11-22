@@ -149,4 +149,8 @@ test('Room 播放模块及其依赖均从现有静态路由加载',async()=>{
   const activity = media.resolveActivityPlayback({her:{asleep:true},behavior:{startedAt:1000}});
   assert.equal(media.sampleActivityPlayback(activity,1500).roomClip,'sleep_in');
   assert.equal(media.sampleActivityPlayback(activity,15000).roomClip,'sleep_loop');
+  const anger=media.resolveActivityPlayback({her:{kind:'idle'},emotion:{feelings:['calm','anger'],updatedAt:1000}});
+  assert.equal(anger.slotId,'rest.anger');
+  assert.equal(media.sampleActivityPlayback(anger,1000).roomClip,'react_pout');
+  assert.equal(media.sampleActivityPlayback(anger,1000).desktopClip,'点击回应-傲娇生气');
 });

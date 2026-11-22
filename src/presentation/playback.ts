@@ -19,7 +19,14 @@ export interface ActivityPlayback {
   feedback?:{id:string;at:number;until:number;text?:string;sticker?:string;slotId?:string;gap?:boolean};
 }
 type SlotAdmission = (slot:unknown, context:{kind:ActivityPlayback['kind']; foodSlot?:string}) => boolean;
-const feelings=new Set(['happy','calm','sweet','heartache','worry','sad','jealous','anger','boredom']);
+type ActivityIntent = {
+  kind: ActivityPlayback['kind'];
+  rest:boolean;
+  feeling?:string;
+  touchFeeling?:string;
+  namedRestHint:boolean;
+};
+type ActivityClassifier = (home:unknown) => ActivityIntent;
 // Single-clip movement rows identify the registered gaits. Combined rows may
 // describe several real phases, but cannot manufacture those phase changes.
 const movementClips=new Set(Object.values(animationSlots).filter(slot=>slot.id.startsWith('move.')&&slot.clips.length===1).flatMap(slot=>slot.clips));
@@ -28,18 +35,8 @@ function media(id:string,mode:ActivityClip['mode']='loop',mirror=false):Activity
   const asset=animationAssets[id]??animationAssets.idle;
   return {roomClip:asset.roomClip,desktopClip:asset.desktopClip,durationMs:asset.durationMs,mode,...(mirror?{mirror:true}:{})};
 }
-function currentKind(home:any):string {
-  const her=home.her,activity=home.behavior??{},planned=her.kind==='planned'?activity.presentationKind:undefined;
-  return her.asleep?'sleep':her.walking||her.kind==='walk'?'walk':planned==='read'
-    ?activity.readingState==='offered'?'read':'reading-wait':planned||(her.kind==='read'?'reading-wait':her.kind||'idle');
-}
-function singleFeeling(home:any):string|undefined {
-  const values=Array.isArray(home.emotion?.feelings)?home.emotion.feelings:[];
-  const present=[...new Set(values.filter((value:unknown)=>typeof value==='string'))];
-  return present.length===1&&feelings.has(present[0] as string)?present[0] as string:undefined;
-}
 function onset(value:unknown):number {return typeof value==='number'&&Number.isFinite(value)&&value>0?value:0;}
-function primarySlot(kind:string,home:any,context:ActivityAnimationContext):string|undefined {
+function primarySlot({kind,rest,feeling}:ActivityIntent,home:any,context:ActivityAnimationContext):string|undefined {
   if(kind==='walk')return home.her.runStyle==='hurry'?'move.hurry':home.her.runStyle==='happy'?'move.happy':'move.normal';
   if(kind==='eat')return context.foodSlot||(!context.itemId?'food.rice':undefined);
   if(kind==='sleep')return 'sleep.full';
@@ -47,7 +44,7 @@ function primarySlot(kind:string,home:any,context:ActivityAnimationContext):stri
   if(kind==='read')return 'read.main';
   if(kind==='reading-wait')return 'rest.calm';
   if(kind==='drink')return 'drink.cup';
-  if(['rest','idle','free'].includes(kind))return 'rest.'+(singleFeeling(home)??'calm');
+  if(rest)return 'rest.'+(feeling??'calm');
   const normal:Record<string,string>={nap:'sleep.nap',desk:'desk.code',tv:'leisure.tv',phone:'leisure.phone',balcony:'leisure.balcony',bath:'hygiene.bath',toilet:'hygiene.toilet',laundry:'hygiene.laundry',garden_visit:'garden.visit',garden_sell:'trade.sell',garden_buySeed:'trade.buy-seed',garden_buyCompost:'trade.buy-compost'};
   if(normal[kind])return normal[kind];
   if(kind.startsWith('garden_'))return 'garden.'+kind.slice(7);
@@ -59,10 +56,9 @@ function liveInteraction(home:any,context:ActivityAnimationContext) {
   if(actor&&actor!=='owner')return;
   return value;
 }
-function touchSlot(home:any,kind:string):string {
+function touchSlot(kind:string,feeling:string|undefined):string {
   if(kind==='sleep')return 'touch.asleep';
   if(kind==='react_scare')return 'touch.poke';
-  const feeling=singleFeeling(home);
   if(feeling)return 'touch.'+feeling;
   return kind==='react_happy'?'touch.happy':kind==='react_shy'?'touch.sweet':kind==='react_pout'?'touch.anger':'touch.notice';
 }
@@ -96,17 +92,18 @@ function clipsFor(slot:AnimationSlot|undefined,kind:string,foodSlot:string|undef
   return {ids,gap,match,uncovered};
 }
 
-export function resolveActivityPlayback(home:any,animationSlotAllowed:SlotAdmission):ActivityPlayback|undefined {
+export function resolveActivityPlayback(home:any,animationSlotAllowed:SlotAdmission,classify:ActivityClassifier):ActivityPlayback|undefined {
   if(!home?.her)return;
   const her=home.her,activity=home.behavior??{},context:ActivityAnimationContext=activity.animationContext??{};
-  const kind=currentKind(home),interaction=liveInteraction(home,context);
-  let selected=primarySlot(kind,home,context),rejected=false;
+  const intent=classify(home),{kind,rest,touchFeeling,namedRestHint}=intent;
+  const interaction=liveInteraction(home,context);
+  let selected=primarySlot(intent,home,context),rejected=false;
   const moving=kind==='walk',requested=context.slotId;
   // A future activity's portrayal may accompany its accepted route, but cannot
   // replace the route. Food identity is catalog-owned, never an activity phrase.
   if(requested) {
     let compatible=animationSlotAllowed(requested,{kind,foodSlot:context.foodSlot});
-    if(compatible&&['rest','idle','free'].includes(kind)&&requested.startsWith('rest.')&&feelings.has(requested.slice(5)))
+    if(compatible&&namedRestHint)
       compatible=requested===selected;
     if(compatible&&moving&&['move.happy','move.hurry'].includes(requested)&&['happy','hurry'].includes(her.runStyle))
       compatible=requested==='move.'+her.runStyle;
@@ -115,11 +112,11 @@ export function resolveActivityPlayback(home:any,animationSlotAllowed:SlotAdmiss
   }
   const touch=interaction&&['pet','poke'].includes(interaction.action);
   const response=kind.startsWith('react_')||kind==='idle_look';
-  if(touch&&response)selected=interaction.action==='poke'?'touch.poke':touchSlot(home,kind);
+  if(touch&&response)selected=interaction.action==='poke'?'touch.poke':touchSlot(kind,touchFeeling);
   let startedAt=onset(activity.startedAt);
-  if(['rest','idle','free'].includes(kind))startedAt=Math.max(onset(context.startedAt),onset(home.emotion?.updatedAt),startedAt);
+  if(rest)startedAt=Math.max(onset(context.startedAt),onset(home.emotion?.updatedAt),startedAt);
   if(touch&&response)startedAt=interaction.at;
-  const freeze=context.presentationFreeze,pausedMs=['rest','idle','free'].includes(kind)&&startedAt>0
+  const freeze=context.presentationFreeze,pausedMs=rest&&startedAt>0
     && freeze?.onsetAt===startedAt&&Number.isSafeInteger(freeze.pausedMs)&&freeze.pausedMs>0?freeze.pausedMs:0;
   const slot=selected?animationSlots[selected]:undefined;
   let built=clipsFor(slot,kind,context.foodSlot),segments:ActivityClip[]=[];
@@ -141,7 +138,7 @@ export function resolveActivityPlayback(home:any,animationSlotAllowed:SlotAdmiss
     ...(pausedMs?{pausedMs}:{}),
     ...(notice?{notice}:{}),toolOwner:kind.startsWith('garden_')&&kind!=='garden_visit'?'clip':'none'};
   if(interaction) {
-    const feedbackSlot=touch?animationSlots[interaction.action==='poke'?'touch.poke':touchSlot(home,kind)]:undefined;
+    const feedbackSlot=touch?animationSlots[interaction.action==='poke'?'touch.poke':touchSlot(kind,touchFeeling)]:undefined;
     const sticker=feedbackSlot?.stickers.find(label=>Boolean(animationStickers[label]));
     result.feedback={id:interaction.id,at:interaction.at,until:interaction.until,
       ...(interaction.text||interaction.summary?{text:interaction.text||interaction.summary}:{}),
@@ -151,9 +148,9 @@ export function resolveActivityPlayback(home:any,animationSlotAllowed:SlotAdmiss
 }
 
 /** Playback is attached by the carriers to their existing home response. */
-export function withHomePlayback(home:any,animationSlotAllowed:SlotAdmission) {
+export function withHomePlayback(home:any,animationSlotAllowed:SlotAdmission,classify:ActivityClassifier) {
   if(!home?.her || home.playback)return home;
-  return {...home,playback:resolveActivityPlayback(home,animationSlotAllowed)};
+  return {...home,playback:resolveActivityPlayback(home,animationSlotAllowed,classify)};
 }
 
 /** Self-contained for both generated carriers: no resolver/table is inlined.
