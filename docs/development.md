@@ -193,6 +193,6 @@ Body 在现有 home 检查点保留可选 `gardenClockEnabled` 元数据。显�
 
 回顾回归包含 `tests/life/life-review-runtime.test.mjs` 及编译后的 `life-review-files`、`review-continuation`、`life-sleep-continuity`，覆盖按日重试、重启核对、历史日记保护，以及经 Life/Body 协调器完成实际睡眠，不用付费模型。
 
-运行时 exports、原生 bundle ID 和伙伴数据格式保持稳定。`dist/src` 保留给 GitHub 安装，发布工作流将它与已验证源码一起构建并冻结；`dist/tests`、source map、缓存、工具和个人伙伴数据不交付。普通 build 校验内置媒体，可选重新生成使用 `src/living/body/animation-allocation.json` 与 `art/` 素材。
+运行时 exports、原生 bundle ID 和伙伴数据格式保持稳定。`dist/src` 保留给 GitHub 安装，发布工作流将它与已验证源码一起构建并冻结；`dist/tests`、source map、缓存、工具和个人伙伴数据不交付。普通 build 校验内置媒体，可选重新生成使用 `src/presentation/animation-allocation.json` 与 `art/` 素材。
 
 素材交接、画布与锚点、时序、视觉验收及登记见源码检出中的 `docs/animation-standard.md`。

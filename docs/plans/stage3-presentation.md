@@ -132,6 +132,18 @@
 - 构建、指定快测 40 条、行为索引 11 条、行为清单 129 条、`check:arch`、`metrics` 和本地 npm 档案检查通过。已知缺陷复现与起点同为 7 条红，Console 2 条、Room 准入后取消 1 条、Desktop 投喂 4 条。
 - `test:room-voice` 构建通过，Electron 以 `SIGABRT` 退出，IPC／preload 窗口断言未执行，起点版本同样无法启动夹具。生产 Room、桌宠录音及真实 QQ 网关留给主人在隔离安装包上验收。
 
+<a id="room-execution"></a>
+### 第三批 · Room
+
+- A：LivingWorld、Body 和 Plan 复用 `homeScope()`，按绑定代次排队及合并。Room 首次订阅 `world.changed`，IPC 保留 Body 的 `bootId/revision`。A→B→A 的旧读写、通知和计时器回归通过。写入前取消为零回执、零效果，写入后仍可凭原号复核。
+- B：Desktop 和 Room 各自读写原图片目录，共用准入与原子副本流程。九个 Room 端点派生窗口、浏览器、Console 和拍照子集，保留各自超时与准入；`lifeDates` 继续走记录库。Room 挂载时登记开窗接口。
+- C：Body 和 Plan 用原许可规则及由 127 个原槽生成的 ID 集合。最终纯搬播放代码、索引和分配，素材目录保持原样。Room、Desktop、拍照和 Console 在呈现边界组装旧播放形状，原阶段、起点、暂停时间与回执由 Body 提供。仓外开发源码、DSH 静态资源和公开代码检索未发现旧 `petBehavior/petLife` 消费。
+- D：九种 feeling 和七维情绪各一份声明，合成意图供两端使用。以合成快照和实际编译模块采样，`anger+calm` 从 `rest.calm` 变为傲娇后待机，`sad+happy` 从待机变为哼歌后待机，`sad+curious` 从待机变为叹气后待机，纯未知仍待机并保留自由标签。反序和重复选同一素材，触摸继续用单一已知情绪。第二层的 `roomClip/desktopClip/ActivityClip/ActivityPlayback` 为零。
+- 架构工具删除 R1 1 条（Room 引用 Desktop 图片），R8 65 条（传输 42、槽位类型 3、情绪与分类 20）。规则基线 30→29，R8 713→648，新增 0。纯搬另随迁 21 个 R8 键。R5 分别登记两个图片目录和各自写入者。
+- 构建、指定及新增快测 131 条、扩展回归 391 条、行为索引 11 条、行为清单 137 条、`test:desktop-images`、`check:arch`、`metrics` 通过。已知缺陷脚本仍有 6 条预期失败，Desktop 4 条、Console 2 条。
+- 最终实际 npm 档案 987 项、695 个包内引用，解包后的 21 个 iframe 脚本、MessageChannel、preload、只读拍照子进程夹具、四组情绪采样及图片 4 项通过。真实 Electron 开窗和拍照以 `SIGABRT` 退出。私有仓外插件、实际安装后的窗口和渲染、主人验收待核实。
+- 典型修改 2 从最终代码在独立分支实做，首个空快照显示 `--`，刷新显示百分比，拒绝旧版本回包，空快照清除旧值。手写 `src/room/assets.ts`、跟踪产物 `dist/src/room/assets.js`、测试 `tests/room/thirst-status.test.mjs` 各 1 个，3 文件、1 层、1 模块，达标。
+
 ## 审查结论
 
 <a id="concepts"></a>

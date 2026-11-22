@@ -233,6 +233,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 共用物 | 现在 | 新 |
 | --- | --- | --- |
 | 图片准入与便携副本 | `presentation/images.ts` | Desktop 和 Room 各自执行磁盘操作。桌宠保留 1 MiB 编码上限，Room 电视帧保留 2.5 MiB 原始字节上限，房间照片与附件副本按 Room 编码上限校验 |
+| 活动播放 | `presentation/playback.ts` 映射素材并采样，素材索引和分配也由该目录管理 | Room、桌宠、拍照和 Console 在回包边界附上原有 `home.playback`，共享活动身份和时间 |
 | Room 传输 | `presentation/room-transport.ts` 声明九个端点、超时和只读拍照子集 | 构建生成原生窗口与 Console 使用的子集；浏览器和拍照通过现有 Room 路径加载。各入口保留自己的身份和窗口准入 |
 | **语音**（Desktop、Room、Channels 都用） | 通过 2.2 的语音调用表获得 `contracts/voice.ts` 接口。Voice 保留 `petVoice` 兼容服务，识别缺能力时仍可合成。 | Her World 活动语音闭包放在 `dist/src/voice/upstream/`，旧 Desktop 深路径转发到同一实现。识别和合成各自共享一份登记表。 |
 | 房间模型 `CompanionRoom` | `living/body/room.ts`，属第二层·身体区 | Room 只读快照 |
@@ -307,9 +308,9 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | --- | --- | --- | --- |
 | 身体 `BodyPhase`（`contracts/behavior.ts:125`） | `idle / pending / moving / working / sleeping / completed` | 运行中计划经 `bodyPhaseOf`（`living/body/activity.ts:4`）投影：`moving / working` 照搬，`pending / waiting / completed` 都变成 `pending`。无运行中计划时，从路线、睡眠、等候、停留、反应及任务回执推导（`living/body/plugin.ts:209-230`）。 | 身体的 `completed` 来自 `task.completedAt`，计划、库存投喂和角色动作都会产生任务；不能单凭它判断计划或经济成功。 |
 | 执行 `ExecutionPhase / ExecutionStatus`（`contracts/behavior.ts:130-131`）及计划 `PlanStatus`（`living/plan/plan.ts`） | 执行阶段 `pending / moving / working / waiting / completed`，执行状态 `running / paused / completed / cancelled / interrupted / failed`。计划状态 `active / paused / waiting / completed / cancelled`。 | Body 暂停写 `paused/waiting`，取消写 `cancelled/completed`。Body 把原始身体或上游菜园状态投影成执行阶段的几处留在 `room.ts` 原处，只引用 `ExecutionPhase`。设置页的执行阶段标签由契约测试与 `ExecutionPhase` 对齐（`tests/life/life-execution-labels.test.mjs`）。 | `waiting` 可以是仍在运行的执行阶段，也可以是计划自己的状态。执行 `phase:completed` 包含失败或取消终态；终态以 `status` 为准，旧存档有 `running + completed`，菜园失败会写 `failed + waiting`。 |
-| `ActivityClip.mode`、`ActivityPlayback.phase`（`living/body/playback.ts:4-22`），工作区 `Binding.phase`（`core/workspace.ts:45`） | 播放 `loop / once / static`。播放描述另带身体阶段字符串。绑定 `ready / inactive`。 | 播放描述复制身体阶段并按片段次序、一次性动作和素材可用性选 `mode`。模式不携带业务完成信息。解绑写 `inactive`，公共状态另投影为 `unbound/pending/...`（`living/body/playback.ts:184-201`、`core/workspace.ts:142,435-437,464,585-603`）。 | `ActivityPlayback.phase` 和 clip `mode` 是两个字段。绑定阶段和前两套状态机独立。 |
+| `ActivityClip.mode`、`ActivityPlayback.phase`（`presentation/playback.ts`），工作区 `Binding.phase`（`core/workspace.ts:45`） | 播放 `loop / once / static`。播放描述另带身体阶段字符串。绑定 `ready / inactive`。 | 播放描述复制身体阶段并按片段次序、一次性动作和素材可用性选 `mode`。模式不携带业务完成信息。解绑写 `inactive`，公共状态另投影为 `unbound/pending/...`（`presentation/playback.ts:sampleActivityPlayback`、`core/workspace.ts:142,435-437,464,585-603`）。 | `ActivityPlayback.phase` 和 clip `mode` 是两个字段。绑定阶段和前两套状态机独立。 |
 
-**拥有者**第二层身体与执行、第三层播放、第一层绑定。**统一方式**：`BodyPhase / ExecutionPhase` 已各自命名，有损转换集中在 `bodyPhaseOf`。`PlaybackMode / BindingPhase` 的命名和 clip 类型搬出第二层归阶段 3；clip 类型仍位于 `living/body/`，播放 `phase` 仍是裸字符串（`living/body/playback.ts:4-22`）。
+**拥有者**第二层身体与执行、第三层播放、第一层绑定。**统一方式**：`BodyPhase / ExecutionPhase` 已各自命名，有损转换集中在 `bodyPhaseOf`。`ActivityClip` 和 `ActivityPlayback` 由第三层定义（`presentation/playback.ts`），播放 `phase` 沿用兼容回包里的字符串。
 
 ##### 命令与请求
 
@@ -345,8 +346,8 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 - **命令与执行。** `BodyAction` 是一份基础表（`contracts/behavior.ts:10`）；执行统一到 `PlannedActivity → PlannedExecution → BehaviorActivity`，`ActivityLabel / OperationId / CurrentActivityId` 三种职责用类型别名标明。照料、计划、阅读等各自的词表一份，工具 schema、入口校验、设置页白名单和按钮都从它派生。
 - **身体状态契约。** 2b 已落地「忙不忙、当前活动」和有损的阶段转换：`companionBusy`、`bodyPhaseOf`（`living/body/activity.ts`），所有公开回执的 `behavior.busy` 一处组装，Desktop 的吃饭守卫只读这个结果。「能否被打断」现在按动作而异、没有消费方，留到阶段 3 和第三层改读一起定；`room/assets.ts` 仍按 `playback.kind` 显示提示文字，归阶段 3。
-- **表现意图。** 语义，不含任何素材名：活动、阶段、情绪、是否独占。情绪与活动在这里合并，**合并规则只写一处**，取代现在 `living/body/presentation.ts` 和 `living/body/playback.ts` 里两套对同一情绪给出不同结果的分类器。
-- **语义许可表。** 「哪种活动允许哪些语义槽」写成声明式的表，取代 `animationSlotAllowed()` 里约 40 行 `if` 链。计划里的「呈现提示」（`presentationSlot`）仍由第二层接受，但取值是语义槽，不含文件名。
+- **表现意图。** `living/body/presentation.ts` 的 `classifyActivity` 从活动、阶段和情绪派生两端共用的意图。休息按 `anger`、`boredom`、其余声明顺序选择情绪，保留输入次序和自由文字。触摸继续依据有效的主人互动和单一已知情绪。
+- **语义许可。** `living/body/animation-slots.ts` 用现有活动许可规则校验 `presentationSlot`。构建从同一份素材分配生成槽 ID 集合和第三层的素材索引，第二层只读取槽 ID。
 
 **第三层拥有**：
 

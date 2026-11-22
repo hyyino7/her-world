@@ -100,7 +100,7 @@ Her World 是跑在 DSH 里的伙伴插件，同一个伙伴的身份、记忆�
 | 典型修改 | 基线（`bfe069f`） | M2 后（复测） | 目标 |
 | --- | --- | --- | --- |
 | 1. 把小萝卜的默认生长时间由 12 小时改为 10 小时，售价由 3 改为 4 | 3 文件：`src/` 1（手写 1、生成 0）、`dist/` 1、测试 1；1 层 / 1 模块（第二层 `economy`，现并入 `living` 的钱包区 `src/living/economy/`） | 未复测（M2 没有改这条路径）。**2a 后**（`codex/m4-measure-1-garden`，基点 `6ba9b00`）：3 文件：源码 1、测试 1、跟踪产物 1；1 层 / 1 模块（第二层 `living` 钱包区）；**达标** | 只动第二层·钱包区及其测试 |
-| 2. 给 Room 增加「当前口渴值」百分比状态项 | 3 文件：`src/` 1（手写 1、生成 0）、`dist/` 1、测试 1；1 层 / 1 模块（第三层 `room`） | 未复测（M2 没有改这条路径） | 只动 Room 及共用资源，不动第一层、第二层 |
+| 2. 给 Room 增加「当前口渴值」百分比状态项 | 3 文件：`src/` 1（手写 1、生成 0）、`dist/` 1、测试 1；1 层 / 1 模块（第三层 `room`） | **阶段 3 Room 后达标**，实做 3 文件（源码、产物、测试各 1），均属第三层 Room。见[第三批执行结果](plans/stage3-presentation.md#room-execution) | 只动 Room 及共用资源，不动第一层、第二层 |
 | 3. 给 QQ 加每账号每日主动消息额度 | 11 文件：`src/` 4（手写 3、生成 1）、`dist/` 6、测试 1；1 层 / 3 模块（第三层 `channels/console/desktop`，其中 Desktop 是生成联动） | 未复测（M2 没有改这条路径） | 只动 Channels，不动其他层 |
 | 4. 新增一个伙伴可调用的工具 | 1 文件（复用已挂载的工具集合，仅 owner 用）；2 文件（Life 也可用）；4 文件（另加历史投影） | **1 文件 / 1 层**（第二层 `behavior`，现并入 `living`）：4a、4b、4c 都只改 `src/behavior/plugin.ts`（现 `src/living/body/plugin.ts`），另各有测试 1、`dist/src` 2；**达标** | 工具定义里一处声明来源，其余派生 |
 | 5. 新增一类输入来源 | 至少 3 文件（有独立准入及工具策略的后台来源）；至少 5 个自有文件（含设置与持久化的新聊天平台，上游身份支持另计） | 5a：**2 文件 / 1 层**（第二层 `life`，现并入 `living`：`src/life/tool-policy.ts`、`src/life/plugin.ts`，现在都在 `src/living/plan/`），**未达标**（门槛最多 1 个）；5b 未复测，读码下限仍是至少 5 | 一个来源适配器登记 |
@@ -169,10 +169,10 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 | 五种计划身体动作的词表 | 4 份 | 由基础表导出，1 份。**2b 后 1 份**（同一张基础表） |
 | 七种计划 kind 的完整集合 | 4 份 | 1 份。**2b 后 1 份**：`PLAN_KINDS`，工具 schema 和 Life、Body 校验由它派生 |
 | 阅读状态联合 | 4 份 | 1 份。**2b 后 1 份**：`READING_STATES` |
-| 九种 feeling 的集合 | 2 份（外加标签表 1 份） | 1 份。阶段 3 |
-| Room 七维情绪集合 | 2 份 | 1 份。阶段 3 |
-| 把身体状态分类成呈现的分类器 | 2 套（`living/body/presentation.ts`、`living/body/playback.ts`），对同一情绪结果不同 | 1 套。阶段 3（已知问题 4） |
-| 第二层里出现 `roomClip / desktopClip` | 有（`ActivityClip`） | 0 处。阶段 3 |
+| 九种 feeling 的集合 | 2 份（外加标签表 1 份） | **阶段 3 Room 后 1 份** |
+| Room 七维情绪集合 | 2 份 | **阶段 3 Room 后 1 份** |
+| 把身体状态分类成呈现的分类器 | 2 套，对混合情绪结果不同 | **阶段 3 Room 后 1 套**，见[表现意图](architecture.md#57-动作与行为) |
+| 第二层里出现 `roomClip / desktopClip` | 有（`ActivityClip`） | **阶段 3 Room 后 0 处** |
 
 **2b 之后的口径**：2b 把各词表收成「值为对象的表 + 派生数组和守卫」，R8 扫描器只认数组字面量和值全是字符串的对象，看不见值为对象或布尔的表（`BODY_ACTIONS`、`PLAN_KINDS`、计划经济和菜园操作表、`READING_STATES`、`FACT_DOMAINS`）。删掉的副本是真实减少，但这些表和仍留着的副本（界面标签表、呈现表）之间的重叠不在 R8 基线里。所以上表的份数按概念逐行人工核对（定义处见 [architecture.md 5.6.1](architecture.md#561-第一批概念细表)），是 2b 的权威度量；R8 基线和 `pnpm run metrics` 只作辅助。要不要让扫描器认识这种表，留给阶段末 G8 复盘。
 
@@ -227,7 +227,6 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 | 1. guest 和电视回复 footer 会改共享情绪 | `src/core/native/agent.ts:46` 给 guest 作用域；`src/room/chat.ts:130` 产生 `chatpet-room-tv` 来源；`src/room/plugin.ts:149` 阻止电视工具；`src/emotion/plugin.ts:166` 的作用域解析、`:273-278` 的流处理和 `:269` 的完成处理未排除两者 | 没有主人工具权限也能经回复 footer 更新同一个情绪文件 | 已复现：在合成绑定上向真实 Emotion 流及完成处理分别送 guest 与 TV 来源原生事件，两者均落盘；guest 的原有断言另见 `scripts/checks/check-native-services.mjs:104`。未验证已安装 DSH 的电视完整入口 | **现有行为，是否改变待主人决定** |
 | 2. 发给 Memory provider 的 `workspaceId` 实际是 `storageId` | TS 侧 M2 后已改名：`MemoryScope` 的第三个字段是 `bankId`（`src/memory/client.ts:11`，取值见 `src/core/native/memory.ts:53`）；发给 Python provider 的兼容形状仍叫 `workspaceId`（`src/memory/client.ts:12,57`） | provider 边界的字段名仍混淆原生工作区和可搬迁 Bank 身份；本项不证明串库 | 已复现：合成工作区设置不同的两种 ID，经公开 `findForOwner` 驱动、仅在 provider 启动边界捕获 scope，收到的是 `storageId` | 待主人决定 |
 | 3. 错误码及设置回复的恢复语义不一致 | `src/contracts/common.ts:21` 有 `EXPIRED_USE`，`src/core/storage.ts:10` 的辅助联合没有；`src/console/settings.ts:17,400,402` 只保留 `code/message/details` | 辅助函数无法按声明类型表达该拒绝；设置调用者丢失 `effect/retry`，不能据此判断核对或重试 | 已复现：丢弃式 TypeScript 调用产生 TS2345；真实设置处理器收到 `partial/reconcile` 后，回复均无这两个字段 | 阶段 3 并入设置 RPC 声明（阶段 1 缩小方案） |
-| 4. 两套呈现分类器对混合情绪结论不同 | `src/living/body/presentation.ts:21`；`src/living/body/playback.ts:95,109` | 空闲且 `feelings=[anger,calm]` 时，语义呈现为 `emotion/anger`，播放槽为 `rest.calm` | 已复现：同一个合成 home 调用两个真实函数得到上述不同结果 | 阶段 3 合并分类器时处理（2b 明确延到阶段 3） |
 | 6. 新装环境里桌宠外观编辑器没加载 | 已安装的 0.1.8 桌宠外观编辑器；源码位置在本仓库还没定位 | 新设备上界面固定提示 `EDITOR_NOT_LOADED`，没有添加形象的入口；桌宠服务本身可用 | 已在 Mac mini 新装 DSH + 0.1.8 上观察到（M1 D 批）。当时的 Codex 怀疑是可选命令依赖挡住了编辑器加载，并写了候选补丁，但补丁没有装上，修复效果没验证；默认独立桌宠的 Electron 路径缺失也是同时观察到的环境缺口，是不是原因还没确定 | 已观察到，原因未确认，待主人安排 |
 | 9. 迁移兼容测试的 legacy 变体在 CI 偶发失败 | `tests/migrate/compatibility.test.mjs` 的 `legacy` 变体；失败的断言在 `scripts/fixtures/synthetic-companion.mjs:104`（刚写入的合成记忆召回不到） | 发布门禁偶发失败，重跑能过；0.2.0 正式版的发布运行一次通过 | 0.2.0-rc.1 的发布运行第 1 次尝试失败、第 3 次通过；本机单跑 15 次、加负载并行 30 次都没复现，召回前加 0–3 秒延迟也通过 | 原因未查，主人判断是 GitHub 侧问题。2a 期间又见两次同类偶发，都在 Codex 沙箱的整套并行运行里、复跑即过：第 4 批行为清单 B10「B 必须真实召回 A 已确认送达的事实」首跑失败；第 5 批返工 Memory 盘点用例首跑返回 422。2a 收尾在沙箱外把这两条各单跑 8 次，全部通过，没复现。现有证据不足以判定是同一个不变量（「已确认写入的记忆一定能召回」）第二次失守；再出现时先保留首个失败的入口、操作名、状态码和合成日志，确认是同一不变量就按 G3 提前复盘 |
 | 10. 付费 Memory 实测脚本还依赖旧回执的 `archive` 字段 | `scripts/checks/check-native-memory-live.mjs:176` 读 `installedReceipt.archive` 并对它算哈希 | 改为经 DSH 安装 npm 包之后，新回执里没有 `archive`，这个检查会在算哈希时失败；日常运行不受影响，只影响这条手动付费检查 | 读代码确认，没有运行（会调用付费模型） | 待定。以后还要用这个检查，需要另定按 npm 包核对的方式（例如回执里的 `packageVersion`） |
