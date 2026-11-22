@@ -12,6 +12,7 @@ import type { CompanionFact, CompanionFactActor, EconomyFactType, NewCompanionFa
 import { isBodyMetric, type ReadingState } from '../../contracts/behavior.js';
 import type { WalletView } from '../../contracts/living.js';
 import { advanceGardenClock, type GardenClock } from './garden-clock.js';
+import { ConsoleRequests, installConsoleRequests } from './console-requests.js';
 import { ECONOMY_INITIALIZED, economyAdoptionPath, economyFile, economyRecoveryAdvice, ensureAdoptionDirectory,
   inspectEconomyAdoption, readEconomyDatabaseMarker, readEconomyFileEvidence, syncPath, writeEconomyFile } from './adoption.js';
 
@@ -46,6 +47,7 @@ export class EconomyStore {
   private readonly markerPath: string;
   private readonly lockToken = `${process.pid}:${randomUUID()}`;
   private readonly db: DatabaseSync;
+  readonly consoleRequests: ConsoleRequests;
   private readonly databaseFile: {dev:number;ino:number};
   private closed = false;
   private walletDirty = false;
@@ -104,6 +106,7 @@ export class EconomyStore {
         CREATE TABLE IF NOT EXISTS bookmarks (id TEXT PRIMARY KEY,value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS reading_operations (id TEXT PRIMARY KEY,value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS interaction_facts (sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,request_id TEXT NOT NULL UNIQUE,value TEXT NOT NULL,acknowledged INTEGER NOT NULL DEFAULT 0 CHECK(acknowledged IN (0,1)));`);
+        installConsoleRequests(this.db);
         const now=Date.now();
         this.setMeta('configuration',defaultEconomyConfiguration());
         const imported=legacy?clone(legacy.state) as any:undefined;
@@ -122,6 +125,7 @@ export class EconomyStore {
         if(legacy)this.recordLedger('migration:legacy-garden','legacy-import',garden.coins,this.resourceDeltas({},this.gardenResources(garden)),'Imported the retained garden once; legacy files were not changed',now);
         this.setMeta(ECONOMY_INITIALIZED,expected);
       });
+      this.consoleRequests = new ConsoleRequests(this.db, expected);
       syncPath(this.directory);
       this.writeStorageMarker();
     } catch(error) {opened?.close();if(existsSync(this.lockPath)&&readFileSync(this.lockPath,'utf8')===this.lockToken)unlinkSync(this.lockPath);throw error;}
@@ -189,6 +193,13 @@ export class EconomyStore {
       if(prior){if(prior.digest!==hash)reject('CONFLICT','Request ID reused with different input');return json<T>(prior.result);}
       const result=fn();this.db.prepare('INSERT INTO requests VALUES(?,?,?)').run(requestId,hash,canonical(result));return result;
     });
+  }
+  originalRequest(requestId: string) {
+    this.ensure();
+    return this.db.prepare('SELECT digest,result FROM requests WHERE id=?').get(requestId);
+  }
+  withConsoleRequests<T>(write: (rows: ConsoleRequests) => T): T {
+    return this.transaction(() => write(this.consoleRequests));
   }
   private recordLedger(requestId:string,kind:LedgerKind,moneyDelta:number,itemDeltas:Record<string,number>,note:string,now=Date.now()) {
     check(Number.isSafeInteger(moneyDelta),'Invalid money change');atTime(now);text(note,'ledger note',2000);

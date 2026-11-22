@@ -598,6 +598,14 @@ export class CompanionBehavior {
     inspectPlanned(workspaceId, operationId) {
         return this.plannedCall(workspaceId, room => room.inspectPlanned(operationId), () => { }, true);
     }
+    originalFood(workspaceId, operationId) {
+        const status = this.host.workspace.status(), binding = this.binding;
+        if (this.closed || !this.living.isCurrent() || status.state !== 'ready'
+            || status.target?.id !== workspaceId || binding?.id !== workspaceId || binding.path !== status.target.path
+            || binding.storageId !== this.host.workspace.storageId())
+            throw Error('身体工作区暂不可核对');
+        return binding.room.originalFood(operationId);
+    }
     pausePlanned(workspaceId, operationId) {
         return this.plannedCall(workspaceId, room => room.pausePlanned(operationId));
     }

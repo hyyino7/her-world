@@ -16,8 +16,9 @@ import { estimateTokens } from '#dsh-world/console/snapshot';
 export type { SettingsWorkspaceRegistry } from '../core/tables/console.js';
 
 export interface EconomyControls {
-  ownerAction(workspaceId: string, action: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
-  settings(workspaceId: string, expectedVersion: string, next: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
+  consoleWrite(endpoint: string, input: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
+  consoleRecover(endpoint: string, workspaceId: string, requestId: string, acceptNoEvidence: boolean,
+    signal: AbortSignal, validate: () => void): Promise<unknown>;
 }
 
 /** Connection's locally available structural PeerScope subset. */
@@ -47,7 +48,8 @@ const owners = {
 };
 const endpointOwners = new Map(Object.entries(owners).flatMap(([owner, endpoints]) => endpoints.map(endpoint => [endpoint, owner])));
 const walletWrites = new Set(['economyAction', 'economySettings']);
-export const settingsEndpoints = ['snapshot', 'worldView', 'archiveFind', 'archiveRead', ...walletWrites, ...endpointOwners.keys()];
+const walletRecovery = new Set(['economyPending', 'economyCheck', 'economyRetry', 'economyAbandon']);
+export const settingsEndpoints = ['snapshot', 'worldView', 'archiveFind', 'archiveRead', ...walletWrites, ...walletRecovery, ...endpointOwners.keys()];
 
 const messages: Partial<Record<ConsoleCode, string>> = {
   STALE_BINDING: '工作区绑定已改变，请刷新。',
@@ -79,7 +81,7 @@ const economicMessages: Partial<Record<ConsoleCode, string>> = {
 function settingsError(endpoint: string, error: unknown): SettingsReply {
   const detail = error instanceof Rejection ? error.detail : undefined;
   const code = detail?.code ?? (error && typeof error === 'object' && 'code' in error ? String(error.code) : 'INTERNAL');
-  const economic = endpoint === 'economyView' || walletWrites.has(endpoint);
+  const economic = endpoint === 'economyView' || walletWrites.has(endpoint) || walletRecovery.has(endpoint);
   const message = (economic && economicMessages[code as ConsoleCode]) || messages[code as ConsoleCode]
     || '设置操作未完成，请刷新核对实际状态。';
   const effect = detail?.effect ?? (code === 'OUTCOME_UNKNOWN' || code === 'INTERNAL' ? 'unknown' : 'none');
@@ -90,7 +92,7 @@ function settingsError(endpoint: string, error: unknown): SettingsReply {
 
 const sectionModules = new Map([['profile', 'persona'], ['sessions', 'archive'], ['emotion', 'mood']]);
 
-/** Owner-only exact RPCs share admission. The legacy wallet writers keep their original dispatch. */
+/** Owner-only exact RPCs share admission. Both wallet write routes use the durable owner registry. */
 export function settingsHandler(
   getHost: () => PetCoreHost | undefined,
   getWorkspaces: () => SettingsWorkspaceRegistry | undefined,
@@ -110,8 +112,9 @@ export function settingsHandler(
       const table = host.native.consoleOperations;
       const context = () => host.operator.request(`settings:${endpoint}:${body.requestId}`);
       const options = {signal: AbortSignal.any([signal, peer.signal])};
-      if (walletWrites.has(endpoint)) {
-        const keys = endpoint === 'economyAction' ? ['action'] : ['expectedVersion', 'next'];
+      if (walletWrites.has(endpoint) || walletRecovery.has(endpoint)) {
+        const keys = endpoint === 'economyAction' ? ['action'] : endpoint === 'economySettings' ? ['expectedVersion', 'next']
+          : endpoint === 'economyPending' ? [] : endpoint === 'economyAbandon' ? ['requestId', 'acceptNoEvidence'] : ['requestId'];
         const input = object(body.input, ['workspaceId', ...keys]);
         const workspaceId = requiredText(input.workspaceId, 200), binding = host.workspace.status();
         const registered = getWorkspaces()?.get(workspaceId), economy = getEconomy?.();
@@ -127,9 +130,12 @@ export function settingsHandler(
         };
         if (await registered.status() !== 'ok') fail('NOT_FOUND');
         validate();
-        const combinedSignal = AbortSignal.any([signal, peer.signal]);
-        const value = endpoint === 'economyAction' ? await economy.ownerAction(workspaceId, input.action, body.requestId, combinedSignal, validate)
-          : await economy.settings(workspaceId, requiredText(input.expectedVersion, 256), input.next, body.requestId, combinedSignal, validate);
+        if (input.acceptNoEvidence !== undefined && typeof input.acceptNoEvidence !== 'boolean') fail('INVALID_ARGUMENT');
+        const originalId = endpoint === 'economyPending' || walletWrites.has(endpoint) ? '' : input.requestId;
+        if (typeof originalId !== 'string' || originalId.length > 160) fail('INVALID_ARGUMENT');
+        const value = walletWrites.has(endpoint)
+          ? await economy.consoleWrite(endpoint, input, body.requestId, options.signal, validate)
+          : await economy.consoleRecover(endpoint, workspaceId, originalId, input.acceptNoEvidence === true, options.signal, validate);
         validate();
         return {ok: true, value};
       }

@@ -53,6 +53,7 @@ async function fixture(t) {
   services.set('petLife',{running:()=>true,bodyClockState:()=>({enabled:true,restoreElapsed:false}),noticeDomainChange(){}});
   const start=()=>{
     economy=new CompanionEconomy(ctx,host,{body:()=>body,plan:()=>services.get('petLife')});services.set('petEconomy',economy);
+    economy.prepare(registered);
     const view=new LivingView({economy:()=>economy,plan:()=>services.get('petLife')},undefined,undefined,undefined,
       binding=>ctx.emit('world.changed',binding));
     body=new CompanionBehavior(ctx,host,view);body.activate();services.set('petBehavior',body);
@@ -61,6 +62,9 @@ async function fixture(t) {
   const signal=new AbortController().signal,peer={signal,principal:{kind:'owner'}};
   const handler=settingsHandler(()=>host,()=>registry,undefined,()=>economy);
   const call=(id=requestId,itemId=meal)=>handler('economyAction',{requestId:id,input:{workspaceId:registered.id,action:{kind:'feed',itemId,quantity:1}}},signal,peer);
+  const recover=(endpoint,id=requestId)=>handler(endpoint,{
+    requestId:'fixture-'+endpoint,input:{workspaceId:registered.id,requestId:id},
+  },signal,peer);
   value(await handler('economyAction',{requestId:'fixture-gift',input:{workspaceId:registered.id,action:{kind:'gift',itemId:meal,quantity:1}}},signal,peer));
   await body.act(registered.id,'sleep','fixture-sleep','desktop');
   let home=await body.roomState(registered.id);t.mock.timers.setTime(Date.now()+Math.ceil(home.her.etaMs)+1);home=await body.roomState(registered.id);
@@ -75,7 +79,7 @@ async function fixture(t) {
   const inventory=()=>store().snapshot().inventory.find(row=>row.itemId===meal);
   const terminal=result=>{const execution=value(result).execution;assert.equal(execution.status,'failed');assert.equal(execution.phase,'completed');assert.match(execution.reason,/先叫醒/);return execution;};
   t.after(async()=>{await body.close();economy.close();await host.close();fs.rmSync(root,{recursive:true,force:true});assert.deepEqual(forbidden,[]);});
-  return {repo,ctx,services,signal,peer,handler,call,terminal,plan,read,state,store,inventory,homeFile,
+  return {repo,ctx,services,signal,peer,handler,call,recover,terminal,plan,read,state,store,inventory,homeFile,
     get host(){return host;},get body(){return body;},get economy(){return economy;},
     async reopen(){await body.close();economy.close();await host.close();host=createCore(config);assert.equal(host.workspace.status().state,'ready');start();await body.roomState(registered.id);},
     async wake(){await body.act(registered.id,'wake','fixture-wake','desktop');t.mock.timers.setTime(Date.now()+20000);await body.roomState(registered.id);assert.equal(state().asleep,false);},
@@ -157,6 +161,10 @@ test('a failed atomic Body checkpoint commits neither refusal receipt nor fact a
   assert.equal(fs.readFileSync(f.homeFile,'utf8'),before);assert.equal(f.state().plannedExecutions[operation(requestId)],undefined);
   assert.equal(f.state().interactionReceipts?.[digest(requestId)],undefined);assert.deepEqual(f.store().snapshot(),stock);assert.deepEqual(f.store().ledger(),ledger);
   assert.equal(f.store().itemUse(operation(requestId)),undefined);deny.mock.restore();
+  const replay = await f.call();
+  assert.equal(replay.ok,false);assert.equal(replay.error.code,'OUTCOME_UNKNOWN');
+  assert.equal(fs.readFileSync(f.homeFile,'utf8'),before);
+  assert.deepEqual(value(await f.recover('economyRetry')),{state:'no-evidence'});
   f.terminal(await f.call());denialFact(f);assert.equal(f.inventory().quantity,1);assert.equal(f.inventory().reserved,0);
 });
 

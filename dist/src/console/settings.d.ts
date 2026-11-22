@@ -4,8 +4,8 @@ import type { PetCoreHost } from '../core/index.js';
 import { type SettingsWorkspaceRegistry } from '../core/tables/console.js';
 export type { SettingsWorkspaceRegistry } from '../core/tables/console.js';
 export interface EconomyControls {
-    ownerAction(workspaceId: string, action: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
-    settings(workspaceId: string, expectedVersion: string, next: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
+    consoleWrite(endpoint: string, input: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
+    consoleRecover(endpoint: string, workspaceId: string, requestId: string, acceptNoEvidence: boolean, signal: AbortSignal, validate: () => void): Promise<unknown>;
 }
 /** Connection's locally available structural PeerScope subset. */
 type SettingsError = {
@@ -29,5 +29,5 @@ export type SettingsHandler = (endpoint: string, payload: unknown, signal: Abort
     signal: AbortSignal;
 }) => Promise<SettingsReply>;
 export declare const settingsEndpoints: string[];
-/** Owner-only exact RPCs share admission. The legacy wallet writers keep their original dispatch. */
+/** Owner-only exact RPCs share admission. Both wallet write routes use the durable owner registry. */
 export declare function settingsHandler(getHost: () => PetCoreHost | undefined, getWorkspaces: () => SettingsWorkspaceRegistry | undefined, getWorldModules?: () => readonly string[], getEconomy?: () => EconomyControls | undefined, scope?: Context): SettingsHandler;

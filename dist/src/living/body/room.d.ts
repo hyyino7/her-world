@@ -67,6 +67,7 @@ export interface RoomEconomyPort {
         bodyReceiptId: string;
     }, now: number): RoomFoodReservation;
     inspectUse(operationId: string): RoomFoodReservation | undefined;
+    consoleFoodPending?(operationId: string): boolean;
     cancelUse(operationId: string, proof: {
         operationId: string;
         applied: false;
@@ -140,6 +141,7 @@ export declare class CompanionRoom {
     private updateExecution;
     private parkExecution;
     private dispatchEconomy;
+    private consoleFoodPending;
     private dispatchReading;
     private dispatchExecution;
     private planAdmissionWait;
@@ -155,6 +157,16 @@ export declare class CompanionRoom {
     readPlannedSegment(operationId: string, now?: number): RoomReadingSegment;
     confirmPlannedReading(operationId: string, receiptToken: string, now?: number): PlannedExecution;
     inspectPlanned(operationId: string, now?: number): PlannedExecution | undefined;
+    originalFood(operationId: string): {
+        execution: PlannedExecution;
+        operationId: string;
+        itemId: string | undefined;
+        requestId: string | undefined;
+        actor: CompanionFactActor | undefined;
+        applied: boolean;
+        declined: boolean;
+        settled: boolean;
+    } | undefined;
     plannedState(): PlannedExecution | undefined;
     private presentationBase;
     private presentationCue;

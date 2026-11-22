@@ -1764,6 +1764,24 @@
       "name": "Console 丢弃卸载前的迟到回包并透传结构化设置错误",
       "l1Stage": "阶段 3",
       "families": []
+    },
+    {
+      "id": "3-CONSOLE-05",
+      "categories": ["同请求重试不重复生效"],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "原号查证区分已提交、同号异内容和无证据，显式放弃保留原编号",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-06",
+      "categories": ["效果已落盘后结算失败再重启"],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "Console 投喂只查不动，Body 部分提交只由显式同号重试续完",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }

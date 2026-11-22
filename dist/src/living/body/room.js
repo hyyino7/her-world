@@ -456,7 +456,7 @@ export class CompanionRoom {
         this.checkpoint(this.state, now);
     }
     parkExecution(row, now, cancel = false) {
-        if (row.parkedAt)
+        if (row.parkedAt || this.consoleFoodPending(row))
             return;
         if (row.kind === 'garden') {
             let result;
@@ -613,6 +613,10 @@ export class CompanionRoom {
             else if (original.phase !== 'waiting' || original.reason !== String(error))
                 this.updateExecution(original, { phase: 'waiting', reason: String(error) }, now);
         }
+    }
+    consoleFoodPending(row, economy) {
+        return row.kind === 'economy' && row.input.economy?.type === 'consume'
+            && (economy ?? this.economyPort())?.consoleFoodPending?.(row.operationId);
     }
     dispatchReading(row, now, resume) {
         try {
@@ -787,6 +791,8 @@ export class CompanionRoom {
         if (previous) {
             if (previous.fingerprint !== fingerprint)
                 throw Error('同一计划执行编号不能用于不同内容');
+            if (ownerMeal && this.consoleFoodPending(previous) && !terminalExecution.has(previous.status))
+                this.dispatchEconomy(previous, now);
             this.tick(now);
             return this.publicExecution(this.executions()[input.operationId]);
         }
@@ -826,6 +832,12 @@ export class CompanionRoom {
                 throw Error('相同执行编号不能用于不同餐食');
             if (canonical(existing.interaction ?? null) !== canonical(input.interaction ?? null))
                 throw Error('相同餐食执行编号不能更换互动来源');
+            if ((!terminalExecution.has(existing.status) || existing.effectAppliedAt && !existing.settlementCompletedAt)
+                && this.consoleFoodPending(existing)) {
+                const active = this.currentExecution();
+                if (existing.effectAppliedAt || !active || active.operationId === existing.operationId)
+                    this.dispatchEconomy(existing, now);
+            }
             this.tick(now);
             return this.publicExecution(this.executions()[input.operationId]);
         }
@@ -911,6 +923,19 @@ export class CompanionRoom {
         this.tick(now);
         const row = this.executions()[operationId];
         return row ? this.publicExecution(row) : undefined;
+    }
+    originalFood(operationId) {
+        if (!safeFile(this.homeFile))
+            throw Error('缺少原身体检查点');
+        const saved = record(JSON.parse(readFileSync(this.homeFile, 'utf8')));
+        const rows = saved.plannedExecutions === undefined ? {} : record(saved.plannedExecutions);
+        const row = rows[operationId];
+        if (!row)
+            return undefined;
+        return { execution: this.publicExecution(row), operationId: row.operationId, itemId: row.input.economy?.itemId,
+            requestId: row.interaction?.requestId, actor: row.interaction?.actor,
+            applied: row.effectAppliedAt !== undefined, declined: row.effectDeclinedAt !== undefined,
+            settled: row.settlementCompletedAt !== undefined };
     }
     plannedState() {
         const row = this.currentExecution();
@@ -1078,7 +1103,7 @@ export class CompanionRoom {
         let row = this.executions()[operationId];
         if (!row)
             throw Error('原计划执行不存在');
-        if (row.status === 'running' || terminalExecution.has(row.status))
+        if (row.status === 'running' || terminalExecution.has(row.status) || this.consoleFoodPending(row))
             return this.publicExecution(row);
         if (row.input.freezeOnPause === false && row.until && Date.parse(row.until) <= now) {
             this.updateExecution(row, { status: 'failed', phase: 'completed', reason: '活动的绝对结束时间已过，暂停期间不能算作已执行，也不能自动延长截止时间' }, now);
@@ -1160,7 +1185,7 @@ export class CompanionRoom {
         // A cancelled food intent may have outlived its current-activity pointer.
         // Reconcile its original reservation as soon as the authority is back.
         for (const row of Object.values(this.executions())) {
-            if (row.kind !== 'economy' || row.input.economy?.type !== 'consume')
+            if (row.kind !== 'economy' || row.input.economy?.type !== 'consume' || this.consoleFoodPending(row, economy))
                 continue;
             if (row.effectAppliedAt && !row.settlementCompletedAt && row.status !== 'running') {
                 try {
@@ -1180,6 +1205,12 @@ export class CompanionRoom {
         if (!this.autonomous)
             this.stopAutomatic(now);
         let planned = this.currentExecution();
+        if (planned && this.consoleFoodPending(planned, economy)) {
+            // The request stays durable while Life can continue with another activity.
+            this.state.currentPlannedOperation = null;
+            this.checkpoint(this.state, now);
+            planned = undefined;
+        }
         if (planned && ['paused', 'interrupted', 'cancelled'].includes(planned.status))
             this.parkExecution(planned, now, planned.status === 'cancelled');
         if (planned?.status === 'running' && ['economy', 'read'].includes(planned.kind)) {

@@ -462,6 +462,13 @@ export class CompanionBehavior {
   inspectPlanned(workspaceId: string, operationId: string): Promise<PlannedExecution | undefined> {
     return this.plannedCall(workspaceId,room=>room.inspectPlanned(operationId),()=>{},true);
   }
+  originalFood(workspaceId: string, operationId: string) {
+    const status = this.host.workspace.status(), binding = this.binding;
+    if (this.closed || !this.living.isCurrent() || status.state !== 'ready'
+      || status.target?.id !== workspaceId || binding?.id !== workspaceId || binding.path !== status.target.path
+      || binding.storageId !== this.host.workspace.storageId()) throw Error('身体工作区暂不可核对');
+    return binding.room.originalFood(operationId);
+  }
   pausePlanned(workspaceId: string, operationId: string): Promise<PlannedExecution> {
     return this.plannedCall(workspaceId,room=>room.pausePlanned(operationId));
   }

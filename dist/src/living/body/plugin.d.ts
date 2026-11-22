@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { PetCoreHost } from '../../core/index.js';
 import { type BehaviorActivity, type BehaviorSnapshot, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
 import { CompanionRoom } from './room.js';
-import type { CompanionFactSource } from '../../contracts/interaction.js';
+import type { CompanionFactActor, CompanionFactSource } from '../../contracts/interaction.js';
 import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomInteractionContext } from './room.js';
 import type { CompanionLife } from '../plan/plugin.js';
@@ -126,6 +126,16 @@ export declare class CompanionBehavior {
     confirmPlannedReading(workspaceId: string, operationId: string, receiptToken: string, validate?: () => void, recordEffect?: RecordCommandEffect): Promise<PlannedExecution>;
     startPlanned(workspaceId: string, input: PlannedActivity): Promise<PlannedExecution>;
     inspectPlanned(workspaceId: string, operationId: string): Promise<PlannedExecution | undefined>;
+    originalFood(workspaceId: string, operationId: string): {
+        execution: PlannedExecution;
+        operationId: string;
+        itemId: string | undefined;
+        requestId: string | undefined;
+        actor: CompanionFactActor | undefined;
+        applied: boolean;
+        declined: boolean;
+        settled: boolean;
+    } | undefined;
     pausePlanned(workspaceId: string, operationId: string): Promise<PlannedExecution>;
     resumePlanned(workspaceId: string, operationId: string): Promise<PlannedExecution>;
     cancelPlanned(workspaceId: string, operationId: string): Promise<PlannedExecution>;

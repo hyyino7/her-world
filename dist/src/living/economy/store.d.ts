@@ -2,6 +2,7 @@ import type { BodyUseProof, CatalogItem, EconomyConfigurationPatch, EconomySnaps
 import type { CompanionFact, CompanionFactActor } from '../../contracts/interaction.js';
 import type { WalletView } from '../../contracts/living.js';
 import { type GardenClock } from './garden-clock.js';
+import { ConsoleRequests } from './console-requests.js';
 export declare function projectWallet({ balance, inventory, catalog, bookmarks }: EconomySnapshot): WalletView;
 /** One bound SQLite aggregate owns money, every item, garden jobs and their receipts.
  * No CoreStore or assistant is constructed here. The existing Core binding guard
@@ -14,6 +15,7 @@ export declare class EconomyStore {
     private readonly markerPath;
     private readonly lockToken;
     private readonly db;
+    readonly consoleRequests: ConsoleRequests;
     private readonly databaseFile;
     private closed;
     private walletDirty;
@@ -44,6 +46,8 @@ export declare class EconomyStore {
     private item;
     private allBookmarks;
     private mutate;
+    originalRequest(requestId: string): Record<string, import("node:sqlite").SQLOutputValue> | undefined;
+    withConsoleRequests<T>(write: (rows: ConsoleRequests) => T): T;
     private recordLedger;
     /** Called only inside the existing request transaction, beside its actual result.
      * Historical requests are not replayed or turned into new experiences. */
