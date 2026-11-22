@@ -356,6 +356,21 @@ export class CompanionRoom {
             throw Error('互动事实存档无效，已保留原文件');
         return state.interactionReceipts ??= {};
     }
+    interaction(input, source) {
+        if (!source.requestId || source.requestId.length > 256 || !source.actor.id || !source.actor.channel)
+            throw Error('互动来源无效');
+        canonical(source);
+        const key = digest(source.requestId), fingerprint = digest({ input, actor: source.actor });
+        const prior = this.interactions()[key];
+        if (prior && prior.fingerprint !== fingerprint)
+            throw Error('同一互动请求不能用于不同内容');
+        return { key, fingerprint, prior };
+    }
+    interactionFact(input, source) {
+        const { prior } = this.interaction(input, source);
+        if (prior)
+            return structuredClone(prior.fact);
+    }
     pendingFacts() {
         return Object.values(this.interactions()).filter(row => !row.acknowledged).map(row => structuredClone(row.fact));
     }
@@ -1267,19 +1282,10 @@ export class CompanionRoom {
         if (action === 'talk' && (typeof data.text !== 'string' || !data.text.trim()))
             throw Error('留言不能为空');
         const text = typeof data.text === 'string' ? data.text.trim().slice(0, 120) : '';
-        const fingerprint = interaction ? digest({ input: data, actor: interaction.actor }) : undefined;
-        const key = interaction ? digest(interaction.requestId) : undefined;
-        if (interaction) {
-            if (!interaction.requestId || interaction.requestId.length > 256 || !interaction.actor.id || !interaction.actor.channel)
-                throw Error('互动来源无效');
-            canonical(interaction);
-            const prior = this.interactions()[key];
-            if (prior) {
-                if (prior.fingerprint !== fingerprint)
-                    throw Error('同一互动请求不能用于不同内容');
-                const home = this.view(now);
-                return { ok: true, changed: prior.changed, event: { type: prior.fact.type, text: prior.fact.result.summary }, home, room: home.room, fact: structuredClone(prior.fact) };
-            }
+        const receipt = interaction ? this.interaction(data, interaction) : undefined;
+        if (receipt?.prior) {
+            const { prior } = receipt, home = this.view(now);
+            return { ok: true, changed: prior.changed, event: { type: prior.fact.type, text: prior.fact.result.summary }, home, room: home.room, fact: structuredClone(prior.fact) };
         }
         const noChange = action === 'sleep' && (this.state.asleep || this.state.sleepPending) || action === 'wake' && !this.state.asleep && !this.state.sleepPending;
         if (!interaction && action === 'sleep' && (this.state.asleep || this.state.sleepPending)) {
@@ -1304,7 +1310,7 @@ export class CompanionRoom {
         const before = structuredClone(this.state.needs);
         const result = refused ? movement : noChange ? { state: normalizeHomeState(this.state, now), changed: false, event: null } : applyHomeAction(this.state, { ...event, emotion: this.emotion() });
         let fact;
-        if (interaction) {
+        if (interaction && receipt) {
             const who = interaction.actor.kind === 'owner' ? '主人' : interaction.actor.kind === 'companion' ? '你自己' : '系统';
             const labels = {
                 water: interaction.actor.kind === 'companion' ? '喝水' : '喂水', feed: '给予免费基础餐食', pet: '摸摸', poke: '轻戳', play: '陪伴玩耍',
@@ -1316,9 +1322,9 @@ export class CompanionRoom {
             const summary = result.event?.reason === 'sleeping' ? `${who}${labels[factType]}未执行：${result.event.text}`
                 : action === 'sleep' && result.state.sleepPending ? `${who}的睡觉安排已接收，正在前往床，尚未入睡。`
                     : action === 'talk' ? `${who}的留言已保存：${text}` : `${who}${labels[factType] || action}${result.changed ? '已完成' : '没有改变当前状态'}。`;
-            fact = { version: 1, id: `body:${key}`, requestId: interaction.requestId, domain: 'body', type: factType, occurredAt: new Date(now).toISOString(), actor: structuredClone(interaction.actor),
+            fact = { version: 1, id: `body:${receipt.key}`, requestId: interaction.requestId, domain: 'body', type: factType, occurredAt: new Date(now).toISOString(), actor: structuredClone(interaction.actor),
                 result: { status: result.changed ? 'completed' : 'unchanged', summary, before, after: structuredClone(result.state.needs) } };
-            result.state.interactionReceipts = { ...this.interactions(), [key]: { fingerprint: fingerprint, fact, acknowledged: false, changed: result.changed } };
+            result.state.interactionReceipts = { ...this.interactions(), [receipt.key]: { fingerprint: receipt.fingerprint, fact, acknowledged: false, changed: result.changed } };
         }
         if (result.changed) {
             // Additive host attribution survives the original normalizer. Native

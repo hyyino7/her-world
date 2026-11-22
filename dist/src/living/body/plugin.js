@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { buildHomePromptLine } from '#feiyu-home';
 import { check, digest, reject, text } from '../../core/storage.js';
 import { isCareAction } from '../../contracts/behavior.js';
-import { bodyPhaseOf, companionBusy } from './activity.js';
+import { bodyPhaseOf, feedAdmission } from './activity.js';
 import { CompanionRoom } from './room.js';
 import { behaviorPresentation } from './presentation.js';
 import { gardenHomeProjection } from './garden-receipt.js';
@@ -330,7 +330,8 @@ export class CompanionBehavior {
                 state.dwell || state.reactionUntil > Date.now() ? 'working' : task?.completedAt ? 'completed' : 'idle' };
     }
     publicBehavior(her) {
-        return { ...this.activity(), busy: companionBusy(her), revision: this.revision, bootId: this.bootId };
+        const feed = feedAdmission(her);
+        return { ...this.activity(), busy: Boolean(her) && feed !== 'start', interruptibility: { feed }, revision: this.revision, bootId: this.bootId };
     }
     behaviorHome(home, behavior = this.publicBehavior(home.her)) {
         return { ...home, behavior: { ...behavior } };
@@ -469,6 +470,31 @@ export class CompanionBehavior {
             identity: { displayName: this.host.workspace.runtime.identity().displayName },
             autonomyEnabled: value.autonomyEnabled, presentation: value.presentation,
             behavior: value.home.behavior }));
+    }
+    presentFeed(workspaceId, interaction, presentationBlocked) {
+        return this.enqueue(async (validate) => {
+            const bound = this.checked(workspaceId), input = { action: 'feed' };
+            const prior = bound.room.interactionFact(input, interaction);
+            if (prior)
+                return { admission: 'replayed', fact: prior };
+            await this.refreshEmotion(workspaceId);
+            validate();
+            const blocked = presentationBlocked();
+            if (blocked)
+                return { admission: 'presentation-blocked', blocked };
+            const execution = JSON.stringify(bound.room.plannedState());
+            this.advanceRoom(bound);
+            const admission = feedAdmission(bound.room.view().her);
+            validate();
+            if (admission !== 'start') {
+                this.publish(execution === JSON.stringify(bound.room.plannedState()) ? 'observation' : 'transition');
+                return { admission };
+            }
+            this.expression = undefined;
+            const { fact } = bound.room.act(input, interaction.actor.kind === 'owner' ? '主人' : '大肥鱼', Date.now(), interaction);
+            this.publish();
+            return { admission: 'started', fact };
+        });
     }
     roomAction(workspaceId, input, by = '伙伴', interaction, recordEffect) {
         return this.enqueue(async (validate) => {

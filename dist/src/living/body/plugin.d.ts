@@ -70,6 +70,23 @@ export declare class CompanionBehavior {
     worldSnapshot(workspaceId: string): Promise<import("../../contracts/living.js").WorldSnapshot>;
     readonly worldCommands: Pick<WorldCommands, 'care'>;
     roomState(workspaceId: string): Promise<any>;
+    presentFeed<T>(workspaceId: string, interaction: RoomInteractionContext, presentationBlocked: () => T | undefined): Promise<{
+        admission: "replayed";
+        fact: import("../../contracts/interaction.js").CompanionFact;
+        blocked?: undefined;
+    } | {
+        admission: "presentation-blocked";
+        blocked: NonNullable<T>;
+        fact?: undefined;
+    } | {
+        admission: "blocked" | "already-presented";
+        fact?: undefined;
+        blocked?: undefined;
+    } | {
+        admission: "started";
+        fact: import("../../contracts/interaction.js").CompanionFact | undefined;
+        blocked?: undefined;
+    }>;
     roomAction(workspaceId: string, input: unknown, by?: string, interaction?: RoomInteractionContext, recordEffect?: RecordCommandEffect): Promise<{
         home: any;
         behavior: VersionedBehavior;

@@ -127,6 +127,8 @@ export declare class CompanionRoom {
         value: number;
     }[]): number | null;
     private interactions;
+    private interaction;
+    interactionFact(input: unknown, source: RoomInteractionContext): CompanionFact | undefined;
     pendingFacts(): CompanionFact[];
     readFacts(ids: readonly string[]): CompanionFact[];
     acknowledgeFacts(ids: readonly string[]): void;

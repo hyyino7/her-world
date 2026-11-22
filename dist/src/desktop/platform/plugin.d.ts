@@ -356,6 +356,7 @@ export declare class PetPlatform {
     /** Keep the original sleep/wake and ordinary action lock admission. */
     private careBlocked;
     private openRoom;
+    private feedAnimation;
     handle(url: URL, method: string, raw: string | undefined, signal: AbortSignal, actorKind?: 'owner' | 'companion'): Promise<any>;
     http(req: IncomingMessage, res: ServerResponse): Promise<any>;
 }

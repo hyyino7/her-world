@@ -7,7 +7,7 @@ import { check, digest, reject, text } from '../../core/storage.js';
 import type { PetCoreHost } from '../../core/index.js';
 import type { HomeBinding } from '../../core/workspace.js';
 import { isCareAction, type BehaviorActivity, type BehaviorChange, type BehaviorSnapshot, type CompanionExpression, type CurrentActivityId, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
-import { bodyPhaseOf, companionBusy } from './activity.js';
+import { bodyPhaseOf, feedAdmission } from './activity.js';
 import { CompanionRoom } from './room.js';
 import { behaviorPresentation } from './presentation.js';
 import type { CompanionFactActor, CompanionFactSource } from '../../contracts/interaction.js';
@@ -220,7 +220,7 @@ export class CompanionBehavior {
     if (this.closed || !this.binding || this.binding.id !== workspaceId) throw Error('身体工作区已切换或组件已停止');
     return this.binding;
   }
-  private activity(): Omit<BehaviorActivity, 'busy'> {
+  private activity(): Omit<BehaviorActivity, 'busy' | 'interruptibility'> {
     const state = this.binding?.room.state;
     if (!state) return {activityId:null, kind:'idle', phase:'idle'};
     const planned = this.binding?.room.plannedState();
@@ -243,8 +243,9 @@ export class CompanionBehavior {
       phase:state.route ? 'moving' : state.asleep ? 'sleeping' : state.sleepPending || state.freeTarget || state.command ? 'pending' :
         state.dwell || state.reactionUntil > Date.now() ? 'working' : task?.completedAt ? 'completed' : 'idle'};
   }
-  private publicBehavior(her: Parameters<typeof companionBusy>[0]): VersionedBehavior {
-    return {...this.activity(),busy:companionBusy(her),revision:this.revision,bootId:this.bootId};
+  private publicBehavior(her: Parameters<typeof feedAdmission>[0]): VersionedBehavior {
+    const feed=feedAdmission(her);
+    return {...this.activity(),busy:Boolean(her) && feed!=='start',interruptibility:{feed},revision:this.revision,bootId:this.bootId};
   }
   private behaviorHome(home:any,behavior=this.publicBehavior(home.her)) {
     return {...home,behavior:{...behavior}};
@@ -360,6 +361,28 @@ export class CompanionBehavior {
       identity:{displayName:this.host.workspace.runtime.identity().displayName},
       autonomyEnabled:value.autonomyEnabled,presentation:value.presentation,
       behavior:value.home.behavior as VersionedBehavior}));
+  }
+  presentFeed<T>(workspaceId: string, interaction: RoomInteractionContext, presentationBlocked: () => T | undefined) {
+    return this.enqueue(async validate => {
+      const bound=this.checked(workspaceId),input={action:'feed'};
+      const prior=bound.room.interactionFact(input,interaction);
+      if(prior)return {admission:'replayed' as const,fact:prior};
+      await this.refreshEmotion(workspaceId);validate();
+      const blocked=presentationBlocked();
+      if(blocked)return {admission:'presentation-blocked' as const,blocked};
+      const execution=JSON.stringify(bound.room.plannedState());
+      this.advanceRoom(bound);
+      const admission=feedAdmission(bound.room.view().her);
+      validate();
+      if(admission!=='start') {
+        this.publish(execution===JSON.stringify(bound.room.plannedState())?'observation':'transition');
+        return {admission};
+      }
+      this.expression=undefined;
+      const {fact}=bound.room.act(input,interaction.actor.kind==='owner'?'主人':'大肥鱼',Date.now(),interaction);
+      this.publish();
+      return {admission:'started' as const,fact};
+    });
   }
   roomAction(workspaceId: string, input: unknown, by = '伙伴', interaction?: RoomInteractionContext, recordEffect?: RecordCommandEffect) {
     return this.enqueue(async validate => {

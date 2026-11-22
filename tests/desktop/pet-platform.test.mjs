@@ -81,8 +81,9 @@ test('settings read creates no body; one host preserves raw configuration while 
  const root=mkdtempSync(join(tmpdir(),'chatpet-platform-activity-'));
  let state={her:{kind:'idle',asleep:false},emotion:{feelings:[]}};
  let feeds=0;
- const {platform,chatOpens}=fixture(root,undefined,{petBehavior:{roomState:async()=>state,roomAction:async(_id,{action})=>{
-   assert.equal(action,'feed');feeds++;state={...state,her:{kind:'eat',asleep:false}};return {home:state};
+ const {platform,chatOpens}=fixture(root,undefined,{petBehavior:{roomState:async()=>state,presentFeed:async()=>{
+   if(state.her.kind==='eat')return {admission:'already-presented'};
+   feeds++;state={...state,her:{kind:'eat',asleep:false}};return {admission:'started'};
  }},petEmotion:{}});
  const request=(endpoint,method='GET',body)=>platform.handle(new URL('http://localhost/chatpet-presentation/'+endpoint),method,body?JSON.stringify(body):undefined,new AbortController().signal);
  try {

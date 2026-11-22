@@ -1650,6 +1650,84 @@
       "name": "钱包的 world.changed 刷新不发送 QQ 主动消息",
       "l1Stage": "阶段 3",
       "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠原入口装载后，吃饭请求应能调用已注册的 Body",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-02",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠两个并发吃饭请求只在 Body 投喂一次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠吃饭请求在 Body 准入读取时取消，保持零投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠吃饭准入读失败时，Body 不按旧空闲状态投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-05",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠投喂提交后取消，重载后在新活动中按原号核对",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-06",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠在 Body 缺席时拒绝吃饭，重新挂载后恢复准入",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-07",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠吃饭准入在 A 回到 A 后拒绝旧请求",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-08",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠投喂写入前复核占用锁，已提交结果仍可按原号核对",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }

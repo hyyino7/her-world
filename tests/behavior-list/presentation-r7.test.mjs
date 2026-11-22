@@ -231,6 +231,20 @@ test('Room 已准入但尚未写入时取消，Body 应保持零效果',async t=
 });
 
 
+async function selectHome(f,target) {
+  const call=(id)=>f.core.operator.request(id+'-'+randomUUID());
+  const read=await f.core.services.preferences.read(call('read'),{});
+  assert.equal(read.ok,true);
+  const {id,path,title}=target;
+  const saved=await f.core.services.preferences.save(call('save'),{expectedRevision:read.value.revision,
+    conversation:read.value.conversation,workspace:{id,path,title}});
+  assert.equal(saved.ok,true,JSON.stringify(saved));
+  const ready=await f.core.services.workspace.initialize(call('initialize'),{expectedPreferencesRevision:saved.value.revision});
+  assert.equal(ready.ok,true,JSON.stringify(ready));
+  assert.equal(ready.value.state,'ready');
+  return f.core.workspace.homeScope();
+}
+
 test('Room 回到 A 后丢弃旧 A 的读写和通知，新窗口只接收当前代次',async t=>{
   const f=await presentationFixture(t,{order:['body']});
   await f.mount('room');
@@ -239,19 +253,7 @@ test('Room 回到 A 后丢弃旧 A 的读写和通知，新窗口只接收当前
   const secondPath=realpathSync(mkdtempSync(join(tmpdir(),'her-world-room-b-')));
   t.after(()=>rmSync(secondPath,{recursive:true,force:true}));
   const second=await f.registry.create(secondPath);
-  const select=async target=>{
-    const call=(id)=>f.core.operator.request(id+'-'+randomUUID());
-    const read=await f.core.services.preferences.read(call('read'),{});
-    assert.equal(read.ok,true);
-    const {id,path,title}=target;
-    const saved=await f.core.services.preferences.save(call('save'),{expectedRevision:read.value.revision,
-      conversation:read.value.conversation,workspace:{id,path,title}});
-    assert.equal(saved.ok,true,JSON.stringify(saved));
-    const ready=await f.core.services.workspace.initialize(call('initialize'),{expectedPreferencesRevision:saved.value.revision});
-    assert.equal(ready.ok,true,JSON.stringify(ready));
-    assert.equal(ready.value.state,'ready');
-    return f.core.workspace.homeScope();
-  };
+  const select=target=>selectHome(f,target);
   const window=f.ctx.petRoom.window, messages=[];
   const receive=t.mock.method(window,'send',message=>messages.push(message));
   const openFixture=bound=>Object.assign(window,{bound,loaded:true,lifetime:new AbortController(),
@@ -324,4 +326,162 @@ test('Room 和 Console 兼容回包保留同一活动的播放描述',async t=>{
   assert.equal(action.home.playback.phase,action.home.behavior.phase);
   const care=await request('lifeAction',{action:'water'});
   assert.equal(care.home.playback.phase,care.home.behavior.phase);
+});
+
+async function desktopFeedingFixture(t) {
+  const f=await presentationFixture(t);
+  await f.mount('desktop');
+  await f.mount('platform');
+  const request=(path,method='GET',data,signal=new AbortController().signal)=>f.ctx.petPlatform.handle(
+    new URL('/chatpet-presentation/'+path,'http://fixture.invalid'),method,data&&JSON.stringify(data),signal);
+  const config=await request('config');
+  const pet=config.obj.main.bodyTemplate;
+  assert.ok(pet,'从真实配置入口取得形象模板');
+  assert.equal((await request('config','PUT',{pets:[{...pet,display:'web'}]})).status,200);
+  await request('config-live');
+  assert.equal((await f.body.roomState(f.id)).behavior.busy,false);
+  return Object.assign(f,{
+    request,
+    feed:(requestId,signal,name='吃饭团')=>request('anim?pet=main&surface=web','POST',{name,requestId},signal),
+    effects:async (...ids)=>(await f.body.pendingFacts(f.id)).filter(fact=>fact.type==='feed'&&ids.includes(fact.requestId)),
+  });
+}
+
+test('桌宠原入口装载后，吃饭请求应能调用已注册的 Body',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const id='desktop-feed-entry';
+  const response=await f.feed(id,undefined,' 吃饭团 ');
+  assert.equal(response.status,200);
+  assert.equal(response.obj.admission,'started');
+  assert.ok(response.obj.playbackId);
+  assert.equal((await f.effects(id)).length,1);
+});
+
+test('桌宠两个并发吃饭请求只在 Body 投喂一次',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const ids=['desktop-feed-a','desktop-feed-b'];
+  const replies=await Promise.all(ids.map(id=>f.feed(id)));
+  assert.deepEqual(replies.map(reply=>reply.status),[200,200]);
+  assert.deepEqual(replies.map(reply=>reply.obj.admission).sort(),['already-presented','started']);
+  assert.equal((await f.effects(...ids)).length,1);
+});
+
+test('桌宠吃饭请求在 Body 准入读取时取消，保持零投喂',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const entered=Promise.withResolvers(),resume=Promise.withResolvers();
+  t.mock.method(f.body,'refreshEmotion',()=>{
+    entered.resolve();
+    return resume.promise;
+  });
+  const stop=new AbortController(),id='desktop-feed-cancelled';
+  const reply=assert.rejects(f.feed(id,stop.signal),{name:'AbortError'});
+  try {
+    await entered.promise;
+    stop.abort();
+  } finally {resume.resolve();}
+  await reply;
+  assert.deepEqual(await f.effects(id),[]);
+});
+
+test('桌宠吃饭准入读失败时，Body 不按旧空闲状态投喂',async t=>{
+  const f=await desktopFeedingFixture(t);
+  await f.body.startPlanned(f.id,{operationId:'desktop-busy-hold',kind:'hold',activity:'Resting',
+    until:new Date(Date.now()+60_000).toISOString()});
+  assert.equal((await f.body.roomState(f.id)).behavior.busy,true);
+  const read=t.mock.method(f.body,'refreshEmotion',async()=>{throw Error('Synthetic Body read failure');});
+  const id='desktop-feed-read-failed';
+  await assert.rejects(f.feed(id),/Synthetic Body read failure/);
+  read.mock.restore();
+  assert.deepEqual(await f.effects(id),[]);
+});
+
+test('桌宠投喂提交后取消，重载后在新活动中按原号核对',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const stop=new AbortController(),id='desktop-feed-committed';
+  const original=f.body.presentFeed.bind(f.body);
+  const hook=t.mock.method(f.body,'presentFeed',async(...args)=>{
+    const result=await original(...args);
+    assert.equal(result.fact?.requestId,id);
+    stop.abort();
+    return result;
+  });
+  await assert.rejects(f.feed(id,stop.signal),{name:'AbortError'});
+  hook.mock.restore();
+  const [originalFact]=await f.effects(id);
+  await f.unmount('platform');
+  await f.unload('body');
+  t.mock.timers.tick(13_000);
+  await f.load('body');
+  await f.mount('platform');
+  await f.body.act(f.id,'water','desktop-retry-conflict');
+  assert.equal((await f.body.roomState(f.id)).her.kind,'drink');
+  const replay=await f.feed(id);
+  assert.equal(replay.status,200);
+  assert.deepEqual(replay.obj,{ok:true,requestId:id,admission:'replayed',effect:originalFact.result.status});
+  assert.deepEqual(await f.effects(id),[originalFact]);
+  await assert.rejects(f.feed('desktop-retry-conflict'),/同一互动请求不能用于不同内容/);
+});
+
+test('桌宠在 Body 缺席时拒绝吃饭，重新挂载后恢复准入',async t=>{
+  const f=await desktopFeedingFixture(t);
+  await f.unload('body');
+  assert.equal((await f.feed('desktop-no-body')).obj.reason,'body-unavailable');
+  await f.load('body');
+  assert.equal((await f.feed('desktop-no-body')).obj.admission,'started');
+  assert.equal((await f.effects('desktop-no-body')).length,1);
+});
+
+test('桌宠吃饭准入在 A 回到 A 后拒绝旧请求',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const secondPath=realpathSync(mkdtempSync(join(tmpdir(),'her-world-feed-b-')));
+  t.after(()=>rmSync(secondPath,{recursive:true,force:true}));
+  const second=await f.registry.create(secondPath), first=f.core.workspace.homeScope();
+  const entered=Promise.withResolvers(),resume=Promise.withResolvers();
+  const read=t.mock.method(f.body,'refreshEmotion',()=>{
+    entered.resolve();
+    return resume.promise;
+  });
+  const id='desktop-feed-stale';
+  const old=assert.rejects(f.feed(id),/工作区或身体组件已切换|身体工作区已切换|AbortError/);
+  try {
+    await entered.promise;
+    await selectHome(f,second);
+    const current=await selectHome(f,f.bound);
+    assert.equal(current.storageId,first.storageId);
+    assert.notEqual(current.generation,first.generation);
+  } finally {resume.resolve();}
+  await old;
+  read.mock.restore();
+  assert.deepEqual(await f.effects(id),[]);
+  assert.equal((await f.feed(id)).obj.admission,'started');
+  assert.equal((await f.effects(id)).length,1);
+});
+
+test('桌宠投喂写入前复核占用锁，已提交结果仍可按原号核对',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const entered=Promise.withResolvers(),resume=Promise.withResolvers();
+  const read=t.mock.method(f.body,'refreshEmotion',()=>{
+    entered.resolve();
+    return resume.promise;
+  });
+  const id='desktop-feed-lock-race';
+  const reply=f.feed(id);
+  const lock=()=>f.request('lock?pet=main&surface=web','POST',{});
+  let lockId;
+  try {
+    await entered.promise;
+    const response=await lock();
+    assert.equal(response.obj.ok,true);
+    lockId=response.obj.lockId;
+  } finally {resume.resolve();}
+  const blocked=await reply;
+  read.mock.restore();
+  assert.equal(blocked.status,200);
+  assert.equal(blocked.obj.reason,'lock-required');
+  assert.deepEqual(await f.effects(id),[]);
+  assert.equal((await f.request('lock/release?pet=main','POST',{lockId})).obj.ok,true);
+  assert.equal((await f.feed(id)).obj.admission,'started');
+  assert.equal((await lock()).obj.ok,true);
+  assert.equal((await f.feed(id)).obj.admission,'replayed');
+  assert.equal((await f.effects(id)).length,1);
 });

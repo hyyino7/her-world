@@ -8,6 +8,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { desktopHomePlayback, activityPresentation, eatingClips, physicalClips, sleepingClips, projectActivityConfig } from './activity.js';
 import { migratePresentation, resolvePresentationMigration } from './migration.js';
 import { companionFeelings } from '../../living/body/presentation.js';
+import { sameHomeBinding, withLivingCaller } from '../../living/index.js';
 const load = createRequire(import.meta.url);
 const root = dirname(load.resolve('her-world/package.json'));
 const vendor = join(root, 'vendor', 'dsh-pet', 'platform');
@@ -719,6 +720,30 @@ export class PetPlatform {
             throw Error('房间模块未启用');
         return open(this.bound.id);
     }
+    async feedAnimation(url, raw, caller, requestId, actor, presentationBlocked) {
+        const body = this.ctx.get('petBehavior', false);
+        if (!body)
+            return presentationBlocked() ?? json({ ok: false, reason: 'body-unavailable', message: '共享身体暂不可用' }, 503);
+        const bound = this.bound, workspace = this.ctx.petCore.workspace, binding = workspace.homeScope?.();
+        const signal = AbortSignal.any([caller, this.scope.signal]);
+        const validate = () => {
+            signal.throwIfAborted();
+            if (this.bound !== bound || !sameHomeBinding(workspace.homeScope?.(), binding) || this.ctx.get('petBehavior', false) !== body)
+                throw Error('工作区或身体组件已切换');
+        };
+        const result = await withLivingCaller(validate, () => body.presentFeed(bound.id, { requestId, actor }, presentationBlocked));
+        validate();
+        if (result.admission === 'presentation-blocked')
+            return result.blocked;
+        if (result.admission === 'blocked')
+            return json({ ok: false, reason: 'activity-busy', message: '当前活动进行中，请先完成或结束该活动' }, 409);
+        const receipt = { requestId, admission: result.admission, ...(result.fact ? { effect: result.fact.result.status } : {}) };
+        if (result.admission === 'replayed')
+            return json({ ok: true, ...receipt });
+        const playback = await this.router(url.pathname + url.search, 'POST', raw, signal);
+        validate();
+        return playback.kind === 'json' ? { ...playback, obj: { ...playback.obj, ...receipt } } : playback;
+    }
     async handle(url, method, raw, signal, actorKind = 'owner') {
         this.ensure();
         const rest = decodeURIComponent(url.pathname.slice(route.length + 1)), pet = url.searchParams.get('pet') || 'main';
@@ -842,40 +867,35 @@ export class PetPlatform {
         if (rest === 'lock' && method === 'POST' && this.behavior?.her?.asleep)
             return json({ ok: false, reason: 'sleeping', message: '请先叫醒，再开始互动' }, 409);
         if (rest === 'anim' && method === 'POST') {
-            const input = JSON.parse(raw || '{}'), requested = input.name;
+            const input = JSON.parse(raw || '{}');
             const requestId = typeof input.requestId === 'string' ? input.requestId : randomUUID();
-            const bodyAction = (action) => this.ctx.petBehavior.roomAction(this.bound.id, { action }, actorKind === 'owner' ? '主人' : '大肥鱼', { requestId, actor });
             const cfg = upstream.readAllConfig(this.setup.configPaths);
-            const decision = upstream.decideAnim({ cfg, requested: String(url.searchParams.get('pet') ?? ''), name: input.name, url: input.url, facing: input.facing });
+            const decide = (cfg) => upstream.decideAnim({ cfg, requested: String(url.searchParams.get('pet') ?? ''), name: input.name, url: input.url, facing: input.facing });
+            const rejectPresentation = (cfg, petId) => this.lookup.surfaceBlocked(cfg, petId, url.searchParams) || this.lookup.lockBlocked(petId, url.searchParams);
+            const decision = decide(cfg);
             if (decision.ok) {
-                const blocked = this.lookup.surfaceBlocked(cfg, decision.petId, url.searchParams) || this.lookup.lockBlocked(decision.petId, url.searchParams);
+                const requested = decision.name;
+                if (eatingClips.has(requested))
+                    return this.feedAnimation(url, raw, signal, requestId, actor, () => {
+                        const current = upstream.readAllConfig(this.setup.configPaths), fresh = decide(current);
+                        return fresh.ok ? rejectPresentation(current, fresh.petId) : json({ ok: false, reason: fresh.reason, message: fresh.message });
+                    });
+                const blocked = rejectPresentation(cfg, decision.petId);
                 if (blocked)
                     return blocked;
                 await this.refreshBehavior();
+                requestScope.signal.throwIfAborted();
+                signal.throwIfAborted();
                 const behavior = this.ctx.get('petBehavior', false);
-                let her = this.behavior?.her;
-                const busy = this.behavior?.behavior?.busy;
                 if (behavior && (sleepingClips.has(requested) || requested === '睡觉-起来')) {
-                    const result = await bodyAction(requested === '睡觉-起来' ? 'wake' : 'sleep');
+                    const result = await behavior.roomAction(this.bound.id, { action: requested === '睡觉-起来' ? 'wake' : 'sleep' }, actorKind === 'owner' ? '主人' : '大肥鱼', { requestId, actor });
                     await this.refreshBehavior();
                     return json({ ok: true, accepted: true, home: desktopHomePlayback(result?.home), behavior: this.behavior?.behavior });
                 }
-                const eatingRequested = eatingClips.has(requested);
-                const isEating = () => her?.kind === 'eat';
-                let eating = isEating();
-                if (behavior && eatingRequested && !eating) {
-                    if (busy)
-                        return json({ ok: false, reason: 'activity-busy', message: '当前活动进行中，请先完成或结束该活动' }, 409);
-                    await bodyAction('feed');
-                    await this.refreshBehavior();
-                    her = this.behavior?.her;
-                    eating = isEating();
-                }
-                else if (behavior && physicalClips.has(requested) && !eatingRequested)
+                if (behavior && physicalClips.has(requested))
                     return json({ ok: false, reason: 'activity-required', message: '请通过共享行为操作执行这项活动' }, 409);
-                if (her && requested !== this.activityAsset() && !(eating && eatingRequested))
+                if (this.behavior?.her && requested !== this.activityAsset())
                     return json({ ok: false, reason: 'activity-busy', message: '桌宠正在呈现共享活动，请通过行为操作改变活动' }, 409);
-                requestScope.signal.throwIfAborted();
             }
         }
         const reserved = ['GET', 'HEAD'].includes(method) ? this.builtinLifeMedia(rest) : undefined;
