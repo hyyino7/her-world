@@ -1475,7 +1475,7 @@
       ],
       "level": "L2",
       "file": "tests/behavior-list/concepts-economy-settings.test.mjs",
-      "name": "设置页保存种子和堆肥价格，排除只读价格并用原请求重试",
+      "name": "设置页保存种子和堆肥价格，排除只读价格并按原号查证遗失回包",
       "l1Stage": "阶段 2",
       "families": []
     },

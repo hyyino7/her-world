@@ -194,7 +194,7 @@ Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射
 | 图片 `data/desktop/images/*`、`data/room/images/*` | 第三层·Desktop、Room 各拥有自己的目录 | `desktop/images.ts`、`room/images.ts` | 复用原生附件准入和原子副本流程（5.4），各拥有人按当前绑定读写 |
 | `data/pet-platform/*` | 第三层·PetPlatform | PetPlatform、迁移器 | 不变 |
 | `data/channels/*`；profile 下连接设置、令牌、语音缓存 | 第三层·Channels / Voice | Channels、Voice | 不变，设备相关 |
-| 浏览器 localStorage：`chatpet:economy:pending:*`、Room 的 `home-*` | 第二层·钱包区 / 第三层·Room | 控制台和 Room 前端 | 经济待确认请求迁入钱包区持久存储，迁移顺序见 7.3 |
+| 浏览器 localStorage：`chatpet:economy:pending:*`、Room 的 `home-*` | 第二层·钱包区 / 第三层·Room | 控制台和 Room 前端 | 钱包旧键仅作迁移来源，新 Console 读取钱包待办；Room 本地存储沿用原协议 |
 
 下面两类文件不进 `storage.json`，盘点把它们列在 `differences.extra` 里属于预期。它们只在部分安装里存在，登进去会让没有它们的安装报「缺失」：
 
@@ -592,9 +592,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 ### 7.3 经济待确认请求的迁移顺序
 
-1. 先把浏览器 localStorage 里的待确认请求**原样导出**，保留原请求 ID、输入、绑定，并纳入备份。
-2. 再导入钱包区的持久存储，核对数量和内容一致。
-3. 核对通过后，才清除浏览器里的副本。
+每个授权来源保留原值及摘要。相同绑定、原号和规范指纹可合并登记，仍逐源核对和清除。旧包备份与同包续做备份分别锚定同一私有导出。钱包登记与导入摘要同事务提交，清源和回插按逐源意图续做。停写、换包与回退步骤见[开发文档](development.md#console-wallet-migration)。
 
 ### 7.4 第一次迁移的定位
 

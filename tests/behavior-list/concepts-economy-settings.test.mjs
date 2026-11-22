@@ -6,7 +6,7 @@ import {setImmediate} from 'node:timers/promises';
 import {fixture, value} from './fixture.mjs';
 import {panelNodes, renderEconomyPanel} from './economy-panel.mjs';
 
-test('设置页保存种子和堆肥价格，排除只读价格并用原请求重试', async t => {
+test('设置页保存种子和堆肥价格，排除只读价格并按原号查证遗失回包', async t => {
   const f = await fixture(t, {console:true, policy:true});
   f.workspace.status = async () => 'ok';
   const read = () => f.settings('economyView',{workspaceId:'world'}).then(value);
@@ -14,7 +14,7 @@ test('设置页保存种子和堆肥价格，排除只读价格并用原请求�
   const seed = before.catalog.find(item => item.kind === 'seed');
   const harvest = before.catalog.find(item => item.kind === 'harvest' && item.cropId === seed.cropId);
   const compost = before.catalog.find(item => item.kind === 'compost');
-  const writes = [];
+  const writes = [], checks = [];
   let viewRead;
   const page = renderEconomyPanel(async (endpoint,input,_signal,requestId) => {
     if (endpoint === 'economyView') {
@@ -27,6 +27,12 @@ test('设置页保存种子和堆肥价格，排除只读价格并用原请求�
         view.configuration.catalogEnabled[id] = false;
       }
       return view;
+    }
+    if (endpoint === 'economyPending') return value(await f.settings(endpoint,input));
+    if (endpoint === 'economyCheck') {
+      const result = value(await f.settings(endpoint,input));
+      checks.push({requestId:input.requestId,...result});
+      return result;
     }
     writes.push({input:JSON.parse(JSON.stringify(input)),requestId});
     const result = value(await f.settings(endpoint,input,requestId));
@@ -56,9 +62,9 @@ test('设置页保存种子和堆肥价格，排除只读价格并用原请求�
   const [enabled] = panelNodes(itemRow(compost), node => node.type === 'input' && node.props.type === 'checkbox');
   enabled.props.onChange({target:{checked:false}});
   await click('保存经济配置');
-  await click('重试原操作');
-  assert.equal(writes.length,2);
-  assert.deepEqual(writes[1],writes[0]);
+  assert.equal(writes.length,1);
+  assert.deepEqual(checks,[{requestId:writes[0].requestId,state:'committed'}]);
+  assert.deepEqual(panelNodes(page.render(),node=>node.type==='button' && node.children[0]==='重试原操作'),[]);
   const {itemPrices,catalogEnabled} = writes[0].input.next;
   assert.deepEqual(Object.keys(itemPrices).sort(),[seed.id,compost.id].sort());
   assert.deepEqual(catalogEnabled,{[compost.id]:false});

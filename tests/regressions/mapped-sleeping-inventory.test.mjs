@@ -5,13 +5,14 @@ import {tmpdir} from 'node:os';
 import {join,dirname} from 'node:path';
 import {compiledURL} from '../fixtures/playback.mjs';
 import {syncBuiltinESMExports} from 'node:module';
-import {runInNewContext} from 'node:vm';
+import {setImmediate} from 'node:timers/promises';
+import {randomUUID} from 'node:crypto';
+import {panelNodes,renderEconomyPanel} from '../behavior-list/economy-panel.mjs';
 import childProcess from 'node:child_process';
 import net from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
 import tls from 'node:tls';
-import ts from 'typescript';
 
 const forbidden=[],restore=[];
 function block(object,key) {
@@ -181,16 +182,31 @@ test('a lost Settings response after the refusal checkpoint retains the same ter
   assert.deepEqual(denialFact(f),fact);assert.equal(f.inventory().quantity,1);assert.equal(f.inventory().reserved,0);
 });
 
-test('the existing Economy UI clears the sleeping request and displays wake-first from the terminal Settings receipt',async t=>{
-  const f=await fixture(t),source=fs.readFileSync('src/console/client.js','utf8'),tree=ts.createSourceFile('actual-client.js',source,ts.ScriptTarget.Latest,true);
-  let send;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text==='send'&&node.parameters[0]?.name.getText(tree)==='operation')send=node.getText(tree);ts.forEachChild(node,visit);}visit(tree);assert.ok(send);
-  const storage=new Map(),ui={pending:null,fault:'',feedback:'',busy:false},operationRequest={endpoint:'economyAction',requestId,input:{workspaceId:'workspace',action:{kind:'feed',itemId:meal,quantity:1}}};
-  const scope={locked:{current:false},unresolved:{current:null},lifetime:{current:{signal:f.signal}},storageKey:'fixture-pending',
-    localStorage:{setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
-    setBusy:value=>{ui.busy=value;},setFault:value=>{ui.fault=value;},setFeedback:value=>{ui.feedback=value;},setPending:value=>{ui.pending=value;},setEdit(){},setAmount(){},setNote(){},setImported(){},setTitle(){},
-    request:async(endpoint,input,signal,id)=>{const result=await f.handler(endpoint,{requestId:id,input},signal,f.peer);if(!result.ok)throw Object.assign(Error(result.error.message),result.error);return result.value;},refresh:async()=>{},
-  };
-  runInNewContext(send+'\nglobalThis.sendActual=send;',scope);await scope.sendActual(operationRequest);
-  assert.equal(ui.pending,null);assert.equal(scope.unresolved.current,null);assert.equal(storage.has('fixture-pending'),false);assert.equal(ui.busy,false);
-  assert.match(ui.fault,/先叫醒/);assert.match(ui.feedback,/未完成/);assert.equal(f.state().asleep,true);assert.equal(f.inventory().quantity,1);
+test('EconomyPanel clears a terminal sleeping reply and tells the owner to wake her first',async t=>{
+  const f=await fixture(t),workspaceId='workspace';
+  const page=renderEconomyPanel(async(endpoint,input,signal,id=randomUUID())=>{
+    if(endpoint==='economyView')
+      return f.economy.snapshot(input.workspaceId,()=>signal.throwIfAborted(),{includeWritableKeys:true});
+    const result=await f.handler(endpoint,JSON.parse(JSON.stringify({requestId:id,input})),signal,f.peer);
+    if(!result.ok)throw Object.assign(Error(result.error.message),result.error);
+    return result.value;
+  },workspaceId);
+  page.render();t.after(page.mount());await setImmediate();
+
+  const [feed]=panelNodes(page.render(),node=>node.type==='details'&&node.props.label==='立即投喂');
+  const [food]=panelNodes(feed,node=>node.type==='select');
+  assert.equal(food.props.disabled,false);
+  food.props.onChange({target:{value:meal}});
+  const feedButton=()=>panelNodes(page.render(),node=>node.type==='button'&&node.children[0]==='立即投喂 1 份')[0];
+  assert.equal(feedButton().props.disabled,false);
+  await feedButton().props.onClick();
+
+  const rendered=page.render();
+  const [fault]=panelNodes(rendered,node=>node.props?.role==='alert');
+  const [feedback]=panelNodes(rendered,node=>node.props?.role==='status');
+  assert.match(fault.children[0],/先叫醒/);assert.match(feedback.children[0],/未完成/);
+  assert.equal(panelNodes(rendered,node=>node.type==='button'&&node.children[0]==='重试原操作').length,0);
+  assert.deepEqual(value(await f.handler('economyPending',{requestId:'pending-after-refusal',input:{workspaceId}},f.signal,f.peer)),[]);
+  assert.equal(feedButton().props.disabled,false,'A confirmed no-effect refusal must not block the next wallet operation');
+  assert.equal(f.state().asleep,true);assert.equal(f.inventory().quantity,1);assert.equal(f.inventory().reserved,0);
 });

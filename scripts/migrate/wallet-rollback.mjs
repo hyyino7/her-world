@@ -1,6 +1,7 @@
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
+import { CONSOLE_WALLET_IMPORT_FILE } from '../../dist/src/core/storage-migration.js';
 import { acquireMigrationMutex } from '../companion-backup.mjs';
 import { verifyOfflineBackup } from '../lib/offline-backup.mjs';
 import { fileHashes } from '../lib/repo-storage.mjs';
@@ -98,6 +99,21 @@ export function verifyWalletRollback({installation,walletExport,walletRollback})
   const saved = checked('wallet-rollback-invalid',() => verifyOfflineBackup(anchor.backup,context.plan));
   requireMigration(saved.codeFingerprint === anchor.codeFingerprint,'wallet-rollback-invalid');
   return {backup:anchor.backup};
+}
+
+/** Check the original wallet and Body bytes after the old backup was restored. */
+export function verifyWalletRestore(options) {
+  const {backup} = verifyWalletRollback(options);
+  const {data} = loadInstallation(options.installation);
+  const original = join(backup,'data','companion','payload','data');
+  checked('wallet-rollback-invalid',() => {
+    for (const path of ['storage-manifest.json','migrations.jsonl',CONSOLE_WALLET_IMPORT_FILE,'economy','living/economy-adoption.json',
+      'life/home.json','behavior/home.json']) {
+      const actual = join(data,path), saved = join(original,path);
+      requireMigration(isDeepStrictEqual(fileHashes(actual),fileHashes(saved)),'wallet-rollback-invalid');
+    }
+  });
+  return true;
 }
 
 export function readWalletMigrationInputs(context, exportFile, rollbackFile) {

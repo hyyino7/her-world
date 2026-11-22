@@ -17457,64 +17457,111 @@ registerCompanion({
     function EconomyPanel({workspaceId, request}) {
       const [view,setView] = useState(null), [busy,setBusy] = useState(false), [fault,setFault] = useState('');
       const [feedback,setFeedback] = useState(''), [edit,setEdit] = useState(null), [pending,setPending] = useState(null);
+      const [checks,setChecks] = useState({}), [unknown,setUnknown] = useState(null);
       const [amount,setAmount] = useState(''), [note,setNote] = useState('');
       const [giftItem,setGiftItem] = useState(''), [giftQuantity,setGiftQuantity] = useState('1'), [giftNote,setGiftNote] = useState('');
       const [feedItem,setFeedItem] = useState('');
       const [imported,setImported] = useState(null), [title,setTitle] = useState('');
       const [readingFormat,setReadingFormat] = useState('article');
-      const lifetime = useRef(null), locked = useRef(false), unresolved = useRef(null);
-      const storageKey = `chatpet:economy:pending:${workspaceId}`;
+      const lifetime = useRef(null), locked = useRef(false);
+      const outcomes = {committed:'已提交',partial:'已部分提交', 'no-evidence':'未找到提交证据',conflict:'同号内容不一致',abandoned:'已放弃'};
+      async function loadPending(signal) {
+        try {
+          const next = await request('economyPending',{workspaceId},signal);
+          if (!Array.isArray(next)) throw new Error('钱包待办回复无效。');
+          if (!signal.aborted) {
+            setPending(next);
+            setUnknown(previous => next.some(row => row.requestId === previous?.requestId) ? null : previous);
+          }
+          return next;
+        } catch (error) {
+          if (!signal.aborted) {
+            setPending(null);
+            setFault('钱包待办暂不可用。请刷新页面并核对当前安装版本。');
+          }
+          throw error;
+        }
+      }
+      async function loadView(signal) {
+        try {
+          const next = await request('economyView',{workspaceId},signal);
+          if (!signal.aborted) setView(next);
+        } catch(error) { if (!signal.aborted) setFault(error.message); }
+      }
       React.useEffect(() => {
         const controller = new AbortController(); lifetime.current = controller;
-        setView(null); setEdit(null); setImported(null); setTitle(''); setAmount(''); setNote(''); setFault('');
-        try {
-          const saved = localStorage.getItem(storageKey), value = saved ? JSON.parse(saved) : null;
-          if (value && (typeof value.requestId !== 'string' || !['economyAction','economySettings'].includes(value.endpoint)
-            || value.input?.workspaceId !== workspaceId)) throw Error('待确认经济操作的本机记录无效，请先检查浏览器保存状态。');
-          unresolved.current = value; setPending(value);
-        } catch (error) { unresolved.current = {invalid:true}; setPending({invalid:true}); setFault(error.message); }
-        async function load() {
-          try { const next = await request('economyView',{workspaceId},controller.signal); if (!controller.signal.aborted) setView(next); }
-          catch(error) { if (!controller.signal.aborted) setFault(error.message); }
-        }
-        void load();
+        setView(null); setPending(null); setChecks({}); setUnknown(null);
+        setEdit(null); setImported(null); setTitle(''); setAmount(''); setNote(''); setFault('');
+        void Promise.allSettled([loadView(controller.signal),loadPending(controller.signal)]);
         return () => controller.abort();
-      },[workspaceId,request,storageKey]);
+      },[workspaceId,request]);
       const refresh = async () => {
-        const signal=lifetime.current.signal; setFault('');
-        try {const next=await request('economyView',{workspaceId},signal); if(!signal.aborted)setView(next);}
-        catch(error){if(!signal.aborted)setFault(error.message);}
+        const signal = lifetime.current.signal;
+        setFault('');
+        await Promise.allSettled([loadView(signal),loadPending(signal)]);
       };
-      async function send(operation) {
-        if (locked.current || unresolved.current?.invalid) return;
-        const signal=lifetime.current.signal; locked.current=true;setBusy(true);setFault('');setFeedback('');
+      async function check(requestId,signal) {
+        const {state} = await request('economyCheck',{workspaceId,requestId},signal);
+        if (!signal.aborted) {
+          setChecks(previous => ({...previous,[requestId]:state}));
+          if (state === 'committed' || state === 'abandoned')
+            setUnknown(previous => previous?.requestId === requestId ? null : previous);
+        }
+        return state;
+      }
+      async function reconcile(endpoint,requestId) {
+        if (locked.current) return;
+        const signal = lifetime.current.signal;
+        locked.current = true; setBusy(true); setFault(''); setFeedback('');
         try {
-          if (!unresolved.current) {
-            localStorage.setItem(storageKey,JSON.stringify(operation));
-            unresolved.current=operation;setPending(operation);
-          } else if (unresolved.current.requestId!==operation.requestId) throw Error('有一笔结果待确认的操作，请先重试或核对流水。');
-          const result=await request(operation.endpoint,operation.input,signal,operation.requestId);
-          if(result.execution && !['completed','failed','cancelled'].includes(result.execution.status)) {
-            if(!signal.aborted){setPending(operation);setFeedback('投喂仍在等待核对，请重试原操作或查看使用中的库存。');await refresh();}
+          if (endpoint === 'economyCheck') {
+            await check(requestId,signal);
             return;
           }
-          // Only an acknowledged receipt releases the durable request identity.
-          localStorage.removeItem(storageKey);unresolved.current=null;
-          if(signal.aborted)return;
-          setPending(null);setFeedback(result.execution?.status==='failed'?'投喂未完成，请查看原因与库存。':'已保存，可在流水中核对。');setEdit(null);
-          if(operation.input.action?.kind==='grant'){setAmount('');setNote('');}
-          if(operation.input.action?.kind==='importReading'){setImported(null);setTitle('');}
-          await refresh();
-          if(result.execution?.status==='failed'&&!signal.aborted)setFault(result.execution.reason||'本次投喂未完成。');
-        } catch(error){if(!signal.aborted){
-          // These domain refusals occur before any commit. A transport timeout,
-          // cancellation, binding change or unknown error keeps the original ID.
-          if(['INELIGIBLE','NOT_FOUND','STALE_REVISION'].includes(error.code)) {
-            localStorage.removeItem(storageKey);unresolved.current=null;setPending(null);
+          const input = {workspaceId,requestId,...(endpoint === 'economyAbandon' ? {acceptNoEvidence:true} : {})};
+          const {state} = await request(endpoint,input,signal);
+          if (!signal.aborted) {
+            setChecks(previous => ({...previous,[requestId]:state}));
+            setFeedback(outcomes[state]);
           }
-          setFault(error.message);
-        }}
-        finally{locked.current=false;if(!signal.aborted)setBusy(false);}
+          await loadPending(signal);
+          if (endpoint === 'economyRetry') await loadView(signal);
+        } catch(error) { if (!signal.aborted) setFault(error.message); }
+        finally { locked.current = false; if (!signal.aborted) setBusy(false); }
+      }
+      async function send(operation, retryUnregistered = false) {
+        if (locked.current || pending === null || pending.length || unknown && !retryUnregistered) return;
+        const signal = lifetime.current.signal;
+        locked.current = true; setBusy(true); setFault(''); setFeedback('');
+        try {
+          const result = await request(operation.endpoint,operation.input,signal,operation.requestId);
+          if (signal.aborted) return;
+          const execution = result.execution?.status;
+          const waiting = execution && !['completed','failed','cancelled'].includes(execution);
+          setFeedback(waiting ? '投喂效果仍待查证。' : execution === 'failed' ? '投喂未完成，请查看原因与库存。' : '已保存，可在流水中核对。');
+          if (execution === 'failed') setFault(result.execution.reason || '本次投喂未完成。');
+          setEdit(null); setUnknown(null);
+          if (operation.input.action?.kind === 'grant') { setAmount(''); setNote(''); }
+          if (operation.input.action?.kind === 'importReading') { setImported(null); setTitle(''); }
+        } catch(error) {
+          if (!signal.aborted) {
+            setFault(error.message);
+            if (error.effect !== 'none') {
+              setUnknown(operation);
+              const registered = await loadPending(signal).catch(() => null);
+              if (registered && !registered.some(row => row.requestId === operation.requestId)) {
+                const state = await check(operation.requestId,signal).catch(() => null);
+                if (state === 'committed') setFeedback('原请求已提交，可在流水中核对。');
+              }
+            } else if (retryUnregistered) setUnknown(null);
+          }
+        } finally {
+          if (!signal.aborted) {
+            await Promise.allSettled([loadPending(signal),loadView(signal)]);
+            if (!signal.aborted) setBusy(false);
+          }
+          locked.current = false;
+        }
       }
       const mutate=(endpoint,input)=>send({endpoint,input:{workspaceId,...input},requestId:crypto.randomUUID()});
       const act=action=>mutate('economyAction',{action});
@@ -17530,7 +17577,7 @@ registerCompanion({
       });
       const config=edit?.next||view?.configuration, catalog=view?.catalog||[], inventory=view?.inventory||[];
       const names=new Map(catalog.map(item=>[item.id,item.name]));
-      const hasPending=Boolean(pending), available=inventory.filter(item=>item.available>0);
+      const hasPending=pending === null || pending.length > 0 || unknown !== null, available=inventory.filter(item=>item.available>0);
       const foods=available.filter(item=>catalog.find(entry=>entry.id===item.itemId)?.kind==='food');
       const itemChoice=(label,value,setValue,items)=>h('label',{className:'cp-field'},label,
         h('select',{value,disabled:busy||hasPending,onChange:event=>setValue(event.target.value)},
@@ -17540,10 +17587,6 @@ registerCompanion({
       const updateCrop=(crop,key,value)=>changed('crops',{...Object.fromEntries(Object.entries(config.crops).map(([id,row])=>[id,{growMs:row.growMs,seedCost:row.seedCost}])),[crop]:{growMs:config.crops[crop].growMs,seedCost:config.crops[crop].seedCost,[key]:value}});
       const updatePrice=(item,key,value)=>{const saved=catalog.find(entry=>entry.id===item);changed('itemPrices',{...config.itemPrices,[item]:{purchasePrice:saved.purchasePrice,sellPrice:saved.sellPrice,...config.itemPrices?.[item],[key]:value}});};
       const price=(item,key)=>config.itemPrices?.[item.id]&&Object.hasOwn(config.itemPrices[item.id],key)?config.itemPrices[item.id][key]:item[key];
-      const forgetPending=()=>{
-        try {localStorage.removeItem(storageKey);unresolved.current=null;setPending(null);setFault('');}
-        catch(error){setFault(error.message);}
-      };
       async function chooseFile(event) {
         const file=event.target.files?.[0];event.target.value='';if(!file)return;
         const signal=lifetime.current.signal;setFault('');
@@ -17557,10 +17600,17 @@ registerCompanion({
       return h(Card,{title:'钱包与物品',status:view?`${view.balance} 虚拟币`:'读取中',note:'钱包和物品由同一份账本管理。收入来自实际生产与自愿交易，没有每日自动发薪。'},
         fault&&h('p',{role:'alert'},fault),feedback&&h('p',{role:'status'},feedback),
         button('刷新钱包',refresh,busy),
-        pending&&h('div',null,h('p',{role:'status'},'上次操作的结果尚未确认。重试会使用原请求编号，避免重复记账。'),
-          !pending.invalid&&button('重试原操作',()=>send(pending)),
-          h('p',{className:'cp-muted'},'请先刷新并核对流水；清除本机重试记录不会撤销已经提交的操作。'),
-          button('已核对，清除重试记录',forgetPending)),
+        unknown&&h('div',null,h('p',{role:'status'},'提交结果待确认 · '+unknown.requestId),
+          checks[unknown.requestId]&&h('p',null,outcomes[checks[unknown.requestId]]),
+          button('按原号查证',()=>reconcile('economyCheck',unknown.requestId)),
+          checks[unknown.requestId]==='no-evidence'&&button('重试提交原号',()=>send(unknown,true),pending === null || pending.length > 0)),
+        pending?.length>0&&h('div',null,h('p',{role:'status'},'待确认钱包操作'),
+          ...pending.map(({requestId,endpoint})=>h('div',{key:requestId},
+            h('p',null,(endpoint === 'economySettings' ? '经济配置' : '钱包操作')+' · '+requestId),
+            checks[requestId]&&h('p',null,outcomes[checks[requestId]]),
+            button('按原号查证',()=>reconcile('economyCheck',requestId)),
+            button('重试原操作',()=>reconcile('economyRetry',requestId)),
+            checks[requestId]==='no-evidence'&&button('确认无证据，放弃此笔',()=>reconcile('economyAbandon',requestId))))),
         view&&h(React.Fragment,null,
           facts([['余额',`${view.balance} 虚拟币`],['账本修订',view.revision],['当前经济配置',`${view.configuration.revision} · ${String(view.configurationVersion).slice(-12)}`]]),
           details('给零花钱',fields(field('金额',{type:'number',min:1,value:amount,onChange:setAmount,disabled:busy||hasPending}),
