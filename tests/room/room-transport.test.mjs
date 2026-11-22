@@ -4,7 +4,12 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
-import {apply as applyConsole} from '../../dist/src/console/plugin.js';
+import {Context} from '@deepseek-ai/cordis';
+import * as consolePlugin from '../../dist/src/console/plugin.js';
+import {CapabilityTable} from '../../dist/src/core/tables/capabilities.js';
+import {coreConsoleOperations} from '../../dist/src/core/console-operations.js';
+import {ConsoleTable} from '../../dist/src/core/tables/console.js';
+import {roomConsoleOperations} from '../../dist/src/room/plugin.js';
 import {roomAsset} from '../../dist/src/room/assets.js';
 
 const routes = [
@@ -85,25 +90,38 @@ test('Console timeouts stay available without Room and preserve the original RPC
   }
 });
 
-test('Console registers the Room subset in the owner RPC table and keeps lifeDates on records', async () => {
+test('Console registers the Room subset in the owner RPC table and keeps lifeDates on records', async t => {
   const signal = new AbortController().signal, handlers = new Map(), dispatched = [], dates = [];
   const peer = {principal:{kind:'owner'}, signal};
-  const host = {workspace:{status:()=>({state:'ready',target:{id:'fixture'}})}, records:{library(...args) {dates.push(args);return ['today'];}}};
+  const operations = new ConsoleTable();
+  const host = {
+    native:{consoleOperations:operations}, services:{},
+    workspace:{status:()=>({state:'ready',target:{id:'fixture'}}), homeScope:()=>undefined,
+      runtime:{capabilityTable:new CapabilityTable()}},
+    records:{library(...args) {dates.push(args);return ['today'];}},
+  };
   const room = {async request(id, endpoint, _data, requestId, signal) {
     signal.throwIfAborted();
     dispatched.push({id, endpoint, requestId});
     return endpoint;
   }};
-  let activeRoom = room;
-  const services = {petCore:host};
-  applyConsole({
-    get(name) {return name === 'petRoom' ? activeRoom : services[name];},
-    inject() {},
-    connection:{browserPeer:peer, fetch:{register(route) {
+  operations.register('core', coreConsoleOperations(host));
+  const root = new Context(), fibers = [];
+  t.after(async () => {
+    for (const fiber of fibers.reverse()) await fiber.dispose();
+  });
+  fibers.push(await root.plugin(ctx => {
+    ctx.provide('petCore', host);
+    ctx.provide('connection', {browserPeer:peer, fetch:{register(route) {
       assert.equal(handlers.has(route.path), false);
       handlers.set(route.path, route.fetch);
-    }}},
+      return () => handlers.delete(route.path);
+    }}});
+  }));
+  const roomFiber = await root.plugin(ctx => {
+    ctx.effect(() => operations.register('room', roomConsoleOperations(room), ctx).revoke);
   });
+  fibers.push(roomFiber, await root.plugin(consolePlugin));
   async function request(endpoint, input) {
     const method = 'chatpetSettings/' + endpoint, path = '/api/' + method;
     const data = {type:'client-request',rpcId:'1',method,payload:{requestId:'test-id',input}};
@@ -117,7 +135,7 @@ test('Console registers the Room subset in the owner RPC table and keeps lifeDat
   peer.principal.kind = 'guest';
   assert.equal((await request('roomState', {workspaceId:'fixture',data:{}})).error.code,'UNAUTHORIZED');
   peer.principal.kind = 'owner';
-  activeRoom = undefined;
+  await roomFiber.dispose();
   assert.equal((await request('roomState', {workspaceId:'fixture',data:{}})).error.code,'UNAVAILABLE');
   assert.deepEqual(await request('lifeDates', {workspaceId:'fixture'}), {ok:true,value:['today']});
   assert.deepEqual(dates, [['fixture','dates']]);

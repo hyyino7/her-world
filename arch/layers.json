@@ -138,8 +138,8 @@
       "layer": 3,
       "root": "src/console/",
       "services": [],
-      "dependencies": ["core","memory","emotion","contracts","world","living","console","presentation"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy"],
+      "dependencies": ["core","contracts","living","console","presentation"],
+      "reads": ["petCore","petWorld","petEconomy"],
       "publishes": [],
       "subscribes": [],
       "generated": []

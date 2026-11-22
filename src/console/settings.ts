@@ -1,31 +1,55 @@
+import type { Context } from '@deepseek-ai/cordis';
+import { isDeepStrictEqual } from 'node:util';
+import { unknownEffect, type ContractError } from '../contracts/common.js';
+import { BODY_ACTIONS, CARE_ACTIONS } from '../contracts/behavior.js';
+import { unwrap } from '../core/console-operations.js';
 import type { PetCoreHost } from '../core/index.js';
-import type { ConversationOptions } from '../core/options.js';
-import type { WorkspaceTarget } from '../core/preferences.js';
 import { Rejection } from '../core/storage.js';
 import { MIGRATION_REASON } from '../core/storage-migration.js';
-import type { CompanionEmotion } from '../emotion/plugin.js';
-import type { CompanionLife } from '../living/plan/plugin.js';
+import { fail, object, requiredText, type ConsoleCode, type SettingsWorkspaceRegistry } from '../core/tables/console.js';
+import { animationSlotAllowed } from '../living/body/animation-slots.js';
+import { classifyActivity } from '../living/body/presentation.js';
+import { withHomePlayback } from '../presentation/playback.js';
+import { ROOM_ENDPOINTS } from '../presentation/room-transport.js';
 import { estimateTokens } from '#dsh-world/console/snapshot';
-import { desktopAppearanceDefaults } from '../desktop/appearance.js';
-import { BODY_ACTIONS, CARE_ACTIONS, isCareAction } from '../contracts/behavior.js';
-import {isRoomEndpoint, type RoomEndpoint} from '../presentation/room-transport.js';
-import {classifyActivity} from '../living/body/presentation.js';
-import {animationSlotAllowed} from '../living/body/animation-slots.js';
-import {withHomePlayback} from '../presentation/playback.js';
+
+export type { SettingsWorkspaceRegistry } from '../core/tables/console.js';
+
 export interface EconomyControls {
-  snapshot(workspaceId: string, validate?: () => void, options?: {includeWritableKeys?: boolean}): Promise<unknown>;
   ownerAction(workspaceId: string, action: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
   settings(workspaceId: string, expectedVersion: string, next: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
 }
-interface RoomControls { request(workspaceId: string, endpoint: RoomEndpoint, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>; open?(workspaceId:string):Promise<unknown> }
 
-/** Structural subset of the native Connection RPC contract; no new transport. */
-export type SettingsReply = { ok: true; value: unknown } | { ok: false; error: { code: string; message: string; details: Record<string, never> } };
-export type SettingsHandler = (endpoint: string, payload: unknown, signal: AbortSignal, peer: { principal: { kind: string }; signal: AbortSignal }) => Promise<SettingsReply>;
-export interface SettingsWorkspace extends WorkspaceTarget { readonly sessionIds?: readonly string[]; status(): Promise<'ok' | 'missing-dir'> }
-export interface SettingsWorkspaceRegistry { list(): SettingsWorkspace[]; get(id: string): SettingsWorkspace | undefined }
-import type { CompanionConfiguration } from '../core/companion-settings.js';
-const messages: Record<string, string> = {
+/** Connection's locally available structural PeerScope subset. */
+type SettingsError = {
+  code: string;
+  message: string;
+  details: Record<string, never>;
+  effect: ContractError['effect'];
+  retry: ContractError['retry'];
+};
+export type SettingsReply = { ok: true; value: unknown } | { ok: false; error: SettingsError };
+export type SettingsHandler = (endpoint: string, payload: unknown, signal: AbortSignal,
+  peer: {principal: {kind: string}; signal: AbortSignal}) => Promise<SettingsReply>;
+
+// Exact compatibility routes stay addressable while an optional owner is unloaded.
+const owners = {
+  core: ['foundation', 'self', 'desktopAppearance', 'companion', 'identity', 'quiet', 'preferences', 'initialize', 'profile',
+    'lifeDates', 'lifeJournal', 'lifeAlbum', 'lifeSearch', 'lifePhoto', 'lifeForgetPhoto'],
+  economy: ['economyView'],
+  emotion: ['emotionState', 'emotionUpdate'],
+  room: ['roomOpen', ...ROOM_ENDPOINTS],
+  desktop: ['desktopOpen', 'desktopClose'],
+  platform: ['presentationTiming', 'presentationMigration', 'petPlatformAccess', 'petControlAccess', 'petStandaloneAccess'],
+  channels: ['qzoneState', 'qzoneSettings', 'qzoneDraft', 'qzoneRemove', 'groupState', 'groupSettings', 'groupSlang',
+    'groupResearch', 'channelStatus', 'bridgeSettings', 'messagingSettings'],
+  life: ['lifeView', 'lifeControl', 'lifeAction', 'lifePreferences'],
+};
+const endpointOwners = new Map(Object.entries(owners).flatMap(([owner, endpoints]) => endpoints.map(endpoint => [endpoint, owner])));
+const walletWrites = new Set(['economyAction', 'economySettings']);
+export const settingsEndpoints = ['snapshot', 'worldView', 'archiveFind', 'archiveRead', ...walletWrites, ...endpointOwners.keys()];
+
+const messages: Partial<Record<ConsoleCode, string>> = {
   STALE_BINDING: '工作区绑定已改变，请刷新。',
   STALE_REVISION: '设置已被其他操作修改，请刷新后重新编辑。',
   CONFLICT: '设置已被其他操作修改，请刷新后重新编辑。',
@@ -44,48 +68,50 @@ const messages: Record<string, string> = {
   ENOENT: '工作区资料尚未初始化或已移动，请在工作区页检查绑定与初始化状态。',
   OUTCOME_UNKNOWN: '部分设置可能已保存，请刷新读取实际状态后再继续。',
 };
-function fail(code: string): never { throw { code }; }
-function object(value: unknown, keys: string[]): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_ARGUMENT');
-  const obj = value as Record<string, unknown>;
-  if (Object.keys(obj).length !== keys.length || keys.some(key => !Object.hasOwn(obj, key))) fail('INVALID_ARGUMENT');
-  return obj;
+
+const economicMessages: Partial<Record<ConsoleCode, string>> = {
+  INELIGIBLE: '余额或可用物品不足，或该商品暂不可交易。请核对钱包与库存。',
+  NOT_FOUND: '所选物品或原操作不存在，请刷新商店与库存。',
+  UNAVAILABLE: '经济资料暂不可用。原钱包与未决操作保留，请检查绑定和经济组件状态。',
+  INVALID_ARGUMENT: '请检查金额、数量、阅读内容或经济设置。',
+};
+
+function settingsError(endpoint: string, error: unknown): SettingsReply {
+  const detail = error instanceof Rejection ? error.detail : undefined;
+  const code = detail?.code ?? (error && typeof error === 'object' && 'code' in error ? String(error.code) : 'INTERNAL');
+  const economic = endpoint === 'economyView' || walletWrites.has(endpoint);
+  const message = (economic && economicMessages[code as ConsoleCode]) || messages[code as ConsoleCode]
+    || '设置操作未完成，请刷新核对实际状态。';
+  const effect = detail?.effect ?? (code === 'OUTCOME_UNKNOWN' || code === 'INTERNAL' ? 'unknown' : 'none');
+  const retry = detail?.retry ?? (effect === 'unknown' ? 'reconcile'
+    : code === 'STALE_BINDING' || code === 'STALE_REVISION' ? 'refresh' : 'never');
+  return {ok: false, error: {code, message, details: {}, effect, retry}};
 }
-function unwrap<T>(value: { ok: true; value: T } | { ok: false; error: { code: string } }): T {
-  if (!value.ok) fail(value.error.code);
-  return value.value;
-}
-function requiredText(value: unknown, max: number): string {
-  if (typeof value !== 'string' || !value.trim() || value.length > max) fail('INVALID_ARGUMENT');
-  return value.trim();
-}
+
 const sectionModules = new Map([['profile', 'persona'], ['sessions', 'archive'], ['emotion', 'mood']]);
-/** Owner-only, finite endpoint map. No caller-supplied operation, actor or authority is forwarded. */
-interface DesktopControls {
-  status(): { running: boolean };
-  start(): Promise<unknown>;
-  closeWindow(): unknown;
-}
-export function settingsHandler(getHost: () => PetCoreHost | undefined, getWorkspaces: () => SettingsWorkspaceRegistry | undefined,
-  getDesktop?: (host: PetCoreHost) => DesktopControls | undefined, getWorldModules?: () => readonly string[],
-  getEmotion?: () => Pick<CompanionEmotion, 'current' | 'catalog'> & Partial<Pick<CompanionEmotion,'read'|'update'>> | undefined,
-  getLife?: () => (Pick<CompanionLife, 'snapshot' | 'control' | 'act'> & Partial<Pick<CompanionLife, 'settings' | 'library'>>) | undefined,
-  getRoom?: () => RoomControls | undefined,
-  getChannels?: () => Pick<import('../channels/plugin.js').CompanionChannels,'request'> | undefined,
-  getPlatform?: () => Pick<import('../desktop/platform/plugin.js').PetPlatform, 'ownerAccess' | 'controlAccess' | 'standaloneAccess'> & Partial<Pick<import('../desktop/platform/plugin.js').PetPlatform,'status'|'saveTiming'|'resolveMigration'>> | undefined,
-  getEconomy?: () => EconomyControls | undefined): SettingsHandler {
+
+/** Owner-only exact RPCs share admission. The legacy wallet writers keep their original dispatch. */
+export function settingsHandler(
+  getHost: () => PetCoreHost | undefined,
+  getWorkspaces: () => SettingsWorkspaceRegistry | undefined,
+  getWorldModules?: () => readonly string[],
+  getEconomy?: () => EconomyControls | undefined,
+  scope?: Context,
+): SettingsHandler {
   return async (endpoint, payload, signal, peer) => {
     try {
       if (peer.principal.kind !== 'owner' || peer.signal.aborted) fail('UNAUTHORIZED');
       if (signal.aborted) fail('CANCELLED');
-      const host = getHost(); if (!host) fail('UNAVAILABLE');
+      const host = getHost();
+      if (!host) fail('UNAVAILABLE');
       const body = object(payload, ['requestId', 'input']);
       if (typeof body.requestId !== 'string' || body.requestId.length < 1 || body.requestId.length > 160) fail('INVALID_ARGUMENT');
       if (endpoint !== 'snapshot' && host.workspace.status().state === 'migration-required') fail('migration-required');
+      const table = host.native.consoleOperations;
       const context = () => host.operator.request(`settings:${endpoint}:${body.requestId}`);
-      const options = { signal };
-      if (['economyView', 'economyAction', 'economySettings'].includes(endpoint)) {
-        const keys = endpoint === 'economyView' ? [] : endpoint === 'economyAction' ? ['action'] : ['expectedVersion', 'next'];
+      const options = {signal: AbortSignal.any([signal, peer.signal])};
+      if (walletWrites.has(endpoint)) {
+        const keys = endpoint === 'economyAction' ? ['action'] : ['expectedVersion', 'next'];
         const input = object(body.input, ['workspaceId', ...keys]);
         const workspaceId = requiredText(input.workspaceId, 200), binding = host.workspace.status();
         const registered = getWorkspaces()?.get(workspaceId), economy = getEconomy?.();
@@ -102,150 +128,10 @@ export function settingsHandler(getHost: () => PetCoreHost | undefined, getWorks
         if (await registered.status() !== 'ok') fail('NOT_FOUND');
         validate();
         const combinedSignal = AbortSignal.any([signal, peer.signal]);
-        const value = endpoint === 'economyView' ? await economy.snapshot(workspaceId, validate, {includeWritableKeys:true})
-          : endpoint === 'economyAction' ? await economy.ownerAction(workspaceId, input.action, body.requestId, combinedSignal, validate)
+        const value = endpoint === 'economyAction' ? await economy.ownerAction(workspaceId, input.action, body.requestId, combinedSignal, validate)
           : await economy.settings(workspaceId, requiredText(input.expectedVersion, 256), input.next, body.requestId, combinedSignal, validate);
         validate();
         return {ok: true, value};
-      }
-      if(endpoint==='foundation') {
-        const writing=Boolean(body.input && typeof body.input==='object' && Object.hasOwn(body.input,'text'));
-        const input=object(body.input,writing ? ['workspaceId','expectedRevision','text'] : ['workspaceId']);
-        if(host.workspace.status().target?.id!==input.workspaceId)fail('STALE_BINDING');
-        const value=writing ? unwrap(await host.services.workspace.saveFoundation(context(),{
-          workspaceId:requiredText(input.workspaceId,200),expectedRevision:requiredText(input.expectedRevision,256),text:input.text as string},options))
-          : unwrap(await host.services.workspace.readFoundation(context(),{},options));
-        return {ok:true,value};
-      }
-      if(endpoint==='self') {
-        const writing=Boolean(body.input && typeof body.input==='object' && Object.hasOwn(body.input,'text'));
-        const input=object(body.input,writing ? ['workspaceId','expectedRevision','text'] : ['workspaceId']);
-        const id=requiredText(input.workspaceId,200);
-        if(host.workspace.status().target?.id!==id)fail('STALE_BINDING');
-        const value=writing ? await host.records.saveSelf(id,requiredText(input.expectedRevision,256),input.text as string)
-          : await host.records.readSelf(id);
-        if(signal.aborted || peer.signal.aborted)fail('CANCELLED');
-        return {ok:true,value};
-      }
-      if(endpoint==='emotionState' || endpoint==='emotionUpdate') {
-        const raw=body.input as Record<string,unknown>;
-        if(!raw || typeof raw!=='object')fail('INVALID_ARGUMENT');
-        const id=requiredText(raw.workspaceId,200);
-        if(host.workspace.status().target?.id!==id)fail('STALE_BINDING');
-        const emotion=getEmotion?.();
-        if(!emotion?.read || !emotion.update)fail('UNAVAILABLE');
-        const {workspaceId:_id,...update}=raw;
-        const value=endpoint==='emotionState' ? await emotion.read(id) : await emotion.update(id,update as unknown as import('../contracts/emotion.js').EmotionUpdate);
-        if(getEmotion?.()!==emotion || host.workspace.status().target?.id!==id)fail('STALE_BINDING');
-        return {ok:true,value};
-      }
-      if(endpoint==='roomOpen') {
-        const input=object(body.input,['workspaceId']);
-        const id=requiredText(input.workspaceId,200),room=getRoom?.();
-        if(host.workspace.status().target?.id!==id)fail('STALE_BINDING');
-        if(!room?.open)fail('UNAVAILABLE');
-        const value=await room.open(id);
-        if(getRoom?.()!==room || host.workspace.status().target?.id!==id)fail('STALE_BINDING');
-        return {ok:true,value};
-      }
-      if (endpoint === 'desktopAppearance') { object(body.input, []); return {ok:true, value:desktopAppearanceDefaults()}; }
-      if(endpoint==='presentationTiming' || endpoint==='presentationMigration') {
-        const input=object(body.input,endpoint==='presentationTiming' ? ['workspaceId','expected','eventsRefreshSec'] : ['workspaceId','field','choice','expectedConfigHash']);
-        const id=requiredText(input.workspaceId,200), platform=getPlatform?.();
-        if(host.workspace.status().target?.id!==id)fail('STALE_BINDING');
-        if(!platform)fail('UNAVAILABLE');
-        let value;
-        if(endpoint==='presentationTiming') {
-          if(!platform.saveTiming)fail('UNAVAILABLE');
-          value=await platform.saveTiming(id,input.expected,input.eventsRefreshSec);
-        }else {
-          if(!platform.resolveMigration || !['legacy','current'].includes(String(input.choice)))fail('INVALID_ARGUMENT');
-          value=platform.resolveMigration(id,requiredText(input.field,300),input.choice as 'legacy'|'current',requiredText(input.expectedConfigHash,64));
-        }
-        if(signal.aborted || peer.signal.aborted)fail('CANCELLED');
-        if(getPlatform?.()!==platform || host.workspace.status().target?.id!==id)fail('STALE_BINDING');
-        return {ok:true,value};
-      }
-      if (['petPlatformAccess','petControlAccess','petStandaloneAccess'].includes(endpoint)) {
-        const input = object(body.input,['workspaceId']);
-        const target = host.workspace.status();
-        if (target.state !== 'ready' || target.target?.id !== input.workspaceId) fail('STALE_BINDING');
-        const platform = getPlatform?.();
-        if (!platform) fail('UNAVAILABLE');
-        const id = target.target!.id;
-        const value = endpoint === 'petPlatformAccess' ? platform.ownerAccess(id) :
-          endpoint === 'petControlAccess' ? platform.controlAccess(id) : await platform.standaloneAccess(id);
-        if (host.workspace.status().target?.id !== input.workspaceId || getPlatform?.() !== platform) fail('STALE_BINDING');
-        return {ok:true,value};
-      }
-      const channelFields = {channelStatus:['workspaceId'], bridgeSettings:['workspaceId','expected','next'],
-        messagingSettings:['workspaceId','expected','next'], groupState:['workspaceId','groupId'],
-        groupSettings:['workspaceId','groupId','expected','next'], groupSlang:['workspaceId','groupId','content','meaning','usage','status'],
-        groupResearch:['workspaceId','groupId','content'], qzoneState:['workspaceId'], qzoneSettings:['workspaceId','expected','next'],
-        qzoneDraft:['workspaceId','text'], qzoneRemove:['workspaceId','id']} as Record<string,string[]>;
-      if (Object.hasOwn(channelFields,endpoint)) {
-        const input = object(body.input, channelFields[endpoint]);
-        const id = requiredText(input.workspaceId, 200), channels = getChannels?.();
-        if (!channels) fail('UNAVAILABLE');
-        if (host.workspace.status().target?.id !== id) fail('STALE_BINDING');
-        const value = await channels.request(id, endpoint, input);
-        if (getChannels?.() !== channels || host.workspace.status().target?.id !== id) fail('STALE_BINDING');
-        if (signal.aborted || peer.signal.aborted) fail('CANCELLED');
-        return {ok:true, value};
-      }
-      if (isRoomEndpoint(endpoint)) {
-        const input = object(body.input, ['workspaceId', 'data']);
-        const id = requiredText(input.workspaceId, 200), room = getRoom?.();
-        if (!room) fail('UNAVAILABLE');
-        if (host.workspace.status().target?.id !== id) fail('STALE_BINDING');
-        if (!input.data || typeof input.data !== 'object' || Array.isArray(input.data)) fail('INVALID_ARGUMENT');
-        const roomSignal=AbortSignal.any([signal,peer.signal]);
-        const value=await room.request(id,endpoint,input.data as Record<string,unknown>,body.requestId,roomSignal).catch(error=>{
-          if(roomSignal.aborted)fail('CANCELLED');
-          throw error;
-        });
-        if (getRoom?.() !== room || host.workspace.status().target?.id !== id) fail('STALE_BINDING');
-        if (signal.aborted || peer.signal.aborted) fail('CANCELLED');
-        return {ok:true, value};
-      }
-      if (['lifePreferences', 'lifeDates', 'lifeJournal', 'lifeAlbum', 'lifePhoto', 'lifeForgetPhoto','lifeSearch'].includes(endpoint)) {
-        const fields = endpoint === 'lifePreferences' ? ['expected', 'next'] : endpoint === 'lifeSearch' ? ['query','offset'] : endpoint === 'lifeDates' ? [] :
-          [endpoint === 'lifeJournal' ? 'day' : endpoint === 'lifeAlbum' ? 'offset' : 'id'];
-        const input = object(body.input, ['workspaceId', ...fields]);
-        const id = requiredText(input.workspaceId, 200);
-        const life = getLife?.();
-        if (host.workspace.status().target?.id !== id) fail('STALE_BINDING');
-        if (endpoint === 'lifePreferences' && !life?.settings) fail('UNAVAILABLE');
-        let value: unknown;
-        if (endpoint === 'lifePreferences') value = await life!.settings!(id, input.expected, input.next);
-        else if (endpoint === 'lifeSearch') value = await host.records.library(id, 'search', {query:input.query, offset:input.offset});
-        else if (endpoint === 'lifeDates') value = await host.records.library(id, 'dates');
-        else if (endpoint === 'lifeJournal') value = await host.records.library(id, 'journal', input.day);
-        else if (endpoint === 'lifeAlbum') value = await host.records.library(id, 'album', input.offset);
-        else value = await host.records.library(id, endpoint === 'lifePhoto' ? 'photo' : 'forgetPhoto', input.id);
-        if (signal.aborted || peer.signal.aborted) fail('CANCELLED');
-        if ((endpoint === 'lifePreferences' && getLife?.() !== life) || host.workspace.status().target?.id !== id) fail('STALE_BINDING');
-        return {ok: true, value};
-      }
-      if (endpoint === 'lifeView' || endpoint === 'lifeControl' || endpoint === 'lifeAction') {
-        const key = endpoint === 'lifeControl' ? 'enabled' : endpoint === 'lifeAction' ? 'action' : null;
-        const input = object(body.input, ['workspaceId', ...(key ? [key] : [])]);
-        const state = host.workspace.status();
-        if (state.state !== 'ready' || state.target?.id !== input.workspaceId) fail('STALE_BINDING');
-        const life = getLife?.(); if (!life) fail('UNAVAILABLE');
-        if (endpoint === 'lifeControl' && typeof input.enabled !== 'boolean') fail('INVALID_ARGUMENT');
-        if (endpoint === 'lifeAction' && !isCareAction(input.action)) fail('INVALID_ARGUMENT');
-        const workspaceId = input.workspaceId as string;
-        const value = endpoint === 'lifeView' ? await life.snapshot(workspaceId)
-          : endpoint === 'lifeControl' ? await life.control(workspaceId, input.enabled as boolean)
-          : await life.act(workspaceId, input.action as string,body.requestId,'settings');
-        if (signal.aborted || peer.signal.aborted) fail('CANCELLED');
-        if (getLife?.() !== life || host.workspace.status().target?.id !== workspaceId) fail('STALE_BINDING');
-        const projected='home' in value ? {...value,home:withHomePlayback(value.home,animationSlotAllowed,classifyActivity)} : value;
-        return {ok: true, value: endpoint === 'lifeView' ? {...projected,
-          roomAvailable: Boolean(getRoom?.()), channelsAvailable: Boolean(getChannels?.()),
-          careActions: CARE_ACTIONS.map(action => ({action, label: BODY_ACTIONS[action].care.label})),
-        } : projected};
       }
       if (endpoint === 'snapshot') {
         object(body.input, []);
@@ -275,14 +161,14 @@ export function settingsHandler(getHost: () => PetCoreHost | undefined, getWorks
         const workspaces = await Promise.all((registry?.list() ?? []).map(async workspace => ({
           id: workspace.id, title: workspace.title, path: workspace.path, state: await workspace.status(),
         })));
-        if(getHost()!==host || signal.aborted || peer.signal.aborted)fail('CANCELLED');
+        if(signal.aborted || peer.signal.aborted || getHost()!==host)fail('CANCELLED');
         host.workspace.assertEditScope(editorScope);
         return { ok: true, value: { identity: { revision: identity.revision, displayName: identity.displayName, character: identity.character },
           policy, preferences: prefs, capabilities, workspaces, workspaceAvailable: Boolean(registry), workspace, migrationHelp, profile, editorScope,
           storage: host.workspace.storageStatus(),
-          desktop: migrating ? null : getDesktop?.(host)?.status() ?? null,
-          platformAvailable:!migrating && Boolean(getPlatform?.()),
-          presentation:migrating ? null : getPlatform?.()?.status?.() ?? null,
+          desktop: migrating ? null : table.get('desktop', scope)?.value.status?.(workspace.target?.id ?? '') ?? null,
+          platformAvailable:!migrating && Boolean(table.get('platform', scope)),
+          presentation:migrating ? null : table.get('platform', scope)?.value.status?.(workspace.target?.id ?? '') ?? null,
           memory: { enabled: !migrating && Boolean(host.native.memory && host.native.memoryEnabledForNewSessions()),
             provider: host.native.memory?.connection.lifecycle ?? null,
             error: host.native.memory?.lastError ?? null },
@@ -344,93 +230,50 @@ export function settingsHandler(getHost: () => PetCoreHost | undefined, getWorks
           const estimatedTokens = estimateTokens([profile.identity, profile.user].filter(Boolean).join('\n\n'));
           return { ok: true, value: { workspaceId, profile: { ...profile, estimatedTokens } } };
         }
-        const emotion = getEmotion?.();
-        const current = emotion?.current(workspaceId);
-        const label = (asset: { name: string; label?: string }) => asset.label || asset.name;
-        return { ok: true, value: { workspaceId,
-          emotion: emotion ? {
-            current: current ? { mood: current.mood, at: current.at } : null,
-            actions: emotion.catalog.actions.map(label), stickers: emotion.catalog.stickers.map(label),
-          } : null,
-        } };
+        return {ok: true, value: {workspaceId, emotion: table.get('emotion', scope)?.value.status?.(workspaceId) ?? null}};
       }
-      if (endpoint === 'desktopOpen' || endpoint === 'desktopClose') {
-        const input = object(body.input, ['workspaceId']);
-        const desktop = getDesktop?.(host);
-        if (!desktop) fail('UNAVAILABLE');
-        const workspace = host.workspace.status();
-        if (workspace.target?.id !== input.workspaceId || (endpoint === 'desktopOpen' && workspace.state !== 'ready'))
-          fail('STALE_BINDING');
-        if (endpoint === 'desktopOpen') await desktop.start();
-        else await desktop.closeWindow();
-        return { ok: true, value: desktop.status() };
+      const owner = endpointOwners.get(endpoint);
+      if (!owner) fail('INVALID_ARGUMENT');
+      const entry = table.get(owner, scope), operation = entry?.value.operations[endpoint];
+      if (!entry || !operation) fail('UNAVAILABLE');
+
+      let binding: ReturnType<PetCoreHost['workspace']['status']> | undefined;
+      let home: ReturnType<PetCoreHost['workspace']['homeScope']>;
+      const validate = () => {
+        if (options.signal.aborted) fail('CANCELLED');
+        if (getHost() !== host || table.get(owner, scope) !== entry) fail('STALE_BINDING');
+        if (!binding) return;
+        const current = host.workspace.status();
+        if (current.target?.id !== binding.target?.id || current.target?.path !== binding.target?.path
+          || current.state !== binding.state || !isDeepStrictEqual(home, host.workspace.homeScope())) fail('STALE_BINDING');
+      };
+      const checkBinding = (workspaceId: unknown, ready = false) => {
+        binding = host.workspace.status();
+        if (binding.target?.id !== workspaceId || (ready && binding.state !== 'ready')) fail('STALE_BINDING');
+        home = host.workspace.homeScope();
+        validate();
+      };
+      const cancelledReply = () => new Rejection(unknownEffect('CANCELLED', 'Console reply cancelled'));
+      let value: unknown;
+      try {
+        value = await operation({input: body.input, requestId: body.requestId, signal: options.signal,
+          getWorkspaces, checkBinding, validate});
+      } catch (error) {
+        if (options.signal.aborted && !(error instanceof Rejection)
+          && (owner === 'room' || error === options.signal.reason)) throw cancelledReply();
+        throw error;
       }
-      if (endpoint === 'companion') {
-        const input = object(body.input, ['workspaceId', 'expectedSettings', 'settings']);
-        return { ok: true, value: unwrap(await host.services.workspace.saveCompanion(context(), {
-          workspaceId: input.workspaceId as string, expectedSettings: input.expectedSettings as CompanionConfiguration,
-          settings: input.settings as CompanionConfiguration,
-        }, options)) };
-      }
-      if (endpoint === 'initialize') {
-        const input = object(body.input, ['expectedPreferencesRevision']);
-        const prefs = unwrap(await host.services.preferences.read(context(), {}, options));
-        const target = prefs.workspace && getWorkspaces()?.get(prefs.workspace.id);
-        if (!target || target.path !== prefs.workspace?.path || await target.status() !== 'ok') fail('NOT_FOUND');
-        return { ok: true, value: unwrap(await host.services.workspace.initialize(context(), {
-          expectedPreferencesRevision: input.expectedPreferencesRevision as number,
-        }, options)) };
-      }
-      if (endpoint === 'profile') {
-        const input = object(body.input, ['expectedScope','expectedRevision', 'text']);
-        return { ok: true, value: unwrap(await host.services.workspace.saveProfile(context(), {
-          expectedScope:input.expectedScope as import('../contracts/core.js').WorkspaceEditScope,
-          expectedRevision: input.expectedRevision as number, text: input.text as string,
-        }, options)) };
-      }
-      if (endpoint === 'identity') {
-        const input = object(body.input, ['expectedScope','expectedRevision', 'displayName', 'character']);
-        const identity = unwrap(await host.services.core.reviseIdentity(context(), input as unknown as {
-          expectedScope:import('../contracts/core.js').WorkspaceEditScope;expectedRevision: number; displayName: string; character: string;
-        }, options));
-        return { ok: true, value: { revision: identity.revision, displayName: identity.displayName, character: identity.character } };
-      }
-      if (endpoint === 'quiet') {
-        const input = object(body.input, ['expectedRevision', 'quiet']);
-        if (typeof input.quiet !== 'boolean') fail('INVALID_ARGUMENT');
-        return { ok: true, value: unwrap(await host.services.preferences.setQuiet(context(), {
-          expectedRevision: input.expectedRevision as number, quiet: input.quiet,
-        }, options)) };
-      }
-      if (endpoint === 'preferences') {
-        const input = object(body.input, ['expectedRevision', 'workspaceId', 'conversation']);
-        if (input.workspaceId !== null && typeof input.workspaceId !== 'string') fail('INVALID_ARGUMENT');
-        let workspace: WorkspaceTarget | null = null;
-        if (input.workspaceId !== null) {
-          const target = getWorkspaces()?.get(input.workspaceId as string);
-          if (!target) fail('NOT_FOUND');
-          if (await target.status() !== 'ok') fail('NOT_FOUND');
-          workspace = { id: target.id, title: target.title, path: target.path };
-        }
-        object(input.conversation, ['maxContextChars', 'maxSteps', 'maxToolCalls', 'maxDurationMs']);
-        return { ok: true, value: unwrap(await host.services.preferences.save(context(), {
-          expectedRevision: input.expectedRevision as number, workspace,
-          conversation: input.conversation as unknown as ConversationOptions,
-        }, options)) };
-      }
-      fail('INVALID_ARGUMENT');
+      if (options.signal.aborted) throw cancelledReply();
+      validate();
+      if (owner !== 'life' || endpoint === 'lifePreferences') return {ok: true, value};
+      const life = value as {home?: Parameters<typeof withHomePlayback>[0]};
+      const projected = life.home ? {...life, home: withHomePlayback(life.home, animationSlotAllowed, classifyActivity)} : life;
+      return {ok: true, value: endpoint !== 'lifeView' ? projected : {...projected,
+        roomAvailable: Boolean(table.get('room', scope)), channelsAvailable: Boolean(table.get('channels', scope)),
+        careActions: CARE_ACTIONS.map(action => ({action, label: BODY_ACTIONS[action].care.label})),
+      }};
     } catch (error) {
-      const code = error instanceof Rejection ? error.detail.code : typeof error === 'object' && error && 'code' in error ? String(error.code) : 'INTERNAL';
-      if(['economyView','economyAction','economySettings'].includes(endpoint)) {
-        const economic:Record<string,string>={
-          INELIGIBLE:'余额或可用物品不足，或该商品暂不可交易。请核对钱包与库存。',
-          NOT_FOUND:'所选物品或原操作不存在，请刷新商店与库存。',
-          UNAVAILABLE:'经济资料暂不可用。原钱包与未决操作保留，请检查绑定和经济组件状态。',
-          INVALID_ARGUMENT:'请检查金额、数量、阅读内容或经济设置。',
-        };
-        if(economic[code])return {ok:false,error:{code,message:economic[code],details:{}}};
-      }
-      return { ok: false, error: { code, message: messages[code] ?? '设置操作未完成，请刷新核对实际状态。', details: {} } };
+      return settingsError(endpoint, error);
     }
   };
 }

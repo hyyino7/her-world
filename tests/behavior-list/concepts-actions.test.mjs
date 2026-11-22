@@ -5,7 +5,7 @@ import {fixture, value} from './fixture.mjs';
 test('照料在设置、Life、Body 和 World 保留准入及错误顺序', async t => {
   const f = await fixture(t, {console:true});
   const actions = ['feed','water','play','pet','sleep','wake'];
-  const rpcError = {ok:false,error:{code:'INVALID_ARGUMENT',message:'设置值无效，请检查填写内容。',details:{}}};
+  const rpcError = {ok:false,error:{code:'INVALID_ARGUMENT',message:'设置值无效，请检查填写内容。',details:{},effect:'none',retry:'never'}};
   for (const action of actions) {
     const input = {workspaceId:'world',action};
     assert.equal(value(await f.settings('lifeAction', input, 'settings-'+action)).fact.type, action);

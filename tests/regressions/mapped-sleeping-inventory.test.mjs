@@ -59,7 +59,7 @@ async function fixture(t) {
   };
   start();
   const signal=new AbortController().signal,peer={signal,principal:{kind:'owner'}};
-  const handler=settingsHandler(()=>host,()=>registry,undefined,undefined,undefined,undefined,undefined,undefined,undefined,()=>economy);
+  const handler=settingsHandler(()=>host,()=>registry,undefined,()=>economy);
   const call=(id=requestId,itemId=meal)=>handler('economyAction',{requestId:id,input:{workspaceId:registered.id,action:{kind:'feed',itemId,quantity:1}}},signal,peer);
   value(await handler('economyAction',{requestId:'fixture-gift',input:{workspaceId:registered.id,action:{kind:'gift',itemId:meal,quantity:1}}},signal,peer));
   await body.act(registered.id,'sleep','fixture-sleep','desktop');

@@ -40,7 +40,11 @@ function createFixturePage() {
 async function check() {
   const { createCore } = await import('../../dist/src/core/index.js');
   const { settingsHandler } = await import('../../dist/src/console/settings.js');
-  const { CompanionEmotion } = await import('../../dist/src/emotion/plugin.js');
+  const { CompanionEmotion, emotionConsoleOperations } = await import('../../dist/src/emotion/plugin.js');
+  const { lifeConsoleOperations } = await import('../../dist/src/living/plan/plugin.js');
+  const { roomConsoleOperations } = await import('../../dist/src/room/plugin.js');
+  const { channelsConsoleOperations } = await import('../../dist/src/channels/plugin.js');
+  const { desktopConsoleOperations } = await import('../../dist/src/desktop/plugin.js');
   const world = await import('../../dist/src/world/index.js');
   const directory = join(root, '蓝鱼小屋');
   fs.mkdirSync(directory);
@@ -91,7 +95,7 @@ async function check() {
       config:{...channelDefaults,qq:{...channelDefaults.qq,allowGroups:['123']}}}};
   }};
   let openedRooms=0;const room={open:async workspaceId=>({workspaceId,open:++openedRooms}),status:()=>({running:false})};
-  const {PetPlatform}=await import('../../dist/src/desktop/platform/plugin.js');
+  const {PetPlatform,platformConsoleOperations}=await import('../../dist/src/desktop/platform/plugin.js');
   let address;
   const nativeCtx={get:()=>undefined,logger:console,connection:{broadcast(){},authenticatedUrl:url=>url},on:()=>()=>{},petDesktop:{chat:{id:'fixture-chat',snapshot:()=>({messages:[],sessionId:'fixture-chat',workspaceId:'fixture',generating:false})}},webServer:{getOrigin:()=>address},petCore:host};
   const platform=new PetPlatform(nativeCtx);
@@ -99,8 +103,15 @@ async function check() {
   const desktop={status:()=>({...desktopStatus}),start:async()=>{desktopStatus={running:false,requested:true,starting:true};},
     closeWindow:async()=>{desktopCloses++;desktopStatus={running:false,requested:false,starting:false};}};
   ipcMain.handle('fixture:platform',async(_event,route,method,body)=>{const url=new URL(route,'http://localhost');const result=await platform.handle(url,method,body,new AbortController().signal);return {status:result.status||200,obj:result.obj||{}};});
+  const operations = host.native.consoleOperations;
+  operations.register('desktop', desktopConsoleOperations(desktop));
+  operations.register('emotion', emotionConsoleOperations(emotion));
+  operations.register('life', lifeConsoleOperations(life));
+  operations.register('room', roomConsoleOperations(room));
+  operations.register('channels', channelsConsoleOperations(channels));
+  operations.register('platform', platformConsoleOperations(platform));
   const handler = settingsHandler(() => host, () => ({ list: () => targets, get: id => targets.find(target => target.id === id) }),
-    () => desktop, () => Object.keys(world), () => emotion, () => life, () => room, () => channels,()=>platform);
+    () => Object.keys(world));
   const signal = new AbortController().signal;
   const peer = { principal: { kind: 'owner' }, signal };
   const call = async (endpoint, input = {}) => {

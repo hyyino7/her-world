@@ -61,13 +61,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 506
+        "line": 507
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 506,
+      "line": 507,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/channels/bridge.ts\",\"scope\":\"bridgePreferences/prefs . outlets . map:callback0\"}",
@@ -1944,98 +1944,7 @@
     {
       "rule": "R8",
       "file": "src/channels/plugin.ts",
-      "line": 111,
-      "column": 11,
-      "scope": "CompanionChannels/request/this . serial:callback0",
-      "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
-      "expression": "[ \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" ]",
-      "values": [
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/plugin.ts",
-        "scope": "apply",
-        "line": 30
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/plugin.ts",
-      "line": 30,
-      "column": 26,
-      "scope": "apply",
-      "target": "{\"file\":\"src/channels/plugin.ts\",\"scope\":\"CompanionChannels/request/this . serial:callback0\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" , \"presentationTiming\" , \"presentationMigration\" , \"foundation\" , \"self\" , \"emotionState\" , \"emotionUpdate\" , \"roomOpen\" , \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" , \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"channelStatus\" , \"bridgeSettings\" , \"messagingSettings\" , \"lifeView\" , \"lifeControl\" , \"lifeAction\" , \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifeSearch\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"snapshot\" , \"worldView\" , \"archiveFind\" , \"archiveRead\" , \"desktopOpen\" , \"desktopClose\" , \"desktopAppearance\" , \"companion\" , \"identity\" , \"quiet\" , \"preferences\" , \"initialize\" , \"profile\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "bridgeSettings",
-        "channelStatus",
-        "companion",
-        "desktopAppearance",
-        "desktopClose",
-        "desktopOpen",
-        "economyAction",
-        "economySettings",
-        "economyView",
-        "emotionState",
-        "emotionUpdate",
-        "foundation",
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "identity",
-        "initialize",
-        "lifeAction",
-        "lifeAlbum",
-        "lifeControl",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch",
-        "lifeView",
-        "messagingSettings",
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess",
-        "preferences",
-        "presentationMigration",
-        "presentationTiming",
-        "profile",
-        "quiet",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState",
-        "roomOpen",
-        "self",
-        "snapshot",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/channels/plugin.ts",
-        "scope": "CompanionChannels/request/this . serial:callback0",
-        "line": 111
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/channels/plugin.ts",
-      "line": 136,
+      "line": 166,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/desktop/plugin.ts\",\"scope\":\"<module>\"}",
@@ -2055,13 +1964,13 @@
       "other": {
         "file": "src/desktop/plugin.ts",
         "scope": "<module>",
-        "line": 8
+        "line": 9
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/plugin.ts",
-      "line": 8,
+      "line": 9,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/channels/plugin.ts\",\"scope\":\"<module>\"}",
@@ -2076,7 +1985,7 @@
       "other": {
         "file": "src/channels/plugin.ts",
         "scope": "<module>",
-        "line": 136
+        "line": 166
       }
     },
     {
@@ -2747,13 +2656,13 @@
       "other": {
         "file": "src/contracts/common.ts",
         "scope": "<module>",
-        "line": 37
+        "line": 41
       }
     },
     {
       "rule": "R8",
       "file": "src/contracts/common.ts",
-      "line": 37,
+      "line": 41,
       "column": 31,
       "scope": "<module>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory\"}",
@@ -2939,173 +2848,6 @@
         "file": "src/console/client.js",
         "scope": "factory/ArchiveSearch/detail . dialogue . map:callback0",
         "line": 208
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 451,
-      "column": 65,
-      "scope": "factory/EconomyPanel/React . useEffect:callback0",
-      "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
-      "expression": "[ \"economyAction\" , \"economySettings\" ]",
-      "values": [
-        "economyAction",
-        "economySettings"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/plugin.ts",
-        "scope": "apply",
-        "line": 30
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/plugin.ts",
-      "line": 30,
-      "column": 26,
-      "scope": "apply",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/React . useEffect:callback0\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" , \"presentationTiming\" , \"presentationMigration\" , \"foundation\" , \"self\" , \"emotionState\" , \"emotionUpdate\" , \"roomOpen\" , \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" , \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"channelStatus\" , \"bridgeSettings\" , \"messagingSettings\" , \"lifeView\" , \"lifeControl\" , \"lifeAction\" , \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifeSearch\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"snapshot\" , \"worldView\" , \"archiveFind\" , \"archiveRead\" , \"desktopOpen\" , \"desktopClose\" , \"desktopAppearance\" , \"companion\" , \"identity\" , \"quiet\" , \"preferences\" , \"initialize\" , \"profile\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "bridgeSettings",
-        "channelStatus",
-        "companion",
-        "desktopAppearance",
-        "desktopClose",
-        "desktopOpen",
-        "economyAction",
-        "economySettings",
-        "economyView",
-        "emotionState",
-        "emotionUpdate",
-        "foundation",
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "identity",
-        "initialize",
-        "lifeAction",
-        "lifeAlbum",
-        "lifeControl",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch",
-        "lifeView",
-        "messagingSettings",
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess",
-        "preferences",
-        "presentationMigration",
-        "presentationTiming",
-        "profile",
-        "quiet",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState",
-        "roomOpen",
-        "self",
-        "snapshot",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/EconomyPanel/React . useEffect:callback0",
-        "line": 451
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 451,
-      "column": 65,
-      "scope": "factory/EconomyPanel/React . useEffect:callback0",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"economyAction\" , \"economySettings\" ]",
-      "values": [
-        "economyAction",
-        "economySettings"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 87
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 87,
-      "column": 11,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/React . useEffect:callback0\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" ]",
-      "values": [
-        "economyAction",
-        "economySettings",
-        "economyView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/EconomyPanel/React . useEffect:callback0",
-        "line": 451
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 451,
-      "column": 65,
-      "scope": "factory/EconomyPanel/React . useEffect:callback0",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"economyAction\" , \"economySettings\" ]",
-      "values": [
-        "economyAction",
-        "economySettings"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 424
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 424,
-      "column": 10,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/React . useEffect:callback0\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" ]",
-      "values": [
-        "economyAction",
-        "economySettings",
-        "economyView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/EconomyPanel/React . useEffect:callback0",
-        "line": 451
       }
     },
     {
@@ -3464,14 +3206,14 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "<module>",
-        "line": 28
+        "line": 52
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 28,
-      "column": 42,
+      "line": 52,
+      "column": 56,
       "scope": "<module>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/send\"}",
       "expression": "{ STALE_BINDING : \"工作区绑定已改变，请刷新。\" , STALE_REVISION : \"设置已被其他操作修改，请刷新后重新编辑。\" , CONFLICT : \"设置已被其他操作修改，请刷新后重新编辑。\" , INVALID_ARGUMENT : \"设置值无效，请检查填写内容。\" , UNAUTHORIZED : \"当前连接没有修改设置的权限。\" , DISABLED : \"Core 当前不可用，请检查核心模块状态。\" , \"migration-required\" : \"伙伴资料暂时无法使用。请刷新设置查看原因和操作提示。\" , UNAVAILABLE : \"00-Core 尚未就绪，请检查核心模块是否启用。\" , WORLD_UNAVAILABLE : \"大肥鱼的 World 组件尚未加载。\" , PROFILE_UNAVAILABLE : \"人设预览无法加载。请检查角色、用户资料和上下文字符上限。\" , MEMORY_UNAVAILABLE : \"长期记忆服务尚未配置或不可用。\" , NOT_FOUND : \"所选工作区不存在，请刷新工作区列表。\" , WORKSPACE_INVALID : \"绑定 Repo 的 .chatpet 资料无法加载。请检查 manifest.json、SOUL.md、USER.md 和 core.json 后刷新。原文件未被覆盖。\" , LIMIT_REACHED : \"已达到当前资源或调用限制，请检查设置后重试。\" , INELIGIBLE : \"相关来源已撤回或无法校验，当前内容暂不展示。\" , CANCELLED : \"请求已取消，请刷新核对实际保存结果。\" , ENOENT : \"工作区资料尚未初始化或已移动，请在工作区页检查绑定与初始化状态。\" , OUTCOME_UNKNOWN : \"部分设置可能已保存，请刷新读取实际状态后再继续。\" , }",
@@ -3528,7 +3270,7 @@
       "rule": "R8",
       "file": "src/contracts/common.ts",
       "line": 19,
-      "column": 21,
+      "column": 28,
       "scope": "<module>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/send\"}",
       "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"NOT_IMPLEMENTED\" | \"DISABLED\" | \"INCOMPATIBLE\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"EXPIRED_USE\" | \"LIMIT_REACHED\"",
@@ -3536,56 +3278,6 @@
         "CONFLICT",
         "DISABLED",
         "EXPIRED_USE",
-        "INCOMPATIBLE",
-        "INELIGIBLE",
-        "INVALID_ARGUMENT",
-        "LIMIT_REACHED",
-        "NOT_FOUND",
-        "NOT_IMPLEMENTED",
-        "STALE_BINDING",
-        "STALE_REVISION",
-        "UNAUTHORIZED"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/EconomyPanel/send",
-        "line": 491
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 491,
-      "column": 14,
-      "scope": "factory/EconomyPanel/send",
-      "target": "{\"file\":\"src/core/storage.ts\",\"scope\":\"reject\"}",
-      "expression": "[ \"INELIGIBLE\" , \"NOT_FOUND\" , \"STALE_REVISION\" ]",
-      "values": [
-        "INELIGIBLE",
-        "NOT_FOUND",
-        "STALE_REVISION"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/core/storage.ts",
-        "scope": "reject",
-        "line": 11
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/storage.ts",
-      "line": 11,
-      "column": 30,
-      "scope": "reject",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/send\"}",
-      "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"DISABLED\" | \"LIMIT_REACHED\" | \"NOT_IMPLEMENTED\" | \"INCOMPATIBLE\"",
-      "values": [
-        "CONFLICT",
-        "DISABLED",
         "INCOMPATIBLE",
         "INELIGIBLE",
         "INVALID_ARGUMENT",
@@ -3974,13 +3666,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
@@ -4017,13 +3709,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
@@ -4130,443 +3822,9 @@
     },
     {
       "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 1226,
-      "column": 17,
-      "scope": "factory/apply/request",
-      "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
-      "expression": "[ \"worldView\" , \"archiveFind\" , \"archiveRead\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/plugin.ts",
-        "scope": "apply",
-        "line": 30
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/plugin.ts",
-      "line": 30,
-      "column": 26,
-      "scope": "apply",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/apply/request\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" , \"presentationTiming\" , \"presentationMigration\" , \"foundation\" , \"self\" , \"emotionState\" , \"emotionUpdate\" , \"roomOpen\" , \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" , \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"channelStatus\" , \"bridgeSettings\" , \"messagingSettings\" , \"lifeView\" , \"lifeControl\" , \"lifeAction\" , \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifeSearch\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"snapshot\" , \"worldView\" , \"archiveFind\" , \"archiveRead\" , \"desktopOpen\" , \"desktopClose\" , \"desktopAppearance\" , \"companion\" , \"identity\" , \"quiet\" , \"preferences\" , \"initialize\" , \"profile\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "bridgeSettings",
-        "channelStatus",
-        "companion",
-        "desktopAppearance",
-        "desktopClose",
-        "desktopOpen",
-        "economyAction",
-        "economySettings",
-        "economyView",
-        "emotionState",
-        "emotionUpdate",
-        "foundation",
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "identity",
-        "initialize",
-        "lifeAction",
-        "lifeAlbum",
-        "lifeControl",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch",
-        "lifeView",
-        "messagingSettings",
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess",
-        "preferences",
-        "presentationMigration",
-        "presentationTiming",
-        "profile",
-        "quiet",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState",
-        "roomOpen",
-        "self",
-        "snapshot",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/apply/request",
-        "line": 1226
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/plugin.ts",
-      "line": 30,
-      "column": 26,
-      "scope": "apply",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" , \"presentationTiming\" , \"presentationMigration\" , \"foundation\" , \"self\" , \"emotionState\" , \"emotionUpdate\" , \"roomOpen\" , \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" , \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"channelStatus\" , \"bridgeSettings\" , \"messagingSettings\" , \"lifeView\" , \"lifeControl\" , \"lifeAction\" , \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifeSearch\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"snapshot\" , \"worldView\" , \"archiveFind\" , \"archiveRead\" , \"desktopOpen\" , \"desktopClose\" , \"desktopAppearance\" , \"companion\" , \"identity\" , \"quiet\" , \"preferences\" , \"initialize\" , \"profile\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "bridgeSettings",
-        "channelStatus",
-        "companion",
-        "desktopAppearance",
-        "desktopClose",
-        "desktopOpen",
-        "economyAction",
-        "economySettings",
-        "economyView",
-        "emotionState",
-        "emotionUpdate",
-        "foundation",
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "identity",
-        "initialize",
-        "lifeAction",
-        "lifeAlbum",
-        "lifeControl",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch",
-        "lifeView",
-        "messagingSettings",
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess",
-        "preferences",
-        "presentationMigration",
-        "presentationTiming",
-        "profile",
-        "quiet",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState",
-        "roomOpen",
-        "self",
-        "snapshot",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 87
-      }
-    },
-    {
-      "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 87,
-      "column": 11,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" ]",
-      "values": [
-        "economyAction",
-        "economySettings",
-        "economyView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/plugin.ts",
-        "scope": "apply",
-        "line": 30
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/plugin.ts",
-      "line": 30,
-      "column": 26,
-      "scope": "apply",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" , \"presentationTiming\" , \"presentationMigration\" , \"foundation\" , \"self\" , \"emotionState\" , \"emotionUpdate\" , \"roomOpen\" , \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" , \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"channelStatus\" , \"bridgeSettings\" , \"messagingSettings\" , \"lifeView\" , \"lifeControl\" , \"lifeAction\" , \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifeSearch\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"snapshot\" , \"worldView\" , \"archiveFind\" , \"archiveRead\" , \"desktopOpen\" , \"desktopClose\" , \"desktopAppearance\" , \"companion\" , \"identity\" , \"quiet\" , \"preferences\" , \"initialize\" , \"profile\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "bridgeSettings",
-        "channelStatus",
-        "companion",
-        "desktopAppearance",
-        "desktopClose",
-        "desktopOpen",
-        "economyAction",
-        "economySettings",
-        "economyView",
-        "emotionState",
-        "emotionUpdate",
-        "foundation",
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "identity",
-        "initialize",
-        "lifeAction",
-        "lifeAlbum",
-        "lifeControl",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch",
-        "lifeView",
-        "messagingSettings",
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess",
-        "preferences",
-        "presentationMigration",
-        "presentationTiming",
-        "profile",
-        "quiet",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState",
-        "roomOpen",
-        "self",
-        "snapshot",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 169
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 169,
-      "column": 11,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
-      "expression": "[ \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" ]",
-      "values": [
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/plugin.ts",
-        "scope": "apply",
-        "line": 30
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/plugin.ts",
-      "line": 30,
-      "column": 26,
-      "scope": "apply",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" , \"presentationTiming\" , \"presentationMigration\" , \"foundation\" , \"self\" , \"emotionState\" , \"emotionUpdate\" , \"roomOpen\" , \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" , \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"channelStatus\" , \"bridgeSettings\" , \"messagingSettings\" , \"lifeView\" , \"lifeControl\" , \"lifeAction\" , \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifeSearch\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"snapshot\" , \"worldView\" , \"archiveFind\" , \"archiveRead\" , \"desktopOpen\" , \"desktopClose\" , \"desktopAppearance\" , \"companion\" , \"identity\" , \"quiet\" , \"preferences\" , \"initialize\" , \"profile\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "bridgeSettings",
-        "channelStatus",
-        "companion",
-        "desktopAppearance",
-        "desktopClose",
-        "desktopOpen",
-        "economyAction",
-        "economySettings",
-        "economyView",
-        "emotionState",
-        "emotionUpdate",
-        "foundation",
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "identity",
-        "initialize",
-        "lifeAction",
-        "lifeAlbum",
-        "lifeControl",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch",
-        "lifeView",
-        "messagingSettings",
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess",
-        "preferences",
-        "presentationMigration",
-        "presentationTiming",
-        "profile",
-        "quiet",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState",
-        "roomOpen",
-        "self",
-        "snapshot",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 211
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 211,
-      "column": 11,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
-      "expression": "[ \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"lifeSearch\" ]",
-      "values": [
-        "lifeAlbum",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/plugin.ts",
-        "scope": "apply",
-        "line": 30
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/plugin.ts",
-      "line": 30,
-      "column": 26,
-      "scope": "apply",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" , \"presentationTiming\" , \"presentationMigration\" , \"foundation\" , \"self\" , \"emotionState\" , \"emotionUpdate\" , \"roomOpen\" , \"petPlatformAccess\" , \"petControlAccess\" , \"petStandaloneAccess\" , \"qzoneState\" , \"qzoneSettings\" , \"qzoneDraft\" , \"qzoneRemove\" , \"groupState\" , \"groupSettings\" , \"groupSlang\" , \"groupResearch\" , \"channelStatus\" , \"bridgeSettings\" , \"messagingSettings\" , \"lifeView\" , \"lifeControl\" , \"lifeAction\" , \"lifePreferences\" , \"lifeDates\" , \"lifeJournal\" , \"lifeAlbum\" , \"lifeSearch\" , \"lifePhoto\" , \"lifeForgetPhoto\" , \"snapshot\" , \"worldView\" , \"archiveFind\" , \"archiveRead\" , \"desktopOpen\" , \"desktopClose\" , \"desktopAppearance\" , \"companion\" , \"identity\" , \"quiet\" , \"preferences\" , \"initialize\" , \"profile\" ]",
-      "values": [
-        "archiveFind",
-        "archiveRead",
-        "bridgeSettings",
-        "channelStatus",
-        "companion",
-        "desktopAppearance",
-        "desktopClose",
-        "desktopOpen",
-        "economyAction",
-        "economySettings",
-        "economyView",
-        "emotionState",
-        "emotionUpdate",
-        "foundation",
-        "groupResearch",
-        "groupSettings",
-        "groupSlang",
-        "groupState",
-        "identity",
-        "initialize",
-        "lifeAction",
-        "lifeAlbum",
-        "lifeControl",
-        "lifeDates",
-        "lifeForgetPhoto",
-        "lifeJournal",
-        "lifePhoto",
-        "lifePreferences",
-        "lifeSearch",
-        "lifeView",
-        "messagingSettings",
-        "petControlAccess",
-        "petPlatformAccess",
-        "petStandaloneAccess",
-        "preferences",
-        "presentationMigration",
-        "presentationTiming",
-        "profile",
-        "quiet",
-        "qzoneDraft",
-        "qzoneRemove",
-        "qzoneSettings",
-        "qzoneState",
-        "roomOpen",
-        "self",
-        "snapshot",
-        "worldView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 424
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 424,
-      "column": 10,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
-      "expression": "[ \"economyView\" , \"economyAction\" , \"economySettings\" ]",
-      "values": [
-        "economyAction",
-        "economySettings",
-        "economyView"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/plugin.ts",
-        "scope": "apply",
-        "line": 30
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 28,
-      "column": 42,
+      "line": 52,
+      "column": 56,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchEconomy\"}",
       "expression": "{ STALE_BINDING : \"工作区绑定已改变，请刷新。\" , STALE_REVISION : \"设置已被其他操作修改，请刷新后重新编辑。\" , CONFLICT : \"设置已被其他操作修改，请刷新后重新编辑。\" , INVALID_ARGUMENT : \"设置值无效，请检查填写内容。\" , UNAUTHORIZED : \"当前连接没有修改设置的权限。\" , DISABLED : \"Core 当前不可用，请检查核心模块状态。\" , \"migration-required\" : \"伙伴资料暂时无法使用。请刷新设置查看原因和操作提示。\" , UNAVAILABLE : \"00-Core 尚未就绪，请检查核心模块是否启用。\" , WORLD_UNAVAILABLE : \"大肥鱼的 World 组件尚未加载。\" , PROFILE_UNAVAILABLE : \"人设预览无法加载。请检查角色、用户资料和上下文字符上限。\" , MEMORY_UNAVAILABLE : \"长期记忆服务尚未配置或不可用。\" , NOT_FOUND : \"所选工作区不存在，请刷新工作区列表。\" , WORKSPACE_INVALID : \"绑定 Repo 的 .chatpet 资料无法加载。请检查 manifest.json、SOUL.md、USER.md 和 core.json 后刷新。原文件未被覆盖。\" , LIMIT_REACHED : \"已达到当前资源或调用限制，请检查设置后重试。\" , INELIGIBLE : \"相关来源已撤回或无法校验，当前内容暂不展示。\" , CANCELLED : \"请求已取消，请刷新核对实际保存结果。\" , ENOENT : \"工作区资料尚未初始化或已移动，请在工作区页检查绑定与初始化状态。\" , OUTCOME_UNKNOWN : \"部分设置可能已保存，请刷新读取实际状态后再继续。\" , }",
@@ -4618,14 +3876,14 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "<module>",
-        "line": 28
+        "line": 52
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 28,
-      "column": 42,
+      "line": 52,
+      "column": 56,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"CompanionEconomy/gardenPort/transaction\"}",
       "expression": "{ STALE_BINDING : \"工作区绑定已改变，请刷新。\" , STALE_REVISION : \"设置已被其他操作修改，请刷新后重新编辑。\" , CONFLICT : \"设置已被其他操作修改，请刷新后重新编辑。\" , INVALID_ARGUMENT : \"设置值无效，请检查填写内容。\" , UNAUTHORIZED : \"当前连接没有修改设置的权限。\" , DISABLED : \"Core 当前不可用，请检查核心模块状态。\" , \"migration-required\" : \"伙伴资料暂时无法使用。请刷新设置查看原因和操作提示。\" , UNAVAILABLE : \"00-Core 尚未就绪，请检查核心模块是否启用。\" , WORLD_UNAVAILABLE : \"大肥鱼的 World 组件尚未加载。\" , PROFILE_UNAVAILABLE : \"人设预览无法加载。请检查角色、用户资料和上下文字符上限。\" , MEMORY_UNAVAILABLE : \"长期记忆服务尚未配置或不可用。\" , NOT_FOUND : \"所选工作区不存在，请刷新工作区列表。\" , WORKSPACE_INVALID : \"绑定 Repo 的 .chatpet 资料无法加载。请检查 manifest.json、SOUL.md、USER.md 和 core.json 后刷新。原文件未被覆盖。\" , LIMIT_REACHED : \"已达到当前资源或调用限制，请检查设置后重试。\" , INELIGIBLE : \"相关来源已撤回或无法校验，当前内容暂不展示。\" , CANCELLED : \"请求已取消，请刷新核对实际保存结果。\" , ENOENT : \"工作区资料尚未初始化或已移动，请在工作区页检查绑定与初始化状态。\" , OUTCOME_UNKNOWN : \"部分设置可能已保存，请刷新读取实际状态后再继续。\" , }",
@@ -4654,13 +3912,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "CompanionEconomy/gardenPort/transaction",
-        "line": 172
+        "line": 173
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 172,
+      "line": 173,
       "column": 24,
       "scope": "CompanionEconomy/gardenPort/transaction",
       "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"<module>\"}",
@@ -4678,331 +3936,7 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "<module>",
-        "line": 28
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 162,
-      "column": 45,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"legacy\" , \"current\" ]",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/desktop/platform/migration.ts",
-        "scope": "<module>",
-        "line": 26
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/desktop/platform/migration.ts",
-      "line": 26,
-      "column": 66,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "\"legacy\" | \"current\"",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 162
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 162,
-      "column": 45,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"resolvePresentationMigration\"}",
-      "expression": "[ \"legacy\" , \"current\" ]",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/desktop/platform/migration.ts",
-        "scope": "resolvePresentationMigration",
-        "line": 218
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/desktop/platform/migration.ts",
-      "line": 218,
-      "column": 37,
-      "scope": "resolvePresentationMigration",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"legacy\" , \"current\" ]",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 162
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 162,
-      "column": 45,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/resolveMigration\"}",
-      "expression": "[ \"legacy\" , \"current\" ]",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/desktop/platform/plugin.ts",
-        "scope": "PetPlatform/resolveMigration",
-        "line": 319
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/desktop/platform/plugin.ts",
-      "line": 319,
-      "column": 59,
-      "scope": "PetPlatform/resolveMigration",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "\"legacy\" | \"current\"",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 162
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 163,
-      "column": 92,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"<module>\"}",
-      "expression": "\"legacy\" | \"current\"",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/desktop/platform/migration.ts",
-        "scope": "<module>",
-        "line": 26
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/desktop/platform/migration.ts",
-      "line": 26,
-      "column": 66,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "\"legacy\" | \"current\"",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 163
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 163,
-      "column": 92,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"resolvePresentationMigration\"}",
-      "expression": "\"legacy\" | \"current\"",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/desktop/platform/migration.ts",
-        "scope": "resolvePresentationMigration",
-        "line": 218
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/desktop/platform/migration.ts",
-      "line": 218,
-      "column": 37,
-      "scope": "resolvePresentationMigration",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "[ \"legacy\" , \"current\" ]",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 163
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 163,
-      "column": 92,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/resolveMigration\"}",
-      "expression": "\"legacy\" | \"current\"",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/desktop/platform/plugin.ts",
-        "scope": "PetPlatform/resolveMigration",
-        "line": 319
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/desktop/platform/plugin.ts",
-      "line": 319,
-      "column": 59,
-      "scope": "PetPlatform/resolveMigration",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "\"legacy\" | \"current\"",
-      "values": [
-        "current",
-        "legacy"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 163
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 392,
-      "column": 42,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/core/workspace.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"expectedScope\" , \"expectedRevision\" , \"displayName\" , \"character\" ]",
-      "values": [
-        "character",
-        "displayName",
-        "expectedRevision",
-        "expectedScope"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/core/workspace.ts",
-        "scope": "<module>",
-        "line": 46
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/workspace.ts",
-      "line": 46,
-      "column": 57,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "\"displayName\" | \"character\"",
-      "values": [
-        "character",
-        "displayName"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 392
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/settings.ts",
-      "line": 392,
-      "column": 42,
-      "scope": "settingsHandler/<callback>",
-      "target": "{\"file\":\"src/core/workspace.ts\",\"scope\":\"CoreWorkspace/soul\"}",
-      "expression": "[ \"expectedScope\" , \"expectedRevision\" , \"displayName\" , \"character\" ]",
-      "values": [
-        "character",
-        "displayName",
-        "expectedRevision",
-        "expectedScope"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/core/workspace.ts",
-        "scope": "CoreWorkspace/soul",
-        "line": 302
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/workspace.ts",
-      "line": 302,
-      "column": 50,
-      "scope": "CoreWorkspace/soul",
-      "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
-      "expression": "\"displayName\" | \"character\"",
-      "values": [
-        "character",
-        "displayName"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/settings.ts",
-        "scope": "settingsHandler/<callback>",
-        "line": 392
+        "line": 52
       }
     },
     {
@@ -5641,13 +4575,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 631
+        "line": 632
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 631,
+      "line": 632,
       "column": 88,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/common.ts\",\"scope\":\"<module>\"}",
@@ -5668,66 +4602,7 @@
       "rule": "R8",
       "file": "src/contracts/common.ts",
       "line": 19,
-      "column": 21,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/core/storage.ts\",\"scope\":\"reject\"}",
-      "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"NOT_IMPLEMENTED\" | \"DISABLED\" | \"INCOMPATIBLE\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"EXPIRED_USE\" | \"LIMIT_REACHED\"",
-      "values": [
-        "CONFLICT",
-        "DISABLED",
-        "EXPIRED_USE",
-        "INCOMPATIBLE",
-        "INELIGIBLE",
-        "INVALID_ARGUMENT",
-        "LIMIT_REACHED",
-        "NOT_FOUND",
-        "NOT_IMPLEMENTED",
-        "STALE_BINDING",
-        "STALE_REVISION",
-        "UNAUTHORIZED"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/core/storage.ts",
-        "scope": "reject",
-        "line": 11
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/storage.ts",
-      "line": 11,
-      "column": 30,
-      "scope": "reject",
-      "target": "{\"file\":\"src/contracts/common.ts\",\"scope\":\"<module>\"}",
-      "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"DISABLED\" | \"LIMIT_REACHED\" | \"NOT_IMPLEMENTED\" | \"INCOMPATIBLE\"",
-      "values": [
-        "CONFLICT",
-        "DISABLED",
-        "INCOMPATIBLE",
-        "INELIGIBLE",
-        "INVALID_ARGUMENT",
-        "LIMIT_REACHED",
-        "NOT_FOUND",
-        "NOT_IMPLEMENTED",
-        "STALE_BINDING",
-        "STALE_REVISION",
-        "UNAUTHORIZED"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/contracts/common.ts",
-        "scope": "<module>",
-        "line": 19
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/common.ts",
-      "line": 19,
-      "column": 21,
+      "column": 28,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchEconomy\"}",
       "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"NOT_IMPLEMENTED\" | \"DISABLED\" | \"INCOMPATIBLE\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"EXPIRED_USE\" | \"LIMIT_REACHED\"",
@@ -5780,7 +4655,7 @@
       "rule": "R8",
       "file": "src/contracts/common.ts",
       "line": 19,
-      "column": 21,
+      "column": 28,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"CompanionEconomy/gardenPort/transaction\"}",
       "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"NOT_IMPLEMENTED\" | \"DISABLED\" | \"INCOMPATIBLE\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"EXPIRED_USE\" | \"LIMIT_REACHED\"",
@@ -5803,13 +4678,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "CompanionEconomy/gardenPort/transaction",
-        "line": 172
+        "line": 173
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 172,
+      "line": 173,
       "column": 24,
       "scope": "CompanionEconomy/gardenPort/transaction",
       "target": "{\"file\":\"src/contracts/common.ts\",\"scope\":\"<module>\"}",
@@ -6027,13 +4902,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 315
+        "line": 316
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 315,
+      "line": 316,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/core/native/agent.ts\",\"scope\":\"<module>\"}",
@@ -6073,13 +4948,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "<module>",
-        "line": 309
+        "line": 310
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 309,
+      "line": 310,
       "column": 21,
       "scope": "<module>",
       "target": "{\"file\":\"src/core/native/agent.ts\",\"scope\":\"<module>\"}",
@@ -6119,13 +4994,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "<module>",
-        "line": 745
+        "line": 748
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 745,
+      "line": 748,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/core/native/agent.ts\",\"scope\":\"<module>\"}",
@@ -6572,111 +5447,6 @@
     },
     {
       "rule": "R8",
-      "file": "src/core/storage.ts",
-      "line": 11,
-      "column": 30,
-      "scope": "reject",
-      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchEconomy\"}",
-      "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"DISABLED\" | \"LIMIT_REACHED\" | \"NOT_IMPLEMENTED\" | \"INCOMPATIBLE\"",
-      "values": [
-        "CONFLICT",
-        "DISABLED",
-        "INCOMPATIBLE",
-        "INELIGIBLE",
-        "INVALID_ARGUMENT",
-        "LIMIT_REACHED",
-        "NOT_FOUND",
-        "NOT_IMPLEMENTED",
-        "STALE_BINDING",
-        "STALE_REVISION",
-        "UNAUTHORIZED"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/room.ts",
-        "scope": "CompanionRoom/dispatchEconomy",
-        "line": 518
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/room.ts",
-      "line": 518,
-      "column": 48,
-      "scope": "CompanionRoom/dispatchEconomy",
-      "target": "{\"file\":\"src/core/storage.ts\",\"scope\":\"reject\"}",
-      "expression": "[ \"INVALID_ARGUMENT\" , \"NOT_FOUND\" , \"INELIGIBLE\" , \"LIMIT_REACHED\" , \"DISABLED\" ]",
-      "values": [
-        "DISABLED",
-        "INELIGIBLE",
-        "INVALID_ARGUMENT",
-        "LIMIT_REACHED",
-        "NOT_FOUND"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/core/storage.ts",
-        "scope": "reject",
-        "line": 11
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/storage.ts",
-      "line": 11,
-      "column": 30,
-      "scope": "reject",
-      "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"CompanionEconomy/gardenPort/transaction\"}",
-      "expression": "\"INVALID_ARGUMENT\" | \"UNAUTHORIZED\" | \"NOT_FOUND\" | \"CONFLICT\" | \"STALE_REVISION\" | \"STALE_BINDING\" | \"INELIGIBLE\" | \"DISABLED\" | \"LIMIT_REACHED\" | \"NOT_IMPLEMENTED\" | \"INCOMPATIBLE\"",
-      "values": [
-        "CONFLICT",
-        "DISABLED",
-        "INCOMPATIBLE",
-        "INELIGIBLE",
-        "INVALID_ARGUMENT",
-        "LIMIT_REACHED",
-        "NOT_FOUND",
-        "NOT_IMPLEMENTED",
-        "STALE_BINDING",
-        "STALE_REVISION",
-        "UNAUTHORIZED"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/economy/plugin.ts",
-        "scope": "CompanionEconomy/gardenPort/transaction",
-        "line": 172
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/economy/plugin.ts",
-      "line": 172,
-      "column": 24,
-      "scope": "CompanionEconomy/gardenPort/transaction",
-      "target": "{\"file\":\"src/core/storage.ts\",\"scope\":\"reject\"}",
-      "expression": "[ \"INVALID_ARGUMENT\" , \"NOT_FOUND\" , \"INELIGIBLE\" , \"LIMIT_REACHED\" , \"CONFLICT\" , \"DISABLED\" ]",
-      "values": [
-        "CONFLICT",
-        "DISABLED",
-        "INELIGIBLE",
-        "INVALID_ARGUMENT",
-        "LIMIT_REACHED",
-        "NOT_FOUND"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/core/storage.ts",
-        "scope": "reject",
-        "line": 11
-      }
-    },
-    {
-      "rule": "R8",
       "file": "src/desktop/conversation.ts",
       "line": 43,
       "column": 22,
@@ -6826,13 +5596,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 690
+        "line": 691
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 690,
+      "line": 691,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/conversation.ts\",\"scope\":\"<module>\"}",
@@ -7179,13 +5949,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 690
+        "line": 691
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 690,
+      "line": 691,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/helper/main.cjs\",\"scope\":\"ipcMain . handle:callback1\"}",
@@ -7266,13 +6036,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/http",
-        "line": 788
+        "line": 789
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 788,
+      "line": 789,
       "column": 17,
       "scope": "PetPlatform/http",
       "target": "{\"file\":\"src/desktop/helper/main.cjs\",\"scope\":\"app . whenReady (  ) . then:callback0/protocol . handle:callback1\"}",
@@ -7311,13 +6081,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/savePreference",
-        "line": 290
+        "line": 291
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 290,
+      "line": 291,
       "column": 38,
       "scope": "PetPlatform/savePreference",
       "target": "{\"file\":\"src/desktop/index.ts\",\"scope\":\"Desktop/savePreference\"}",
@@ -7400,13 +6170,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 690
+        "line": 691
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 690,
+      "line": 691,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/index.ts\",\"scope\":\"Desktop/handle\"}",
@@ -7489,13 +6259,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 690
+        "line": 691
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 690,
+      "line": 691,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/index.ts\",\"scope\":\"Desktop/handle\"}",
@@ -7576,13 +6346,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/resolveMigration",
-        "line": 319
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 319,
+      "line": 320,
       "column": 59,
       "scope": "PetPlatform/resolveMigration",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"<module>\"}",
@@ -7700,13 +6470,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/resolveMigration",
-        "line": 319
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 319,
+      "line": 320,
       "column": 59,
       "scope": "PetPlatform/resolveMigration",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"resolvePresentationMigration\"}",
@@ -7726,7 +6496,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 506,
+      "line": 507,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/desktop/standalone.mjs\",\"scope\":\"connection\"}",
@@ -7760,13 +6530,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 506
+        "line": 507
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 506,
+      "line": 507,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/room/window-main.cjs\",\"scope\":\"<module>\"}",
@@ -7800,13 +6570,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 506
+        "line": 507
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 506,
+      "line": 507,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/room/window.ts\",\"scope\":\"RoomWindow/open\"}",
@@ -7840,13 +6610,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 506
+        "line": 507
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 668,
+      "line": 669,
       "column": 54,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -7882,13 +6652,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 668
+        "line": 669
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 679,
+      "line": 680,
       "column": 52,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchExecution\"}",
@@ -7923,13 +6693,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 679
+        "line": 680
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 690,
+      "line": 691,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/standalone.mjs\",\"scope\":\"start/command\"}",
@@ -7968,13 +6738,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 690
+        "line": 691
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 750,
+      "line": 751,
       "column": 20,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/room/assets.ts\",\"scope\":\"roomAsset\"}",
@@ -8008,13 +6778,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 750
+        "line": 751
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 760,
+      "line": 761,
       "column": 28,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/room/assets.ts\",\"scope\":\"roomAsset\"}",
@@ -8048,13 +6818,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 760
+        "line": 761
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 778,
+      "line": 779,
       "column": 34,
       "scope": "PetPlatform/http",
       "target": "{\"file\":\"src/room/assets.ts\",\"scope\":\"roomAsset\"}",
@@ -8088,13 +6858,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/http",
-        "line": 778
+        "line": 779
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/plugin.ts",
-      "line": 8,
+      "line": 9,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8109,13 +6879,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "<module>",
-        "line": 745
+        "line": 748
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 745,
+      "line": 748,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/desktop/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8133,13 +6903,13 @@
       "other": {
         "file": "src/desktop/plugin.ts",
         "scope": "<module>",
-        "line": 8
+        "line": 9
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/plugin.ts",
-      "line": 8,
+      "line": 9,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/room/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8154,13 +6924,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "<module>",
-        "line": 196
+        "line": 219
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 196,
+      "line": 219,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/desktop/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8180,7 +6950,7 @@
       "other": {
         "file": "src/desktop/plugin.ts",
         "scope": "<module>",
-        "line": 8
+        "line": 9
       }
     },
     {
@@ -8366,13 +7136,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "CompanionEmotion/recordPlayback",
-        "line": 68
+        "line": 69
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 68,
+      "line": 69,
       "column": 10,
       "scope": "CompanionEmotion/recordPlayback",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -8410,13 +7180,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "installEmotion/<callback>",
-        "line": 188
+        "line": 189
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 188,
+      "line": 189,
       "column": 20,
       "scope": "installEmotion/<callback>",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -8438,7 +7208,7 @@
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 315,
+      "line": 316,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8455,13 +7225,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "<module>",
-        "line": 309
+        "line": 310
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 309,
+      "line": 310,
       "column": 21,
       "scope": "<module>",
       "target": "{\"file\":\"src/emotion/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8478,13 +7248,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 315
+        "line": 316
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 315,
+      "line": 316,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8501,13 +7271,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "<module>",
-        "line": 745
+        "line": 748
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 745,
+      "line": 748,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/emotion/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8525,7 +7295,7 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 315
+        "line": 316
       }
     },
     {
@@ -8770,13 +7540,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/garden",
-        "line": 708
+        "line": 710
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 708,
+      "line": 710,
       "column": 42,
       "scope": "CompanionLife/garden",
       "target": "{\"file\":\"src/living/body/plugin.ts\",\"scope\":\"CompanionBehavior/garden\"}",
@@ -9105,13 +7875,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "CompanionEconomy/gardenPort/transaction",
-        "line": 172
+        "line": 173
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 172,
+      "line": 173,
       "column": 24,
       "scope": "CompanionEconomy/gardenPort/transaction",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchEconomy\"}",
@@ -9362,13 +8132,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/garden",
-        "line": 708
+        "line": 710
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 708,
+      "line": 710,
       "column": 42,
       "scope": "CompanionLife/garden",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -9488,13 +8258,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/controlPlan",
-        "line": 638
+        "line": 639
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 638,
+      "line": 639,
       "column": 65,
       "scope": "CompanionLife/controlPlan",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -9530,13 +8300,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/controlPlan",
-        "line": 639
+        "line": 640
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 639,
+      "line": 640,
       "column": 9,
       "scope": "CompanionLife/controlPlan",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -9572,13 +8342,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 116
+        "line": 117
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 116,
+      "line": 117,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -9655,13 +8425,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 164
+        "line": 165
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 164,
+      "line": 165,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -9691,7 +8461,7 @@
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 309,
+      "line": 310,
       "column": 21,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"<module>\"}",
@@ -9708,13 +8478,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "<module>",
-        "line": 745
+        "line": 748
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 745,
+      "line": 748,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"<module>\"}",
@@ -9732,13 +8502,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "<module>",
-        "line": 309
+        "line": 310
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 316,
+      "line": 317,
       "column": 51,
       "scope": "apply",
       "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
@@ -9772,13 +8542,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "apply",
-        "line": 316
+        "line": 317
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 316,
+      "line": 317,
       "column": 51,
       "scope": "apply",
       "target": "{\"file\":\"src/room/tool-context.ts\",\"scope\":\"<module>\"}",
@@ -9812,13 +8582,13 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "apply",
-        "line": 316
+        "line": 317
       }
     },
     {
       "rule": "R8",
       "file": "src/living/economy/plugin.ts",
-      "line": 318,
+      "line": 319,
       "column": 33,
       "scope": "apply",
       "target": "{\"file\":\"src/living/economy/tool-context.ts\",\"scope\":\"economyPage\"}",
@@ -9852,7 +8622,7 @@
       "other": {
         "file": "src/living/economy/plugin.ts",
         "scope": "apply",
-        "line": 318
+        "line": 319
       }
     },
     {
@@ -10156,13 +8926,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/controlPlan",
-        "line": 638
+        "line": 639
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 638,
+      "line": 639,
       "column": 65,
       "scope": "CompanionLife/controlPlan",
       "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
@@ -10198,13 +8968,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/controlPlan",
-        "line": 639
+        "line": 640
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 639,
+      "line": 640,
       "column": 9,
       "scope": "CompanionLife/controlPlan",
       "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
@@ -10240,13 +9010,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 116
+        "line": 117
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 116,
+      "line": 117,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
@@ -10284,13 +9054,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"<module>\"}",
@@ -10327,13 +9097,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"<module>\"}",
@@ -10370,13 +9140,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/decode\"}",
@@ -10413,13 +9183,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/decode\"}",
@@ -10453,13 +9223,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/change/this . store . update:callback0\"}",
@@ -10493,13 +9263,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/change/this . store . update:callback0\"}",
@@ -10533,13 +9303,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/retryAt\"}",
@@ -10573,13 +9343,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/retryAt\"}",
@@ -10613,13 +9383,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/keep/this . change:callback1\"}",
@@ -10653,13 +9423,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/keep/this . change:callback1\"}",
@@ -10694,13 +9464,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/controlPlan",
-        "line": 638
+        "line": 639
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 638,
+      "line": 639,
       "column": 65,
       "scope": "CompanionLife/controlPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/control\"}",
@@ -10736,13 +9506,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/controlPlan",
-        "line": 639
+        "line": 640
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 639,
+      "line": 640,
       "column": 9,
       "scope": "CompanionLife/controlPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/control\"}",
@@ -10778,13 +9548,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 116
+        "line": 117
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 116,
+      "line": 117,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/control\"}",
@@ -10819,13 +9589,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/reconsider\"}",
@@ -10859,13 +9629,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/reconsider\"}",
@@ -10899,13 +9669,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/stopRuntime",
-        "line": 404
+        "line": 405
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 404,
+      "line": 405,
       "column": 26,
       "scope": "CompanionLife/stopRuntime",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/advance\"}",
@@ -10939,13 +9709,13 @@
       "other": {
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/checkReadingPlan",
-        "line": 601
+        "line": 602
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 601,
+      "line": 602,
       "column": 83,
       "scope": "CompanionLife/checkReadingPlan",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/advance\"}",
@@ -10965,7 +9735,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plugin.ts",
-      "line": 638,
+      "line": 639,
       "column": 65,
       "scope": "CompanionLife/controlPlan",
       "target": "{\"file\":\"src/room/plugin.ts\",\"scope\":\"Room/request\"}",
@@ -10980,55 +9750,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 116
+        "line": 117
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 116,
-      "column": 25,
-      "scope": "Room/request",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
-      "expression": "[ \"pause\" , \"resume\" , \"cancel\" ]",
-      "values": [
-        "cancel",
-        "pause",
-        "resume"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/controlPlan",
-        "line": 638
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 639,
-      "column": 9,
-      "scope": "CompanionLife/controlPlan",
-      "target": "{\"file\":\"src/room/plugin.ts\",\"scope\":\"Room/request\"}",
-      "expression": "[ \"pause\" , \"resume\" , \"cancel\" ]",
-      "values": [
-        "cancel",
-        "pause",
-        "resume"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/room/plugin.ts",
-        "scope": "Room/request",
-        "line": 116
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/room/plugin.ts",
-      "line": 116,
+      "line": 117,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
@@ -11044,6 +9772,48 @@
         "file": "src/living/plan/plugin.ts",
         "scope": "CompanionLife/controlPlan",
         "line": 639
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/plan/plugin.ts",
+      "line": 640,
+      "column": 9,
+      "scope": "CompanionLife/controlPlan",
+      "target": "{\"file\":\"src/room/plugin.ts\",\"scope\":\"Room/request\"}",
+      "expression": "[ \"pause\" , \"resume\" , \"cancel\" ]",
+      "values": [
+        "cancel",
+        "pause",
+        "resume"
+      ],
+      "shape": "array",
+      "relation": "重复",
+      "other": {
+        "file": "src/room/plugin.ts",
+        "scope": "Room/request",
+        "line": 117
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/room/plugin.ts",
+      "line": 117,
+      "column": 25,
+      "scope": "Room/request",
+      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
+      "expression": "[ \"pause\" , \"resume\" , \"cancel\" ]",
+      "values": [
+        "cancel",
+        "pause",
+        "resume"
+      ],
+      "shape": "array",
+      "relation": "重复",
+      "other": {
+        "file": "src/living/plan/plugin.ts",
+        "scope": "CompanionLife/controlPlan",
+        "line": 640
       }
     },
     {
@@ -11063,13 +9833,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 176
+        "line": 177
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 176,
+      "line": 177,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"<module>\"}",
@@ -11143,13 +9913,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 176
+        "line": 177
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 176,
+      "line": 177,
       "column": 78,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"<module>\"}",
@@ -11223,13 +9993,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 176
+        "line": 177
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 176,
+      "line": 177,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"roomPhoto\"}",
@@ -11303,13 +10073,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 176
+        "line": 177
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 176,
+      "line": 177,
       "column": 78,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"roomPhoto\"}",
@@ -11369,7 +10139,7 @@
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 176,
+      "line": 177,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/shot-browser.cjs\",\"scope\":\"main\"}",
@@ -11403,13 +10173,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 176
+        "line": 177
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 176,
+      "line": 177,
       "column": 78,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/shot-browser.cjs\",\"scope\":\"main\"}",
@@ -11443,7 +10213,7 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 176
+        "line": 177
       }
     },
     {
@@ -11773,7 +10543,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 631,
+      "line": 632,
       "column": 88,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
@@ -11819,7 +10589,7 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 631,
+        "line": 632,
         "column": 88,
         "shape": "union",
         "values": [
@@ -11831,7 +10601,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 679,
+      "line": 680,
       "column": 52,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -11892,7 +10662,7 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 679,
+        "line": 680,
         "column": 52,
         "shape": "array",
         "values": [
@@ -11905,7 +10675,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 679,
+      "line": 680,
       "column": 52,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
@@ -11976,7 +10746,7 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 679,
+        "line": 680,
         "column": 52,
         "shape": "array",
         "values": [
@@ -14009,7 +12779,7 @@
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 164,
+      "line": 165,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -14077,7 +12847,7 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 164,
+        "line": 165,
         "column": 32,
         "shape": "array",
         "values": [
@@ -14451,8 +13221,8 @@
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 24,
-      "column": 110,
+      "line": 33,
+      "column": 22,
       "scope": "<callback>",
       "target": "kind",
       "expression": "kind : string",
