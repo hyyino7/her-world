@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { CONSOLE_WALLET_IMPORT_FILE } from '../../dist/src/core/storage-migration.js';
 import { createCore } from '../../dist/src/core/index.js';
 import { PersistentLifePlan } from '../../dist/src/living/plan/plan.js';
 import { openDomains } from '../../scripts/fixtures/synthetic-companion.mjs';
 import { runMigration } from '../../scripts/migrate/runner.mjs';
 import { createOfflineBackup, restoreOfflineBackup } from '../../scripts/lib/offline-backup.mjs';
-import { variants, fixture, mockDsh, planFor, read } from './helpers.mjs';
+import { variants, fixture, mockDsh, planFor, read, emptyWalletMigrationInputs } from './helpers.mjs';
 import { legacyEconomy } from './offline-helpers.mjs';
 
 for (const variant of variants) test(`${variant}: pending Body effect settles identically across migration`, {timeout:60000}, async t => {
@@ -56,6 +57,7 @@ for (const variant of variants) test(`${variant}: pending Body effect settles id
   assert.equal(read(bodyPath).plannedExecutions[`life:${planId}:eat`].effectAppliedAt > 0,true);
   legacyEconomy(f);
   rmSync(manifest);
-  await runMigration({installation:f.installation,backup:join(f.out,'migration-backup')});
+  rmSync(join(f.data,CONSOLE_WALLET_IMPORT_FILE));
+  await runMigration({installation:f.installation,backup:join(f.out,'migration-backup'),...emptyWalletMigrationInputs(f)});
   assert.deepEqual(await recover(),baseline);
 });

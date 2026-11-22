@@ -8,7 +8,8 @@ import {setTimeout as pause} from 'node:timers/promises';
 import {fixture,ownerPlan,until} from './fixture.mjs';
 import {cordisFixture,eventually,meal,submitPlan} from './entries-lifecycle.test.mjs';
 import {readHearControlSource} from '../../dist/tests/behavior-list/entries.js';
-import {cli} from '../migrate/helpers.mjs';
+import {cli,emptyWalletMigrationInputs,mockDsh} from '../migrate/helpers.mjs';
+import {CONSOLE_WALLET_IMPORT_FILE,CONSOLE_WALLET_STEP} from '../../dist/src/core/storage-migration.js';
 import {legacyEconomy} from '../migrate/offline-helpers.mjs';
 import {legacyEconomyRows} from '../../scripts/migrate/steps/0003-economy-marker.mjs';
 
@@ -141,14 +142,20 @@ function stoppedHomeMigration(f) {
     }
     legacyEconomy({config,storageId,data,repo:f.repo});
     rmSync(join(data,'storage-manifest.json'));
+    rmSync(join(data,CONSOLE_WALLET_IMPORT_FILE));
     put(join(profileDir,'node_modules/her-world/package.json'),{name:'her-world',version:'0.2.0'});
     put(join(home,'storages/workspace.json'),{unit:{name:'workspace',version:1},global:{workspaceIds:[f.id],archivedSessionIds},
       tables:{workspaces:{[f.id]:{path:f.repo,title:'Fixture',sessionIds}}}});
     put(installation,{status:'installed',packageInstalled:true,profileDir,config});
-    const result = cli({home},['run','--installation',installation,'--backup',join(home,'backup')]);
+    const {walletExport,walletRollback} = emptyWalletMigrationInputs({
+      config,storageId,installation,home,repo:f.repo,out:home,profile:profileDir,target:{id:f.id},
+    });
+    const result = cli({home},['run','--installation',installation,'--backup',join(home,'backup'),
+      '--wallet-export',walletExport,'--wallet-rollback',walletRollback]);
     assert.equal(result.status,0,result.stderr);
     assert.deepEqual(JSON.parse(result.stdout).steps,[
       {id:'0001-storage-manifest',state:'complete'}, {id:'0002-home-identity',state:'complete'}, {id:'0003-economy-marker',state:'complete'},
+      {id:CONSOLE_WALLET_STEP.id,state:'complete'},
     ]);
     assert.deepEqual(readFileSync(mirrorFile),mirror);
     using db = new DatabaseSync(join(config.dataDir,'core.sqlite'),{readOnly:true});
@@ -207,6 +214,7 @@ async function runG9(t, migrate = false) {
   assert.ok(native.some(event=>event.type==='user/message'&&event.data.source.kind==='dsh-world-life'));
   assert.ok(native.some(event=>event.type==='tool/call'&&event.data.name==='life_plan_update'));
 
+  if (migrate) mockDsh(t);
   const migrateHome = migrate ? stoppedHomeMigration(f) : undefined;
   await f.restart(()=>{
     assert.equal(checkpoint().plannedExecutions[plan.operationId].effectAppliedAt,applied.effectAppliedAt);
