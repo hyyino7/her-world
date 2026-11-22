@@ -18240,7 +18240,10 @@ registerCompanion({
           try {
             const answer = await ctx.connection.rpc.call('/api', `chatpetSettings/${endpoint}`,
               { requestId: requestId || crypto.randomUUID(), input }, controller.signal);
-            if (!answer.ok) throw Object.assign(new Error(answer.error.message), { code: answer.error.code });
+            if (!answer.ok) {
+              const { code, effect, retry, message } = answer.error;
+              throw Object.assign(new Error(message), { code, effect, retry });
+            }
             return answer.value;
           } catch (failure) {
             if (failure.code && !failure.code.startsWith('gateway/')) throw failure;
