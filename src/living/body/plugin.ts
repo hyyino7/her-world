@@ -136,7 +136,9 @@ export class CompanionBehavior {
     clearTimeout(this.timer);this.timer=undefined;
     if(this.closed || !this.living.isCurrent() || !this.binding) {this.deadlineAt=undefined;return;}
     if(this.awaitingRecovery)return;
-    const bound=this.binding,scope=this.host.workspace.homeScope?.(),now=Date.now();
+    const bound=this.binding,scope=bound.scope;
+    if(!sameHomeBinding(this.host.workspace.homeScope?.(),scope))return;
+    const now=Date.now();
     // A queue operation that did not advance physics cannot consume an overdue
     // boundary by rearming from stale needs at a later observation time.
     const at=this.deadlineAt!==undefined && this.deadlineAt<=now?this.deadlineAt:bound.room.nextWakeAt(now,this.conditions);
@@ -144,11 +146,15 @@ export class CompanionBehavior {
     this.deadlineAt=at;
     // Bound physical deadlines, never an activity-planning interval. Long waits
     // recheck the wall clock using the same segment as the native alarm timer.
-    this.timer=setTimeout(()=>{this.timer=undefined;void this.enqueue(async validate=>{
-      this.synchronize();if(this.binding!==bound)return;
-      await this.refreshEmotion(bound.id);validate();if(this.binding!==bound)return;
-      this.advanceRoom(bound);this.deadlineAt=undefined;this.publish();
-    },undefined,scope).catch(error=>{this.fault=String(error);});},Math.min(5*60_000,Math.max(1,at-Date.now())));
+    this.timer=setTimeout(()=>{
+      this.timer=undefined;
+      if(!sameHomeBinding(this.host.workspace.homeScope?.(),scope))return;
+      void this.enqueue(async validate=>{
+        this.synchronize();if(this.binding!==bound)return;
+        await this.refreshEmotion(bound.id);validate();if(this.binding!==bound)return;
+        this.advanceRoom(bound);this.deadlineAt=undefined;this.publish();
+      },undefined,scope).catch(error=>{this.fault=String(error);});
+    },Math.min(5*60_000,Math.max(1,at-Date.now())));
     this.timer.unref();
   }
   private advanceRoom(bound:Binding) {

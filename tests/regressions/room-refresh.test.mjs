@@ -38,6 +38,25 @@ test('Room and garden consume covered versions but follow newer, explicit and re
   readers.visibility(true);await readers.start();await readers.drain();assert.ok(readers.counts.main>hidden.main&&readers.counts.garden>hidden.garden);
 });
 
+test('a deadline armed during rebinding cannot publish after returning to the same workspace',async t=>{
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:1_000_000});
+  const {body,events,room}=bodyFixture();
+  const first={workspaceId:'a',path:'/fixture/a',storageId:'a',bootId:'core',generation:1};
+  let binding=first;
+  body.host.workspace.homeScope=()=>binding;
+  body.binding.scope=first;
+  room.nextWakeAt=()=>Date.now()+1000;
+  delete body.arm;
+  body.arm();
+  binding=undefined;
+  body.arm();
+  binding={...first,generation:3};
+  t.mock.timers.tick(1000);
+  await body.serial;
+  clearTimeout(body.timer);
+  assert.deepEqual(events,[]);
+});
+
 test('Plan and wallet invalidation refresh Room and garden at the same Body revision',async()=>{
   const {body}=bodyFixture();
   const readers=roomReaders(()=>body.roomState('a'),()=>body.garden('a','state'));
