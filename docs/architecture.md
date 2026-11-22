@@ -117,7 +117,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 1. **只往下依赖，同层不互相引用。** 需要别的同层模块的能力时，经第一层的接口或登记表。
 2. **只存自己的数据，不往第一层、第二层的存储里写。**
 
-现在违反的：Channels 把 5 类记录（kind）写进 Core 数据库的通用 `records` 表；Desktop 把会话映射 `desktop-session` 写进 Core 数据库（`desktop/index.ts:44`）；Desktop 读多个上层服务。
+Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射按[状态拥有者表](#4-状态拥有者表)留在 Core。
 
 ---
 
@@ -144,7 +144,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 - 状态拥有者表（第 4 节）登记每份持久数据的路径或表名、拥有者、**唯一写入协议**。
 - （目标，未实现，随阶段 3 的数据搬迁方案再定）第一层提供**按拥有者划分的存储句柄**：句柄只暴露拥有者自己的表和行，别的模块拿不到。拼 `.chatpet/data/…` 路径的代码只允许在第一层的存储模块里。
-- Core 的 SQLite 里**不许出现别的模块的表，也不许出现别的模块的记录 kind**。Core 的 `records` 表按 `kind` 区分记录，Channels 的 5 类记录和 Desktop 的会话映射就是这样混进来的。拥有者边界覆盖**记录 kind 和写入端口**，不只是建表。
+- Core 的 SQLite 只放 Core 拥有的表、记录 kind 和[拥有者表](#4-状态拥有者表)批准的原位例外。拥有者边界覆盖**记录 kind 和写入端口**。
 - **局限**：脚本只能查到「哪个模块创建了哪个文件、哪张表、写了哪个记录 kind」，查不到「对已有文件的某一行的越权更新」。后者靠「句柄只暴露自己的数据」从设计上堵，再用一个运行时写入追踪测试在一次性数据目录里核对实际产生的文件和表。
 
 **R7 要覆盖：**
@@ -175,8 +175,8 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | --- | --- | --- | --- |
 | `.chatpet/{manifest.json, SOUL.md, USER.md, COMPANION.md, core.json}` | 第一层·身份与绑定 | Core 初始化和设置 | 不变 |
 | Core 数据库：身份、设置、请求去重、原生消息映射、记忆待处理/确认 | 第一层 | Core、NativeMemory、Memory batch | 不变 |
-| Core 数据库：`channel-received / channel-reach / life-outlet-delivery / channel-usage / channel-usage-event` | **第三层·Channels** | Channels 直接写 | **搬出**到 Channels 自己的数据库（随 Channels 重写）；`life-outlet-delivery` 的归属另议，它连接生活与渠道 |
-| Core 数据库：`desktop-session` | **第三层·Desktop** | Desktop 直接写 | **搬出**到 Desktop 自己的存储（随 Desktop 重写） |
+| Core 数据库：`channel-received / channel-reach / life-outlet-delivery / channel-usage / channel-usage-event` | **第三层·Channels** | Channels 直接写 | **原位例外**，沿用 CoreStore 记录协议及[离线恢复](#72-回退)对当前渠道记录的保护 |
+| Core 数据库：`desktop-session` | **第三层·Desktop** | Desktop 直接写 | **原位例外**，会话映射随选中的 Core 备份恢复 |
 | 钱包「已采用」证据：`economy.sqlite` 的 `meta.economy.initialized` 和独立文件 `data/living/economy-adoption.json`（都是 `{storageId, companionId}`） | 第二层·钱包区 | Economy | 原来放在 Core `meta` 的 `economy.initialized:<storageId>`，已由离线迁移步骤 `0003-economy-marker` 搬走：先在钱包库里写标记并提交，再原子写独立证据，两者都落盘后才删 Core 旧键（`scripts/migrate/steps/0003-economy-marker.mjs:101-121`）。首次建库时先验旧菜园，在钱包租约下先落独立证据，再在同一个事务里建表、导入旧菜园、写库内标记，提交后补 `storage.json`（`living/economy/store.ts:75-125`）。运行时认五种采用证据：独立证据、库内标记、`storage.json`、身体检查点的 `economyGardenAuthority`，以及同一 `storageId` 的迁移日志里含 `0003` 且记了 `economyAdopted:true` 的段（`living/economy/adoption.ts:31-73,85-106`）。任一成立而库缺失，就拒绝钱包，不建空库、不导入旧菜园，免费照料照常；钱包目录和 `data/living/` 同时丢失时，迁移日志这一条仍然挡住重建。日志缺失或损坏按没有这条证据处理，不影响工作区；所以钱包目录、`data/living/` 和迁移日志三处同时丢失或损坏时，运行时认不出曾经采用过，这是已知边界。证据文件内容坏了只拒绝钱包，工作区清单只看文件在不在。独立证据已落盘、库还没提交时拒绝自动补建，钱包能力状态行 `life.economy` 给出证据路径和处理办法 |
 | Core 数据库：`native-memory-view / native-memory-action` | 第一层（只保留） | 无：旧版本写入，当前 `src/` 不读不写 | 原样保留，是否清理另议；登记后盘点不再报未知 kind |
 | Mnemosyne 记忆库 `data/memory/data/memory.db` 等 | 第一层·记忆 | Mnemosyne 服务、Pet 接口 | 不变 |
@@ -221,6 +221,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 - **命令** `WorldCommands`：照料（`petBehavior`）、执行计划步骤和阅读确认（`petLife`）、购买和出售（`petEconomy`），各门面的 `worldCommands` 只挂本区的命令；每条带请求 ID，复用原入口的准入、绑定复核和去重。错误语义沿用 `ContractError`：`effect` 有三种（`none / partial / unknown`），`retry` 有四种（`never / refresh / same_request / reconcile`）。
 - **事实流**：`CompanionFactSource`，`petBehavior.worldFacts` 聚合身体和钱包的事实。事实的准备、验证、确认在第二层的 `living/prompt-context.ts`，仍在 Core 的原生作用域登记两段、调用第一层的 `acknowledgePromptFacts`；「原生日志落盘之后才确认事实」的顺序不变，确认前复核绑定、三区租约和准备结果。
 - **变更信号**：`world.changed` 携带 `workspaceId/storageId` 和 `homeScope()` 的 `bootId/generation`。三区可见状态变化、首次绑定和切换绑定时发，同一微任务内按绑定代次合并，出队时复核原绑定与产出区租约。Room 按代次刷新，IPC 继续使用 Body 的 `bootId/revision` 拦住落后画面；仅 Body 变化的通知可由已覆盖的快照吸收。此事件只通知刷新，Cordis 的 `emit` 不等待订阅者或返回业务回执。
+- Channels 按同一绑定代次刷新适配器。Plan 的 home 写入、启动、暂停和卸载都进入同一通知流。Channels 用按 Cordis 隔离标签查询的运行中 home 窄口；Bridge 整理通过 Memory 的压缩登记判断是否有待办。
 - **生活出口**：`living/outlets.ts` 的 `registerLifeOutlet`。Desktop 登记暂停、恢复、呈现，Channels 登记主动消息送达，各自在入口登记、卸载时撤销；Life 在启动、休息和通知时用 `lookupLifeOutlet` 按租约取当前的出口，没有登记就跳过，和原来缺服务时一样。呈现出错时记原样警告，照样试 Channels。登记复用 `RegistrationTable`，按提供方的隔离标签区分。
 - **启用意图读口**：同一文件的 `readLifeEnabled`，Desktop 判断「Life 是否接管自主」时读它：有 Plan 时读持久的生活开关（`bodyClockState`），读不到再看 Plan 是否在运行；没有 Plan 就当作未接管，桌宠恢复自主，`control.json` 不变。
 
@@ -512,6 +513,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 新增输入来源 | 在模块里写一个来源适配器（准入、分支、`turnKind`、工具策略、记忆观察、情绪更新、历史投影、会话策略行），在入口登记到 `host.native.sourceTable`；新的 `source.kind` 在 DSH 的 `MessageSourceMap` 声明，新的工具来源用 `toolTable.registerSource` 登记（M2 已落地） | 入队和首步准入、工具限制、记忆观察、情绪 footer、历史投影、会话策略一行 |
 | 新增上下文段 | 在模块入口用 `registerWorldPrompt` 登记（缩小后不做段声明，5.9） | 无；顺序、可见性由登记处自己写 |
 | 新增设置项 | 一份字段声明（阶段 3，按收益再评估） | 页面控件、保存键集合、校验、实际消费的接线 |
+| 新增 QQ／微信设置项 | `channels/messaging-settings.ts` 声明可编辑字段并维护缺省值及校验 | Console 与生成的桌宠客户端从 Channels 的状态响应读取控件和保存键。Channels 按字段的设备归属落盘 |
 | 新增设置页操作 | 运维操作表的一条登记（阶段 3） | 路由清单、处理分支、客户端调用 |
 | 新增照料动作 | 第二层的 `BodyAction` 基础表（`contracts/behavior.ts:10`），每个动作在照料、角色、计划、反馈各集合里记序号 | 主人入口、角色工具枚举、计划类型与校验、计划 schema、设置页白名单和按钮（`lifeView.careActions`）。动作的执行和事实标签仍在 Body 里写 |
 | 新增事实领域 | `contracts/interaction.ts` 的 `FACT_DOMAINS` | 读写类型、领域清单（Core 准入、World、Life、提示词段）。领域提供者要另写；Python 元组要跟着改，契约测试会失败提醒；上游 Life 的 `FactRef` 领域封闭、vendor 不能改，要经 Life 的回读适配 |
@@ -583,7 +585,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 - 回退 = 恢复安全备份 + 换回旧版安装包。现有恢复器要求**安装包文件指纹完全一致**，同机同路径，所以回退验收包含「旧代码、旧数据、旧绑定一起恢复」。
 - 因此有两份用途不同的备份（拍板点 6）：**回退备份**在换包前、旧版本下用 `companion-backup` 做，记录旧包指纹，只用于换回旧版；**同包续做备份**由迁移器每轮另建，只用于同一个新包下的续做。一份备份满足不了两种指纹。完整顺序见 [development.md](development.md)。
 - **新版运行期间新增的聊天，回退后旧版看不到。** 恢复器会把原生日志目录和会话登记恢复成备份时的样子（`scripts/lib/offline-backup.mjs:432-437,445-451`，对应测试 `tests/infrastructure/offline-backup.test.mjs:51-79`）；新版期间的聊天只保留在「回退前自动做的安全备份」里。要让它们重新出现，需要一个额外的、可选的恢复步骤，不在现有恢复器的范围内。
-- 同理，**已送达的消息和已消耗的额度**是不可回退的状态；Channels 账本搬出后，现有恢复器也不会把新版的送达、去重和额度记录转回旧 Core。恢复契约要明确列出这类**不可回退状态**。
+- **已送达的消息和已消耗的额度**是不可回退的状态，恢复时保留当前的渠道记录。
 - 外部状态也要进恢复契约：DSH 工作区登记、原生日志、投影缓存、共享附件、工作区 `AGENTS.md`、设备配置引用。
 - 现有恢复器不是纯回滚：恢复前，它把当前的渠道日志、Core 里受保护的送达、去重、额度记录和 Life 花费带进待恢复的数据（`scripts/lib/offline-backup.mjs:409-420`，受保护的 kind 列在 `:309`）。备份里有、当前却缺的受保护记录会让它拒绝恢复（`:354`），共享附件字节冲突也拒绝（`:426`）。回退验收按这些真实行为断言，不比较整个目录和备份是否逐字节相同。
 
@@ -634,7 +636,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | P2b | 来源适配表和工具声明表：把 Life 一类原生输入的整套适配（准入、工具限制、回顾守卫、历史投影）迁出第一层；`host.native.xxxAdmission` 赋值消失（已完成） |
 | P2c | 取消。事件改调用（Memory 不再订阅 `pet/life.review`）、记录库改读第二层只读接口并入 P3；提示词段表砍掉；共享 home 身份记录的归属已定（第 4 节） |
 | P3 | **已完成**：2a 合并（0.3.0）、2b 概念统一（0.4.0）。合并第二层（先合并、行为不变，概念统一随后逐步）：5.9 隐含契约的契约测试先行；第一层里属于第二层的 18 条违规搬走；共享 home 身份记录迁移、常驻实例、旧入口语义表落实、事实准备和确认搬入、旧服务名门面、`economy.initialized` 搬出 |
-| P4 | 第三层原地治理，不重写模块：图片准入抽共用；语音接口落地；运维操作表；浏览器里的经济待确认请求迁入持久存储；Channels 账本暂留 Core 数据库，`desktop-session` 搬出为可选 |
+| P4 | 第三层原地治理，不重写模块：图片准入抽共用；语音接口落地；运维操作表；浏览器里的经济待确认请求迁入持久存储；Core 保留[批准的原位例外](#4-状态拥有者表) |
 | P5 | 收尾：删已不用的旧适配（以已安装配置核实为前提）、更新本文、按 G8 复核长期例外 |
 
 每步结束都要：行为清单全绿、门禁通过、能发一个版本、更新「典型修改前后对比」。
