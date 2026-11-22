@@ -26,6 +26,25 @@ export const HOME_STORAGE_STEP = Object.freeze({id:'0002-home-identity', from:IN
 export const ECONOMY_STORAGE_STEP = Object.freeze({id:'0003-economy-marker', from:HOME_STORAGE_STEP.to,
   to:Object.freeze({...HOME_STORAGE_STEP.to, core:3, living:3})});
 
+export const CONSOLE_WALLET_STEP = Object.freeze({id:'0004-console-wallet', from:ECONOMY_STORAGE_STEP.to,
+  to:Object.freeze({...ECONOMY_STORAGE_STEP.to, living:4})});
+export const CONSOLE_WALLET_IMPORT_FILE = 'console-wallet-import.json';
+
+type WalletImportBinding = {storageId: string; companionId: string};
+export interface WalletImportProof {
+  format: 1;
+  mode: 'import';
+  binding: WalletImportBinding;
+  wallet: 'adopted' | 'absent';
+  round: string;
+  sourceCount: number;
+  sourceDigest: string;
+  requestCount: number;
+  requestDigest: string;
+  exportDigest: string;
+}
+export const freshWalletImportProof = (binding: WalletImportBinding) => ({format:1, mode:'fresh', binding});
+
 export function storageManifest(companionId: string, modules: StorageVersions) {
   return {schemaVersion:1, companionId, modules};
 }
@@ -58,12 +77,39 @@ const stepEvents = new Set(['start', 'skip', 'done', 'failed']);
 const otherEvents = new Set(['lock-takeover', 'journal-repaired']);
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
+export function isWalletImportProof(value: unknown, storageId: string): value is WalletImportProof {
+  if (!value || typeof value !== 'object') return false;
+  const proof = value as WalletImportProof;
+  return proof.format === 1 && proof.mode === 'import' && proof.binding?.storageId === storageId
+    && typeof proof.binding.companionId === 'string' && !!proof.binding.companionId
+    && (proof.wallet === 'adopted' || proof.wallet === 'absent' && proof.requestCount === 0)
+    && typeof proof.round === 'string' && !!proof.round
+    && Number.isSafeInteger(proof.sourceCount) && proof.sourceCount > 0
+    && Number.isSafeInteger(proof.requestCount) && proof.requestCount >= 0 && proof.requestCount <= proof.sourceCount
+    && digest(proof.sourceDigest) && digest(proof.requestDigest) && digest(proof.exportDigest);
+}
+
+export interface WalletImportJournal {
+  exportFile: string;
+  rollbackFile: string;
+  rollbackDigest: string;
+  codeFingerprint: string;
+  proof: WalletImportProof;
+}
+
+function validWalletImportJournal(row: WalletImportJournal, storageId: string) {
+  return typeof row.exportFile === 'string' && isAbsolute(row.exportFile)
+    && typeof row.rollbackFile === 'string' && isAbsolute(row.rollbackFile)
+    && digest(row.rollbackDigest) && digest(row.codeFingerprint) && isWalletImportProof(row.proof, storageId);
+}
+
 interface JournalHeader {
   id: string;
   backup: string;
   backupHash: string;
   binding?: {storageId: string; repoHash: string};
   economyAdopted?: boolean;
+  walletImport?: WalletImportJournal;
   steps: MigrationStepContract[];
 }
 interface JournalSegment { header: JournalHeader; states: Map<string, string> }
@@ -86,17 +132,19 @@ export function decodeMigrationJournal(journal: ReturnType<typeof parseMigration
     assert.ok(value && typeof value === 'object' && !Array.isArray(value));
     const row = value as Partial<JournalHeader> & {event?: string; schema?: number; manifestHash?: string; migrationId?: string; step?: string};
     if (row.event === 'migration') {
-      const {id, backup, schema, steps, binding, backupHash, manifestHash, economyAdopted} = row;
+      const {id, backup, schema, steps, binding, backupHash, manifestHash, economyAdopted, walletImport} = row;
       assert.ok(typeof id === 'string' && id && !ids.has(id) && typeof backup === 'string' && isAbsolute(backup));
       let header: JournalHeader;
       if (schema === undefined && steps === undefined && binding === undefined && backupHash === undefined) {
-        assert.ok(!last && digest(manifestHash) && economyAdopted === undefined);
+        assert.ok(!last && digest(manifestHash) && economyAdopted === undefined && walletImport === undefined);
         header = {...row, id, backup, steps:[INITIAL_STORAGE_STEP], backupHash:manifestHash};
       } else {
         assert.ok(schema === 2 && digest(backupHash) && digest(binding?.repoHash));
         validateMigrationContract(steps);
         assert.ok(economyAdopted === undefined || typeof economyAdopted === 'boolean' && steps.some(step => step.id === ECONOMY_STORAGE_STEP.id));
         if (binding.storageId !== storageId) throw new MigrationBindingChanged();
+        const walletStep = steps.some(step => step.id === CONSOLE_WALLET_STEP.id);
+        assert.ok(walletStep ? walletImport && validWalletImportJournal(walletImport, storageId) : walletImport === undefined);
         if (last) {
           const prior = last.header.steps;
           assert.ok(settled(last) && steps.length > prior.length && isDeepStrictEqual(steps.slice(0, prior.length), prior));

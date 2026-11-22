@@ -12,6 +12,7 @@ import { variants, fixture, mockDsh, read, cli, refusedCli } from './helpers.mjs
 import { economyPaths, offlineFixture } from './offline-helpers.mjs';
 import { bootstrapSteps, homeSteps, selectBootstrapCli } from './migration-child.mjs';
 
+const economySteps = steps.slice(0,3);
 const child = async (f, backup, point, mode = '', suite = '') => {
   const processChild = spawn(process.execPath,
     ['--import',resolve('tests/migrate/dsh-probe.mjs'),resolve('tests/migrate/migration-child.mjs'),f.installation,backup,point,mode,suite],{stdio:'pipe'});
@@ -312,7 +313,7 @@ for (const point of ['backup','wallet','proof','after','manifest','complete']) t
   assert.equal(read(manifest).modules.living,version);
   if (point === 'backup') {
     assert.equal(readFileSync(log,'utf8'), previous);
-    await runMigration({installation:f.installation,backup:join(f.out,'backup-retry')},steps);
+    await runMigration({installation:f.installation,backup:join(f.out,'backup-retry')},economySteps);
   } else {
     assert.equal(header(log).economyAdopted,true);
     assert.equal(header(log).backupHash,backupHash);
@@ -332,8 +333,8 @@ for (const point of ['backup','wallet','proof','after','manifest','complete']) t
     rmSync(dirname(database),{recursive:true}); rmSync(adoption);
     for (let attempt = 0; attempt < 2; attempt++) {
       assert.deepEqual(migrationStatus(f.installation).steps.at(-1),{id:'0003-economy-marker',state:'inconsistent'});
-      await assert.rejects(runMigration({installation:f.installation,resume:true}),{code:'migration-inconsistent'});
-      await assert.rejects(runMigration({installation:f.installation,backup:join(f.out,'refused')}),{code:'migration-inconsistent'});
+      await assert.rejects(runMigration({installation:f.installation,resume:true},economySteps),{code:'migration-inconsistent'});
+      await assert.rejects(runMigration({installation:f.installation,backup:join(f.out,'refused')},economySteps),{code:'migration-inconsistent'});
       assert.deepEqual(readFileSync(log),settled);
       assert.equal(existsSync(database) || existsSync(adoption) || existsSync(join(f.out,'refused')),false);
     }
@@ -346,7 +347,7 @@ test('offline commands refuse a migrated Repo that lost its declared wallet and 
   const manifestFile = join(f.managed, 'manifest.json'), manifest = read(manifestFile);
   manifest.files.push('data/economy/', 'data/economy/economy.sqlite', 'data/economy/storage.json');
   writeFileSync(manifestFile, JSON.stringify(manifest));
-  await runMigration({installation:f.installation, backup:join(f.out, 'backup')});
+  await runMigration({installation:f.installation, backup:join(f.out, 'backup')},economySteps);
   assert.deepEqual(migrationStatus(f.installation).steps.at(-1), {id:'0003-economy-marker', state:'complete'});
 
   const {database, adoption} = economyPaths(f), log = join(f.data, 'migrations.jsonl');

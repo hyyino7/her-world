@@ -12,8 +12,9 @@ import { conversationOptions } from './options.js';
 import type { CompanionIdentity, AttentionPolicy, WorkspaceEditScope } from '../contracts/core.js';
 import type { ServiceCall } from '../contracts/common.js';
 import { bytesDigest, canonical, check, reject, Rejection, revision, now } from './storage.js';
-import { decodeMigrationJournal, ECONOMY_STORAGE_STEP, HOME_STORAGE_STEP, INITIAL_STORAGE_STEP, MIGRATION_REASON, MigrationBindingChanged,
-  parseMigrationJournal, settled, storageManifest, storageManifestIndex, type MigrationReason } from './storage-migration.js';
+import { CONSOLE_WALLET_IMPORT_FILE, CONSOLE_WALLET_STEP, decodeMigrationJournal, ECONOMY_STORAGE_STEP, freshWalletImportProof,
+  HOME_STORAGE_STEP, INITIAL_STORAGE_STEP, MIGRATION_REASON, MigrationBindingChanged, parseMigrationJournal, settled, storageManifest,
+  storageManifestIndex, type MigrationReason } from './storage-migration.js';
 import type { CompanionBinding } from './tables/companion-ports.js';
 
 const BASE_REQUIRED = ['README.md', 'manifest.json', 'SOUL.md', 'USER.md', 'core.json'] as const;
@@ -36,8 +37,8 @@ existing workspace files and instructions.
 `;
 const MAX_BYTES = 64 * 1024;
 const STORAGE_MANIFEST = 'storage-manifest.json', MIGRATION_JOURNAL = 'migrations.jsonl', INITIALIZING = '.initialization-pending.json';
-const READABLE_FILES = new Set<string>([...REQUIRED, STORAGE_MANIFEST, MIGRATION_JOURNAL, INITIALIZING]);
-const STORAGE_STEPS = [INITIAL_STORAGE_STEP, HOME_STORAGE_STEP, ECONOMY_STORAGE_STEP];
+const READABLE_FILES = new Set<string>([...REQUIRED, STORAGE_MANIFEST, MIGRATION_JOURNAL, CONSOLE_WALLET_IMPORT_FILE, INITIALIZING]);
+const STORAGE_STEPS = [INITIAL_STORAGE_STEP, HOME_STORAGE_STEP, ECONOMY_STORAGE_STEP, CONSOLE_WALLET_STEP];
 const BOOTSTRAP_FILES = new Set(['core.sqlite', 'core.sqlite-wal', 'core.sqlite-shm', 'core.sqlite-journal', 'core.lock']);
 interface MigrationBlock { reason: MigrationReason; olderMigrationJournal?: true }
 interface Manifest { schemaVersion: 1 | 2 | 3; companionId: string; files: readonly string[] }
@@ -187,7 +188,7 @@ export class CoreWorkspace {
   }
   private initializationMarker(workspaceId: string) {
     const {companionId, scopeId} = this.runtime.config;
-    return {companionId, scopeId, workspaceId, modules:ECONOMY_STORAGE_STEP.to};
+    return {companionId, scopeId, workspaceId, modules:CONSOLE_WALLET_STEP.to};
   }
   private retainedFiles(directory: string, ignore?: string): boolean {
     return readdirSync(directory, {withFileTypes:true}).some(entry => {
@@ -213,6 +214,7 @@ export class CoreWorkspace {
         if (version < 0) return {reason:MIGRATION_REASON.manifestMismatch};
       }
     } catch { return {reason:MIGRATION_REASON.manifestMismatch}; }
+    let imported = false;
     try {
       if (lstatSync(join(data, MIGRATION_JOURNAL), {throwIfNoEntry:false})) {
         const {last, truncated} = decodeMigrationJournal(parseMigrationJournal(this.read(data, MIGRATION_JOURNAL)), storageId);
@@ -224,9 +226,20 @@ export class CoreWorkspace {
           return {reason:MIGRATION_REASON.migrationIncomplete,
             olderMigrationJournal:last.header.steps.length < STORAGE_STEPS.length ? true : undefined};
         }
+        const importProof = last?.header.walletImport?.proof;
+        if (importProof && importProof.binding.companionId !== companionId) return {reason:MIGRATION_REASON.bindingChanged};
+        if (importProof && truncated) return {reason:MIGRATION_REASON.journalInvalid};
+        imported = !!importProof;
       }
     } catch (error) { return {reason:error instanceof MigrationBindingChanged ? MIGRATION_REASON.bindingChanged : MIGRATION_REASON.journalInvalid}; }
-    if (version === STORAGE_STEPS.length - 1) return;
+    if (version === STORAGE_STEPS.length - 1) {
+      if (imported) return;
+      try {
+        const proof: unknown = JSON.parse(this.read(data, CONSOLE_WALLET_IMPORT_FILE));
+        if (isDeepStrictEqual(proof, freshWalletImportProof({companionId, storageId}))) return;
+      } catch { /* A current manifest without its initialization proof is incomplete. */ }
+      return {reason:MIGRATION_REASON.migrationIncomplete};
+    }
     if (version >= 0) return {reason:MIGRATION_REASON.storageVersionOutdated};
     try {
       if (lstatSync(join(directory, INITIALIZING), {throwIfNoEntry:false})) {
@@ -455,8 +468,13 @@ export class CoreWorkspace {
       docs = this.documents(target); binding.hashes = docs.hashes;
       this.verifyInventory(target);
       const data = join(directory, 'data');
-      if (!existsSync(join(data, STORAGE_MANIFEST)))
-        this.atomic(data, STORAGE_MANIFEST, JSON.stringify(storageManifest(identity.companionId, ECONOMY_STORAGE_STEP.to)) + '\n');
+      if (!existsSync(join(data, STORAGE_MANIFEST))) {
+        const proof = freshWalletImportProof({companionId:identity.companionId, storageId:this.storageId()});
+        if (existsSync(join(data, CONSOLE_WALLET_IMPORT_FILE)))
+          check(isDeepStrictEqual(JSON.parse(this.read(data, CONSOLE_WALLET_IMPORT_FILE)), proof), 'Wallet initialization proof changed');
+        else this.atomic(data, CONSOLE_WALLET_IMPORT_FILE, JSON.stringify(proof) + '\n');
+        this.atomic(data, STORAGE_MANIFEST, JSON.stringify(storageManifest(identity.companionId, CONSOLE_WALLET_STEP.to)) + '\n');
+      }
       store.put('workspace-binding', 'current', binding); this.adopt(docs);
       rmSync(pending);
     } catch (error) {

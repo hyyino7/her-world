@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { runMigration, migrationStatus } from '../../scripts/migrate/runner.mjs';
 import { verifyOfflineBackup, restoreOfflineBackup } from '../../scripts/lib/offline-backup.mjs';
 import { hash } from '../../scripts/migrate/io.mjs';
-import { variants, fixture, planFor, mockDsh, coreAtLegacyVersion, coreReady, recall, memoryLogical, read } from './helpers.mjs';
+import { variants, fixture, planFor, mockDsh, coreAtLegacyVersion, coreReady, recall, memoryLogical, read, emptyWalletMigrationInputs } from './helpers.mjs';
 import { bootstrapSteps, selectBootstrapCli } from './migration-child.mjs';
 
 for (const variant of variants) test(`${variant}: migration, actual recall and protected-journal rollback`, {timeout:60000}, async t => {
@@ -57,6 +57,6 @@ for (const variant of variants) test(`${variant}: migration, actual recall and p
   assert.match(readFileSync(join(f.profile,'cordis.patch.yml'),'utf8'),/Later/);
   assert.deepEqual(memoryLogical(f),before);
   await coreAtLegacyVersion(f);
-  await runMigration({installation:f.installation,backup:join(f.out,'full-migration')});
+  await runMigration({installation:f.installation,backup:join(f.out,'full-migration'),...emptyWalletMigrationInputs(f)});
   await coreReady(f); await recall(f);
 });

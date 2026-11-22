@@ -100,6 +100,51 @@ export declare const ECONOMY_STORAGE_STEP: Readonly<{
         voice: 1;
     }>;
 }>;
+export declare const CONSOLE_WALLET_STEP: Readonly<{
+    id: "0004-console-wallet";
+    from: Readonly<{
+        core: 3;
+        living: 3;
+        channels: 1;
+        desktop: 1;
+        emotion: 1;
+        memory: 1;
+        room: 1;
+        voice: 1;
+    }>;
+    to: Readonly<{
+        living: 4;
+        core: 3;
+        channels: 1;
+        desktop: 1;
+        emotion: 1;
+        memory: 1;
+        room: 1;
+        voice: 1;
+    }>;
+}>;
+export declare const CONSOLE_WALLET_IMPORT_FILE = "console-wallet-import.json";
+type WalletImportBinding = {
+    storageId: string;
+    companionId: string;
+};
+export interface WalletImportProof {
+    format: 1;
+    mode: 'import';
+    binding: WalletImportBinding;
+    wallet: 'adopted' | 'absent';
+    round: string;
+    sourceCount: number;
+    sourceDigest: string;
+    requestCount: number;
+    requestDigest: string;
+    exportDigest: string;
+}
+export declare const freshWalletImportProof: (binding: WalletImportBinding) => {
+    format: number;
+    mode: string;
+    binding: WalletImportBinding;
+};
 export declare function storageManifest(companionId: string, modules: StorageVersions): {
     schemaVersion: number;
     companionId: string;
@@ -107,6 +152,14 @@ export declare function storageManifest(companionId: string, modules: StorageVer
 };
 export declare function storageManifestIndex(manifest: unknown, companionId: string, contract: readonly MigrationStepContract[]): number;
 export declare function validateMigrationContract(contract: unknown): asserts contract is MigrationStepContract[];
+export declare function isWalletImportProof(value: unknown, storageId: string): value is WalletImportProof;
+export interface WalletImportJournal {
+    exportFile: string;
+    rollbackFile: string;
+    rollbackDigest: string;
+    codeFingerprint: string;
+    proof: WalletImportProof;
+}
 interface JournalHeader {
     id: string;
     backup: string;
@@ -116,6 +169,7 @@ interface JournalHeader {
         repoHash: string;
     };
     economyAdopted?: boolean;
+    walletImport?: WalletImportJournal;
     steps: MigrationStepContract[];
 }
 interface JournalSegment {

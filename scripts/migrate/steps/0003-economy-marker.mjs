@@ -34,7 +34,7 @@ function source(db) {
   return legacyEconomyRows(db);
 }
 
-function observe(file, code, read) {
+export function observe(file, code, read) {
   return checked(code, () => {
     regular(file + '-shm');
     const scratch = mkdtempSync(join(tmpdir(), 'migration-economy-'));
@@ -65,7 +65,7 @@ function walletMarker(context, db) {
   return bound(walletInvalid, () => readEconomyDatabaseMarker(db, identity(context.plan)));
 }
 
-function update(file, missing, invalid, write) {
+export function update(file, missing, invalid, write) {
   requireMigration(regular(file), missing);
   for (const suffix of ['-wal', '-shm', '-journal']) regular(file + suffix);
   return checked(invalid, () => {
