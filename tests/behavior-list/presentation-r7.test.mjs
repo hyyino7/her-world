@@ -298,3 +298,30 @@ test('Room 回到 A 后丢弃旧 A 的读写和通知，新窗口只接收当前
   const b=await f.ctx.petRoom.request(second.id,'roomState',{},'read-current-b',new AbortController().signal);
   assert.ok(!JSON.stringify(b).includes('synthetic note'));
 });
+
+
+test('Room 和 Console 兼容回包保留同一活动的播放描述',async t=>{
+  const f=await presentationFixture(t);
+  await f.mount('room');
+  await f.mount('console');
+  const request=async(endpoint,data={})=>{
+    const requestId=randomUUID();
+    const input={workspaceId:f.id,...data};
+    const result=await readRpcResult(await f.dispatch(f.request(endpoint,requestId,input)),requestId);
+    assert.equal(result.ok,true,JSON.stringify(result));
+    return result.value;
+  };
+  const semantic=await f.body.roomState(f.id);
+  assert.ok(semantic.behavior.bootId);
+  assert.equal(Object.hasOwn(semantic,'playback'),false);
+  const room=await request('roomState',{data:{}});
+  const life=await request('lifeView');
+  assert.deepEqual(life.home.playback,room.playback);
+  assert.equal(room.playback.version,1);
+  assert.equal(typeof room.playback.segments[0].roomClip,'string');
+  assert.equal(typeof room.playback.segments[0].desktopClip,'string');
+  const action=await request('roomAction',{data:{action:'talk',text:'Synthetic compatibility note'}});
+  assert.equal(action.home.playback.phase,action.home.behavior.phase);
+  const care=await request('lifeAction',{action:'water'});
+  assert.equal(care.home.playback.phase,care.home.behavior.phase);
+});

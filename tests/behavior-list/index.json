@@ -1542,6 +1542,15 @@
       "families": []
     },
     {
+      "id": "3-ROOM-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 和 Console 兼容回包保留同一活动的播放描述",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-VOICE-01",
       "categories": [],
       "level": "L1",
