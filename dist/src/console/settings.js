@@ -3,6 +3,7 @@ import { MIGRATION_REASON } from '../core/storage-migration.js';
 import { estimateTokens } from '#dsh-world/console/snapshot';
 import { desktopAppearanceDefaults } from '../desktop/appearance.js';
 import { BODY_ACTIONS, CARE_ACTIONS, isCareAction } from '../contracts/behavior.js';
+import { isRoomEndpoint } from '../presentation/room-transport.js';
 const messages = {
     STALE_BINDING: '工作区绑定已改变，请刷新。',
     STALE_REVISION: '设置已被其他操作修改，请刷新后重新编辑。',
@@ -202,7 +203,7 @@ export function settingsHandler(getHost, getWorkspaces, getDesktop, getWorldModu
                     fail('CANCELLED');
                 return { ok: true, value };
             }
-            if (['roomState', 'roomAction', 'roomGarden', 'roomPlant', 'roomCare', 'roomChat', 'roomTelevision', 'roomHistory', 'roomVoice'].includes(endpoint)) {
+            if (isRoomEndpoint(endpoint)) {
                 const input = object(body.input, ['workspaceId', 'data']);
                 const id = requiredText(input.workspaceId, 200), room = getRoom?.();
                 if (!room)

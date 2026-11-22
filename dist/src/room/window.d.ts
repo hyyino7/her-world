@@ -1,11 +1,11 @@
 import type { BehaviorChange } from '../contracts/behavior.js';
 import type { WorldChanged } from '../contracts/living.js';
 import type { HomeBinding } from '../core/workspace.js';
-export declare const ROOM_ENDPOINTS: readonly ["roomState", "roomAction", "roomGarden", "roomPlant", "roomCare", "roomChat", "roomTelevision", "roomHistory", "roomVoice"];
+import { type RoomEndpoint } from '../presentation/room-transport.js';
 interface Host {
     binding(): HomeBinding | undefined;
     origin(): string | undefined;
-    request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
+    request(workspaceId: string, endpoint: RoomEndpoint, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
 }
 /** Presentation-only process. Owner state and every native turn stay in DSH. */
 export declare class RoomWindow {

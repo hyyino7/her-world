@@ -8,12 +8,13 @@ import type { CompanionLife } from '../living/plan/plugin.js';
 import { estimateTokens } from '#dsh-world/console/snapshot';
 import { desktopAppearanceDefaults } from '../desktop/appearance.js';
 import { BODY_ACTIONS, CARE_ACTIONS, isCareAction } from '../contracts/behavior.js';
+import {isRoomEndpoint, type RoomEndpoint} from '../presentation/room-transport.js';
 export interface EconomyControls {
   snapshot(workspaceId: string, validate?: () => void, options?: {includeWritableKeys?: boolean}): Promise<unknown>;
   ownerAction(workspaceId: string, action: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
   settings(workspaceId: string, expectedVersion: string, next: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
 }
-interface RoomControls { request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>; open?(workspaceId:string):Promise<unknown> }
+interface RoomControls { request(workspaceId: string, endpoint: RoomEndpoint, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>; open?(workspaceId:string):Promise<unknown> }
 
 /** Structural subset of the native Connection RPC contract; no new transport. */
 export type SettingsReply = { ok: true; value: unknown } | { ok: false; error: { code: string; message: string; details: Record<string, never> } };
@@ -189,7 +190,7 @@ export function settingsHandler(getHost: () => PetCoreHost | undefined, getWorks
         if (signal.aborted || peer.signal.aborted) fail('CANCELLED');
         return {ok:true, value};
       }
-      if (['roomState','roomAction','roomGarden','roomPlant','roomCare','roomChat','roomTelevision','roomHistory','roomVoice'].includes(endpoint)) {
+      if (isRoomEndpoint(endpoint)) {
         const input = object(body.input, ['workspaceId', 'data']);
         const id = requiredText(input.workspaceId, 200), room = getRoom?.();
         if (!room) fail('UNAVAILABLE');

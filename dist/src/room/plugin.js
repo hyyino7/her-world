@@ -11,6 +11,7 @@ import { CONTRACT_VERSION } from '../contracts/version.js';
 import { RoomChat } from './chat.js';
 import { roomPhoto } from './photo.js';
 import { roomAsset, roomPrefix } from './assets.js';
+import { isRoomEndpoint, roomVoiceRoute } from '../presentation/room-transport.js';
 const output = { schema: { type: 'string' }, render: (_, text) => [{ type: 'text', text }] };
 export const roomStateDeclaration = {
     name: 'room_state', sources: OWNER_LIFE_TOOL_SOURCES,
@@ -75,6 +76,8 @@ export class Room {
     async request(workspaceId, endpoint, data, requestId, caller) {
         const signal = AbortSignal.any([caller, this.lifetime.signal]);
         const { binding, validate } = this.admission(workspaceId, signal);
+        if (!isRoomEndpoint(endpoint))
+            throw Error('未知的房间操作');
         const reply = async (task) => { const value = await task; validate(); return value; };
         const storageId = binding.storageId;
         const behavior = this.ctx.petBehavior;
@@ -89,11 +92,10 @@ export class Room {
             const voice = host.native.voiceTable.lookup(this.ctx, signal);
             if (!voice)
                 throw Error('语音组件尚未启用');
-            const operation = data.operation;
-            if (!['hear', 'speak', 'voices'].includes(String(operation)))
+            const route = roomVoiceRoute(data.operation);
+            if (!route)
                 throw Error('无效的房间语音操作');
-            const response = await voice.handle({ rest: 'voice/' + operation, method: operation === 'voices' ? 'GET' : 'POST',
-                body: operation === 'voices' ? undefined : JSON.stringify(data.payload) });
+            const response = await voice.handle({ ...route, body: route.method === 'GET' ? undefined : JSON.stringify(data.payload) });
             voice.assertCurrent();
             validate();
             if (response.kind === 'json')
@@ -105,8 +107,6 @@ export class Room {
         }
         if (endpoint === 'roomChat' || endpoint === 'roomTelevision')
             return reply(this.chat.reply(workspaceId, endpoint === 'roomTelevision', data, requestId, signal, validate));
-        if (!['roomCare', 'roomPlant', 'roomAction'].includes(endpoint))
-            throw Error('未知的房间操作');
         const key = digest([workspaceId, storageId, endpoint, requestId]), fingerprint = digest(data);
         const prior = this.receipts.get(key);
         if (prior) {

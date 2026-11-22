@@ -8,7 +8,7 @@ const {tmpdir}=require('node:os');
 const url=process.env.CHATPET_ROOM_URL;
 const parsed=new URL(url);
 if(!['http:','https:'].includes(parsed.protocol)||!['localhost','127.0.0.1','[::1]'].includes(parsed.hostname)||parsed.pathname!=='/chatpet-room/index.html')throw Error('Invalid Room origin');
-const endpoints=new Set(['roomState','roomAction','roomGarden','roomPlant','roomCare','roomChat','roomTelevision','roomHistory','roomVoice']);
+const endpoints=/* room transport */ {"roomState":true,"roomAction":true,"roomGarden":true,"roomPlant":true,"roomCare":true,"roomChat":true,"roomTelevision":true,"roomHistory":true,"roomVoice":true};
 const profile=mkdtempSync(join(tmpdir(),'chatpet-room-window-'));app.setPath('userData',profile);
 let win,sequence=0,quitting=false,locked=false,suspended=false,visibilityRevision=0;
 const pending=new Map();
@@ -21,7 +21,7 @@ function publishVisibility(){
 }
 ipcMain.handle('chatpet-room:visibility',event=>{if(!owned(event))throw Error('Invalid Room window');return visibility();});
 ipcMain.handle('chatpet-room:request',(event,endpoint,data,requestId)=>{
-  if(!owned(event)||!endpoints.has(endpoint)||!data||typeof data!=='object'||Array.isArray(data)||typeof requestId!=='string'||!requestId||requestId.length>160)throw Error('Invalid Room request');
+  if(!owned(event)||typeof endpoint!=='string'||!Object.hasOwn(endpoints,endpoint)||!data||typeof data!=='object'||Array.isArray(data)||typeof requestId!=='string'||!requestId||requestId.length>160)throw Error('Invalid Room request');
   const id=++sequence;
   return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject,requestId});out({type:'request',id,endpoint,data,requestId});});
 });

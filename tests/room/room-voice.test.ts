@@ -14,7 +14,10 @@ test('Room serves original Pet speech controls with a finite authenticated voice
   assert.equal(html.status,200);const content=await html.text();
   assert.ok(content.includes('./shared-core.js'));assert.ok(content.includes('./voice-client.js'));
   const transport=await roomAsset(new Request('http://localhost/chatpet-room/native-room.js'));
-  assert.ok((await transport.text()).includes("['/api/room/voice','roomVoice']"));
+  assert.equal(transport.status,200);
+  const adapter = await import('data:text/javascript,' + encodeURIComponent(await transport.text()));
+  assert.equal(adapter.roomVoicePath,'/api/room/voice');
+  assert.deepEqual([...adapter.roomVoiceOperations],['hear','speak','voices']);
   const voice=await roomAsset(new Request('http://localhost/chatpet-room/voice-client.js'));
   assert.equal(voice.status,200);const script=await voice.text();
   assert.ok(script.includes('createHearControl'));assert.ok(script.includes('speakText'));

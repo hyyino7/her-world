@@ -1,3 +1,4 @@
+export { ROOM_PHOTO_ENDPOINTS } from '../presentation/room-transport.js';
 export declare const roomPrefix = "/chatpet-room";
 /** Preserve the shipped scene; missing expression assets use accurate text. */
 export declare function adaptRoomApp(source: string): string;

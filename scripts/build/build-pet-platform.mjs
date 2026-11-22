@@ -5,6 +5,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {adaptPetHearLifecycle} from '../lib/pet-hear-lifecycle.mjs';
 import ts from 'typescript';
+import {ROOM_CONSOLE_TIMEOUTS, ROOM_ENDPOINTS} from '../../src/presentation/room-transport.ts';
 const root = resolve(import.meta.dirname, '../..');
 const vendor = join(root, 'vendor/dsh-pet/platform');
 const read = file => readFileSync(file, 'utf8');
@@ -430,5 +431,17 @@ client = replaceOnce(client,
   '\t\tif (leaf$1.action === "chat") {\n\t\t\tfireAction(ROUTE_PATH + "/native-chat-window", "原生聊天");\n\t\t\treturn;\n\t\t}');
 client = client.replaceAll('petApi7340','chatpetPresentation').replaceAll('"pet.config"','"chatpet.presentation.config"').replaceAll('"pet.chat"','"chatpet.presentation.chat"');
 for (const id of ['pet','pet-config']) client = client.replaceAll('id: "'+id+'",','id: "chatpet-'+id+'",');
-const settings = replaceOnce(read(join(root,'src/console/client.js')), 'window.__ModuleLoader__.load({', 'registerCompanion({');
+// Embed data in the shipped scripts, including the sandboxed preload (no local require).
+function inlineRoomTransport(file, value) {
+  const path = join(root, file);
+  const source = read(path), marker = /(\/\* room transport \*\/ )[^\n]*;$/gm;
+  if ([...source.matchAll(marker)].length!==1) throw Error('Room transport marker changed: '+file);
+  const output = source.replace(marker,(_line,prefix)=>prefix+JSON.stringify(value)+';');
+  if (output!==source) writeFileSync(path,output);
+  return output;
+}
+const roomEndpoints = Object.fromEntries(ROOM_ENDPOINTS.map(endpoint=>[endpoint,true]));
+inlineRoomTransport('src/room/window-main.cjs', roomEndpoints);
+inlineRoomTransport('src/room/window-preload.cjs', roomEndpoints);
+const settings = replaceOnce(inlineRoomTransport('src/console/client.js', ROOM_CONSOLE_TIMEOUTS), 'window.__ModuleLoader__.load({', 'registerCompanion({');
 writeFileSync(join(root,'src/desktop/platform/client.js'), '(()=>{\n'+client+'\n'+read(join(root,'src/desktop/platform/browser-entry.js'))+'\n'+settings+'\n})();\n');

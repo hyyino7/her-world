@@ -15,7 +15,7 @@ async function main() {
   for await (const chunk of process.stdin) input += chunk;
   const {view, look, home, garden} = JSON.parse(input);
   if (!home?.her || !garden || !['overview','eyes'].includes(view) || !['forward','room'].includes(look)) throw Error('照片场景无效');
-  const {roomAsset} = await import('../../dist/src/room/assets.js');
+  const {roomAsset, ROOM_PHOTO_ENDPOINTS} = await import('../../dist/src/room/assets.js');
   await app.whenReady();
   const isolated = session.fromPartition('room-photo');
   isolated.setPermissionRequestHandler((_contents,_permission,answer) => answer(false));
@@ -30,17 +30,17 @@ async function main() {
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   await win.loadURL('pet-photo://scene/');
   // Assign structured values through a JSON expression. No snapshot text is HTML.
-  await win.webContents.executeJavaScript(`((home, garden, view, look) => {
+  await win.webContents.executeJavaScript(`((snapshots, routes, view, look) => {
     const frame = document.createElement('iframe');
     window.addEventListener('message', e => {
       if (e.source !== frame.contentWindow || e.origin !== location.origin || e.data?.kind !== 'chatpet.room' || !e.ports[0]) return;
       const endpoint = e.data.endpoint;
-      const value = endpoint === 'roomState' ? home : endpoint === 'roomGarden' ? garden : endpoint === 'roomHistory' ? {messages:[]} : null;
+      const value = typeof endpoint === 'string' && Object.hasOwn(routes, endpoint) ? snapshots[routes[endpoint]] : null;
       e.ports[0].postMessage({ok:value !== null,value}); e.ports[0].close();
     });
     frame.src = '/chatpet-room/?shot=1&q=balanced&shotView=' + view + '&shotLook=' + look;
     document.body.append(frame);
-  })(${JSON.stringify(home)},${JSON.stringify(garden)},${JSON.stringify(view)},${JSON.stringify(look)})`);
+  })(${JSON.stringify({home,garden,history:{messages:[]}})},${JSON.stringify(ROOM_PHOTO_ENDPOINTS)},${JSON.stringify(view)},${JSON.stringify(look)})`);
   const deadline = Date.now() + 45000;
   while (true) {
     const ready = await win.webContents.executeJavaScript("document.querySelector('iframe').contentDocument?.title === 'HOME_READY'");

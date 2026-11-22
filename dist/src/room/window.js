@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { sameHomeBinding } from '../living/index.js';
-export const ROOM_ENDPOINTS = ['roomState', 'roomAction', 'roomGarden', 'roomPlant', 'roomCare', 'roomChat', 'roomTelevision', 'roomHistory', 'roomVoice'];
+import { isRoomEndpoint } from '../presentation/room-transport.js';
 /** Presentation-only process. Owner state and every native turn stay in DSH. */
 export class RoomWindow {
     host;
@@ -124,7 +124,7 @@ export class RoomWindow {
             this.reconcile();
             if (this.child !== child || !this.bound || !this.lifetime)
                 throw Error('房间窗口已失效');
-            if (typeof message.endpoint !== 'string' || !ROOM_ENDPOINTS.includes(message.endpoint) ||
+            if (!isRoomEndpoint(message.endpoint) ||
                 typeof message.requestId !== 'string' || !message.requestId || message.requestId.length > 160 || !message.data || typeof message.data !== 'object' || Array.isArray(message.data))
                 throw Error('无效的房间请求');
             if (this.requests.has(message.requestId))

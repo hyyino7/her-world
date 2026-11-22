@@ -6,6 +6,7 @@ import type {} from '../channels/plugin.js';
 import type {} from '../living/economy/plugin.js';
 import type { PetPlatform } from '../desktop/platform/plugin.js';
 import { settingsHandler, type SettingsHandler, type SettingsWorkspaceRegistry } from './settings.js';
+import {ROOM_ENDPOINTS} from '../presentation/room-transport.js';
 
 export const name = 'her-world';
 export const inject = ['connection'];
@@ -26,7 +27,7 @@ export function apply(ctx: Context): void {
     () => (ctx as unknown as {get(key:'petPlatform'):PetPlatform|undefined}).get('petPlatform'),
     () => ctx.get('petEconomy'),
   );
-  for (const endpoint of ['economyView','economyAction','economySettings','presentationTiming','presentationMigration','foundation','self','emotionState','emotionUpdate','roomOpen','petPlatformAccess','petControlAccess','petStandaloneAccess','qzoneState','qzoneSettings','qzoneDraft','qzoneRemove','groupState','groupSettings','groupSlang','groupResearch','channelStatus','bridgeSettings','messagingSettings','roomState', 'roomAction', 'roomGarden', 'roomPlant', 'roomCare', 'roomChat', 'roomTelevision', 'roomHistory', 'roomVoice', 'lifeView', 'lifeControl', 'lifeAction', 'lifePreferences', 'lifeDates', 'lifeJournal', 'lifeAlbum', 'lifeSearch', 'lifePhoto', 'lifeForgetPhoto', 'snapshot', 'worldView', 'archiveFind', 'archiveRead', 'desktopOpen', 'desktopClose', 'desktopAppearance', 'companion', 'identity', 'quiet', 'preferences', 'initialize', 'profile']) {
+  for (const endpoint of ['economyView','economyAction','economySettings','presentationTiming','presentationMigration','foundation','self','emotionState','emotionUpdate','roomOpen','petPlatformAccess','petControlAccess','petStandaloneAccess','qzoneState','qzoneSettings','qzoneDraft','qzoneRemove','groupState','groupSettings','groupSlang','groupResearch','channelStatus','bridgeSettings','messagingSettings', 'lifeView', 'lifeControl', 'lifeAction', 'lifePreferences', 'lifeDates', 'lifeJournal', 'lifeAlbum', 'lifeSearch', 'lifePhoto', 'lifeForgetPhoto', 'snapshot', 'worldView', 'archiveFind', 'archiveRead', 'desktopOpen', 'desktopClose', 'desktopAppearance', 'companion', 'identity', 'quiet', 'preferences', 'initialize', 'profile'].concat(ROOM_ENDPOINTS)) {
     native.connection.fetch.register({ path: `/api/chatpetSettings/${endpoint}`, methods: ['POST'], requestBody: 'buffered',
       async fetch(request) {
         // Connection authenticates the physical request and admits only owner Peers

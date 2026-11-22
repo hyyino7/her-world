@@ -1213,12 +1213,13 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'connection'],
       apply(ctx) {
+        const roomTimeouts = /* room transport */ {"defaultTimeout":15000,"endpoints":{"roomChat":300000,"roomTelevision":300000}};
         const request = async (endpoint, input, signal, requestId) => {
           const controller = new AbortController();
           const abort = () => controller.abort();
           signal?.addEventListener('abort', abort, { once: true });
           if (signal?.aborted) controller.abort();
-          const timer = setTimeout(abort, ['roomChat','roomTelevision'].includes(endpoint) ? 300000 : 15000);
+          const timer = setTimeout(abort, Object.hasOwn(roomTimeouts.endpoints, endpoint) ? roomTimeouts.endpoints[endpoint] : roomTimeouts.defaultTimeout);
           try {
             const answer = await ctx.connection.rpc.call('/api', `chatpetSettings/${endpoint}`,
               { requestId: requestId || crypto.randomUUID(), input }, controller.signal);

@@ -4,6 +4,8 @@ import {extname, join, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import { feelingLabels } from '../living/body/presentation.js';
 import { animationAssets, animationStickers, animationRoomAliases } from '../living/body/animation-map.js';
+import {ROOM_BROWSER_ROUTES, ROOM_VOICE_OPERATIONS, ROOM_VOICE_PATH} from '../presentation/room-transport.js';
+export {ROOM_PHOTO_ENDPOINTS} from '../presentation/room-transport.js';
 
 export const roomPrefix = '/chatpet-room';
 const root = fileURLToPath(new URL('../../../vendor/feiyu-room-template/public/room/', import.meta.url));
@@ -98,10 +100,14 @@ function refreshCompanionRoom(change) {
 
 /** Extend the existing owner RPC transport; no public audio/state HTTP route. */
 export function adaptRoomTransport(source:string):string {
-  const marker='const endpoints = new Map([';
-  if(source.split(marker).length!==2)throw Error('Room transport source changed');
-  return source.replace(marker,marker+"\n  ['/api/room/voice','roomVoice'],")
-    .replaceAll("['roomTelevision','roomChat'].includes(endpoint)","['roomTelevision','roomChat','roomVoice'].includes(endpoint)");
+  const table=/^const endpoints = new Map\(\[[\s\S]*?^\]\);/gm;
+  const lookup='  const endpoint = endpoints.get(new URL(url, location.origin).pathname);';
+  const deadline=/\['roomTelevision','roomChat'\]\.includes\(endpoint\)\s*\?\s*310000\s*:\s*20000/g;
+  if ([...source.matchAll(table)].length!==1 || source.split(lookup).length!==2 || [...source.matchAll(deadline)].length!==2)
+    throw Error('Room transport source changed');
+  return source.replace(table,()=>`const endpoints = new Map(${JSON.stringify(ROOM_BROWSER_ROUTES)});\nexport const roomVoiceOperations = new Set(${JSON.stringify(ROOM_VOICE_OPERATIONS)});\nexport const roomVoicePath = ${JSON.stringify(ROOM_VOICE_PATH)};`)
+    .replace(lookup,'  const route = endpoints.get(new URL(url, location.origin).pathname);\n  const endpoint = route?.endpoint;')
+    .replace(deadline,'route.timeout');
 }
 
 /** The saved garden preference never claims a second autonomous planner. */

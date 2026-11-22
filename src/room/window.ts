@@ -9,11 +9,11 @@ import type {WorldChanged} from '../contracts/living.js';
 import type {HomeBinding} from '../core/workspace.js';
 import {sameHomeBinding} from '../living/index.js';
 
-export const ROOM_ENDPOINTS = ['roomState','roomAction','roomGarden','roomPlant','roomCare','roomChat','roomTelevision','roomHistory','roomVoice'] as const;
+import {isRoomEndpoint, type RoomEndpoint} from '../presentation/room-transport.js';
 interface Host {
   binding():HomeBinding|undefined;
   origin():string|undefined;
-  request(workspaceId:string,endpoint:string,data:Record<string,unknown>,requestId:string,signal:AbortSignal):Promise<unknown>;
+  request(workspaceId:string,endpoint:RoomEndpoint,data:Record<string,unknown>,requestId:string,signal:AbortSignal):Promise<unknown>;
 }
 
 /** Presentation-only process. Owner state and every native turn stay in DSH. */
@@ -87,7 +87,7 @@ export class RoomWindow {
     try{
       this.reconcile();
       if(this.child!==child||!this.bound||!this.lifetime)throw Error('房间窗口已失效');
-      if(typeof message.endpoint!=='string'||!ROOM_ENDPOINTS.includes(message.endpoint as typeof ROOM_ENDPOINTS[number])||
+      if(!isRoomEndpoint(message.endpoint)||
         typeof message.requestId!=='string'||!message.requestId||message.requestId.length>160||!message.data||typeof message.data!=='object'||Array.isArray(message.data))throw Error('无效的房间请求');
       if(this.requests.has(message.requestId))throw Error('房间请求仍在执行');
       const abort=new AbortController();this.requests.set(message.requestId,abort);

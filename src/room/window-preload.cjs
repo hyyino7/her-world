@@ -1,6 +1,6 @@
 'use strict';
 const {contextBridge,ipcRenderer}=require('electron');
-const endpoints=new Set(['roomState','roomAction','roomGarden','roomPlant','roomCare','roomChat','roomTelevision','roomHistory','roomVoice']);
+const endpoints=/* room transport */ {"roomState":true,"roomAction":true,"roomGarden":true,"roomPlant":true,"roomCare":true,"roomChat":true,"roomTelevision":true,"roomHistory":true,"roomVoice":true};
 const changeListeners=new Set();
 const visibilityListeners=new Set();
 let latestChange;
@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld('chatpetRoomBridge',Object.freeze({
     return()=>changeListeners.delete(listener);
   },
   request(endpoint,data,requestId){
-    if(!endpoints.has(endpoint)||!data||typeof data!=='object'||Array.isArray(data)||typeof requestId!=='string'||!requestId||requestId.length>160)return Promise.reject(Error('无效的房间请求'));
+    if(typeof endpoint!=='string'||!Object.hasOwn(endpoints,endpoint)||!data||typeof data!=='object'||Array.isArray(data)||typeof requestId!=='string'||!requestId||requestId.length>160)return Promise.reject(Error('无效的房间请求'));
     return ipcRenderer.invoke('chatpet-room:request',endpoint,data,requestId);
   },
   cancel(requestId){if(typeof requestId==='string'&&requestId.length<=160)ipcRenderer.send('chatpet-room:cancel',requestId);},

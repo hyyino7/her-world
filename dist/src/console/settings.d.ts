@@ -2,6 +2,7 @@ import type { PetCoreHost } from '../core/index.js';
 import type { WorkspaceTarget } from '../core/preferences.js';
 import type { CompanionEmotion } from '../emotion/plugin.js';
 import type { CompanionLife } from '../living/plan/plugin.js';
+import { type RoomEndpoint } from '../presentation/room-transport.js';
 export interface EconomyControls {
     snapshot(workspaceId: string, validate?: () => void, options?: {
         includeWritableKeys?: boolean;
@@ -10,7 +11,7 @@ export interface EconomyControls {
     settings(workspaceId: string, expectedVersion: string, next: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
 }
 interface RoomControls {
-    request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
+    request(workspaceId: string, endpoint: RoomEndpoint, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
     open?(workspaceId: string): Promise<unknown>;
 }
 /** Structural subset of the native Connection RPC contract; no new transport. */

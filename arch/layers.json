@@ -72,7 +72,7 @@
       "publishes": [],
       "subscribes": ["agent/assistant-stream","pet/behavior.changed","pet/core.changed","pet/emotion.expression","pet/life.changed","session/event"],
       "generated": [
-        {"file":"src/desktop/platform/client.js","sources":["scripts/build/build-pet-platform.mjs","src/desktop/platform/browser-entry.js","src/console/client.js","scripts/lib/pet-hear-lifecycle.mjs","vendor/dsh-pet/platform/upstream/client.js","src/desktop/platform/playback-observer.js","src/desktop/platform/activity-playback.js","src/desktop/platform/presentation-lifecycle.js","src/living/body/playback.ts"]},
+        {"file":"src/desktop/platform/client.js","sources":["scripts/build/build-pet-platform.mjs","src/desktop/platform/browser-entry.js","src/console/client.js","scripts/lib/pet-hear-lifecycle.mjs","vendor/dsh-pet/platform/upstream/client.js","src/desktop/platform/playback-observer.js","src/desktop/platform/activity-playback.js","src/desktop/platform/presentation-lifecycle.js","src/living/body/playback.ts","src/presentation/room-transport.ts"]},
         {"file":"src/desktop/helper/upstream/constants.js","sources":["scripts/build/build-desktop-animation.mjs","vendor/dsh-pet/runtime/electron-helper/constants.js","scripts/lib/compact-voice-lifecycle.mjs"]},
         {"file":"src/desktop/helper/upstream/desktop-geometry.js","sources":["scripts/build/build-desktop-animation.mjs","vendor/dsh-pet/runtime/electron-helper/desktop-geometry.js","scripts/lib/compact-voice-lifecycle.mjs"]},
         {"file":"src/desktop/helper/upstream/events.js","sources":["scripts/build/build-desktop-animation.mjs","vendor/dsh-pet/runtime/electron-helper/events.js","scripts/lib/compact-voice-lifecycle.mjs"]},
@@ -135,7 +135,7 @@
       "layer": 3,
       "root": "src/console/",
       "services": [],
-      "dependencies": ["core","memory","emotion","contracts","world","living","console"],
+      "dependencies": ["core","memory","emotion","contracts","world","living","console","presentation"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy"],
       "publishes": [],
       "subscribes": [],
