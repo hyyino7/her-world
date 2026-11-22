@@ -123,6 +123,15 @@
 - 共用叶子规则在扫描夹具验证。Desktop、Room、Console 按各自依赖声明进入，其他来源、反向依赖与可识别的持久写被拦。
 - 构建、指定快测 69 条、行为索引 11 条、行为清单 125 条、架构普通检查、架构报告和度量均通过；架构搬家快测另过 7 条。缺陷复现命令 7 条预期红。批准录入只在合成夹具验证，实际基线待主人评审。
 
+### 第二批 · Voice
+
+- `build-desktop-animation.mjs` 把上游语音闭包生成到 `dist/src/voice/upstream/`，旧 Desktop 路径生成 8 个转发。打包检查识别新路径，临时 npm 档案解包后经 ESM 和 `require()` 确认识别、合成各共享一份登记表，合成夹具验证说、听和撤销。
+- `contracts/voice.ts` 和 `core/tables/voice.ts` 提供调用契约及登记租约。Voice 使用现有绑定代次并保留 `petVoice`，Desktop、Room、Channels 改用登记表。Compact 转发单次取消和窗口隐藏，Channels 关闭时立即中止旧 QQ 合成。
+- 行为索引新增 `3-VOICE-01`–`04`，涵盖提供方和调用方分别撤销、晚到录音、仅合成、缺语音降级以及无关查询阻塞时的 QQ 撤销。
+- 基线工具删除 R1 的 Voice 上游路径 2 条、R2 的 `petVoice` 直读 5 条、R8 的完整语音路由重复 2 条。R1–R4 由 37 降到 30，R8 由 715 降到 713，新增 0。Voice 缓存写入的 R5 未知报告和 Room 短操作名的 R8 留在原定范围。已有层声明覆盖本批调用。
+- 构建、指定快测 40 条、行为索引 11 条、行为清单 129 条、`check:arch`、`metrics` 和本地 npm 档案检查通过。已知缺陷复现与起点同为 7 条红，Console 2 条、Room 准入后取消 1 条、Desktop 投喂 4 条。
+- `test:room-voice` 构建通过，Electron 以 `SIGABRT` 退出，IPC／preload 窗口断言未执行，起点版本同样无法启动夹具。生产 Room、桌宠录音及真实 QQ 网关留给主人在隔离安装包上验收。
+
 ## 审查结论
 
 <a id="concepts"></a>
