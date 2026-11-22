@@ -64,13 +64,14 @@ export async function cordisFixture(t, {crop = false, now = new Date(2026,10,15,
     const persist = ()=>writeFileSync(registryFile,JSON.stringify({workspaces:[...workspaces.values()],archived:registry.archivedSessionIds}));
     function workspace(workspaceId,path,sessionIds=[]) {
       const entry = {id:workspaceId,path,title:'Synthetic workspace',sessionIds,
+        async status() { return existsSync(path) ? 'ok' : 'missing-dir'; },
         async attachSession(sessionId) { if (!sessionIds.includes(sessionId)) { sessionIds.push(sessionId);persist(); } }};
       workspaces.set(workspaceId,entry);
       return entry;
     }
     for (const row of saved.workspaces) workspace(row.id,row.path,row.sessionIds);
     if (!workspaces.has(id)) workspace(id,repo);
-    registry = {get:key=>workspaces.get(key),archivedSessionIds:saved.archived,
+    registry = {get:key=>workspaces.get(key),list:()=>[...workspaces.values()],archivedSessionIds:saved.archived,
       async create(path) {
         const previous = [...workspaces.values()].find(row=>row.path===path);
         if (previous) return previous;

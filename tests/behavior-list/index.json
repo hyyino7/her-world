@@ -1728,6 +1728,42 @@
       "name": "桌宠投喂写入前复核占用锁，已提交结果仍可按原号核对",
       "l1Stage": "阶段 3",
       "families": []
+    },
+    {
+      "id": "3-CONSOLE-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 卸载后实际请求应找不到 Connection 路由",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 重载后 Connection 对同一路由应只登记一次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 旧外观设置在 Desktop 缺席、挂载和卸载时都可读",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 丢弃卸载前的迟到回包并透传结构化设置错误",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }

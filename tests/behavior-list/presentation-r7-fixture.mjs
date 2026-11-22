@@ -36,7 +36,7 @@ export async function presentationFixture(t,options) {
     return routes[0].fetch(request);
   }
   return Object.assign(f,{
-    webRoutes,
+    webRoutes,rpcRoutes,
     rpcCount:endpoint=>[...rpcRoutes].filter(route=>route.path===endpointPath(endpoint)).length,
     request,dispatch,
     async mount(key) { active.set(key,await f.ctx.plugin(plugins[key])); },

@@ -55,7 +55,7 @@
 - **必须有两条入口测试**　Room 从真实 owner 入口写入后截断回包，凭同一原号映射核对拥有者的持久回执与一次效果，写入前取消则零效果。当前 Room 自有回执仅在内存、上限 256 条（`src/room/plugin.ts:85–98`、`src/living/body/room.ts:1027–1038,1067–1073`）。Console 真打 Connection 路由，卸载后实际无路由、重载只登记一次。目前总 RPC 表丢弃撤销返回值（`src/console/plugin.ts:29–43`）。首批以可运行复现报告该缺陷，Console 批转为索引中的通过断言。其他失败格同样由所属批转绿。
 - **R8 和共用小包**　在 `scripts/arch/lib/{ast,vocabulary}.mjs` 识别由 `as const` 或 `satisfies` 声明且键用于类型或查表的静态词表，最少两键，值可混用对象和布尔。子表沿用父表声明。只解析本地或相对具名导入中可唯一定位的静态展开。用真实 `FACT_DOMAINS` 的两键顶层、展开子表与 `BODY_ACTIONS`、`PLAN_KINDS`、`PLAN_ECONOMY_OPERATIONS`、`READING_STATES` 及跨文件手写副本做正例。普通配置、空表、动态键、不可解展开、派生别名和数组做反例。保持同文件定义对跳过（`src/contracts/interaction.ts:1–23`、`src/contracts/behavior.ts:10–33,57–101`、`scripts/arch/lib/vocabulary.mjs:9–17,54–62`）。报告新增规范键、重数、两端位置和命中原因。常规 `--write-baseline` 拒绝新增（`scripts/arch/lib/ratchet.mjs:5–19,22–38`）。推荐细案预先附一次性核准录入脚本的命令及清单格式。脚本只在差量键和重数与批准清单完全一致、无规则增量或键漂移时生成 `vocabulary.json`，夹具证明漏批或超批拒写，生成结果单独提交，最后普通棘轮通过。另在扫描夹具中只放行获批的 Desktop、Room、Console 到第三层共用叶子的实际入边，禁止叶子反向依赖或持久写（`scripts/arch/lib/scan.mjs:12–23`、`docs/architecture.md:229–239`）。
 - **不做**　业务切换、未核准的基线写入、发包。**高风险**　无。基线录入按拍板 1 先批。**规模**　R7、R8、共用小包规则各 3–8 文件／90–360 行，核准基线单提交。
-- **验收**　`pnpm run build` 后 `node --test tests/behavior-list/entries-lifecycle.test.mjs tests/behavior-list/presentation-r7.test.mjs tests/arch/known-violations.test.mjs tests/arch/ratchet.test.mjs tests/arch/scan-scope.test.mjs`，再跑 `pnpm run test:behavior-list`、`pnpm run check:arch -- --report`、`pnpm run metrics`。另用 `node --test tests/behavior-list/presentation-r7-known-defects.mjs` 跑拟新增的缺陷复现，按实际结果单列红项。缺陷脚本不进自动清单。索引运行器要求通过且不接受跳过（`scripts/checks/run-behavior-list.mjs:16–31,39–44`）。
+- **验收**　`pnpm run build` 后 `node --test tests/behavior-list/entries-lifecycle.test.mjs tests/behavior-list/presentation-r7.test.mjs tests/arch/known-violations.test.mjs tests/arch/ratchet.test.mjs tests/arch/scan-scope.test.mjs`，再跑 `pnpm run test:behavior-list`、`pnpm run check:arch -- --report`、`pnpm run metrics`。缺陷复现当批单列红项，修复后迁入自动清单。去向见[第六批执行结果](#console-routing-execution)。索引运行器要求通过且不接受跳过（`scripts/checks/run-behavior-list.mjs:16–31,39–44`）。
 
 ### 第二批 · Voice
 
@@ -109,7 +109,7 @@
 - 安全网批核实 R8 实际新增键及误报、R7 旧行为与缺陷复现、六入口的隔离结果。当前独立审查只跑过架构报告与度量。
 - Voice 核实已安装 provider 的旧路径和单 registry。Room 搬迁前核实仓外 `petBehavior/petLife` 消费及生产 iframe、预载与拍照包闭包。Desktop 核实原生桥和独立窗口静态接线、旧外观配置等价性和跨设备会话复用。
 - Console 核实宿主 Connection 是否有等价的可用 Peer 类型，经济细批核实授权浏览器来源、停写和排空能力、停写下真实安装指纹的切包路径、私有导出位置与双备份接线、钱包采用状态。按隔离门槛复核续做、清源、回插和正式包。
-- 第 2、3、7 题只有实施后的实测能判达标。5b 待拍板是否延期。混合情绪的两端实际帧与资源缺失表现待隔离看样。
+- 第 2、3、7 题只有实施后的实测能判达标。混合情绪的两端实际帧与资源缺失表现待隔离看样。
 
 ## 执行结果
 
@@ -117,7 +117,7 @@
 
 - R7 按真实 Cordis 入口覆盖六个外围的全关、逐关、反序挂载和重载。四条通过的用例加入行为索引，含真实 Memory 跨会话召回、计划原号续行、Voice 撤销在途识别、Room 写后同号复核和准入前取消。
 - Room 第三批验收前消除「准入后、写入前取消仍落盘一次」。Console 第六批验收前消除「卸载后旧路由仍派发」和「重载后同路由登记两次」。
-- Desktop 第五批验收前处理原入口缺少 Body 注入。复现夹具单独补注入后，验证并发双投喂、取消后投喂且返回 200、读失败误投喂且返回 409。七条红项统一在 `tests/behavior-list/presentation-r7-known-defects.mjs` 手动运行。
+- Desktop 第五批验收前处理原入口缺少 Body 注入。复现夹具单独补注入后，验证并发双投喂、取消后投喂且返回 200、读失败误投喂且返回 409。七条红项起初由独立脚本复现，随后在对应批迁入自动清单。
 - R8 扩面识别 12 份静态表，命中 52 个规范键、78 条。报告见本批 worktree 根目录的 `stage3-r8-diff.md`。普通检查暂沿用原口径，`--report` 展示扩面。
 - 核准整份差量后运行 `node scripts/arch/approve-r8-baseline.mjs <批准清单.json>`。清单含 `schemaVersion: 1` 和 `additions` 数组，每项用 `key` 存报告中的规范键数组，`count` 存该键的新增重数。录入与开启扩面棘轮由同一份 `vocabulary.json` 完成。
 - 共用叶子规则在扫描夹具验证。Desktop、Room、Console 按各自依赖声明进入，其他来源、反向依赖与可识别的持久写被拦。
@@ -166,6 +166,19 @@
 - 基线工具删除 R1 2 条、R2 5 条、R3 1 条（29→21）及 R8 6 条（642→636），新增 0。保留项见[逐条例外请批](#desktop-exception-review)。
 - 构建、指定及新增快测 194 条、行为索引 11 条、行为清单 147 条、架构检查、度量及临时 npm 档案（987 项、711 个本地引用）通过。已知缺陷脚本只剩 Console 2 条预期失败。
 - `test:pet-platform-window` 的旧夹具缺少 Core `runtime.identity()`，也假定空配置已有桌宠，现已补身份并通过模板配置两只。沙箱内 PetPlatform 和独立窗口的 Electron 都以 `SIGABRT` 退出。独立窗口脚本随后因缺少离线报告报 `ENOENT`，未抵达在线回环；其在线夹具仍期望旧本地 helper。生产 DSH 窗口、实机渲染和隔离安装验收留待主人验证。
+
+<a id="console-routing-execution"></a>
+### 第六批 · Console 路由和设置
+
+- Core 存储按拍板 2 仅改 `src/core/storage.ts:5,11`，导入并复用 `ContractError` 的拒绝码类型，保留 `reject()` 原有适用子集。
+- Core、Emotion、Life、Economy 读口、Desktop／PetPlatform、Room 和 Channels 各自登记。Console 统一核对 owner、绑定代次、取消及原请求号，并撤销全部 Connection 路由；两个旧钱包写入口沿用原调用。
+- 设置错误保留 `code/message/details` 并透传 `effect/retry`。已验证旧外观、Desktop 挂卸、迟到回包和同号重试。两条 Console 缺陷转入自动清单，独立复现脚本已退役。
+- 基线工具仅删除 R1 8 条、R2 4 条（21→9）和 R8 42 条（636→594）。Core 读取原外观默认值及 Connection 结构 Peer 类型留原位例外。
+- 构建、快测 73 条、补充回归 50 条、行为清单 151 条、`check:arch`、`metrics` 通过。Memory 额外 RSS 探测因沙箱 `/bin/ps` EPERM 未通过。实际安装包的 DSH 设置窗、隔离激活与主人验收待做。
+- 典型修改 7 独立补丁跑通 30 分钟保存与重启，Emotion 清理 35 分钟前的记录，保留 15 分钟前的记录；旧档缺省与越界通过。3 个手写文件、2 层，超过 1 文件／1 层门槛，停止扩字段；另 1 测试、6 产物。
+- 5b 按拍板 3 延至阶段 4 聊天平台接入复测。
+- **数据细批待主人单独批准。** Economy／Body 增加持久登记、原号只读查证及显式重试，再接入旧钱包写 RPC。批准 `src/core/storage-migration.ts` 和 `scripts/migrate/` 增加 `0004`、耐久证明与续做校验，`src/core/workspace.ts` 仅核绑定和迁移门禁。若双备份锚定、Core 存储或打包确有缺口，`scripts/lib/offline-backup.mjs`、`src/core/storage.ts` 或 `package.json` 的 `files/exports/imports` 按缺口另批。
+- 批准授权 profile/origin 的停写排空、私有导出、清源、回插与旧页切换。合成 v3 先验双备份、导入续做、部分提交和断点清源／回插，再用主人提供的隔离副本和一次性克隆验 RC、正式包。放行前在停写下换回旧包、恢复旧备份并按原值回插，再核原号、余额、库存及 Body 效果。详见[数据附录](#economy-migration)。
 
 ## 审查结论
 
@@ -247,7 +260,7 @@
 | `arch/baseline/rules.json:134` | R1 | `src/console/settings.ts:70`（列 28） | `src/channels/plugin.js` | Console 批清，Channels 运维操作由登记端声明。 |
 | `arch/baseline/rules.json:146` | R1 | `src/console/settings.ts:71`（列 28） | `src/desktop/platform/plugin.js` | Console 批清，Desktop 平台运维操作由登记端声明。 |
 | `arch/baseline/rules.json:158` | R1 | `src/console/settings.ts:71`（列 150） | `src/desktop/platform/plugin.js` | Console 批清，Desktop 平台运维操作由登记端声明。 |
-| `arch/baseline/rules.json:170` | R1 | `src/core/companion-settings.ts:2`（列 1） | `src/desktop/appearance.js` | 设置窄切片清，与 Desktop 外观默认值和校验共用纯契约，不能等价迁移时保留明确例外。 |
+| `arch/baseline/rules.json:170` | R1 | `src/core/companion-settings.ts:2`（列 1） | `src/desktop/appearance.js` | 保留原位例外。Core 通过同一解析入口读取 Desktop 生成素材默认值和校验旧外观，Desktop 缺席也可用。 |
 | `arch/baseline/rules.json:204` | R1 | `src/desktop/features.ts:16`（列 50） | `import ( "./upstream/host/" + file + ".js" )` | Desktop 批清。显式列出有限的实际导入项，验证模块解析和产物位置。 |
 | `arch/baseline/rules.json:214` | R2 | `src/desktop/features.ts:67`（列 43） | `this . ctx . get ( name as never )` | Desktop 批清，以实际宿主服务注入替代动态查找，保留可选服务语义。 |
 | `arch/baseline/rules.json:224` | R2 | `src/desktop/features.ts:142`（列 23） | `petVoice` | Voice 批清，经登记口调用。 |
@@ -617,7 +630,7 @@ R5 未判定项逐条列在下面，数字为 `arch/baseline/writers.json` 条�
 | `arch/baseline/vocabulary.json:13783` | `src/channels/group-social.ts:50` | `type` | 建议长期例外。字段继续接受现有传输或展示值，收窄前须核对历史兼容。 |
 | `arch/baseline/vocabulary.json:13793` | `src/channels/qq-inbox.ts:8` | `type` | 建议长期例外。字段继续接受现有传输或展示值，收窄前须核对历史兼容。 |
 | `arch/baseline/vocabulary.json:13803` | `src/channels/qq-inbox.ts:112` | `type` | 建议长期例外。字段继续接受现有传输或展示值，收窄前须核对历史兼容。 |
-| `arch/baseline/vocabulary.json:13813` | `src/console/settings.ts:20` | `kind` | Console 批先核对能否复用宿主 Connection Peer 身份类型。此项是 `peer.principal.kind`，沿用 owner 校验（`src/console/settings.ts:18–20,73–76`）；找不到等价可用类型时记原位例外。 |
+| `arch/baseline/vocabulary.json:13813` | `src/console/settings.ts:20` | `kind` | 保留原位例外。安装包有 `PeerScope` 源码声明，本地构建没有可解析的宿主类型。继续用 `peer.principal.kind` 做 owner 校验。 |
 | `arch/baseline/vocabulary.json:13903` | `src/desktop/conversation.ts:10` | `type` | 建议长期例外。字段继续接受现有传输或展示值，收窄前须核对历史兼容。 |
 | `arch/baseline/vocabulary.json:13913` | `src/desktop/conversation.ts:11` | `kind` | 建议长期例外。字段继续接受现有传输或展示值，收窄前须核对历史兼容。 |
 | `arch/baseline/vocabulary.json:13923` | `src/desktop/conversation.ts:65` | `type` | 建议长期例外。字段继续接受现有传输或展示值，收窄前须核对历史兼容。 |

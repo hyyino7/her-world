@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,realpathSync,rmSync} from 'node:fs';
+import {mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -162,7 +162,7 @@ test('Room 写入后截断回包，重载后凭原号核对 Body 持久回执且
   const hook=t.mock.method(f.body,'roomAction',async(...args)=>{
     const value=await original(...args);
     assert.equal(f.persistedRoom(id,text).receipt?.fact.id,value.fact.id);
-    stop.abort();
+    stop.abort(new Error('synthetic connection closed'));
     return value;
   });
   const cancelled=await f.roomAction(id,text,stop.signal);
@@ -484,4 +484,82 @@ test('桌宠投喂写入前复核占用锁，已提交结果仍可按原号核�
   assert.equal((await lock()).obj.ok,true);
   assert.equal((await f.feed(id)).obj.admission,'replayed');
   assert.equal((await f.effects(id)).length,1);
+});
+
+test('Console 卸载后实际请求应找不到 Connection 路由',async t=>{
+  const f=await presentationFixture(t);
+  await f.mount('console');
+  const request=id=>f.request('desktopAppearance',id,{});
+  const before=await readRpcResult(await f.dispatch(request('before-unload')),'before-unload');
+  assert.equal(before.ok,true,JSON.stringify(before));
+  await f.unmount('console');
+  const status=await f.dispatch(request('after-unload')).then(response=>response.status,error=>error.message);
+  assert.equal(status,404,'卸载后的请求应在 Connection 路由层结束');
+  assert.equal(f.rpcRoutes.size,0);
+});
+
+test('Console 重载后 Connection 对同一路由应只登记一次',async t=>{
+  const f=await presentationFixture(t);
+  await f.mount('console');
+  assert.equal(f.rpcCount('desktopAppearance'),1);
+  await f.unmount('console');
+  await f.mount('console');
+  assert.equal(f.rpcCount('desktopAppearance'),1,'重载重复登记旧路由');
+  assert.equal((await readRpcResult(await f.dispatch(f.request('desktopAppearance','after-reload',{})),'after-reload')).ok,true);
+});
+
+test('Console 旧外观设置在 Desktop 缺席、挂载和卸载时都可读', async t => {
+  const f = await presentationFixture(t);
+  const config = join(f.repo, '.chatpet/core.json');
+  const before = JSON.parse(readFileSync(config, 'utf8'));
+  const old = {position: {corner: 'bottom-right', marginX: 24, marginY: 30}};
+  writeFileSync(config, JSON.stringify({...before, companion: {desktopAppearance: old}}));
+  await f.mount('console');
+  const rpc = async (endpoint, id, input = {}) => readRpcResult(await f.dispatch(f.request(endpoint, id, input)), id);
+  const without = await rpc('snapshot', 'without-desktop');
+  const defaults = await rpc('desktopAppearance', 'defaults');
+  assert.equal(without.ok, true, JSON.stringify(without));
+  assert.equal(without.value.desktop, null);
+  assert.deepEqual(without.value.companion.desktopAppearance, old);
+  assert.equal(without.value.companion.recentMoodHours, null);
+  assert.equal((await rpc('desktopOpen', 'unavailable', {workspaceId: f.id})).error.code, 'UNAVAILABLE');
+  await f.mount('desktop');
+  const withDesktop = await rpc('snapshot', 'with-desktop');
+  assert.equal(typeof withDesktop.value.desktop.running, 'boolean');
+  assert.deepEqual(withDesktop.value.companion.desktopAppearance, old);
+  assert.deepEqual(await rpc('desktopAppearance', 'defaults-with-desktop'), defaults);
+  await f.unmount('desktop');
+  assert.equal((await rpc('snapshot', 'again-without-desktop')).value.desktop, null);
+});
+
+test('Console 丢弃卸载前的迟到回包并透传结构化设置错误', async t => {
+  const f = await presentationFixture(t);
+  await f.mount('console');
+  const entered = Promise.withResolvers(), finish = Promise.withResolvers();
+  const save = t.mock.method(f.core.services.workspace, 'saveCompanion', async () => {
+    entered.resolve();
+    return finish.promise;
+  });
+  const settings = f.core.workspace.companionConfiguration();
+  const input = {workspaceId: f.id, expectedSettings: settings, settings};
+  const dispatch = async id => readRpcResult(await f.dispatch(f.request('companion', id, input)), id);
+
+  const late = dispatch('late-before-unload');
+  try {
+    await entered.promise;
+    await f.unmount('console');
+    await f.mount('console');
+  } finally {
+    finish.resolve({ok: true, value: settings});
+  }
+  const reply = await late;
+  assert.deepEqual(reply, {ok: false, error: {code: 'CANCELLED', message: '请求已取消，请刷新核对实际保存结果。',
+    details: {}, effect: 'unknown', retry: 'reconcile'}});
+  save.mock.mockImplementation(async () => ({ok: false, error: {code: 'UNAVAILABLE', message: 'owner detail',
+    effect: 'partial', retry: 'reconcile'}}));
+  const rejected = await dispatch('forward-structured-error');
+  assert.deepEqual(rejected, {ok: false, error: {code: 'UNAVAILABLE', message: '00-Core 尚未就绪，请检查核心模块是否启用。',
+    details: {}, effect: 'partial', retry: 'reconcile'}});
+  save.mock.restore();
+  assert.equal((await dispatch('current-after-reload')).ok, true);
 });
