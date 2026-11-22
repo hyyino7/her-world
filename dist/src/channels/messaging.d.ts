@@ -14,6 +14,7 @@ interface Options {
     qqTransport?(opts: QQOptions): QQTransport;
 }
 export declare function createMessaging(ctx: Context, host: PetCoreHost, options: Options): Promise<{
+    cancelVoice(): void;
     qqConnection(): "off" | "online" | "unavailable";
     status(): {
         config: {

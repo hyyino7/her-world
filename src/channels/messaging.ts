@@ -182,6 +182,7 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
   async function stopWechat(){unregister?.();unregister=undefined;const prev=wx;wx=undefined;wxFile=null;await prev?.stop();}
   await qqStart();wxStart();
   return {
+    cancelVoice() { qqVoice?.abort(); },
     qqConnection(): 'off'|'online'|'unavailable' {
       return !active() || !config.qq.enabled ? 'off' : qq?.status().connected ? 'online' : 'unavailable';
     },

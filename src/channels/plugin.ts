@@ -112,7 +112,11 @@ export class CompanionChannels {
       return {bridge:bound.bridge.status(), messaging:bound.messaging.status()};
     });
   }
-  close() { this.closed = true; return this.refresh(); }
+  close() {
+    this.closed = true;
+    this.bound?.messaging.cancelVoice();
+    return this.refresh();
+  }
 }
 
 export const name = '60-Channels';

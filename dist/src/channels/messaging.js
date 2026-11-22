@@ -211,6 +211,7 @@ export async function createMessaging(ctx, host, options) {
     await qqStart();
     wxStart();
     return {
+        cancelVoice() { qqVoice?.abort(); },
         qqConnection() {
             return !active() || !config.qq.enabled ? 'off' : qq?.status().connected ? 'online' : 'unavailable';
         },
