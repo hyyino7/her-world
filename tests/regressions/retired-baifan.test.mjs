@@ -1,18 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,rmSync} from 'node:fs';
-import {join,resolve} from 'node:path';
+import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {pathToFileURL} from 'node:url';
+import {animationMapURL,compiledURL} from '../fixtures/playback.mjs';
 import {createContext,runInContext} from 'node:vm';
 import ts from 'typescript';
 
 // Packaged output is the subject. Frozen-package runs need no pinned inputs.
 const client=readFileSync('src/desktop/platform/client.js','utf8');
 const tree=ts.createSourceFile('client.js',client,ts.ScriptTarget.Latest,true);
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {CompanionRoom}=await import(new URL('./room.js',playbackURL));
-const {animationAssets}=await import(new URL('./animation-map.js',playbackURL));
+const {CompanionRoom}=await import(compiledURL('living/body/room.js'));
+const {animationAssets}=await import(animationMapURL);
 function fn(name) {
   let found;
   function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text===name)found=node.getText(tree);if(!found)ts.forEachChild(node,visit);}
