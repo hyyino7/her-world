@@ -57,7 +57,7 @@
 | `contracts/` | 268 | 拆成三份，各层一份 | 接口跟着拥有者走 |
 | `living/body/` + `living/plan/` + `living/economy/` | 6430（0.1.8 时三个旧目录合计） | 第二层 | 2a 已合并成 `src/living/` 和一个常驻实例，见 2.3 与第 6 节 |
 | `desktop/` | 21380（大头是生成文件） | 第三层 | 生成文件改生成器，不手改 |
-| `room/` | 989 | 第三层 | 不再引用 `desktop/images` |
+| `room/` | 989 | 第三层 | 拥有房间窗口、交互接线和图片副本 |
 | `channels/` | 1818 | 第三层 | 不再往 Core 数据库的 `records` 表写自己的记录 |
 | `voice/` | 71 | 第三层 | 通过第一层声明的「语音接口」使用，见 5.4 |
 | `console/` | 1674 | 第三层 | 通过「运维操作表」操作其他模块，见 5.5 |
@@ -117,7 +117,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 1. **只往下依赖，同层不互相引用。** 需要别的同层模块的能力时，经第一层的接口或登记表。
 2. **只存自己的数据，不往第一层、第二层的存储里写。**
 
-现在违反的：`room/chat.ts` 引用 `desktop/images`；Channels 把 5 类记录（kind）写进 Core 数据库的通用 `records` 表；Desktop 把会话映射 `desktop-session` 写进 Core 数据库（`desktop/index.ts:44`）；Desktop 读多个上层服务。
+现在违反的：Channels 把 5 类记录（kind）写进 Core 数据库的通用 `records` 表；Desktop 把会话映射 `desktop-session` 写进 Core 数据库（`desktop/index.ts:44`）；Desktop 读多个上层服务。
 
 ---
 
@@ -189,7 +189,8 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 日记、自述、历史 | 第一层·记录库 | 主人设置、DSH 原生 `write/edit` 工具、Life/World 回顾复制 | **唯一写入协议待定**：原生工具仍可直接写文件，需要决定经记录库守卫还是保留现状；路径要同时支持新位置 `.chatpet/{self.md, self.history/, diary/}` 和旧位置 `data/life/` |
 | 相册 `data/core/photos/album.sqlite`（或旧位置 `data/life/photos/`） | 第一层·记录库 | Core 和 Life 通过记录库写入 | Core 的带前缀相册工具与 Life 的原生相册使用同一个受限句柄，提供 `keep`、`list`、`forget`（`core/records.ts:24-35`）。会话门控见 5.8.3。 |
 | 原生会话副本 `data/core/native-sessions/*` | 第一层 | NativeTranscripts | 不变 |
-| Desktop 待办、图片 `data/desktop/*`；`data/room/images/*` | 第三层·Desktop / Room | Desktop；Room 借用 Desktop 的图片组件 | 图片准入抽成共用小包（5.4） |
+| Desktop 待办 `data/desktop/*` | 第三层·Desktop | Desktop | 沿用原写入协议 |
+| 图片 `data/desktop/images/*`、`data/room/images/*` | 第三层·Desktop、Room 各拥有自己的目录 | `desktop/images.ts`、`room/images.ts` | 复用原生附件准入和原子副本流程（5.4），各拥有人按当前绑定读写 |
 | `data/pet-platform/*` | 第三层·PetPlatform | PetPlatform、迁移器 | 不变 |
 | `data/channels/*`；profile 下连接设置、令牌、语音缓存 | 第三层·Channels / Voice | Channels、Voice | 不变，设备相关 |
 | 浏览器 localStorage：`chatpet:economy:pending:*`、Room 的 `home-*` | 第二层·钱包区 / 第三层·Room | 控制台和 Room 前端 | 经济待确认请求迁入钱包区持久存储，迁移顺序见 7.3 |
@@ -231,7 +232,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 | 共用物 | 现在 | 新 |
 | --- | --- | --- |
-| 图片准入（`DesktopImages`，Room 在用） | `desktop/images.ts` | 抽成第三层的共用小包（目录在阶段 3 方案里定），Desktop 和 Room 都依赖它，彼此不依赖 |
+| 图片准入与便携副本 | `presentation/images.ts` | Desktop 和 Room 各自执行磁盘操作。桌宠保留 1 MiB 编码上限，Room 电视帧保留 2.5 MiB 原始字节上限，房间照片与附件副本按 Room 编码上限校验 |
 | **语音**（Desktop、Room、Channels 都用） | 通过 2.2 的语音调用表获得 `contracts/voice.ts` 接口。Voice 保留 `petVoice` 兼容服务，识别缺能力时仍可合成。 | Her World 活动语音闭包放在 `dist/src/voice/upstream/`，旧 Desktop 深路径转发到同一实现。识别和合成各自共享一份登记表。 |
 | 房间模型 `CompanionRoom` | `living/body/room.ts`，属第二层·身体区 | Room 只读快照 |
 

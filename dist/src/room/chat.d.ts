@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { type UserMessage } from '@deepseek-ai/dsh-llm';
 import type { SessionEvent } from '@deepseek-ai/dsh-session';
-import { DesktopImages } from '../desktop/images.js';
+import { RoomImages } from './images.js';
 import type { SourceAdapter } from '../contracts/tables.js';
 import type { NativeSourceContext } from '../core/native/conversation.js';
 declare module '@deepseek-ai/dsh-llm' {
@@ -15,17 +15,13 @@ declare module '@deepseek-ai/dsh-llm' {
 interface TelevisionSourceContext extends NativeSourceContext {
     sessionId: string;
 }
-export declare function televisionImage(input: unknown): {
-    mediaType: string;
-    data: string;
-};
 export declare function roomHistory(events: readonly SessionEvent[]): {
     role: "user" | "assistant";
     text: string;
 }[];
 export declare class RoomChat {
     private ctx;
-    readonly images: DesktopImages;
+    readonly images: RoomImages;
     private readonly admission;
     private active?;
     private busy;

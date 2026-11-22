@@ -67,7 +67,7 @@
       "layer": 3,
       "root": "src/desktop/",
       "services": ["petDesktop","petPlatform"],
-      "dependencies": ["core","memory","emotion","contracts","world","living","desktop"],
+      "dependencies": ["core","memory","emotion","contracts","world","living","desktop","presentation"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petDesktop","petPlatform"],
       "publishes": [],
       "subscribes": ["agent/assistant-stream","pet/behavior.changed","pet/core.changed","pet/emotion.expression","pet/life.changed","session/event"],
@@ -94,10 +94,21 @@
       "layer": 3,
       "root": "src/room/",
       "services": ["petRoom"],
-      "dependencies": ["core","memory","emotion","contracts","world","living","room"],
+      "dependencies": ["core","memory","emotion","contracts","world","living","room","presentation"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petRoom"],
       "publishes": [],
       "subscribes": ["pet/core.changed","world.changed"],
+      "generated": []
+    },
+    "presentation": {
+      "layer": 3,
+      "root": "src/presentation/",
+      "sharedLeaf": true,
+      "services": [],
+      "dependencies": [],
+      "reads": [],
+      "publishes": [],
+      "subscribes": [],
       "generated": []
     },
     "channels": {

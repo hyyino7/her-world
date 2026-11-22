@@ -212,7 +212,7 @@
     {
       "rule": "R2",
       "file": "src/desktop/index.ts",
-      "line": 265,
+      "line": 276,
       "column": 21,
       "scope": "registerDesktop/service",
       "target": "?",
@@ -312,18 +312,6 @@
       "target": "?",
       "expression": "import ( pathToFileURL ( TemplateHead:\"\" root LastTemplateToken:\"vendor/mnemosyne/src/memory-client.js\" ) . href )",
       "reason": "无法静态判定本地依赖"
-    },
-    {
-      "rule": "R1",
-      "file": "src/room/chat.ts",
-      "line": 8,
-      "column": 1,
-      "scope": "<module>",
-      "target": "src/desktop/images.js",
-      "expression": "import { DesktopImages } from \"../desktop/images.js\" ;",
-      "from": "room",
-      "to": "desktop",
-      "reason": "依赖方向违规"
     },
     {
       "rule": "R1",

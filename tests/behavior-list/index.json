@@ -1576,6 +1576,44 @@
       "name": "关闭 Channels 时，即使查询尚未结束也会立即取消 QQ 语音",
       "l1Stage": "阶段 3",
       "families": ["关闭后晚到的录音与取消"]
+    },
+    {
+      "id": "3-ROOM-IMAGES-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 与桌宠图片分目录准入，重建附件后可从原副本恢复",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-IMAGES-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 与桌宠拒绝空图、越界及取消，保留各自大小上限",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-IMAGES-03",
+      "categories": [
+        "换目录时在途请求不写旧目录"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 图片准入返回时复核绑定代次，原 A 的结果不会写入新 A",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-IMAGES-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 图片拒绝越过目录所有者的符号链接",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }
