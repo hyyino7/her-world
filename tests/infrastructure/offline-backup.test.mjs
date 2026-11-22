@@ -148,13 +148,15 @@ test('current Core delivery/deduplication/usage records and Life spend survive w
   const f=fixture(t),core=join(f.config.dataDir,'core.sqlite'),life=join(f.managed,'data','life','life.json');
   const kinds=['channel-received','channel-reach','life-outlet-delivery','channel-usage','channel-usage-event'];
   let db=new DatabaseSync(core);const put=db.prepare('INSERT OR REPLACE INTO records(kind,id,value) VALUES (?,?,?)');
-  for(const kind of kinds)put.run(kind,'old',JSON.stringify({state:'pending',requests:1}));db.close();
+  for(const kind of kinds)put.run(kind,'old',JSON.stringify({state:'pending',requests:1}));
+  put.run('desktop-session','stable-bank',JSON.stringify('owner-old'));db.close();
   write(life,JSON.stringify({version:1,homeSessionId:'old-home',alarm:{text:'old alarm'},spend:{day:'2026-11-12',yuan:0.1}}));
   const backup=join(f.root,'backup');createOfflineBackup(f.plan,backup,noWriter);
   db=new DatabaseSync(core);const update=db.prepare('UPDATE records SET value=? WHERE kind=? AND id=?');
   for(const kind of kinds)update.run(JSON.stringify({state:'sent',requests:7}),kind,'old');
   db.prepare('INSERT INTO records(kind,id,value) VALUES (?,?,?)').run('channel-received','new',JSON.stringify({state:'done'}));
-  update.run(JSON.stringify({status:'future'}),'commitment','task');db.close();
+  update.run(JSON.stringify({status:'future'}),'commitment','task');
+  update.run(JSON.stringify('new-desktop'),'desktop-session','stable-bank');db.close();
   write(life,JSON.stringify({version:1,homeSessionId:'future-home',alarm:{text:'future alarm'},spend:{day:'2026-11-12',yuan:1.7,reminded:true}}));
   const result=restoreOfflineBackup(f.plan,backup,join(f.root,'before'),noWriter);
   db=new DatabaseSync(core,{readOnly:true});
@@ -162,6 +164,7 @@ test('current Core delivery/deduplication/usage records and Life spend survive w
     for(const kind of kinds)assert.deepEqual(JSON.parse(db.prepare('SELECT value FROM records WHERE kind=? AND id=?').get(kind,'old').value),{state:'sent',requests:7});
     assert.deepEqual(JSON.parse(db.prepare("SELECT value FROM records WHERE kind='channel-received' AND id='new'").get().value),{state:'done'});
     assert.deepEqual(JSON.parse(db.prepare("SELECT value FROM records WHERE kind='commitment' AND id='task'").get().value),{status:'original'});
+    assert.equal(JSON.parse(db.prepare('SELECT value FROM records WHERE kind=? AND id=?').get('desktop-session','stable-bank').value),'owner-old');
   }finally{db.close();}
   const restored=JSON.parse(read(life));assert.equal(restored.homeSessionId,'old-home');assert.deepEqual(restored.alarm,{text:'old alarm'});
   assert.deepEqual(restored.spend,{day:'2026-11-12',yuan:1.7,reminded:true});assert.ok(result.preservedJournals.includes('life/life.json:spend'));

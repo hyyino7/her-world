@@ -192,7 +192,7 @@
     {
       "rule": "R1",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 38,
+      "line": 41,
       "column": 18,
       "scope": "<module>",
       "target": "?",

@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import { createInterface } from 'node:readline';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../core/index.js';
+import { isDesktopSwitch } from '../core/companion-settings.js';
 import type {} from '../emotion/plugin.js';
 import { workAnimationEligible } from '../emotion/index.js';
 import type { PlaybackReceipt } from '../emotion/index.js';
@@ -142,7 +143,7 @@ export class Desktop {
   }
   async savePreference(data:Record<string,unknown>) {
     const key=data.key;
-    if (!['desktopClickSound','desktopReplyBubble','desktopWhisperEnabled','desktopBalanceEnabled','desktopFixed','desktopConfineToScreen'].includes(String(key)) || typeof data.value!=='boolean') throw Error('无效桌宠设置');
+    if (!['desktopClickSound','desktopReplyBubble','desktopWhisperEnabled','desktopBalanceEnabled','desktopFixed','desktopConfineToScreen'].includes(String(key)) || !isDesktopSwitch(String(key),data.value)) throw Error('无效桌宠设置');
     if(key!=='desktopReplyBubble') {
       const presentation=this.native.getPresentation?.();
       if(!presentation?.savePreference)throw Error('请启用桌宠展示模块后修改外观设置');

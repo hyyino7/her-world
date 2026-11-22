@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { createInterface } from 'node:readline';
+import { isDesktopSwitch } from '../core/companion-settings.js';
 import { workAnimationEligible } from '../emotion/index.js';
 import { Conversation, sameBinding } from './conversation.js';
 const desks = new WeakMap();
@@ -189,7 +190,7 @@ export class Desktop {
     }
     async savePreference(data) {
         const key = data.key;
-        if (!['desktopClickSound', 'desktopReplyBubble', 'desktopWhisperEnabled', 'desktopBalanceEnabled', 'desktopFixed', 'desktopConfineToScreen'].includes(String(key)) || typeof data.value !== 'boolean')
+        if (!['desktopClickSound', 'desktopReplyBubble', 'desktopWhisperEnabled', 'desktopBalanceEnabled', 'desktopFixed', 'desktopConfineToScreen'].includes(String(key)) || !isDesktopSwitch(String(key), data.value))
             throw Error('无效桌宠设置');
         if (key !== 'desktopReplyBubble') {
             const presentation = this.native.getPresentation?.();
