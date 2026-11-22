@@ -70,7 +70,9 @@ try {
     }
     if(local.startsWith('dist/src/')) {
       const original=local.replace(/^dist\//,'').replace(/(?:\.d)?\.js$|\.d\.ts$/,'.ts');
-      if(!local.startsWith('dist/src/desktop/upstream/'))assert.ok(existsSync(join(checkout,original)),'Build output has no current source: '+local);
+      const generatedUpstream=local.startsWith('dist/src/desktop/upstream/') ||
+        /^dist\/src\/voice\/upstream\/host\/(voice\/[^/]+|routes\/(voice|result))\.js$/.test(local);
+      if(!generatedUpstream)assert.ok(existsSync(join(checkout,original)),'Build output has no current source: '+local);
       assert.equal(digest(file),digest(join(checkout,local)),'Stale packaged build: '+local);buildFiles++;
     }
     // Declaration files remain available for consumers; this pass checks the

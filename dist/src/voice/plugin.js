@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { CONTRACT_VERSION } from '../contracts/version.js';
 import { digest } from '../core/storage.js';
-const upstream = (part) => import('../desktop/upstream/host/' + part + '.js');
 const requireUpstream = createRequire(import.meta.url);
 export class CompanionVoice {
     host;
@@ -19,7 +18,7 @@ export class CompanionVoice {
     canTranscribe() {
         // Use the same original Pet registry as hear(): external providers take
         // precedence even when no host speech-to-text service has been enabled.
-        const registry = requireUpstream('../desktop/upstream/host/voice/speech-registry.js');
+        const registry = requireUpstream('./upstream/host/voice/speech-registry.js');
         if (registry.activeSpeechProvider())
             return true;
         const service = this.recognizer();
@@ -52,13 +51,17 @@ export class CompanionVoice {
                 if (!lstatSync(path).isDirectory())
                     throw Error('语音缓存目录无效');
             }
-            const tools = Promise.all([upstream('voice/speak'), upstream('voice/hear')])
+            // These upstream modules are generated directly into dist by the build.
+            const tools = Promise.all([
+                import('./upstream/host/voice/speak.js'),
+                import('./upstream/host/voice/hear.js'),
+            ])
                 .then(([out, mic]) => ({ voice: out.createVoiceService({ userRoot: root }), speech: mic.createHearService({ speechToText: this.recognizer }) }));
             this.scope = { id: bound.id, workspaceId: bound.workspaceId, tools };
         }
         const signal = input.signal ? AbortSignal.any([this.lifetime.signal, input.signal]) : this.lifetime.signal;
         const tools = await this.scope.tools;
-        const { handleVoiceRoutes } = await upstream('routes/voice');
+        const { handleVoiceRoutes } = await import('./upstream/host/routes/voice.js');
         signal.throwIfAborted();
         const result = await handleVoiceRoutes(tools, { ...input, signal });
         this.refresh();

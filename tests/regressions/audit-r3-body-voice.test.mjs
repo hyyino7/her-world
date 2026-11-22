@@ -56,7 +56,7 @@ function synthesisFixture(t,{external=false,holdEvery=false}={}) {
     './registry.js':{BUILTIN_VOICE_ID:'fixture-builtin',activeVoiceProvider:()=>external?{id:'fixture-external',name:'Fixture',synthesize}:null},
     './voices.js':{DEFAULT_VOICE:'fixture-voice',VOICES:[],isKnownVoice:value=>value==='fixture-voice'},
   };
-  const source=readFileSync('dist/src/desktop/upstream/host/voice/speak.js','utf8');
+  const source=readFileSync('dist/src/voice/upstream/host/voice/speak.js','utf8');
   const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
   const exports={};runInNewContext(code,{exports,require:name=>{assert.ok(modules[name],name);return modules[name];},Date,AbortSignal,setTimeout,clearTimeout});
   const service=exports.createVoiceService({userRoot:'/fixture-root',synthesize});
@@ -102,7 +102,7 @@ test('R3: the original builtin encoder cannot commit audio returned after caller
     'node:fs/promises':{writeFile:async(...args)=>{writes.push(args);},rename:async()=>{writes.push(['rename']);},rm:async()=>{}},
     '@andresaya/edge-tts':{EdgeTTS:class {async generate(){started.resolve();return finish.promise;}}},
   };
-  const source=readFileSync('dist/src/desktop/upstream/host/voice/edge.js','utf8'),exports={};
+  const source=readFileSync('dist/src/voice/upstream/host/voice/edge.js','utf8'),exports={};
   const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
   runInNewContext(code,{exports,require:name=>{assert.ok(modules[name],name);return modules[name];}});
   const controller=new AbortController(),pending=exports.synthesize({signal:controller.signal,text:'fixture',voice:'fixture',rate:'+0%',target:'/fixture-target'});

@@ -394,28 +394,6 @@
       "target": "dist/src/room/assets.js",
       "expression": "import ( \"../../dist/src/room/assets.js\" )",
       "reason": "本地依赖未声明模块归属"
-    },
-    {
-      "rule": "R1",
-      "file": "src/voice/plugin.ts",
-      "line": 9,
-      "column": 50,
-      "scope": "upstream",
-      "target": "?",
-      "expression": "import ( \"../desktop/upstream/host/\" + part + \".js\" )",
-      "reason": "无法静态判定本地依赖"
-    },
-    {
-      "rule": "R1",
-      "file": "src/voice/plugin.ts",
-      "line": 21,
-      "column": 22,
-      "scope": "CompanionVoice/canTranscribe",
-      "target": "src/desktop/upstream/host/voice/speech-registry.js",
-      "expression": "requireUpstream ( \"../desktop/upstream/host/voice/speech-registry.js\" )",
-      "from": "voice",
-      "to": "desktop",
-      "reason": "依赖方向违规"
     }
   ]
 }
