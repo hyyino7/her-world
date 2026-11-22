@@ -2,17 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setImmediate } from 'node:timers/promises';
+import { acquireMigrationMutex } from '../../scripts/companion-backup.mjs';
 import { createOfflineBackup, restoreOfflineBackup, verifyOfflineBackup } from '../../scripts/lib/offline-backup.mjs';
 import { exportWalletSources, reconcileWalletSources } from '../../scripts/migrate/browser-wallet.mjs';
 import { hash } from '../../scripts/migrate/io.mjs';
-import { migrationStatus, runMigration, verifyWalletImport } from '../../scripts/migrate/runner.mjs';
-import { sealWalletRollback, verifyWalletRollback, verifyWalletRestore, walletBinding } from '../../scripts/migrate/wallet-rollback.mjs';
+import { migrationStatus, runMigration, runWalletBrowserOperation } from '../../scripts/migrate/runner.mjs';
+import { sealWalletRollback, verifyWalletRollback } from '../../scripts/migrate/wallet-rollback.mjs';
 import { economyPaths } from './offline-helpers.mjs';
 import { mockDsh, planFor, read } from './helpers.mjs';
 import { panelNodes, renderEconomyPanel } from '../behavior-list/economy-panel.mjs';
@@ -133,9 +134,9 @@ async function oldRuntime(installed, f, work) {
       body = new CompanionBehavior(ctx, host, new LivingView({economy:() => economy}));
     });
   } finally {
-    await body?.close();
-    economy.close();
-    await host.close();
+    economy.stopAdmission();
+    try { await Promise.all([economy.settled(),body?.close()]); }
+    finally { economy.close(); await host.close(); }
   }
 }
 
@@ -225,25 +226,49 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
   assert.ok(JSON.parse(original.body).needs.hunger < body.needs.hunger);
   assert.deepEqual(importedWallet(f), {count:0, proof:undefined});
 
-  const binding = walletBinding(plan), round = randomUUID();
+  const round = randomUUID();
   const sources = [configure, feed, importReading, {...feed}].map((_, index) => ({
     profile: join(f.out, 'browser', String(index)), origin: 'http://127.0.0.1:32100',
     key: 'chatpet:economy:pending:' + workspaceId,
   }));
   const browser = new Map([configure, feed, importReading, feed].map((pending, index) =>
     [sources[index].profile, JSON.stringify(pending)]));
+  const legacySource = {...sources[0], profile:join(f.out,'browser','-old-page')};
+  const legacyStorage = new Map();
+  const tab = renderEconomyPanel(async endpoint => {
+    if (endpoint === 'economyView') return {balance:0,inventory:[],catalog:[],ledger:[],configuration:{crops:{}}};
+    throw Object.assign(Error('合成回包未到'), {code:'UNAVAILABLE'});
+  },workspaceId,{sourceFile:join(old,'src/console/client.js'),storage:legacyStorage});
+  tab.render();
+  const unmount = tab.mount();
+  try {
+    await setImmediate();
+    const [amount] = panelNodes(tab.render(), node => node.type === 'field' && node.props.label === '金额');
+    amount.props.onChange('2');
+    const [grant] = panelNodes(tab.render(), node => node.type === 'button' && node.children[0] === '给零花钱');
+    await grant.props.onClick();
+  } finally { unmount(); }
+  const legacyRaw = legacyStorage.get(legacySource.key);
+  assert.ok(legacyRaw);
+  sources.push(legacySource);
+  browser.set(legacySource.profile,legacyRaw);
   const before = new Map(browser);
-  let locked = false;
+  let locked = false, interrupted = false, startWriterOnRead = false;
+  const economyLock = join(f.data,'economy','economy.lock');
   const acquire = () => {
     assert.equal(locked, false);
     locked = true;
     return {
       assertFrozen: () => locked,
-      read: source => browser.get(source.profile) ?? null,
+      read(source) {
+        if (startWriterOnRead) writeFileSync(economyLock,`${process.pid}:synthetic`);
+        return browser.get(source.profile) ?? null;
+      },
       compareAndSet(source, expected, next) {
         if ((browser.get(source.profile) ?? null) !== expected) return false;
         if (next === null) browser.delete(source.profile);
         else browser.set(source.profile, next);
+        if (interrupted) throw Error('synthetic interruption after browser write');
         return true;
       },
       release: () => { locked = false; },
@@ -253,7 +278,17 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
   const privateDir = join(f.out, 'private');
   mkdirSync(privateDir, {mode:0o700});
   const walletExport = join(privateDir, 'wallet.json'), walletRollback = join(privateDir, 'rollback.json');
-  await exportWalletSources({file:walletExport, binding, round, sources, acquire});
+  const browserPhase = (mode,journal) => runWalletBrowserOperation({installation:f.installation,mode,walletExport,
+    walletRollback,round,sources,acquire,journal});
+  const release = acquireMigrationMutex(f.repo);
+  try { await assert.rejects(browserPhase('export'),{code:'lock-held'}); }
+  finally { release(); }
+  startWriterOnRead = true;
+  await assert.rejects(browserPhase('export'),{code:'wallet-freeze-unverified'});
+  assert.equal(existsSync(walletExport),false);
+  startWriterOnRead = false;
+  rmSync(economyLock);
+  await browserPhase('export');
   const oldBackup = join(f.out, 'rollback');
   createOfflineBackup(plan, oldBackup);
   const oldFingerprint = verifyOfflineBackup(oldBackup, plan).codeFingerprint;
@@ -275,7 +310,7 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
   writeFileSync(walletExport, exportBytes);
   killedImport(f, currentResume, walletExport, walletRollback, 'after-resume-import');
   const imported = importedWallet(f);
-  assert.equal(imported.count, 3);
+  assert.equal(imported.count, 4);
   assert.ok(imported.proof);
   assert.ok(!imported.proof.includes(importReading.input.action.content));
   assert.equal(migrationStatus(f.installation).segment, 'unfinished');
@@ -289,12 +324,13 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
   assert.deepEqual(walletState(f, checkpoint), original);
 
   const clearJournal = join(privateDir, 'sources-cleared.json');
-  const verifyClear = () => {
-    assert.equal(migrationStatus(f.installation).segment, 'settled');
-    assert.deepEqual(importedWallet(f), imported);
-    return verifyWalletImport({installation:f.installation,walletExport,walletRollback});
-  };
-  await reconcileWalletSources({file:walletExport, journal:clearJournal, binding, sources, acquire, mode:'clear', verify:verifyClear});
+  interrupted = true;
+  await assert.rejects(browserPhase('clear',clearJournal),/synthetic interruption/);
+  assert.equal(browser.has(legacySource.profile),false);
+  assert.equal(browser.size,before.size - 1);
+  assert.deepEqual(Object.values(read(clearJournal).rows),['intent']);
+  interrupted = false;
+  assert.equal((await browserPhase('clear',clearJournal)).complete,true);
   assert.equal(browser.size, 0);
 
   stagePackage(old, installed, join(f.out, 'old-again'));
@@ -302,12 +338,15 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
   const verifyRestore = () => verifyWalletRollback({installation:f.installation, walletExport, walletRollback});
   assert.equal(verifyRestore().backup, oldBackup);
   assert.equal(verifyOfflineBackup(oldBackup, plan).codeFingerprint, oldFingerprint);
-  const verifyRestoredData = () => verifyWalletRestore({installation:f.installation,walletExport,walletRollback});
-  assert.throws(verifyRestoredData, {code:'wallet-rollback-invalid'});
-  assert.equal(restoreOfflineBackup(plan, oldBackup, join(f.out, 'before-rollback')).restored, true);
   const restoreJournal = join(privateDir, 'sources-restored.json');
-  await reconcileWalletSources({file:walletExport, journal:restoreJournal, binding, sources, acquire, mode:'restore',
-    verify:verifyRestoredData});
+  await assert.rejects(browserPhase('restore',restoreJournal),{code:'wallet-rollback-invalid'});
+  assert.equal(restoreOfflineBackup(plan, oldBackup, join(f.out, 'before-rollback')).restored, true);
+  interrupted = true;
+  await assert.rejects(browserPhase('restore',restoreJournal),/synthetic interruption/);
+  assert.deepEqual(browser,new Map([[legacySource.profile,legacyRaw]]));
+  assert.deepEqual(Object.values(read(restoreJournal).rows),['intent']);
+  interrupted = false;
+  assert.equal((await browserPhase('restore',restoreJournal)).complete,true);
   assert.deepEqual(browser, before);
   assert.deepEqual(readFileSync(f.installation), installation);
   assert.equal(oldRunner.migrationStatus(f.installation).segment, 'settled');

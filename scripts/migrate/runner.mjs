@@ -15,7 +15,8 @@ import homeIdentityStep from './steps/0002-home-identity.mjs';
 import economyMarkerStep from './steps/0003-economy-marker.mjs';
 
 import consoleWalletStep, { walletImportProof } from './steps/0004-console-wallet.mjs';
-import { readWalletMigrationInputs } from './wallet-rollback.mjs';
+import { assertWalletArtifactExternal, readWalletMigrationInputs, verifyWalletRestore, walletBinding } from './wallet-rollback.mjs';
+import { exportWalletSources, reconcileWalletSources } from './browser-wallet.mjs';
 
 export const steps = [manifestStep, homeIdentityStep, economyMarkerStep, consoleWalletStep];
 
@@ -119,6 +120,39 @@ function assertPreviousTargets(context, selected, count, version, header) {
 function acquireMutex(repo) {
   try { return acquireMigrationMutex(repo); }
   catch (error) { if (['lock-invalid','lock-held'].includes(error.code)) throw new MigrationError(error.code); throw error; }
+}
+
+/** The owner confirms old-runtime shutdown. Each browser operation rechecks the current offline state. */
+export async function runWalletBrowserOperation({installation,mode,walletExport,walletRollback,journal,round,sources,acquire}) {
+  requireMigration(['export','clear','restore'].includes(mode),'usage');
+  requireMigration(typeof acquire === 'function','wallet-freeze-unverified');
+  const repo = loadInstallation(installation).plan.repo;
+  const release = acquireMutex(repo);
+  try {
+    const context = loadInstallation(installation);
+    requireMigration(context.plan.repo === repo,'binding-changed');
+    assertOffline(context);
+    assertWalletArtifactExternal(context,walletExport);
+    const binding = walletBinding(context.plan);
+    const acquireOffline = async input => {
+      const lease = await acquire(input);
+      return {
+        async assertFrozen() { assertOffline(context); return lease.assertFrozen(); },
+        read: source => lease.read(source),
+        compareAndSet: (source,expected,next) => lease.compareAndSet(source,expected,next),
+        release: () => lease?.release?.(),
+      };
+    };
+    const input = {file:walletExport,binding,sources,acquire:acquireOffline};
+    if (mode === 'export') {
+      const exported = await exportWalletSources({...input,round});
+      return {sourceCount:exported.sources.length,complete:true};
+    }
+    assertWalletArtifactExternal(context,journal);
+    const verify = mode === 'clear' ? verifyWalletImport : verifyWalletRestore;
+    const result = await reconcileWalletSources({...input,journal,mode,verify:() => verify({installation,walletExport,walletRollback})});
+    return {sourceCount:result.sourceCount,complete:result.complete};
+  } finally { release(); }
 }
 
 /** Complete observes the actual target. Apply makes it durable before its manifest advances. */

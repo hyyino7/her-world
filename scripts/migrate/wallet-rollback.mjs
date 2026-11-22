@@ -14,7 +14,7 @@ export function walletBinding({storageId, companionId, workspaceId, repo, profil
   return {storageId, companionId, workspaceId, repoHash:hash(repo), profileHash:hash(profileDir), scopeId, ownerActorId};
 }
 
-function external(context, file) {
+export function assertWalletArtifactExternal(context, file) {
   requireMigration(typeof file === 'string' && isAbsolute(file) && resolve(file) === file, 'wallet-rollback-invalid');
   const protectedPaths = [context.plan.repo,context.plan.profileDir,...context.plan.roots.map(root => root.path)];
   requireMigration(protectedPaths.every(root => {
@@ -42,7 +42,7 @@ export function sealWalletRollback({installation, backup, walletExport, output})
     requireMigration(context.plan.repo === repo,'binding-changed');
     assertOffline(context);
     const binding = walletBinding(context.plan);
-    for (const file of [walletExport, output]) external(context,file);
+    for (const file of [walletExport, output]) assertWalletArtifactExternal(context,file);
     privatePath(output);
     requireMigration(!regular(output),'wallet-rollback-invalid');
     const exported = readWalletExport(walletExport,binding);
@@ -66,7 +66,7 @@ export function sealWalletRollback({installation, backup, walletExport, output})
 /** The old package was verified before the switch. Its anchored payload still has to match. */
 export function readWalletRollback(context, file, exported) {
   return checked('wallet-rollback-invalid',() => {
-    external(context,file);
+    assertWalletArtifactExternal(context,file);
     const {document:anchor,digest} = readPrivate(file,'wallet-rollback-invalid');
     requireMigration(fields(anchor,['format','binding','round','exportDigest','backup','backupHash','codeFingerprint'])
       && anchor.format === 1 && anchor.round === exported.round && anchor.exportDigest === exported.digest,'wallet-rollback-invalid');
@@ -93,7 +93,7 @@ export function readWalletRollback(context, file, exported) {
 export function verifyWalletRollback({installation,walletExport,walletRollback}) {
   const context = loadInstallation(installation);
   assertOffline(context);
-  external(context,walletExport);
+  assertWalletArtifactExternal(context,walletExport);
   const exported = readWalletExport(walletExport,walletBinding(context.plan));
   const anchor = readWalletRollback(context,walletRollback,exported);
   const saved = checked('wallet-rollback-invalid',() => verifyOfflineBackup(anchor.backup,context.plan));
@@ -119,7 +119,7 @@ export function verifyWalletRestore(options) {
 export function readWalletMigrationInputs(context, exportFile, rollbackFile) {
   requireMigration(exportFile,'wallet-export-missing');
   requireMigration(rollbackFile,'wallet-rollback-invalid');
-  external(context,exportFile);
+  assertWalletArtifactExternal(context,exportFile);
   const exported = readWalletExport(exportFile,walletBinding(context.plan));
   return {exported, rollback:readWalletRollback(context,rollbackFile,exported)};
 }

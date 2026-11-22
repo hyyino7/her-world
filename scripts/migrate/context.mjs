@@ -41,6 +41,7 @@ export function assertOffline(context) {
     const binding = inspectRepoBinding(context.receipt.config);
     assert.equal(binding.state, 'ready');
     assert.equal(binding.storageId, context.plan.storageId, 'Storage binding changed');
+    assert.equal(binding.target.id, context.plan.workspaceId, 'Workspace binding changed');
     assert.equal(binding.root, context.plan.repo, 'Repo binding changed');
   });
 }
