@@ -146,4 +146,33 @@ if (process.argv[1] === script && process.argv[2] === '--crash') {
     f.save(changed);
     await assert.rejects(f.capture(),{code:'wallet-source-conflict'});
   });
+
+  test('导出前发现已经读过的来源被改写，保留源且不发布导出', async t => {
+    const f = fixture(t);
+    const acquire = () => ({assertFrozen:() => true, read(source) {
+      if (source.profile === f.sources[1].profile) {
+        const document = json(f.state);
+        document.slots[f.sources[0].profile].raw = second;
+        f.save(document);
+      }
+      return f.read(source);
+    }});
+    await assert.rejects(f.capture({acquire}),{code:'wallet-source-conflict'});
+    assert.equal(existsSync(f.file),false);
+    assert.equal(f.read(f.sources[0]),second);
+  });
+
+  test('操作意图落盘后冻结失效，续做不能把外部删键当成本轮完成', async t => {
+    const f = fixture(t), wallet = await f.capture();
+    atomicWrite(f.complete.clear,wallet.digest);
+    const journal = join(f.root,'clear.json');
+    const acquire = () => ({assertFrozen:() => !existsSync(journal), read:f.read,
+      compareAndSet:() => assert.fail('冻结失效后仍删除浏览器键')});
+    await assert.rejects(f.reconcile('clear',{acquire}),{code:'wallet-freeze-unverified'});
+    const changed = json(f.state);
+    changed.slots[f.sources[0].profile].raw = null;
+    f.save(changed);
+    await assert.rejects(f.reconcile('clear'),{code:'wallet-source-conflict'});
+    assert.equal(f.read(f.sources[1]),second);
+  });
 }

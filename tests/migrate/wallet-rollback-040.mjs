@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setImmediate } from 'node:timers/promises';
 import { createOfflineBackup, restoreOfflineBackup, verifyOfflineBackup } from '../../scripts/lib/offline-backup.mjs';
 import { exportWalletSources, reconcileWalletSources } from '../../scripts/migrate/browser-wallet.mjs';
+import { hash } from '../../scripts/migrate/io.mjs';
 import { migrationStatus, runMigration, verifyWalletImport } from '../../scripts/migrate/runner.mjs';
 import { sealWalletRollback, verifyWalletRollback, verifyWalletRestore, walletBinding } from '../../scripts/migrate/wallet-rollback.mjs';
 import { economyPaths } from './offline-helpers.mjs';
@@ -47,6 +49,50 @@ test('v0.4.0 两个旧标签在服务拒绝写入时仍能覆盖共享待办键'
     assert.equal(JSON.parse(storage.get(key)).requestId, rejected[index]);
   }
   assert.equal(new Set(rejected).size, 2);
+});
+
+test('实际 v0.4.0 旧页在已清除的来源竞写，清源拒绝放行且保留新值', async t => {
+  const sourceFile = join(realpathSync(process.env.HER_WORLD_040_ROOT), 'src/console/client.js');
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'wallet-live-tab-')));
+  t.after(() => rmSync(root, {recursive:true,force:true}));
+  const workspaceId = 'old-world', key = 'chatpet:economy:pending:' + workspaceId;
+  const binding = {storageId:'test-storage',companionId:'test-companion',workspaceId,repoHash:hash('repo'),
+    profileHash:hash('profile'),scopeId:'test-scope',ownerActorId:'test-owner'};
+  const sources = ['a','b'].map(name => ({profile:join(root,name),origin:'http://127.0.0.1:32100',key}));
+  const storage = new Map(), other = new Map();
+  const tab = renderEconomyPanel(async endpoint => {
+    if (endpoint === 'economyView') return {balance:0,inventory:[],catalog:[],ledger:[],configuration:{crops:{}}};
+    throw Object.assign(Error('合成入口暂停'), {code:'UNAVAILABLE'});
+  },workspaceId,{sourceFile,storage});
+  tab.render();
+  t.after(tab.mount());
+  await setImmediate();
+  const original = JSON.stringify({endpoint:'economyAction',requestId:'before',input:{workspaceId,action:{kind:'grant',amount:1}}});
+  for (const item of [storage,other]) item.set(key,original);
+  const slot = source => source.profile === sources[0].profile ? storage : other;
+  const file = join(root,'export.json'), journal = join(root,'clear.json');
+  const acquire = () => ({assertFrozen:() => true, read:source => slot(source).get(key) ?? null,
+    async compareAndSet(source,expected,next) {
+      assert.equal(next,null);
+      assert.equal(slot(source).get(key),expected);
+      slot(source).delete(key);
+      if (slot(source) === other) {
+        const [amount] = panelNodes(tab.render(), node => node.type === 'field' && node.props.label === '金额');
+        amount.props.onChange('2');
+        const [grant] = panelNodes(tab.render(), node => node.type === 'button' && node.children[0] === '给零花钱');
+        await grant.props.onClick();
+      }
+      return true;
+    }});
+  await exportWalletSources({file,binding,round:randomUUID(),sources,acquire});
+  const clear = () => reconcileWalletSources({file,journal,binding,sources,acquire,mode:'clear',verify:() => true});
+  await assert.rejects(clear(),{code:'wallet-source-conflict'});
+  assert.equal(JSON.parse(storage.get(key)).input.action.amount,2);
+  assert.equal(other.has(key),false);
+  await assert.rejects(clear(),{code:'wallet-source-conflict'});
+  assert.equal(JSON.parse(storage.get(key)).input.action.amount,2);
+  storage.delete(key);
+  await assert.rejects(clear(),{code:'wallet-source-conflict'});
 });
 
 function stagePackage(root, installed, temporary) {

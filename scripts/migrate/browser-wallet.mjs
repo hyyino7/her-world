@@ -38,8 +38,8 @@ function matchSources(sources, wallet, binding) {
 }
 
 /**
- * The adapter must hold exclusive access to the authorized profile/origin and
- * attest admission has closed and all wallet/Body activity has settled.
+ * The caller must have stopped and drained the old runtime. The adapter must
+ * keep exclusive access to the authorized profile/origin during the operation.
  * A successful read of null is a verified missing key. Unknown sources throw.
  */
 export async function exportWalletSources({file,binding,round,sources,acquire}) {
@@ -55,12 +55,16 @@ export async function exportWalletSources({file,binding,round,sources,acquire}) 
     }
     const document = {format:1,binding,round,sources:rows};
     decodeExport(document,binding);
+    // Re-read the whole snapshot before publishing or accepting an export.
+    for (const row of rows) {
+      requireMigration(await readSource(lease,row) === row.raw,'wallet-source-conflict');
+    }
+    await requireFrozen(lease);
     if (regular(file)) {
       const present = readWalletExport(file,binding);
       requireMigration(present.round === round && isDeepStrictEqual(present.sources,rows),'wallet-source-conflict');
       return present;
     }
-    await requireFrozen(lease);
     checked('wallet-export-invalid',() => atomicWrite(file,JSON.stringify(document) + '\n'));
     return readWalletExport(file,binding);
   });
@@ -76,7 +80,7 @@ function readIntent(journal, wallet, mode) {
     requireMigration(fields(document,[...Object.keys(basis),'rows']) &&
       isDeepStrictEqual(select(document,Object.keys(basis)),basis) &&
       document.rows && typeof document.rows === 'object' && !Array.isArray(document.rows) &&
-      Object.entries(document.rows).every(([id,state]) => locations.has(id) && ['intent','done'].includes(state)),
+      Object.entries(document.rows).every(([id,state]) => locations.has(id) && ['intent','done','conflict'].includes(state)),
     'wallet-export-invalid');
     return document;
   });
@@ -88,7 +92,7 @@ function acceptable(state, actual, from, to, mode) {
   return actual === from;
 }
 
-/** The supplied verifier checks the matching settled import or completed restore. */
+/** The verifier checks the matching import or restore. The adapter must persist successful writes before returning. */
 export async function reconcileWalletSources({file,journal,binding,sources,acquire,mode,verify}) {
   requireMigration(['clear','restore'].includes(mode) && file !== journal,'wallet-export-invalid');
   const wallet = readWalletExport(file,binding);
@@ -101,24 +105,41 @@ export async function reconcileWalletSources({file,journal,binding,sources,acqui
       intent.rows[id] = state;
       checked('wallet-export-invalid',() => atomicWrite(journal,JSON.stringify(intent) + '\n'));
     };
+    const checkSource = (condition,id) => {
+      if (condition) return;
+      record(id,'conflict');
+      throw new MigrationError('wallet-source-conflict');
+    };
+    requireMigration(!Object.values(intent.rows).includes('conflict'),'wallet-source-conflict');
     const operations = [];
     for (const source of wallet.sources) {
       const id = hash(sourceId(source));
       const clearing = mode === 'clear';
       const from = clearing ? source.raw : null, to = clearing ? null : source.raw;
       const actual = await readSource(lease,source);
-      requireMigration(acceptable(intent.rows[id],actual,from,to,mode),'wallet-source-conflict');
+      checkSource(acceptable(intent.rows[id],actual,from,to,mode),id);
       operations.push({source,id,actual,to});
     }
     for (const {source,id,actual,to} of operations) {
       if (intent.rows[id] === 'done') continue;
       await requireFrozen(lease);
-      if (intent.rows[id] !== 'intent') record(id,'intent');
+      if (intent.rows[id] !== 'intent') {
+        record(id,'intent');
+        try { await requireFrozen(lease); }
+        catch (error) {
+          // No browser write was attempted. A later missing key is not our work.
+          record(id,'conflict');
+          throw error;
+        }
+      }
       if (actual !== to)
-        requireMigration(await lease.compareAndSet(select(source,sourceKeys),actual,to) === true,'wallet-source-conflict');
-      requireMigration(await readSource(lease,source) === to,'wallet-source-conflict');
+        checkSource(await lease.compareAndSet(select(source,sourceKeys),actual,to) === true,id);
+      checkSource(await readSource(lease,source) === to,id);
       record(id,'done');
     }
+    // A previously completed source can change while another source is written.
+    for (const {source,id,to} of operations) checkSource(await readSource(lease,source) === to,id);
+    await requireFrozen(lease);
     return {round:wallet.round,sourceCount:operations.length,complete:true};
   });
 }
