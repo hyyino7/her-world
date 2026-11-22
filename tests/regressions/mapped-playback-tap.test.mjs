@@ -142,7 +142,10 @@ function integration(t,feeling='sweet',activityKind='hold') {
   const frames=[],writes=[],calls=[],binding={id:'fixture',path:dir,storageId:'fixture'};
   const projection=Object.create(CompanionBehavior.prototype);
   Object.assign(projection,{binding:{room},bootId:'fixture-body',revision:0});
-  const snapshot=()=>projection.presentHome(room.view(Date.now()));
+  const snapshot=()=>{
+    const home=room.view(Date.now());
+    return {...home,behavior:projection.publicBehavior(home.her)};
+  };
   const behavior={roomState:async()=>snapshot(),restState:()=>({sleeping:room.state.asleep,pending:room.state.sleepPending}),
     roomAction:async(id,input,by,interaction)=>{calls.push({id,input,by,interaction});return room.act(input,by,Date.now(),interaction);}};
   const host={workspace:{status:()=>({state:'ready',target:binding}),storageId:()=>binding.storageId,companionSettings:()=>DEFAULT_COMPANION_SETTINGS,
