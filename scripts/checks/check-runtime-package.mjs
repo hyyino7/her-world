@@ -61,7 +61,7 @@ try {
     // native-room.js; browser imports resolve from that URL, not src/room/.
     const servedFrom=relative(root,from)==='src/room/voice-client.js'?join(root,'vendor/feiyu-room-template/public/room/voice-client.js'):from;
     const file=['./activity-playback.js','./animation-map.js'].includes(specifier) && ['vendor/feiyu-room-template/public/room/app.js','vendor/feiyu-room-template/public/room/actor.js'].includes(relative(root,from))
-      ? join(root,'dist/src/living/body',specifier==='./activity-playback.js'?'playback.js':'animation-map.js') : target(specifier,servedFrom);if(file){assert.ok(within(file),'Dependency escaped package');present(file,relative(root,from)+' -> '+specifier);references++;}
+      ? join(root,'dist/src/presentation',specifier==='./activity-playback.js'?'playback.js':'animation-map.js') : target(specifier,servedFrom);if(file){assert.ok(within(file),'Dependency escaped package');present(file,relative(root,from)+' -> '+specifier);references++;}
   };
   for(const file of files) {
     const local=relative(root,file);
@@ -157,7 +157,7 @@ try {
   const {PersistentLifePlan}=await import(pathToFileURL(join(root,'dist/src/living/plan/plan.js')));
   const {EconomyStore}=await import(pathToFileURL(join(root,'dist/src/living/economy/store.js')));
   const {roomAsset}=await import(pathToFileURL(join(root,'dist/src/room/assets.js')));
-  const {resolveActivityPlayback,sampleActivityPlayback}=await import(pathToFileURL(join(root,'dist/src/living/body/playback.js')));
+  const {resolveActivityPlayback,sampleActivityPlayback}=await import(pathToFileURL(join(root,'dist/src/presentation/playback.js')));
   const {animationSlotAllowed}=await import(pathToFileURL(join(root,'dist/src/living/body/animation-slots.js')));
   const sleeping=resolveActivityPlayback({her:{kind:'sleep',asleep:true,spot:'bed'},behavior:{activityId:'sleep-fixture',phase:'sleeping',startedAt:1000}},animationSlotAllowed);
   assert.equal(sampleActivityPlayback(sleeping,1500).roomClip,'sleep_in');

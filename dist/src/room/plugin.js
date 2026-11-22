@@ -12,7 +12,7 @@ import { RoomChat } from './chat.js';
 import { roomPhoto } from './photo.js';
 import { roomAsset, roomPrefix } from './assets.js';
 import { animationSlotAllowed } from '../living/body/animation-slots.js';
-import { withHomePlayback } from '../living/body/playback.js';
+import { withHomePlayback } from '../presentation/playback.js';
 const roomHomePlayback = (home) => withHomePlayback(home, animationSlotAllowed);
 function roomPlaybackReply(result) {
     return result.home ? { ...result, home: roomHomePlayback(result.home) } : result;

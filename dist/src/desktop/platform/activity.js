@@ -1,4 +1,4 @@
-import { resolveActivityPlayback, sampleActivityPlayback, withHomePlayback } from '../../living/body/playback.js';
+import { resolveActivityPlayback, sampleActivityPlayback, withHomePlayback } from '../../presentation/playback.js';
 import { animationSlotAllowed } from '../../living/body/animation-slots.js';
 export const desktopHomePlayback = (home) => withHomePlayback(home, animationSlotAllowed);
 /** Semantic exclusions from the shipped catalogue; these clips assert a physical activity. */

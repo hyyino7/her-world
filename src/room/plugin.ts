@@ -17,7 +17,7 @@ import { RoomChat } from './chat.js';
 import { roomPhoto, type PhotoLook, type PhotoView } from './photo.js';
 import { roomAsset, roomPrefix } from './assets.js';
 import { animationSlotAllowed } from '../living/body/animation-slots.js';
-import { withHomePlayback } from '../living/body/playback.js';
+import { withHomePlayback } from '../presentation/playback.js';
 
 const roomHomePlayback = (home:unknown) => withHomePlayback(home,animationSlotAllowed);
 function roomPlaybackReply<T extends {home?: unknown}>(result:T):T {

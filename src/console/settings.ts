@@ -10,7 +10,7 @@ import { desktopAppearanceDefaults } from '../desktop/appearance.js';
 import { BODY_ACTIONS, CARE_ACTIONS, isCareAction } from '../contracts/behavior.js';
 import {isRoomEndpoint, type RoomEndpoint} from '../presentation/room-transport.js';
 import {animationSlotAllowed} from '../living/body/animation-slots.js';
-import {withHomePlayback} from '../living/body/playback.js';
+import {withHomePlayback} from '../presentation/playback.js';
 export interface EconomyControls {
   snapshot(workspaceId: string, validate?: () => void, options?: {includeWritableKeys?: boolean}): Promise<unknown>;
   ownerAction(workspaceId: string, action: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;

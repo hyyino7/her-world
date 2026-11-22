@@ -17,7 +17,7 @@ function exportedFunction(file,name) {
   return ts.transpileModule(declaration.getText(ast),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}})
     .outputText.replace(/^export\s+/,'');
 }
-const activitySampler=exportedFunction('src/living/body/playback.ts','sampleActivityPlayback');
+const activitySampler=exportedFunction('src/presentation/playback.ts','sampleActivityPlayback');
 const activityController=exportedFunction('src/desktop/platform/activity-playback.js','createActivityPlaybackController');
 const activityPlayback=activityController+'\n'+exportedFunction('src/desktop/platform/activity-playback.js','installNativeActivityPlayback');
 const distinctiveNames = JSON.parse(read(join(root,'src/desktop/assets/catalog.json'))).actions

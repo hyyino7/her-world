@@ -1,4 +1,4 @@
-import { type ActivityPlayback } from '../../living/body/playback.js';
+import { type ActivityPlayback } from '../../presentation/playback.js';
 export declare const desktopHomePlayback: (home: unknown) => any;
 /** Semantic exclusions from the shipped catalogue; these clips assert a physical activity. */
 export declare const eatingClips: Set<string>;

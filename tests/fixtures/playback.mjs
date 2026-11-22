@@ -3,7 +3,7 @@ import {pathToFileURL} from 'node:url';
 
 // The fixtures also run against a compiled package in cwd or an explicit
 // compiled control alongside its own dependencies.
-const sourceDirectory = 'living/body';
+const sourceDirectory = 'presentation';
 const override = process.env.CHATPET_PLAYBACK_TEST_MODULE;
 const playbackPath = resolve(override || 'dist/src/' + sourceDirectory + '/playback.js');
 const playbackURL = pathToFileURL(playbackPath);

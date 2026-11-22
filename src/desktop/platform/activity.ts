@@ -1,4 +1,4 @@
-import { resolveActivityPlayback, sampleActivityPlayback, withHomePlayback, type ActivityPlayback } from '../../living/body/playback.js';
+import { resolveActivityPlayback, sampleActivityPlayback, withHomePlayback, type ActivityPlayback } from '../../presentation/playback.js';
 import {animationSlotAllowed} from '../../living/body/animation-slots.js';
 
 export const desktopHomePlayback = (home:unknown) => withHomePlayback(home,animationSlotAllowed);

@@ -3188,13 +3188,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 84
+        "line": 86
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 84,
+      "line": 86,
       "column": 11,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/React . useEffect:callback0\"}",
@@ -3229,13 +3229,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 420
+        "line": 423
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 420,
+      "line": 423,
       "column": 10,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/React . useEffect:callback0\"}",
@@ -3609,13 +3609,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "<module>",
-        "line": 25
+        "line": 27
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 25,
+      "line": 27,
       "column": 42,
       "scope": "<module>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/send\"}",
@@ -4421,13 +4421,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 84
+        "line": 86
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 84,
+      "line": 86,
       "column": 11,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
@@ -4507,13 +4507,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 166
+        "line": 168
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 166,
+      "line": 168,
       "column": 11,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
@@ -4593,13 +4593,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 208
+        "line": 210
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 208,
+      "line": 210,
       "column": 11,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
@@ -4683,13 +4683,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 420
+        "line": 423
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 420,
+      "line": 423,
       "column": 10,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/console/plugin.ts\",\"scope\":\"apply\"}",
@@ -4710,7 +4710,7 @@
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 25,
+      "line": 27,
       "column": 42,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchEconomy\"}",
@@ -4763,13 +4763,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "<module>",
-        "line": 25
+        "line": 27
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 25,
+      "line": 27,
       "column": 42,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"CompanionEconomy/gardenPort/transaction\"}",
@@ -4823,13 +4823,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "<module>",
-        "line": 25
+        "line": 27
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 159,
+      "line": 161,
       "column": 45,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"<module>\"}",
@@ -4863,13 +4863,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 159
+        "line": 161
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 159,
+      "line": 161,
       "column": 45,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"resolvePresentationMigration\"}",
@@ -4903,13 +4903,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 159
+        "line": 161
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 159,
+      "line": 161,
       "column": 45,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/resolveMigration\"}",
@@ -4943,13 +4943,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 159
+        "line": 161
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 160,
+      "line": 162,
       "column": 92,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"<module>\"}",
@@ -4983,13 +4983,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 160
+        "line": 162
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 160,
+      "line": 162,
       "column": 92,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"resolvePresentationMigration\"}",
@@ -5023,13 +5023,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 160
+        "line": 162
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 160,
+      "line": 162,
       "column": 92,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/desktop/platform/plugin.ts\",\"scope\":\"PetPlatform/resolveMigration\"}",
@@ -5063,13 +5063,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 160
+        "line": 162
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 388,
+      "line": 391,
       "column": 42,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/core/workspace.ts\",\"scope\":\"<module>\"}",
@@ -5105,13 +5105,13 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 388
+        "line": 391
       }
     },
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 388,
+      "line": 391,
       "column": 42,
       "scope": "settingsHandler/<callback>",
       "target": "{\"file\":\"src/core/workspace.ts\",\"scope\":\"CoreWorkspace/soul\"}",
@@ -5147,7 +5147,7 @@
       "other": {
         "file": "src/console/settings.ts",
         "scope": "settingsHandler/<callback>",
-        "line": 388
+        "line": 391
       }
     },
     {
@@ -5744,13 +5744,13 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/publish",
-        "line": 247
+        "line": 246
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 247,
+      "line": 246,
       "column": 26,
       "scope": "CompanionBehavior/publish",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -6033,60 +6033,6 @@
       "line": 2,
       "column": 35,
       "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "<module>",
-        "line": 23
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 23,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/contracts/emotion.ts",
-        "scope": "<module>",
-        "line": 2
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/emotion.ts",
-      "line": 2,
-      "column": 35,
-      "scope": "<module>",
       "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
       "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
       "values": [
@@ -6186,6 +6132,60 @@
     {
       "rule": "R8",
       "file": "src/contracts/emotion.ts",
+      "line": 2,
+      "column": 35,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
+      "values": [
+        "anger",
+        "boredom",
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "array",
+      "relation": "重复",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "<module>",
+        "line": 22
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 22,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
+      "values": [
+        "anger",
+        "boredom",
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "array",
+      "relation": "重复",
+      "other": {
+        "file": "src/contracts/emotion.ts",
+        "scope": "<module>",
+        "line": 2
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/emotion.ts",
       "line": 8,
       "column": 24,
       "scope": "<module>",
@@ -6239,58 +6239,6 @@
       "line": 8,
       "column": 24,
       "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "\"happy\" | \"calm\" | \"sweet\" | \"heartache\" | \"worry\" | \"sad\" | \"jealous\"",
-      "values": [
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "<module>",
-        "line": 23
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 23,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/contracts/emotion.ts",
-        "scope": "<module>",
-        "line": 8
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/emotion.ts",
-      "line": 8,
-      "column": 24,
-      "scope": "<module>",
       "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
       "expression": "\"happy\" | \"calm\" | \"sweet\" | \"heartache\" | \"worry\" | \"sad\" | \"jealous\"",
       "values": [
@@ -6330,6 +6278,58 @@
         "worry"
       ],
       "shape": "labels",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/emotion.ts",
+        "scope": "<module>",
+        "line": 8
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/emotion.ts",
+      "line": 8,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
+      "expression": "\"happy\" | \"calm\" | \"sweet\" | \"heartache\" | \"worry\" | \"sad\" | \"jealous\"",
+      "values": [
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "union",
+      "relation": "子集",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "<module>",
+        "line": 22
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 22,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/contracts/emotion.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
+      "values": [
+        "anger",
+        "boredom",
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "array",
       "relation": "子集",
       "other": {
         "file": "src/contracts/emotion.ts",
@@ -8757,13 +8757,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "<module>",
-        "line": 187
+        "line": 195
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 187,
+      "line": 195,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/desktop/plugin.ts\",\"scope\":\"<module>\"}",
@@ -8956,58 +8956,6 @@
       "line": 13,
       "column": 24,
       "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
-      "values": [
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "<module>",
-        "line": 23
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 23,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/emotion/index.ts",
-        "scope": "<module>",
-        "line": 13
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/emotion/index.ts",
-      "line": 13,
-      "column": 24,
-      "scope": "<module>",
       "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
       "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
       "values": [
@@ -9047,6 +8995,58 @@
         "worry"
       ],
       "shape": "labels",
+      "relation": "子集",
+      "other": {
+        "file": "src/emotion/index.ts",
+        "scope": "<module>",
+        "line": 13
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/emotion/index.ts",
+      "line": 13,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" ]",
+      "values": [
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "<module>",
+        "line": 22
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 22,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
+      "values": [
+        "anger",
+        "boredom",
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "array",
       "relation": "子集",
       "other": {
         "file": "src/emotion/index.ts",
@@ -9329,55 +9329,6 @@
       "line": 8,
       "column": 28,
       "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
-      "expression": "[ \"idle\" , \"play\" , \"idle_look\" , \"react_happy\" , \"react_pout\" , \"react_shy\" , \"react_scare\" ]",
-      "values": [
-        "idle",
-        "idle_look",
-        "play",
-        "react_happy",
-        "react_pout",
-        "react_scare",
-        "react_shy"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "resolveActivityPlayback",
-        "line": 130
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 130,
-      "column": 40,
-      "scope": "resolveActivityPlayback",
-      "target": "{\"file\":\"src/living/body/activity.ts\",\"scope\":\"<module>\"}",
-      "expression": "{ play : \"dance\" , idle_look : \"look\" , react_happy : \"点击回应-开心跃动\" , react_pout : \"点击回应-傲娇生气\" , react_shy : \"点击回应-害羞惊讶\" , react_scare : \"被吓一跳\" }",
-      "values": [
-        "idle_look",
-        "play",
-        "react_happy",
-        "react_pout",
-        "react_scare",
-        "react_shy"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/activity.ts",
-        "scope": "<module>",
-        "line": 8
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/activity.ts",
-      "line": 8,
-      "column": 28,
-      "scope": "<module>",
       "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"behaviorPresentation\"}",
       "expression": "[ \"idle\" , \"play\" , \"idle_look\" , \"react_happy\" , \"react_pout\" , \"react_shy\" , \"react_scare\" ]",
       "values": [
@@ -9419,156 +9370,57 @@
     },
     {
       "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 23,
-      "column": 24,
+      "file": "src/living/body/activity.ts",
+      "line": 8,
+      "column": 28,
       "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
+      "expression": "[ \"idle\" , \"play\" , \"idle_look\" , \"react_happy\" , \"react_pout\" , \"react_shy\" , \"react_scare\" ]",
       "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
+        "idle",
+        "idle_look",
+        "play",
+        "react_happy",
+        "react_pout",
+        "react_scare",
+        "react_shy"
       ],
       "shape": "array",
-      "relation": "重复",
+      "relation": "子集",
       "other": {
-        "file": "src/living/body/presentation.ts",
-        "scope": "<module>",
-        "line": 6
+        "file": "src/presentation/playback.ts",
+        "scope": "resolveActivityPlayback",
+        "line": 129
       }
     },
     {
       "rule": "R8",
-      "file": "src/living/body/presentation.ts",
-      "line": 6,
-      "column": 80,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "{ happy : \"开心\" , calm : \"平静\" , sweet : \"甜蜜\" , heartache : \"心疼\" , worry : \"担心\" , sad : \"难过\" , jealous : \"吃醋\" , anger : \"生气\" , boredom : \"无聊\" , }",
+      "file": "src/presentation/playback.ts",
+      "line": 129,
+      "column": 40,
+      "scope": "resolveActivityPlayback",
+      "target": "{\"file\":\"src/living/body/activity.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ play : \"dance\" , idle_look : \"look\" , react_happy : \"点击回应-开心跃动\" , react_pout : \"点击回应-傲娇生气\" , react_shy : \"点击回应-害羞惊讶\" , react_scare : \"被吓一跳\" }",
       "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
+        "idle_look",
+        "play",
+        "react_happy",
+        "react_pout",
+        "react_scare",
+        "react_shy"
       ],
       "shape": "labels",
-      "relation": "重复",
+      "relation": "子集",
       "other": {
-        "file": "src/living/body/playback.ts",
+        "file": "src/living/body/activity.ts",
         "scope": "<module>",
-        "line": 23
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 23,
-      "column": 24,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"behaviorPresentation\"}",
-      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "calm",
-        "happy",
-        "heartache",
-        "jealous",
-        "sad",
-        "sweet",
-        "worry"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/presentation.ts",
-        "scope": "behaviorPresentation",
-        "line": 23
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/presentation.ts",
-      "line": 23,
-      "column": 15,
-      "scope": "behaviorPresentation",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"happy\" , \"anger\" , \"boredom\" ]",
-      "values": [
-        "anger",
-        "boredom",
-        "happy"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "<module>",
-        "line": 23
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 117,
-      "column": 28,
-      "scope": "resolveActivityPlayback",
-      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/act\"}",
-      "expression": "[ \"pet\" , \"poke\" ]",
-      "values": [
-        "pet",
-        "poke"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/room.ts",
-        "scope": "CompanionRoom/act",
-        "line": 1044
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/room.ts",
-      "line": 1044,
-      "column": 22,
-      "scope": "CompanionRoom/act",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
-      "expression": "[ \"talk\" , \"lamp\" , \"visit\" , \"pet\" , \"poke\" , \"feed\" , \"water\" , \"play\" ]",
-      "values": [
-        "feed",
-        "lamp",
-        "pet",
-        "play",
-        "poke",
-        "talk",
-        "visit",
-        "water"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "resolveActivityPlayback",
-        "line": 117
+        "line": 8
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 383,
+      "line": 382,
       "column": 42,
       "scope": "CompanionBehavior/garden",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -9604,13 +9456,13 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/garden",
-        "line": 383
+        "line": 382
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 383,
+      "line": 382,
       "column": 42,
       "scope": "CompanionBehavior/garden",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/garden\"}",
@@ -9646,7 +9498,109 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/garden",
-        "line": 383
+        "line": 382
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/presentation.ts",
+      "line": 6,
+      "column": 80,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
+      "expression": "{ happy : \"开心\" , calm : \"平静\" , sweet : \"甜蜜\" , heartache : \"心疼\" , worry : \"担心\" , sad : \"难过\" , jealous : \"吃醋\" , anger : \"生气\" , boredom : \"无聊\" , }",
+      "values": [
+        "anger",
+        "boredom",
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "labels",
+      "relation": "重复",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "<module>",
+        "line": 22
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 22,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
+      "values": [
+        "anger",
+        "boredom",
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "array",
+      "relation": "重复",
+      "other": {
+        "file": "src/living/body/presentation.ts",
+        "scope": "<module>",
+        "line": 6
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/presentation.ts",
+      "line": 23,
+      "column": 15,
+      "scope": "behaviorPresentation",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"happy\" , \"anger\" , \"boredom\" ]",
+      "values": [
+        "anger",
+        "boredom",
+        "happy"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "<module>",
+        "line": 22
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 22,
+      "column": 24,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/living/body/presentation.ts\",\"scope\":\"behaviorPresentation\"}",
+      "expression": "[ \"happy\" , \"calm\" , \"sweet\" , \"heartache\" , \"worry\" , \"sad\" , \"jealous\" , \"anger\" , \"boredom\" ]",
+      "values": [
+        "anger",
+        "boredom",
+        "calm",
+        "happy",
+        "heartache",
+        "jealous",
+        "sad",
+        "sweet",
+        "worry"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/presentation.ts",
+        "scope": "behaviorPresentation",
+        "line": 23
       }
     },
     {
@@ -10156,6 +10110,52 @@
     {
       "rule": "R8",
       "file": "src/living/body/room.ts",
+      "line": 1044,
+      "column": 22,
+      "scope": "CompanionRoom/act",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
+      "expression": "[ \"talk\" , \"lamp\" , \"visit\" , \"pet\" , \"poke\" , \"feed\" , \"water\" , \"play\" ]",
+      "values": [
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "talk",
+        "visit",
+        "water"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "resolveActivityPlayback",
+        "line": 116
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 116,
+      "column": 28,
+      "scope": "resolveActivityPlayback",
+      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/act\"}",
+      "expression": "[ \"pet\" , \"poke\" ]",
+      "values": [
+        "pet",
+        "poke"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/living/body/room.ts",
+        "scope": "CompanionRoom/act",
+        "line": 1044
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/living/body/room.ts",
       "line": 1092,
       "column": 21,
       "scope": "CompanionRoom/garden",
@@ -10381,13 +10381,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 108
+        "line": 115
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 108,
+      "line": 115,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -10464,13 +10464,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 155
+        "line": 163
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 155,
+      "line": 163,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -11049,13 +11049,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 108
+        "line": 115
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 108,
+      "line": 115,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
@@ -11587,13 +11587,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 108
+        "line": 115
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 108,
+      "line": 115,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/control\"}",
@@ -11789,13 +11789,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 108
+        "line": 115
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 108,
+      "line": 115,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
@@ -11831,13 +11831,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/request",
-        "line": 108
+        "line": 115
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 108,
+      "line": 115,
       "column": 25,
       "scope": "Room/request",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
@@ -11872,13 +11872,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 167
+        "line": 175
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 167,
+      "line": 175,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"<module>\"}",
@@ -11952,13 +11952,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 167
+        "line": 175
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 167,
+      "line": 175,
       "column": 78,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"<module>\"}",
@@ -12032,13 +12032,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 167
+        "line": 175
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 167,
+      "line": 175,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"roomPhoto\"}",
@@ -12112,13 +12112,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 167
+        "line": 175
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 167,
+      "line": 175,
       "column": 78,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/photo.ts\",\"scope\":\"roomPhoto\"}",
@@ -12178,7 +12178,7 @@
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 167,
+      "line": 175,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/shot-browser.cjs\",\"scope\":\"main\"}",
@@ -12212,13 +12212,13 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 167
+        "line": 175
       }
     },
     {
       "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 167,
+      "line": 175,
       "column": 78,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/room/shot-browser.cjs\",\"scope\":\"main\"}",
@@ -12252,7 +12252,7 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 167
+        "line": 175
       }
     },
     {
@@ -12792,160 +12792,6 @@
           "pet",
           "sleep",
           "wake"
-        ]
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 117,
-      "column": 28,
-      "scope": "resolveActivityPlayback",
-      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"pet\" , \"poke\" ]",
-      "values": [
-        "pet",
-        "poke"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/contracts/behavior.ts",
-        "scope": "<module>",
-        "line": 10,
-        "column": 29,
-        "shape": "object table",
-        "table": "BODY_ACTIONS",
-        "keyUse": "按键索引",
-        "values": [
-          "command",
-          "feed",
-          "lamp",
-          "pet",
-          "play",
-          "poke",
-          "sleep",
-          "talk",
-          "wake",
-          "water"
-        ]
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/behavior.ts",
-      "line": 10,
-      "column": 29,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
-      "expression": "{ command : { role : 1 } , pet : { role : 2 , care : { order : 3 , label : \"摸摸头\" } , feedback : true } , poke : { role : 3 , feedback : true } , feed : { role : 4 , care : { order : 1 , label : \"免费基础餐食\" } , plan : 4 , feedback : true } , water : { role : 5 , care : { order : 2 , label : \"倒杯水\" } , plan : 3 , feedback : true } , play : { role : 6 , care : { order : 4 , label : \"一起玩\" } , plan : 5 , feedback : true } , talk : { role : 7 , feedback : true } , sleep : { role : 8 , care : { order : 5 , label : \"去睡觉\" } , plan : 1 } , wake : { role : 9 , care : { order : 6 , label : \"叫醒\" } , plan : 2 } , lamp : { role : 10 } , }",
-      "values": [
-        "command",
-        "feed",
-        "lamp",
-        "pet",
-        "play",
-        "poke",
-        "sleep",
-        "talk",
-        "wake",
-        "water"
-      ],
-      "shape": "object table",
-      "table": "BODY_ACTIONS",
-      "keyUse": "按键索引",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "resolveActivityPlayback",
-        "line": 117,
-        "column": 28,
-        "shape": "array",
-        "values": [
-          "pet",
-          "poke"
-        ]
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 117,
-      "column": 28,
-      "scope": "resolveActivityPlayback",
-      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"pet\" , \"poke\" ]",
-      "values": [
-        "pet",
-        "poke"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/contracts/interaction.ts",
-        "scope": "<module>",
-        "line": 4,
-        "column": 9,
-        "shape": "object table",
-        "table": "FACT_DOMAINS.body",
-        "keyUse": "keyof",
-        "values": [
-          "command",
-          "feed",
-          "go",
-          "heal",
-          "lamp",
-          "pet",
-          "place",
-          "play",
-          "poke",
-          "sick",
-          "sleep",
-          "talk",
-          "visit",
-          "wake",
-          "water"
-        ]
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/contracts/interaction.ts",
-      "line": 4,
-      "column": 9,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/body/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
-      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
-      "values": [
-        "command",
-        "feed",
-        "go",
-        "heal",
-        "lamp",
-        "pet",
-        "place",
-        "play",
-        "poke",
-        "sick",
-        "sleep",
-        "talk",
-        "visit",
-        "wake",
-        "water"
-      ],
-      "shape": "object table",
-      "table": "FACT_DOMAINS.body",
-      "keyUse": "keyof",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/body/playback.ts",
-        "scope": "resolveActivityPlayback",
-        "line": 117,
-        "column": 28,
-        "shape": "array",
-        "values": [
-          "pet",
-          "poke"
         ]
       }
     },
@@ -14817,8 +14663,162 @@
     },
     {
       "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 116,
+      "column": 28,
+      "scope": "resolveActivityPlayback",
+      "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"pet\" , \"poke\" ]",
+      "values": [
+        "pet",
+        "poke"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/behavior.ts",
+        "scope": "<module>",
+        "line": 10,
+        "column": 29,
+        "shape": "object table",
+        "table": "BODY_ACTIONS",
+        "keyUse": "按键索引",
+        "values": [
+          "command",
+          "feed",
+          "lamp",
+          "pet",
+          "play",
+          "poke",
+          "sleep",
+          "talk",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/behavior.ts",
+      "line": 10,
+      "column": 29,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
+      "expression": "{ command : { role : 1 } , pet : { role : 2 , care : { order : 3 , label : \"摸摸头\" } , feedback : true } , poke : { role : 3 , feedback : true } , feed : { role : 4 , care : { order : 1 , label : \"免费基础餐食\" } , plan : 4 , feedback : true } , water : { role : 5 , care : { order : 2 , label : \"倒杯水\" } , plan : 3 , feedback : true } , play : { role : 6 , care : { order : 4 , label : \"一起玩\" } , plan : 5 , feedback : true } , talk : { role : 7 , feedback : true } , sleep : { role : 8 , care : { order : 5 , label : \"去睡觉\" } , plan : 1 } , wake : { role : 9 , care : { order : 6 , label : \"叫醒\" } , plan : 2 } , lamp : { role : 10 } , }",
+      "values": [
+        "command",
+        "feed",
+        "lamp",
+        "pet",
+        "play",
+        "poke",
+        "sleep",
+        "talk",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "BODY_ACTIONS",
+      "keyUse": "按键索引",
+      "relation": "子集",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "resolveActivityPlayback",
+        "line": 116,
+        "column": 28,
+        "shape": "array",
+        "values": [
+          "pet",
+          "poke"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 116,
+      "column": 28,
+      "scope": "resolveActivityPlayback",
+      "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
+      "expression": "[ \"pet\" , \"poke\" ]",
+      "values": [
+        "pet",
+        "poke"
+      ],
+      "shape": "array",
+      "relation": "子集",
+      "other": {
+        "file": "src/contracts/interaction.ts",
+        "scope": "<module>",
+        "line": 4,
+        "column": 9,
+        "shape": "object table",
+        "table": "FACT_DOMAINS.body",
+        "keyUse": "keyof",
+        "values": [
+          "command",
+          "feed",
+          "go",
+          "heal",
+          "lamp",
+          "pet",
+          "place",
+          "play",
+          "poke",
+          "sick",
+          "sleep",
+          "talk",
+          "visit",
+          "wake",
+          "water"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
+      "file": "src/contracts/interaction.ts",
+      "line": 4,
+      "column": 9,
+      "scope": "<module>",
+      "target": "{\"file\":\"src/presentation/playback.ts\",\"scope\":\"resolveActivityPlayback\"}",
+      "expression": "{ ... BODY_ACTIONS , visit : true , go : true , place : true , sick : true , heal : true }",
+      "values": [
+        "command",
+        "feed",
+        "go",
+        "heal",
+        "lamp",
+        "pet",
+        "place",
+        "play",
+        "poke",
+        "sick",
+        "sleep",
+        "talk",
+        "visit",
+        "wake",
+        "water"
+      ],
+      "shape": "object table",
+      "table": "FACT_DOMAINS.body",
+      "keyUse": "keyof",
+      "relation": "子集",
+      "other": {
+        "file": "src/presentation/playback.ts",
+        "scope": "resolveActivityPlayback",
+        "line": 116,
+        "column": 28,
+        "shape": "array",
+        "values": [
+          "pet",
+          "poke"
+        ]
+      }
+    },
+    {
+      "rule": "R8",
       "file": "src/room/plugin.ts",
-      "line": 155,
+      "line": 163,
       "column": 32,
       "scope": "Room/tools",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -14886,7 +14886,7 @@
       "other": {
         "file": "src/room/plugin.ts",
         "scope": "Room/tools",
-        "line": 155,
+        "line": 163,
         "column": 32,
         "shape": "array",
         "values": [
@@ -15260,7 +15260,7 @@
     {
       "rule": "R8",
       "file": "src/console/settings.ts",
-      "line": 21,
+      "line": 23,
       "column": 110,
       "scope": "<callback>",
       "target": "kind",
@@ -15439,36 +15439,6 @@
     },
     {
       "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 13,
-      "column": 27,
-      "scope": "<module>",
-      "target": "action",
-      "expression": "action : string ;",
-      "shape": "bare string"
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 13,
-      "column": 101,
-      "scope": "<module>",
-      "target": "kind",
-      "expression": "kind ? : string",
-      "shape": "bare string"
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/playback.ts",
-      "line": 16,
-      "column": 60,
-      "scope": "<module>",
-      "target": "kind",
-      "expression": "kind : string ;",
-      "shape": "bare string"
-    },
-    {
-      "rule": "R8",
       "file": "src/living/body/room.ts",
       "line": 37,
       "column": 62,
@@ -15525,6 +15495,36 @@
       "scope": "<module>",
       "target": "status",
       "expression": "status ? : string ;",
+      "shape": "bare string"
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 11,
+      "column": 27,
+      "scope": "<module>",
+      "target": "action",
+      "expression": "action : string ;",
+      "shape": "bare string"
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 11,
+      "column": 101,
+      "scope": "<module>",
+      "target": "kind",
+      "expression": "kind ? : string",
+      "shape": "bare string"
+    },
+    {
+      "rule": "R8",
+      "file": "src/presentation/playback.ts",
+      "line": 14,
+      "column": 60,
+      "scope": "<module>",
+      "target": "kind",
+      "expression": "kind : string ;",
       "shape": "bare string"
     }
   ]
