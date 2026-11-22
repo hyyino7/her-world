@@ -171,6 +171,28 @@ export declare class CompanionChannels {
                     bufferSeconds: number;
                 };
             };
+            fields: {
+                qq: ({
+                    label: string;
+                    kind: "boolean" | "lines" | "number" | "text";
+                    key: string;
+                } | {
+                    label: string;
+                    kind: "select";
+                    options: Readonly<Record<string, string>>;
+                    key: string;
+                })[];
+                wechat: ({
+                    label: string;
+                    kind: "boolean" | "lines" | "number" | "text";
+                    key: string;
+                } | {
+                    label: string;
+                    kind: "select";
+                    options: Readonly<Record<string, string>>;
+                    key: string;
+                })[];
+            };
             qq: {
                 usage: {
                     requests: number;

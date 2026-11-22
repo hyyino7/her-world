@@ -327,25 +327,21 @@ window.__ModuleLoader__.load({
       }
       const button = (label, action) => h('button', {type:'button', disabled:busy, onClick:action}, label);
       const set = (group,key,value) => setDraft(old => ({...old,[group]:{...old[group],[key]:value}}));
-      function control(group,key,label) {
+      function control(group,{key,label,kind,options}) {
         const value = draft[group][key];
-        if (typeof value === 'boolean') return h('label', {className:'cp-switch',key}, h('input', {type:'checkbox', checked:value,
+        if (kind === 'boolean') return h('label', {className:'cp-switch',key}, h('input', {type:'checkbox', checked:value,
           onChange:e => set(group,key,e.target.checked)}), label);
-        if (Array.isArray(value)) return h('label', {className:'cp-field',key}, label, h('textarea', {value:value.join('\n'),
+        if (kind === 'lines') return h('label', {className:'cp-field',key}, label, h('textarea', {value:value.join('\n'),
           onChange:e => set(group,key,e.target.value.split('\n'))}));
-        if (key === 'groupTrigger') return h('label',{className:'cp-field',key},label,h('select',{value,onChange:e=>set(group,key,e.target.value)},
-          h('option',{value:'mention'},'提到我或使用唤醒词'),h('option',{value:'all'},'所有群消息')));
-        return h('label', {className:'cp-field',key}, label, h('input', {value:value ?? '', type:typeof value === 'number' ? 'number' : 'text',
-          onChange:e => set(group,key,typeof value === 'number' ? Number(e.target.value) : e.target.value)}));
+        if (kind === 'select') return h('label',{className:'cp-field',key},label,h('select',{value,onChange:e=>set(group,key,e.target.value)},
+          ...Object.entries(options).map(([value,label])=>h('option',{key:value,value},label))));
+        return h('label', {className:'cp-field',key}, label, h('input', {value:value ?? '', type:kind,
+          onChange:e => set(group,key,kind === 'number' ? Number(e.target.value) : e.target.value)}));
       }
       function platform(group, name) {
         const config = draft[group], status = saved.messaging[group];
         if (!config) return null;
-        const labels = {enabled:'启用渠道',wsUrl:'本机 OneBot 地址',tokenEnv:'本机凭据环境变量名',accountId:'接入的账号 ID',
-          ownerSpeakerId:'主人的账号 ID',ownerReach:'允许生活会话主动联系主人私聊',allowPrivate:'允许的私聊账号（每行一个）',allowGroups:'允许的群（每行一个）',
-          autoReply:'自动回复',voiceEnabled:'QQ 语音收发',voicePerMinute:'每分钟最多语音条数（0 不限制）',voicePerHour:'每小时最多语音条数（0 不限制）',
-          groupTrigger:'群聊触发方式',groupKeywords:'群聊唤醒词（每行一个）',batchQuietMs:'合并消息等待（毫秒）',
-          contextMessages:'近期消息条数',bufferSeconds:'媒体等待秒数',mutedUntil:'静默到（带时区的时间，可留空）'};
+        const fields = saved.messaging.fields[group];
         return details(name, h('div',null,
           status && h('p',null, [status.state || status.account || (config.enabled ? '等待连接' : '已关闭'),
             status.error, Number.isFinite(status.pending ?? status.outbox) ? '待发 ' + (status.pending ?? status.outbox) : '',
@@ -357,9 +353,9 @@ window.__ModuleLoader__.load({
           Number.isFinite(status?.voiceReceived) && h('p',null,'收到语音 ' + status.voiceReceived + ' · 送达已核对 ' +
             status.voiceVerified + ' · 待核对 ' + status.voiceUncertain),
           status?.path && h('p',null,'本机微信适配器连接文件：' + status.path),
-          h('div',{className:'cp-fields'},...Object.entries(labels).filter(([k])=>Object.hasOwn(config,k)).map(([k,l])=>control(group,k,l))),
+          h('div',{className:'cp-fields'},...fields.map(field=>control(group,field))),
           button('保存' + name + '设置', ()=>change('messagingSettings',{expected:saved.messaging.config,next:{[group]:Object.fromEntries(
-            Object.entries(config).map(([k,v])=>[k,Array.isArray(v) ? v.map(x=>x.trim()).filter(Boolean) : v]))}}))));
+            fields.map(({key,kind})=>[key,kind === 'lines' ? config[key].map(x=>x.trim()).filter(Boolean) : config[key]]))}}))));
       }
       const updateOutlet = (i,key,value) => set('bridge','outlets',draft.bridge.outlets.map((o,j)=>i===j ? {...o,[key]:value} : o));
       return h(Card, {title:'外部联络'}, fault && h('p',{role:'alert'},fault),
@@ -367,7 +363,7 @@ window.__ModuleLoader__.load({
         draft && h(React.Fragment,null,platform('qq','QQ'),platform('wechat','微信'),
           saved.messaging.config.qq.accountId && h(Qzone,{key:saved.messaging.config.qq.accountId,workspaceId,request}),
           ...saved.messaging.config.qq.allowGroups.map(groupId=>h(QQGroup,{key:groupId,groupId,workspaceId,request})),
-          details('本地程序和推送', h('div',null, control('bridge','enabled','允许本机受信程序给生活会话发消息'),
+          details('本地程序和推送', h('div',null, control('bridge',{key:'enabled',kind:'boolean',label:'允许本机受信程序给生活会话发消息'}),
             saved.bridge.discovery && h('p',null,'本机连接资料保存在 ' + saved.bridge.discovery),
             ...draft.bridge.outlets.map((o,i)=>h('div',{key:i,className:'cp-fields'},
               h('label',{className:'cp-field'},'接收端名称',h('input',{value:o.name,onChange:e=>updateOutlet(i,'name',e.target.value)})),

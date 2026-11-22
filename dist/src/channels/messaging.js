@@ -9,7 +9,7 @@ import { check, digest } from '../core/storage.js';
 import { privateDeviceDirectory } from './bridge.js';
 import { channelUsage } from './usage.js';
 import { createChannelHomes } from './sessions.js';
-import { allowedIdentity, messagingPreferences, ownerIdentity } from './messaging-settings.js';
+import { allowedIdentity, editableMessagingFields, messagingPreferences, ownerIdentity } from './messaging-settings.js';
 import { createQzoneLedger } from './group-qzone.js';
 import { createGroupGameplay } from './group-material.js';
 import { openQQ } from './qq.js';
@@ -216,7 +216,7 @@ export async function createMessaging(ctx, host, options) {
             return !active() || !config.qq.enabled ? 'off' : qq?.status().connected ? 'online' : 'unavailable';
         },
         status() {
-            return { config: structuredClone(config), qq: { connected: false, state: config.qq.enabled ? 'unavailable' : 'off', error: qqError,
+            return { config: structuredClone(config), fields: editableMessagingFields(), qq: { connected: false, state: config.qq.enabled ? 'unavailable' : 'off', error: qqError,
                     sent: 0, failed: 0, blocked: 0, outbox: 0, voiceReceived: 0, voiceVerified: 0, voiceUncertain: 0, ...qq?.status(), usage: usage.read('qq', config.qq.accountId), credentialSet: !!config.qq.tokenEnv && !!process.env[config.qq.tokenEnv] },
                 wechat: { account: null, lastContactAt: null, chats: 0, pending: 0, uncertain: 0, ...wx?.status(), error: wxError, path: wxFile, presence: wx?.presence(new Date()) ?? null, usage: usage.read('wechat', config.wechat.accountId) } };
         },

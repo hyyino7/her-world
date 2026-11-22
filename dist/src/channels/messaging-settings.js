@@ -1,9 +1,37 @@
 import { check, integer } from '../core/storage.js';
+const messagingFields = {
+    enabled: { label: '启用渠道', kind: 'boolean', device: true },
+    wsUrl: { label: '本机 OneBot 地址', kind: 'text', device: true },
+    tokenEnv: { label: '本机凭据环境变量名', kind: 'text', device: true },
+    accountId: { label: '接入的账号 ID', kind: 'text', device: true },
+    ownerSpeakerId: { label: '主人的账号 ID', kind: 'text' },
+    ownerReach: { label: '允许生活会话主动联系主人私聊', kind: 'boolean' },
+    allowPrivate: { label: '允许的私聊账号（每行一个）', kind: 'lines' },
+    allowGroups: { label: '允许的群（每行一个）', kind: 'lines' },
+    autoReply: { label: '自动回复', kind: 'boolean' },
+    voiceEnabled: { label: 'QQ 语音收发', kind: 'boolean' },
+    voicePerMinute: { label: '每分钟最多语音条数（0 不限制）', kind: 'number' },
+    voicePerHour: { label: '每小时最多语音条数（0 不限制）', kind: 'number' },
+    groupTrigger: { label: '群聊触发方式', kind: 'select', options: { mention: '提到我或使用唤醒词', all: '所有群消息' } },
+    groupKeywords: { label: '群聊唤醒词（每行一个）', kind: 'lines' },
+    batchQuietMs: { label: '合并消息等待（毫秒）', kind: 'number' },
+    contextMessages: { label: '近期消息条数', kind: 'number' },
+    bufferSeconds: { label: '媒体等待秒数', kind: 'number' },
+    mutedUntil: { label: '静默到（带时区的时间，可留空）', kind: 'text' },
+};
 export const defaults = {
     qq: { enabled: false, ownerReach: false, accountId: '', ownerSpeakerId: '', allowPrivate: [], allowGroups: [], contextMessages: 5,
         wsUrl: 'ws://127.0.0.1:3001', tokenEnv: '', autoReply: true, voiceEnabled: false, voicePerMinute: 2, voicePerHour: 10, groupTrigger: 'mention', groupKeywords: [], batchQuietMs: 0, mutedUntil: '' },
     wechat: { enabled: false, ownerReach: false, accountId: '', ownerSpeakerId: '', allowPrivate: [], allowGroups: [], contextMessages: 5, bufferSeconds: 3 },
 };
+export function editableMessagingFields() {
+    const fields = (platform) => Object.entries(messagingFields)
+        .filter(([key]) => Object.hasOwn(defaults[platform], key)).map(([key, { device, ...field }]) => ({ key, ...field }));
+    return { qq: fields('qq'), wechat: fields('wechat') };
+}
+export function isDeviceMessagingField(platform, key) {
+    return Object.hasOwn(defaults[platform], key) && 'device' in messagingFields[key];
+}
 const identifier = (value, max = 160) => typeof value === 'string' && value.length <= max && value === value.trim() && !/[\u0000-\u001F]/.test(value);
 function listed(values) { return Array.isArray(values) && values.length <= 1000 && values.every(v => identifier(v) && v !== '') && new Set(values).size === values.length; }
 export function messagingPreferences(before, patch) {

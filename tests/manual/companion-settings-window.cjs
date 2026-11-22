@@ -84,10 +84,11 @@ async function check() {
       op==='album'?{photos:[],total:0,offset:0,limit:12,hasMore:false}:undefined,
     act: async (_id, action) => {const result=upstreamHome.applyHomeAction(lifeState,{action,at:Date.now()});lifeState=result.state;return result;}
   };
-  const channelDefaults = (await import('../../dist/src/channels/messaging-settings.js')).defaults;
+  const {defaults:channelDefaults,editableMessagingFields} = await import('../../dist/src/channels/messaging-settings.js');
   const channels = {request:async(_id,op)=>{
     if (op==='groupState') return {settings:{affinity:true,slang:true,stickers:true,forwards:true,roleCard:'',roleMode:'v2'},slang:[],affinity:[],stickers:[]};
-    return {bridge:{preferences:{enabled:false,outlets:[]}},messaging:{config:{...channelDefaults,qq:{...channelDefaults.qq,allowGroups:['123']}}}};
+    return {bridge:{preferences:{enabled:false,outlets:[]}},messaging:{fields:editableMessagingFields(),
+      config:{...channelDefaults,qq:{...channelDefaults.qq,allowGroups:['123']}}}};
   }};
   let openedRooms=0;const room={open:async workspaceId=>({workspaceId,open:++openedRooms}),status:()=>({running:false})};
   const {PetPlatform}=await import('../../dist/src/desktop/platform/plugin.js');
