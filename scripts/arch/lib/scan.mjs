@@ -11,17 +11,26 @@ export function scan(root,{objectTables=false}={}) {
   const modules=Object.entries(layers.modules),services=new Set();
   for(const [id,m] of modules) {
     if(![1,2,3].includes(m.layer))throw Error(`无效层：${id}`);
+    if(m.sharedLeaf&&(m.layer!==3||[m.services,m.dependencies,m.reads,m.publishes,m.subscribes].some(rows=>rows.length))) {
+      throw Error(`第三层共用叶子不能依赖其他模块或提供运行时登记：${id}`);
+    }
     for(const s of m.services){if(services.has(s))throw Error(`重复服务：${s}`);services.add(s);}
     for(const to of m.dependencies) {
       const other=layers.modules[to];
-      if(!other || to!==id&&(other.layer>m.layer||m.layer===3&&other.layer===3))throw Error(`不合规的依赖声明：${id} → ${to}`);
+      const permittedLeaf=other?.sharedLeaf&&m.layer===3&&['desktop','room','console'].includes(id);
+      if(!other||to!==id&&(other.layer>m.layer||m.layer===3&&other.layer===3&&!permittedLeaf)) {
+        throw Error(`不合规的依赖声明：${id} → ${to}`);
+      }
     }
   }
   for(const [id,m] of modules)for(const service of m.reads) {
     const owner=modules.find(([,other])=>other.services.includes(service))?.[0];
     if(!owner||!allowed(layers,id,owner))throw Error(`不合规的服务读取声明：${id} → ${service}`);
   }
-  for(const row of storage.entries)for(const id of [row.owner,row.containerOwner,...row.writers])if(!layers.modules[id])throw Error(`存储模块 ID 不存在：${id}`);
+  for(const row of storage.entries)for(const id of [row.owner,row.containerOwner,...row.writers]) {
+    if(!layers.modules[id])throw Error(`存储模块 ID 不存在：${id}`);
+    if(layers.modules[id].sharedLeaf)throw Error(`第三层共用叶子不能登记持久存储：${id} → ${row.id}`);
+  }
   const generated=modules.flatMap(([,m])=>m.generated),skipped=generated.map(g=>g.file).sort();
   const paths=new Set(filesUnder(join(root,'src')).filter(p=>!skipped.includes(p.slice(root.length+1))));
   const skippedVendorSources=new Set();
