@@ -1,5 +1,5 @@
 import {CONTRACT_VERSION} from '../contracts/version.js';
-import type {CapabilityStatus, ServiceCall} from '../contracts/common.js';
+import {unknownEffect, type CapabilityStatus, type ServiceCall} from '../contracts/common.js';
 import type {AttentionPolicy, CompanionIdentity, CoreService} from '../contracts/core.js';
 import type {CapabilityRegistration} from '../contracts/tables.js';
 import {CoreAuthority} from './authority.js';
@@ -115,7 +115,7 @@ export class CoreRuntime {
         }catch{/* Committed configuration remains authoritative. */}
         return {ok:true,value:structuredClone(value)};
       } catch(error){
-        return {ok:false,error:this.fileEffect?{code:'OUTCOME_UNKNOWN',message:'Workspace file changed; refresh to reconcile the acknowledged state',effect:'unknown',retry:'reconcile'}:error instanceof Rejection?error.detail:error instanceof TypeError
+        return {ok:false,error:this.fileEffect?unknownEffect('OUTCOME_UNKNOWN', 'Workspace file changed; refresh to reconcile the acknowledged state'):error instanceof Rejection?error.detail:error instanceof TypeError
           ?{code:'INVALID_ARGUMENT',message:'Malformed request object',effect:'none',retry:'never'}
           :{code:'INTERNAL',message:'Core operation failed; inspect local diagnostics',effect:'none',retry:'never'}};
       }

@@ -1,10 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
-import type { ContractError } from '../contracts/common.js';
+import type { ContractError, RejectedCode } from '../contracts/common.js';
 export declare class Rejection extends Error {
     readonly detail: ContractError;
     constructor(detail: ContractError);
 }
-export declare function reject(code: 'INVALID_ARGUMENT' | 'UNAUTHORIZED' | 'NOT_FOUND' | 'CONFLICT' | 'STALE_REVISION' | 'STALE_BINDING' | 'INELIGIBLE' | 'DISABLED' | 'LIMIT_REACHED' | 'NOT_IMPLEMENTED' | 'INCOMPATIBLE', message: string): never;
+export declare function reject(code: Exclude<RejectedCode, 'EXPIRED_USE'>, message: string): never;
 export declare function unavailable(message: string): never;
 export declare function check(condition: unknown, message: string): asserts condition;
 export declare function text(value: unknown, label: string, max?: number): asserts value is string;

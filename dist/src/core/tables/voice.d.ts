@@ -1,4 +1,4 @@
-import { Context } from '@deepseek-ai/cordis';
+import { type Context } from '@deepseek-ai/cordis';
 import type { VoiceCall, VoiceProvider } from '../../contracts/voice.js';
 export declare class VoiceTable {
     private readonly slots;

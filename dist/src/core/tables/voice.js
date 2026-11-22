@@ -1,15 +1,10 @@
-import { Context } from '@deepseek-ai/cordis';
 import { addAbortListener } from 'node:events';
-import { RegistrationTable } from './registry.js';
+import { RegistrationTable, serviceIsolation } from './registry.js';
 const service = 'petVoice';
-function voiceLabel(contextScope) {
-    contextScope.root[Context.isolate][service] ??= Symbol(service);
-    return contextScope[Context.isolate][service];
-}
 export class VoiceTable {
     slots = new Map();
     register(scope, provider) {
-        const label = voiceLabel(scope);
+        const label = serviceIsolation(scope, service);
         let slot = this.slots.get(label);
         if (!slot)
             this.slots.set(label, slot = new RegistrationTable());
@@ -28,7 +23,7 @@ export class VoiceTable {
         };
     }
     lookup(ctx, callerSignal) {
-        const entry = this.slots.get(voiceLabel(ctx))?.get(service);
+        const entry = this.slots.get(serviceIsolation(ctx, service))?.get(service);
         if (!entry?.lease.isCurrent())
             return;
         const { provider, scope, signal: lifetime } = entry.value;

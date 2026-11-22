@@ -1,4 +1,5 @@
 import { CONTRACT_VERSION } from '../contracts/version.js';
+import { unknownEffect } from '../contracts/common.js';
 import { CoreAuthority } from './authority.js';
 import { conversationOptions } from './options.js';
 import { canonical, check, CoreStore, id, reject, Rejection, revision, text, timestamp } from './storage.js';
@@ -132,7 +133,7 @@ export class CoreRuntime {
                 return { ok: true, value: structuredClone(value) };
             }
             catch (error) {
-                return { ok: false, error: this.fileEffect ? { code: 'OUTCOME_UNKNOWN', message: 'Workspace file changed; refresh to reconcile the acknowledged state', effect: 'unknown', retry: 'reconcile' } : error instanceof Rejection ? error.detail : error instanceof TypeError
+                return { ok: false, error: this.fileEffect ? unknownEffect('OUTCOME_UNKNOWN', 'Workspace file changed; refresh to reconcile the acknowledged state') : error instanceof Rejection ? error.detail : error instanceof TypeError
                         ? { code: 'INVALID_ARGUMENT', message: 'Malformed request object', effect: 'none', retry: 'never' }
                         : { code: 'INTERNAL', message: 'Core operation failed; inspect local diagnostics', effect: 'none', retry: 'never' } };
             }

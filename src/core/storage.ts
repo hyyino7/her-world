@@ -2,13 +2,13 @@ import { backup, DatabaseSync } from 'node:sqlite';
 import { createHash, randomUUID } from 'node:crypto';
 import { chmodSync, closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import type { ContractError } from '../contracts/common.js';
+import type { ContractError, RejectedCode } from '../contracts/common.js';
 import { closeSqliteLease, setSqliteMeta } from './sqlite.js';
 
 export class Rejection extends Error {
   constructor(readonly detail: ContractError) { super(detail.message); }
 }
-export function reject(code: 'INVALID_ARGUMENT' | 'UNAUTHORIZED' | 'NOT_FOUND' | 'CONFLICT' | 'STALE_REVISION' | 'STALE_BINDING' | 'INELIGIBLE' | 'DISABLED' | 'LIMIT_REACHED' | 'NOT_IMPLEMENTED' | 'INCOMPATIBLE', message: string): never {
+export function reject(code: Exclude<RejectedCode, 'EXPIRED_USE'>, message: string): never {
   throw new Rejection({ code, message, effect: 'none', retry: code.startsWith('STALE') ? 'refresh' : 'never' });
 }
 export function unavailable(message: string): never {

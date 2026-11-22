@@ -1,4 +1,4 @@
-import type { CapabilityStatus, ServiceCall } from '../contracts/common.js';
+import { type CapabilityStatus, type ServiceCall } from '../contracts/common.js';
 import type { AttentionPolicy, CompanionIdentity, CoreService } from '../contracts/core.js';
 import type { CapabilityRegistration } from '../contracts/tables.js';
 import { CoreAuthority } from './authority.js';

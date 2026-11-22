@@ -1,14 +1,9 @@
-import {Context, FiberState} from '@deepseek-ai/cordis';
+import {type Context, FiberState} from '@deepseek-ai/cordis';
 import {addAbortListener} from 'node:events';
 import type {VoiceCall, VoiceProvider} from '../../contracts/voice.js';
-import {RegistrationTable} from './registry.js';
+import {RegistrationTable, serviceIsolation} from './registry.js';
 
 const service = 'petVoice';
-
-function voiceLabel(contextScope: Context) {
-  contextScope.root[Context.isolate][service] ??= Symbol(service);
-  return contextScope[Context.isolate][service];
-}
 
 export class VoiceTable {
   private readonly slots = new Map<symbol, RegistrationTable<{
@@ -18,7 +13,7 @@ export class VoiceTable {
   }>>();
 
   register(scope: Context, provider: VoiceProvider) {
-    const label = voiceLabel(scope);
+    const label = serviceIsolation(scope, service);
     let slot = this.slots.get(label);
     if (!slot) this.slots.set(label, slot = new RegistrationTable());
     const lifetime = new AbortController();
@@ -36,7 +31,7 @@ export class VoiceTable {
   }
 
   lookup(ctx: Context, callerSignal?: AbortSignal): VoiceCall | undefined {
-    const entry = this.slots.get(voiceLabel(ctx))?.get(service);
+    const entry = this.slots.get(serviceIsolation(ctx, service))?.get(service);
     if (!entry?.lease.isCurrent()) return;
     const {provider, scope, signal: lifetime} = entry.value;
     if (scope.root !== ctx.root || scope.fiber.state !== FiberState.ACTIVE) return;
