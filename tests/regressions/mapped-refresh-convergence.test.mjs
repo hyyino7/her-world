@@ -3,8 +3,8 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {join} from 'node:path';
+import {compiledURL} from '../fixtures/playback.mjs';
 import {syncBuiltinESMExports} from 'node:module';
 import childProcess from 'node:child_process';
 import net from 'node:net';
@@ -26,10 +26,9 @@ for(const [object,keys] of [[net,['connect','createConnection']],[net.Socket.pro
 syncBuiltinESMExports();
 after(()=>{for(const undo of restore.reverse())undo();syncBuiltinESMExports();assert.deepEqual(forbidden,[]);});
 
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {PetPlatform}=await import(new URL('../../desktop/platform/plugin.js',playbackURL));
-const {CompanionBehavior}=await import(new URL('./plugin.js',playbackURL));
-const {DEFAULT_COMPANION_SETTINGS}=await import(new URL('../../core/companion-settings.js',playbackURL));
+const {PetPlatform}=await import(compiledURL('desktop/platform/plugin.js'));
+const {CompanionBehavior}=await import(compiledURL('living/body/plugin.js'));
+const {DEFAULT_COMPANION_SETTINGS}=await import(compiledURL('core/companion-settings.js'));
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return{promise,resolve};};
 const snapshot=(revision=1,bootId='fixture-boot',label='Quiet rest')=>({
   her:{kind:'idle',activity:label,asleep:false},body:{energy:.8},

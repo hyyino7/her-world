@@ -2,8 +2,8 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,realpathSync,readFileSync,readdirSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {join} from 'node:path';
+import {compiledURL} from '../fixtures/playback.mjs';
 import {syncBuiltinESMExports} from 'node:module';
 import childProcess from 'node:child_process';
 import net from 'node:net';
@@ -23,12 +23,11 @@ for(const [object,keys] of [[net,['connect','createConnection']],[net.Socket.pro
 syncBuiltinESMExports();
 after(()=>{for(const undo of restore.reverse())undo();syncBuiltinESMExports();assert.deepEqual(forbidden,[]);});
 
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {createCore}=await import(new URL('../../core/index.js',playbackURL));
-const {GroupSocial,defaultWake}=await import(new URL('../../channels/group-social.js',playbackURL));
-const {createGroupGameplay}=await import(new URL('../../channels/group-material.js',playbackURL));
-const {createMessaging}=await import(new URL('../../channels/messaging.js',playbackURL));
-const {defaults,messagingPreferences,allowedIdentity}=await import(new URL('../../channels/messaging-settings.js',playbackURL));
+const {createCore}=await import(compiledURL('core/index.js'));
+const {GroupSocial,defaultWake}=await import(compiledURL('channels/group-social.js'));
+const {createGroupGameplay}=await import(compiledURL('channels/group-material.js'));
+const {createMessaging}=await import(compiledURL('channels/messaging.js'));
+const {defaults,messagingPreferences,allowedIdentity}=await import(compiledURL('channels/messaging-settings.js'));
 const value=result=>{assert.equal(result.ok,true,JSON.stringify(result));return result.value;};
 const settings=patch=>({...defaultWake,atMention:false,nameMention:true,question:false,maxPerMinute:60,maxPerHour:1000,...patch});
 const identity=(messageId,group='10',extra={})=>({channel:'qq',accountId:'42',speakerId:'qq:7',speakerName:'Visitor',

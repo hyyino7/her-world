@@ -2,8 +2,8 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,realpathSync,readFileSync,existsSync,cpSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {join} from 'node:path';
+import {compiledURL} from '../fixtures/playback.mjs';
 import {syncBuiltinESMExports} from 'node:module';
 import childProcess from 'node:child_process';
 import net from 'node:net';
@@ -26,9 +26,8 @@ for(const [object,keys] of [[net,['connect','createConnection']],[net.Socket.pro
 syncBuiltinESMExports();
 after(()=>{for(const restore of restores.reverse())restore();syncBuiltinESMExports();assert.deepEqual(forbidden,[]);});
 
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {createCore}=await import(new URL('../../core/index.js',playbackURL));
-const {CompanionChannels}=await import(new URL('../../channels/plugin.js',playbackURL));
+const {createCore}=await import(compiledURL('core/index.js'));
+const {CompanionChannels}=await import(compiledURL('channels/plugin.js'));
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
 const value=result=>{assert.equal(result.ok,true,JSON.stringify(result));return result.value;};
 
