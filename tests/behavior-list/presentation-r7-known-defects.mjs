@@ -26,33 +26,6 @@ test('Console 重载后 Connection 对同一路由应只登记一次',async t=>{
   assert.equal((await readRpcResult(await f.dispatch(f.request(endpoint,'after-reload',{})),'after-reload')).ok,true);
 });
 
-// 第三批 Room 上线前转绿：取消必须抵达 Body 提交边界。
-test('Room 已准入但尚未写入时取消，Body 应保持零效果',async t=>{
-  const f=await presentationFixture(t);
-  await f.mount('room');
-  await f.mount('console');
-  await f.body.roomState(f.id);
-  const entered=Promise.withResolvers(),resume=Promise.withResolvers();
-  await f.ctx.plugin(scope=>scope.provide('petEmotion',{
-    read() { entered.resolve();return resume.promise; },
-    roomSnapshot() {},
-  }));
-  const stop=new AbortController();
-  const id='room-cancel-before-commit',text='Synthetic note before commit';
-  const response=f.roomAction(id,text,stop.signal);
-  try {
-    await entered.promise;
-    assert.equal(f.persistedRoom(id,text).receipt,undefined,'取消时 Body 尚未写入');
-    assert.deepEqual(f.persistedRoom(id,text).notes,[]);
-    stop.abort();
-  } finally {
-    resume.resolve();
-  }
-  assert.equal((await response).error.code,'CANCELLED');
-  const {receipt,notes}=f.persistedRoom(id,text);
-  assert.deepEqual({hasReceipt:Boolean(receipt),effects:notes.length},{hasReceipt:false,effects:0});
-});
-
 async function desktopFeedingFixture(t,{declareBody=true}={}) {
   const f=await presentationFixture(t);
   await f.mount('desktop');

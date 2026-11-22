@@ -1524,6 +1524,24 @@
       "families": []
     },
     {
+      "id": "3-ROOM-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 已准入但尚未写入时取消，Body 应保持零效果",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 回到 A 后丢弃旧 A 的读写和通知，新窗口只接收当前代次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-VOICE-01",
       "categories": [],
       "level": "L1",

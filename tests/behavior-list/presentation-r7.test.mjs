@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {mkdtempSync,realpathSync,rmSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {memoryPlugin} from '../../dist/tests/behavior-list/entries.js';
 import {lookupLifeOutlet} from '../../dist/src/living/outlets.js';
 import {eventually,submitPlan} from './entries-lifecycle.test.mjs';
@@ -197,4 +201,99 @@ test('Room 在已收到请求但尚未准入写入时取消，Body 没有回执�
   assert.equal(receipt,undefined);
   assert.deepEqual(notes,[]);
   assert.deepEqual(await f.body.pendingFacts(f.id),[]);
+});
+
+test('Room 已准入但尚未写入时取消，Body 应保持零效果',async t=>{
+  const f=await presentationFixture(t);
+  await f.mount('room');
+  await f.mount('console');
+  await f.body.roomState(f.id);
+  const entered=Promise.withResolvers(),resume=Promise.withResolvers();
+  await f.ctx.plugin(scope=>scope.provide('petEmotion',{
+    read() { entered.resolve();return resume.promise; },
+    roomSnapshot() {},
+  }));
+  const stop=new AbortController();
+  const id='room-cancel-before-commit',text='Synthetic note before commit';
+  const response=f.roomAction(id,text,stop.signal);
+  try {
+    await entered.promise;
+    assert.equal(f.persistedRoom(id,text).receipt,undefined,'取消时 Body 尚未写入');
+    assert.deepEqual(f.persistedRoom(id,text).notes,[]);
+    stop.abort();
+  } finally {
+    resume.resolve();
+  }
+  assert.equal((await response).error.code,'CANCELLED');
+  const {receipt,notes}=f.persistedRoom(id,text);
+  assert.deepEqual({hasReceipt:Boolean(receipt),effects:notes.length},{hasReceipt:false,effects:0});
+});
+
+
+test('Room 回到 A 后丢弃旧 A 的读写和通知，新窗口只接收当前代次',async t=>{
+  const f=await presentationFixture(t,{order:['body']});
+  await f.mount('room');
+  await f.mount('console');
+  await f.body.roomState(f.id);
+  const secondPath=realpathSync(mkdtempSync(join(tmpdir(),'her-world-room-b-')));
+  t.after(()=>rmSync(secondPath,{recursive:true,force:true}));
+  const second=await f.registry.create(secondPath);
+  const select=async target=>{
+    const call=(id)=>f.core.operator.request(id+'-'+randomUUID());
+    const read=await f.core.services.preferences.read(call('read'),{});
+    assert.equal(read.ok,true);
+    const {id,path,title}=target;
+    const saved=await f.core.services.preferences.save(call('save'),{expectedRevision:read.value.revision,
+      conversation:read.value.conversation,workspace:{id,path,title}});
+    assert.equal(saved.ok,true,JSON.stringify(saved));
+    const ready=await f.core.services.workspace.initialize(call('initialize'),{expectedPreferencesRevision:saved.value.revision});
+    assert.equal(ready.ok,true,JSON.stringify(ready));
+    assert.equal(ready.value.state,'ready');
+    return f.core.workspace.homeScope();
+  };
+  const window=f.ctx.petRoom.window, messages=[];
+  const receive=t.mock.method(window,'send',message=>messages.push(message));
+  const openFixture=bound=>Object.assign(window,{bound,loaded:true,lifetime:new AbortController(),
+    child:{stdin:{end() {}},once() {},exitCode:0}});
+  t.after(()=>{window.closeWindow();receive.mock.restore();});
+  const first=f.core.workspace.homeScope();
+  openFixture(first);
+
+  const entered=Promise.withResolvers(), resume=Promise.withResolvers();
+  await f.ctx.plugin(scope=>scope.provide('petEmotion',{
+    async read() {entered.resolve();await resume.promise;}, roomSnapshot() {},
+  }));
+  const id='room-stale-a',text='Old A synthetic note';
+  const writing=f.roomAction(id,text);
+  const reading=f.dispatch(f.request('roomState','read-before-switch',{workspaceId:f.id,data:{}}))
+    .then(response=>readRpcResult(response,'read-before-switch'));
+  let current;
+  try {
+    await entered.promise;
+    assert.equal(f.persistedRoom(id,text).receipt,undefined);
+    const other=await select(second);
+    assert.notEqual(other.storageId,first.storageId);
+    assert.equal(window.status().running,false);
+    current=await select(f.bound);
+    assert.equal(current.storageId,first.storageId);
+    assert.equal(current.path,first.path);
+    assert.notEqual(current.generation,first.generation);
+    assert.deepEqual(messages,[]);
+    openFixture(current);
+    f.ctx.emit('world.changed',{...first,bodyOnly:true});
+  } finally {resume.resolve();}
+  assert.equal((await writing).error?.code,'STALE_BINDING');
+  assert.equal((await reading).error?.code,'STALE_BINDING');
+  assert.deepEqual(f.persistedRoom(id,text).notes,[]);
+  assert.equal(f.persistedRoom(id,text).receipt,undefined);
+  assert.deepEqual(messages,[]);
+
+  const fresh=await f.roomAction(id,'Current A synthetic note');
+  assert.equal(fresh.ok,true,JSON.stringify(fresh));
+  assert.equal(f.persistedRoom(id,'Current A synthetic note').notes.length,1);
+  const {bootId,revision}=fresh.value.behavior;
+  assert.ok(messages.some(message=>message.type==='changed'&&message.change.bootId===bootId&&message.change.revision===revision));
+  await select(second);
+  const b=await f.ctx.petRoom.request(second.id,'roomState',{},'read-current-b',new AbortController().signal);
+  assert.ok(!JSON.stringify(b).includes('synthetic note'));
 });

@@ -38,6 +38,16 @@ test('Room and garden consume covered versions but follow newer, explicit and re
   readers.visibility(true);await readers.start();await readers.drain();assert.ok(readers.counts.main>hidden.main&&readers.counts.garden>hidden.garden);
 });
 
+test('Plan and wallet invalidation refresh Room and garden at the same Body revision',async()=>{
+  const {body}=bodyFixture();
+  const readers=roomReaders(()=>body.roomState('a'),()=>body.garden('a','state'));
+  await readers.start();await readers.drain();
+  const before=readers.counts;
+  readers.changed({...body.presentationVersion(),reason:'world'});
+  await readers.drain();
+  assert.deepEqual(readers.counts,{main:before.main+1,garden:before.garden+1});
+});
+
 for(const trigger of ['newer','boot','explicit'])test('in-flight Room/garden reads retain '+trigger+' refreshes',async()=>{
   let version={bootId:'one',revision:1},release,held=true;
   const pending=new Promise(resolve=>{release=resolve;});
