@@ -3,16 +3,6 @@
   "entries": [
     {
       "rule": "R1",
-      "file": "scripts/build/build-desktop-animation.mjs",
-      "line": 8,
-      "column": 1,
-      "scope": "<module>",
-      "target": "scripts/build/build-life-media.mjs",
-      "expression": "import { verifyLifeMedia } from \"./build-life-media.mjs\" ;",
-      "reason": "本地依赖未声明模块归属"
-    },
-    {
-      "rule": "R1",
       "file": "src/console/plugin.ts",
       "line": 3,
       "column": 1,
@@ -191,36 +181,6 @@
     },
     {
       "rule": "R1",
-      "file": "src/desktop/features.ts",
-      "line": 17,
-      "column": 50,
-      "scope": "upstream",
-      "target": "?",
-      "expression": "import ( \"./upstream/host/\" + file + \".js\" )",
-      "reason": "无法静态判定本地依赖"
-    },
-    {
-      "rule": "R2",
-      "file": "src/desktop/features.ts",
-      "line": 69,
-      "column": 43,
-      "scope": "DesktopFeatures/get",
-      "target": "?",
-      "expression": "this . ctx . get ( name as never )",
-      "reason": "无法静态判定"
-    },
-    {
-      "rule": "R2",
-      "file": "src/desktop/index.ts",
-      "line": 276,
-      "column": 21,
-      "scope": "registerDesktop/service",
-      "target": "?",
-      "expression": "context . get ( key )",
-      "reason": "无法静态判定"
-    },
-    {
-      "rule": "R1",
       "file": "src/desktop/platform/migration.ts",
       "line": 28,
       "column": 16,
@@ -238,50 +198,6 @@
       "target": "?",
       "expression": "load ( join ( vendor , \"runtime.mjs\" ) )",
       "reason": "无法静态判定本地依赖"
-    },
-    {
-      "rule": "R2",
-      "file": "src/desktop/platform/plugin.ts",
-      "line": 143,
-      "column": 102,
-      "scope": "PetPlatform/ensure/get",
-      "target": "?",
-      "expression": "host . get ( n , false )",
-      "reason": "无法静态判定"
-    },
-    {
-      "rule": "R3",
-      "file": "src/desktop/platform/plugin.ts",
-      "line": 146,
-      "column": 68,
-      "scope": "PetPlatform/ensure/on",
-      "target": "?",
-      "expression": "host . on ( event , ( item : any , data : any ) => { const session = item ?. session ?? item ; if ( ! scope . signal . aborted && session ?. header ?. cwd === target . path && host . petCore . workspace . sessionStatus ( session , host . get ( \"workspaceRegistry\" , false ) ) ?. target ?. id === target . id ) receive ( item , data ) ; } , { global : true } )",
-      "reason": "无法静态判定事件"
-    },
-    {
-      "rule": "R2",
-      "file": "src/desktop/platform/plugin.ts",
-      "line": 598,
-      "column": 18,
-      "scope": "PetPlatform/handle",
-      "target": "petRoom",
-      "expression": "( this . ctx as any ) . get ( \"petRoom\" , false )",
-      "from": "desktop",
-      "to": "room",
-      "reason": "服务读取未获准或方向违规"
-    },
-    {
-      "rule": "R2",
-      "file": "src/desktop/platform/plugin.ts",
-      "line": 605,
-      "column": 20,
-      "scope": "PetPlatform/handle",
-      "target": "petRoom",
-      "expression": "( this . ctx as any ) . get ( \"petRoom\" , false )",
-      "from": "desktop",
-      "to": "room",
-      "reason": "服务读取未获准或方向违规"
     },
     {
       "rule": "R1",

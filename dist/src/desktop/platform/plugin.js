@@ -158,18 +158,32 @@ export class PetPlatform {
         this.mediaToken = randomBytes(32).toString('hex');
         const scope = this.scope;
         try {
-            const host = this.ctx;
+            const ctx = this.ctx;
+            const { logger, connection, webServer } = ctx;
             const bridge = {
-                logger: host.logger, connection: host.connection, webServer: host.webServer, get: (n) => host.get(n, false),
+                logger, connection, webServer,
+                get: (name) => {
+                    // 上游 setup 和路由只经 optionalService 读取这三项。
+                    switch (name) {
+                        case 'standaloneAi': return ctx.get('standaloneAi', false);
+                        case 'attachments': return ctx.get('attachments', false);
+                        case 'shutdownApp': return ctx.get('shutdownApp', false);
+                    }
+                },
                 provide: (_n, value) => { this.providers = value; },
                 effect: (setup) => { const stop = setup(); if (stop)
                     this.cleanup.push(stop); },
-                on: (event, receive) => host.on(event, (item, data) => {
-                    const session = item?.session ?? item;
-                    if (!scope.signal.aborted && session?.header?.cwd === target.path &&
-                        host.petCore.workspace.sessionStatus(session, host.get('workspaceRegistry', false))?.target?.id === target.id)
-                        receive(item, data);
-                }, { global: true }),
+                on: (event, receive) => {
+                    const forward = (item, data) => {
+                        const session = item?.session ?? item;
+                        if (!scope.signal.aborted && session?.header?.cwd === target.path &&
+                            ctx.petCore.workspace.sessionStatus(session, ctx.get('workspaceRegistry', false))?.target?.id === target.id)
+                            receive(item, data);
+                    };
+                    if (event === 'session/event')
+                        return ctx.on('session/event', forward, { global: true });
+                    return ctx.on('agent/error', forward, { global: true });
+                },
             };
             const setup = this.setup = upstream.createHostSetup(bridge, this.directory);
             const lookup = this.lookup = upstream.createPetLookup(setup);
@@ -699,6 +713,12 @@ export class PetPlatform {
         if (action === 'pet')
             return this.lookup.lockBlocked(who.petId, params);
     }
+    openRoom() {
+        const open = this.ctx.petCore.native.companionPorts.get('openRoomWindow');
+        if (!open)
+            throw Error('房间模块未启用');
+        return open(this.bound.id);
+    }
     async handle(url, method, raw, signal, actorKind = 'owner') {
         this.ensure();
         const rest = decodeURIComponent(url.pathname.slice(route.length + 1)), pet = url.searchParams.get('pet') || 'main';
@@ -727,18 +747,12 @@ export class PetPlatform {
         if (rest === 'room-window') {
             if (method !== 'POST')
                 return json({ ok: false }, 405);
-            const room = this.ctx.get('petRoom', false);
-            if (!room)
-                throw Error('房间模块未启用');
-            return json(await room.open(this.bound.id));
+            return json(await this.openRoom());
         }
         if (rest === 'menu/click' && method === 'POST') {
             const input = JSON.parse(raw || '{}');
             if (input.owner === 'chatpet.room') {
-                const room = this.ctx.get('petRoom', false);
-                if (!room)
-                    throw Error('房间模块未启用');
-                await room.open(this.bound.id);
+                await this.openRoom();
                 return json({ ok: true });
             }
             if (input.owner === 'chatpet.native-chat') {

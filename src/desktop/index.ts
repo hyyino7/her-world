@@ -268,29 +268,24 @@ export class Desktop {
 
 export function registerDesktop(ctx: Context, host: PetCoreHost): void {
   // Workspace/controller can arrive after Core; Cordis requires service lookup outside declared injections.
-  const context = ctx as unknown as {
-    get<K extends keyof NativeDesktopHost>(key: K): NativeDesktopHost[K] | undefined;
-    on: HostServices['on'];
-  };
-  function service<K extends keyof NativeDesktopHost>(key: K) {
-    const current = context.get(key);
+  function service<T>(current: T | undefined, key: string): T {
     if (!current) throw Error('DSH 服务暂不可用：' + key);
     return current;
   }
   const native: HostServices = {
-    get workspaceRegistry() { return service('workspaceRegistry'); },
-    get sessionController() { return service('sessionController'); },
-    get agents() { return service('agents'); },
-    get sessions() { return service('sessions'); },
+    get workspaceRegistry() { return service(ctx.get('workspaceRegistry'), 'workspaceRegistry'); },
+    get sessionController() { return service(ctx.get('sessionController'), 'sessionController'); },
+    get agents() { return service(ctx.get('agents') as NativeDesktopHost['agents'] | undefined, 'agents'); },
+    get sessions() { return service(ctx.get('sessions') as NativeDesktopHost['sessions'] | undefined, 'sessions'); },
     prepareWorkspace: async () => {await desk.features?.restoreImages();await ctx.get('petTranscripts')?.restore();},
     admitImage: image => {
       if (!desk.features) throw Error('桌宠图片入口尚未就绪');
       return desk.features.images.admit(image);
     },
-    getEmotion: () => (ctx as Context).get('petEmotion'),
-    getPresentation: () => (ctx as any).get('petPlatform'),
+    getEmotion: () => ctx.get('petEmotion'),
+    getPresentation: () => ctx.get('petPlatform'),
     isLifeHome: id => ctx.get('petLife')?.isHome(id) ?? false,
-    on: context.on.bind(ctx),
+    on: (ctx.on as HostServices['on']).bind(ctx),
   };
   const desk = new Desktop(native, host);
   desk.features = new DesktopFeatures(ctx, host, (type, value) => {

@@ -61,13 +61,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 480
+        "line": 493
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 480,
+      "line": 493,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/channels/bridge.ts\",\"scope\":\"bridgePreferences/prefs . outlets . map:callback0\"}",
@@ -4778,13 +4778,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/resolveMigration",
-        "line": 299
+        "line": 312
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 299,
+      "line": 312,
       "column": 59,
       "scope": "PetPlatform/resolveMigration",
       "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
@@ -4898,13 +4898,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/resolveMigration",
-        "line": 299
+        "line": 312
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 299,
+      "line": 312,
       "column": 59,
       "scope": "PetPlatform/resolveMigration",
       "target": "{\"file\":\"src/console/settings.ts\",\"scope\":\"settingsHandler/<callback>\"}",
@@ -5641,13 +5641,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 579
+        "line": 597
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 579,
+      "line": 597,
       "column": 88,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/common.ts\",\"scope\":\"<module>\"}",
@@ -5998,13 +5998,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/savePreference",
-        "line": 270
+        "line": 283
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 270,
+      "line": 283,
       "column": 38,
       "scope": "PetPlatform/savePreference",
       "target": "{\"file\":\"src/core/companion-settings.ts\",\"scope\":\"<module>\"}",
@@ -6974,13 +6974,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 642
+        "line": 656
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 642,
+      "line": 656,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/conversation.ts\",\"scope\":\"<module>\"}",
@@ -7103,13 +7103,13 @@
       "other": {
         "file": "src/desktop/features.ts",
         "scope": "DesktopFeatures/constructor/ctx . on:callback1",
-        "line": 64
+        "line": 61
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/features.ts",
-      "line": 64,
+      "line": 61,
       "column": 12,
       "scope": "DesktopFeatures/constructor/ctx . on:callback1",
       "target": "{\"file\":\"src/desktop/conversation.ts\",\"scope\":\"Conversation/event\"}",
@@ -7129,7 +7129,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/features.ts",
-      "line": 64,
+      "line": 61,
       "column": 12,
       "scope": "DesktopFeatures/constructor/ctx . on:callback1",
       "target": "{\"file\":\"src/desktop/index.ts\",\"scope\":\"Desktop/event\"}",
@@ -7166,7 +7166,7 @@
       "other": {
         "file": "src/desktop/features.ts",
         "scope": "DesktopFeatures/constructor/ctx . on:callback1",
-        "line": 64
+        "line": 61
       }
     },
     {
@@ -7327,13 +7327,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 642
+        "line": 656
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 642,
+      "line": 656,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/helper/main.cjs\",\"scope\":\"ipcMain . handle:callback1\"}",
@@ -7414,13 +7414,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/http",
-        "line": 741
+        "line": 755
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 741,
+      "line": 755,
       "column": 17,
       "scope": "PetPlatform/http",
       "target": "{\"file\":\"src/desktop/helper/main.cjs\",\"scope\":\"app . whenReady (  ) . then:callback0/protocol . handle:callback1\"}",
@@ -7459,13 +7459,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/savePreference",
-        "line": 270
+        "line": 283
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 270,
+      "line": 283,
       "column": 38,
       "scope": "PetPlatform/savePreference",
       "target": "{\"file\":\"src/desktop/index.ts\",\"scope\":\"Desktop/savePreference\"}",
@@ -7548,13 +7548,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 642
+        "line": 656
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 642,
+      "line": 656,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/index.ts\",\"scope\":\"Desktop/handle\"}",
@@ -7637,13 +7637,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 642
+        "line": 656
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 642,
+      "line": 656,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/index.ts\",\"scope\":\"Desktop/handle\"}",
@@ -7724,13 +7724,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/resolveMigration",
-        "line": 299
+        "line": 312
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 299,
+      "line": 312,
       "column": 59,
       "scope": "PetPlatform/resolveMigration",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"<module>\"}",
@@ -7848,13 +7848,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/resolveMigration",
-        "line": 299
+        "line": 312
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 299,
+      "line": 312,
       "column": 59,
       "scope": "PetPlatform/resolveMigration",
       "target": "{\"file\":\"src/desktop/platform/migration.ts\",\"scope\":\"resolvePresentationMigration\"}",
@@ -7874,7 +7874,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 480,
+      "line": 493,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/desktop/standalone.mjs\",\"scope\":\"connection\"}",
@@ -7908,13 +7908,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 480
+        "line": 493
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 480,
+      "line": 493,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/room/window-main.cjs\",\"scope\":\"<module>\"}",
@@ -7948,13 +7948,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 480
+        "line": 493
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 480,
+      "line": 493,
       "column": 10,
       "scope": "PetPlatform/baseUrl",
       "target": "{\"file\":\"src/room/window.ts\",\"scope\":\"RoomWindow/open\"}",
@@ -7988,13 +7988,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/baseUrl",
-        "line": 480
+        "line": 493
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 620,
+      "line": 634,
       "column": 54,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -8030,13 +8030,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 620
+        "line": 634
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 631,
+      "line": 645,
       "column": 52,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchExecution\"}",
@@ -8071,13 +8071,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 631
+        "line": 645
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 642,
+      "line": 656,
       "column": 31,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/desktop/standalone.mjs\",\"scope\":\"start/command\"}",
@@ -8116,13 +8116,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 642
+        "line": 656
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 703,
+      "line": 717,
       "column": 20,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/room/assets.ts\",\"scope\":\"roomAsset\"}",
@@ -8156,13 +8156,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 703
+        "line": 717
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 713,
+      "line": 727,
       "column": 28,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/room/assets.ts\",\"scope\":\"roomAsset\"}",
@@ -8196,13 +8196,13 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 713
+        "line": 727
       }
     },
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 731,
+      "line": 745,
       "column": 34,
       "scope": "PetPlatform/http",
       "target": "{\"file\":\"src/room/assets.ts\",\"scope\":\"roomAsset\"}",
@@ -8236,7 +8236,7 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/http",
-        "line": 731
+        "line": 745
       }
     },
     {
@@ -11921,7 +11921,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 579,
+      "line": 597,
       "column": 88,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
@@ -11967,7 +11967,7 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 579,
+        "line": 597,
         "column": 88,
         "shape": "union",
         "values": [
@@ -11979,7 +11979,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 631,
+      "line": 645,
       "column": 52,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -12040,7 +12040,7 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 631,
+        "line": 645,
         "column": 52,
         "shape": "array",
         "values": [
@@ -12053,7 +12053,7 @@
     {
       "rule": "R8",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 631,
+      "line": 645,
       "column": 52,
       "scope": "PetPlatform/handle",
       "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",
@@ -12124,7 +12124,7 @@
       "other": {
         "file": "src/desktop/platform/plugin.ts",
         "scope": "PetPlatform/handle",
-        "line": 631,
+        "line": 645,
         "column": 52,
         "shape": "array",
         "values": [

@@ -387,18 +387,16 @@ export class Desktop {
 }
 export function registerDesktop(ctx, host) {
     // Workspace/controller can arrive after Core; Cordis requires service lookup outside declared injections.
-    const context = ctx;
-    function service(key) {
-        const current = context.get(key);
+    function service(current, key) {
         if (!current)
             throw Error('DSH 服务暂不可用：' + key);
         return current;
     }
     const native = {
-        get workspaceRegistry() { return service('workspaceRegistry'); },
-        get sessionController() { return service('sessionController'); },
-        get agents() { return service('agents'); },
-        get sessions() { return service('sessions'); },
+        get workspaceRegistry() { return service(ctx.get('workspaceRegistry'), 'workspaceRegistry'); },
+        get sessionController() { return service(ctx.get('sessionController'), 'sessionController'); },
+        get agents() { return service(ctx.get('agents'), 'agents'); },
+        get sessions() { return service(ctx.get('sessions'), 'sessions'); },
         prepareWorkspace: async () => { await desk.features?.restoreImages(); await ctx.get('petTranscripts')?.restore(); },
         admitImage: image => {
             if (!desk.features)
@@ -408,7 +406,7 @@ export function registerDesktop(ctx, host) {
         getEmotion: () => ctx.get('petEmotion'),
         getPresentation: () => ctx.get('petPlatform'),
         isLifeHome: id => ctx.get('petLife')?.isHome(id) ?? false,
-        on: context.on.bind(ctx),
+        on: ctx.on.bind(ctx),
     };
     const desk = new Desktop(native, host);
     desk.features = new DesktopFeatures(ctx, host, (type, value) => {

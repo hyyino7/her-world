@@ -26,7 +26,6 @@ export declare class DesktopFeatures {
     private subscriptions;
     private generation?;
     constructor(ctx: Context, host: PetCoreHost, publish: (type: string, value: unknown) => void, available: () => boolean, busy: () => boolean);
-    private get;
     private preferences;
     private target;
     private current;
