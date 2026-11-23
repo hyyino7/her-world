@@ -1,17 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,existsSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
-import {dirname,join} from 'node:path';
+import {readFileSync,existsSync} from 'node:fs';
+import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import vm from 'node:vm';
 import {setTimeout as pause} from 'node:timers/promises';
 import {fixture,ownerPlan,until} from './fixture.mjs';
 import {cordisFixture,eventually,meal,submitPlan} from './entries-lifecycle.test.mjs';
 import {readHearControlSource} from '../../dist/tests/behavior-list/entries.js';
-import {cli,emptyWalletMigrationInputs,mockDsh} from '../migrate/helpers.mjs';
-import {CONSOLE_WALLET_IMPORT_FILE,CONSOLE_WALLET_STEP} from '../../dist/src/core/storage-migration.js';
-import {legacyEconomy} from '../migrate/offline-helpers.mjs';
-import {legacyEconomyRows} from '../../scripts/migrate/steps/0003-economy-marker.mjs';
 
 async function cursor(f,expected){await until(async()=>{await f.body.snapshot('world');return (await f.life.readPlan('world')).plan?.cursor===expected;},'计划自动推进到 '+expected);}
 
@@ -126,46 +122,7 @@ test('语音插件关闭取消识别并拒绝晚到音频和结果',async t=>{
   assert.ok(!JSON.stringify(events).includes('Late plugin result must not be used'));
 });
 
-function stoppedHomeMigration(f) {
-  const {config} = f.core.workspace.runtime, storageId = f.core.workspace.storageId();
-  const data = join(f.repo,'.chatpet/data'), home = join(dirname(f.repo),'migration-dsh');
-  const profileDir = join(home,'profiles','fixture'), installation = join(home,'installation.json');
-  const sessionIds = [...f.bound.sessionIds], archivedSessionIds = [...f.registry.archivedSessionIds];
-  const put = (file,object) => { mkdirSync(dirname(file),{recursive:true}); writeFileSync(file,JSON.stringify(object)); };
-  return () => {
-    const mirrorFile = join(data,'life/life.json'), mirror = readFileSync(mirrorFile);
-    const {homeSessionId} = JSON.parse(mirror);
-    {
-      using db = new DatabaseSync(join(config.dataDir,'core.sqlite'));
-      const result = db.prepare("DELETE FROM records WHERE kind='companion-home' AND id=?").run(storageId);
-      assert.equal(result.changes,1);
-    }
-    legacyEconomy({config,storageId,data,repo:f.repo});
-    rmSync(join(data,'storage-manifest.json'));
-    rmSync(join(data,CONSOLE_WALLET_IMPORT_FILE));
-    put(join(profileDir,'node_modules/her-world/package.json'),{name:'her-world',version:'0.2.0'});
-    put(join(home,'storages/workspace.json'),{unit:{name:'workspace',version:1},global:{workspaceIds:[f.id],archivedSessionIds},
-      tables:{workspaces:{[f.id]:{path:f.repo,title:'Fixture',sessionIds}}}});
-    put(installation,{status:'installed',packageInstalled:true,profileDir,config});
-    const {walletExport,walletRollback} = emptyWalletMigrationInputs({
-      config,storageId,installation,home,repo:f.repo,out:home,profile:profileDir,target:{id:f.id},
-    });
-    const result = cli({home},['run','--installation',installation,'--backup',join(home,'backup'),
-      '--wallet-export',walletExport,'--wallet-rollback',walletRollback]);
-    assert.equal(result.status,0,result.stderr);
-    assert.deepEqual(JSON.parse(result.stdout).steps,[
-      {id:'0001-storage-manifest',state:'complete'}, {id:'0002-home-identity',state:'complete'}, {id:'0003-economy-marker',state:'complete'},
-      {id:CONSOLE_WALLET_STEP.id,state:'complete'},
-    ]);
-    assert.deepEqual(readFileSync(mirrorFile),mirror);
-    using db = new DatabaseSync(join(config.dataDir,'core.sqlite'),{readOnly:true});
-    assert.deepEqual(legacyEconomyRows(db),[]);
-    assert.deepEqual(JSON.parse(db.prepare("SELECT value FROM records WHERE kind='companion-home' AND id=?").get(storageId).value),
-      {sessionId:homeSessionId});
-  };
-}
-
-async function runG9(t, migrate = false) {
+test('Life 原生计划在身体效果落盘后跨重启只结算一次并自动续行', async t => {
   const f=await cordisFixture(t);
   await f.ownerAction({kind:'gift',itemId:meal},'plan-meal');
   const hungerBefore=(await f.body.snapshot(f.id)).needs.hunger;
@@ -214,12 +171,9 @@ async function runG9(t, migrate = false) {
   assert.ok(native.some(event=>event.type==='user/message'&&event.data.source.kind==='dsh-world-life'));
   assert.ok(native.some(event=>event.type==='tool/call'&&event.data.name==='life_plan_update'));
 
-  if (migrate) mockDsh(t);
-  const migrateHome = migrate ? stoppedHomeMigration(f) : undefined;
   await f.restart(()=>{
     assert.equal(checkpoint().plannedExecutions[plan.operationId].effectAppliedAt,applied.effectAppliedAt);
     sql('DROP TRIGGER reject_consumption');
-    migrateHome?.();
   });
   const next=await eventually(async()=>{
     const {plan}=await f.life.readPlan(f.id);
@@ -238,9 +192,7 @@ async function runG9(t, migrate = false) {
   assert.equal((await f.body.snapshot(f.id)).needs.hunger,hunger);
   assert.equal(checkpoint().plannedExecutions[plan.operationId].effectAppliedAt,applied.effectAppliedAt);
   assert.equal(f.calls.filter(call=>call.messages.some(message=>message.source.kind==='dsh-world-life')).length,1);
-}
-test('Life 原生计划在身体效果落盘后跨重启只结算一次并自动续行', t=>runG9(t));
-test('4 在同一合成绑定迁移 home 后复跑 G9 原断言', t=>runG9(t,true));
+});
 
 test('Life 原生睡眠计划从移动到睡眠并跨重启保留完成回执', async t => {
   const f = await cordisFixture(t);

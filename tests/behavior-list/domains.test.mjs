@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs,{readFileSync,renameSync,existsSync,rmSync,writeFileSync} from 'node:fs';
 import {dirname,join} from 'node:path';
+import {createHash} from 'node:crypto';
 import {DatabaseSync} from 'node:sqlite';
 import {syncBuiltinESMExports} from 'node:module';
 import {fixture,until} from './fixture.mjs';
 import {cordisFixture} from './entries-lifecycle.test.mjs';
-import {runMigration} from '../../scripts/migrate/runner.mjs';
-import {emptyWalletMigrationInputs,mockDsh} from '../migrate/helpers.mjs';
-import {economyPaths,offlineFixture} from '../migrate/offline-helpers.mjs';
+import {CONSOLE_WALLET_IMPORT_FILE,CONSOLE_WALLET_STEP,ECONOMY_STORAGE_STEP,HOME_STORAGE_STEP,INITIAL_STORAGE_STEP}
+  from '../../dist/src/core/storage-migration.js';
 const meal='food:improved-meal',HOUR=3_600_000;
 
 test('效果落盘后的钱包路径故障保留预留并在重启后只结算一次',async t=>{
@@ -188,30 +188,42 @@ test('坏钱包证据只阻断钱包并保留免费照料',async t=>{
   assert.equal((await f.economy.snapshot(f.id)).balance,wallet.balance);
 });
 
-test('迁移日志挡住双目录丢失后重建钱包并保留免费照料',async t=>{
-  mockDsh(t);
-  const f=await offlineFixture(t,false,{withLegacyEconomy:true});
-  const garden=join(f.data,'life/garden.json'), retained='{"coins":61}\n';
-  writeFileSync(garden,retained);
-  const {database,adoption}=economyPaths(f);
-  const declared=JSON.parse(readFileSync(join(f.managed,'manifest.json'),'utf8')).files;
+test('0.5.0 完成日志挡住双目录丢失后重建钱包并保留免费照料',async t=>{
+  const f=await cordisFixture(t,{order:['economy','body']});
+  await f.ownerAction({kind:'grant',amount:30},'retained-grant');
+  const data=join(f.repo,'.chatpet/data'), journal=join(data,'migrations.jsonl');
+  const garden=join(data,'life/garden.json'), retained='{"coins":61}\n';
+  const directories=[join(data,'economy'),join(data,'living')];
+  const declared=JSON.parse(readFileSync(join(f.repo,'.chatpet/manifest.json'),'utf8')).files;
   assert.ok(!declared.some(path=>path.startsWith('data/economy/') || path.startsWith('data/living/')));
-  await runMigration({installation:f.installation,backup:join(f.out,'backup'),...emptyWalletMigrationInputs(f)});
-  const journal=join(f.data,'migrations.jsonl'), log=readFileSync(journal,'utf8');
-  assert.equal(JSON.parse(log.split('\n')[0]).economyAdopted,true);
-  for (const file of [database,adoption]) rmSync(dirname(file),{recursive:true});
-
-  const registry={workspaces:[{...f.target,sessionIds:[]}],archived:[]};
-  const running=await cordisFixture(t,{existing:{...f,registry},order:['body']});
-  assert.equal(running.core.workspace.status().state,'ready');
-  assert.equal((await running.body.garden(running.id,'state')).ok,false);
-  await assertFreeCare(running,'wallet-unmounted');
-  await running.load('economy');
-  await assert.rejects(running.economy.snapshot(running.id),/authoritative economy database is missing/);
-  assert.equal((await running.body.garden(running.id,'state')).ok,false);
-  await assertFreeCare(running,'wallet-mounted');
-  assert.equal(running.core.workspace.status().state,'ready');
-  for (const file of [database,adoption]) assert.equal(existsSync(dirname(file)),false);
+  const {companionId}=f.core.workspace.runtime.config, storageId=f.core.workspace.storageId();
+  const digest='a'.repeat(64), archive=join(dirname(f.repo),'historical-backup');
+  const steps=[INITIAL_STORAGE_STEP,HOME_STORAGE_STEP,ECONOMY_STORAGE_STEP,CONSOLE_WALLET_STEP];
+  const log=[
+    {event:'migration',id:'first-round',backup:archive,manifestHash:digest},
+    {event:'done',migrationId:'first-round',step:INITIAL_STORAGE_STEP.id},
+    {event:'migration',id:'last-round',schema:2,backup:archive,backupHash:digest,
+      binding:{storageId,repoHash:createHash('sha256').update(f.repo).digest('hex')},steps,economyAdopted:true,
+      walletImport:{exportFile:archive,rollbackFile:archive,rollbackDigest:digest,codeFingerprint:digest,
+        proof:{format:1,mode:'import',binding:{storageId,companionId},wallet:'adopted',round:'fixture',
+          sourceCount:1,requestCount:1,sourceDigest:digest,requestDigest:digest,exportDigest:digest}}},
+    ...steps.map(step=>({event:step===INITIAL_STORAGE_STEP?'skip':'done',migrationId:'last-round',step:step.id})),
+  ].map(row=>JSON.stringify(row)).join('\n')+'\n';
+  await f.restart(()=>{
+    writeFileSync(garden,retained);
+    writeFileSync(journal,log);
+    rmSync(join(data,CONSOLE_WALLET_IMPORT_FILE));
+    for (const directory of directories) rmSync(directory,{recursive:true});
+  },{order:['body']});
+  assert.equal(f.core.workspace.status().state,'ready');
+  assert.equal((await f.body.garden(f.id,'state')).ok,false);
+  await assertFreeCare(f,'wallet-unmounted');
+  await f.load('economy');
+  await assert.rejects(f.economy.snapshot(f.id),/authoritative economy database is missing/);
+  assert.equal((await f.body.garden(f.id,'state')).ok,false);
+  await assertFreeCare(f,'wallet-mounted');
+  assert.equal(f.core.workspace.status().state,'ready');
+  for (const directory of directories) assert.equal(existsSync(directory),false);
   assert.equal(readFileSync(garden,'utf8'),retained);
   assert.equal(readFileSync(journal,'utf8'),log);
 });
