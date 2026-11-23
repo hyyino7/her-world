@@ -41,6 +41,15 @@
 - **0.5.0 是否提示残留旧键**。推荐不提示。提示会重新增加对旧键的访问，键存在也无法说明请求是否已生效。若回退后旧版显示待办，按上面的旧版核对流程处理。
 - **待核实**。用合成安装在主人同型 DSH 环境验停写探测，尤其是完全退出后是否仍有可写的宿主进程，以及正式 0.5.0 包能否读取带声明的证明并激活。实机无法确认停写时继续拒绝。
 
+## 执行结果
+
+- `companion-migrate.mjs` 接入声明路线，`runner.mjs` 在 Repo 互斥内预检、执行和续做。`wallet-rollback.mjs` 封存并核对旧备份、来源、UTC 时间、完整绑定、轮次和版本对。`0004-console-wallet.mjs` 导入零条，将声明写入日志和钱包库或独立证明。`errors.mjs` 提供固定拒绝原因。
+- `console-wallet.test.mjs` 覆盖独立证明、历史状态、冲突与停写拒绝。`wallet-rollback-040.mjs` 覆盖已采用钱包的零条导入、原锚续做、正式版激活、残留键隔离和回退。主人命令见 [开发说明](../development.md#console-wallet-migration)。
+- **无需发 0.5.1。** 主人可将实现补丁应用到 `v0.5.0`（`f723ba1`）源码检出，构建后运行离线工具。原标签的迁移 CLI 缺少声明参数。原版 0.5.0 运行时按既有 `mode: import` 结构验日志和证明，附加的 `ownerAttestation` 由离线工具核验。用该标签原样打包后，合成副本已通过钱包激活与写入。见 [证明校验](../../src/core/storage-migration.ts#L80-L104)和[激活门禁](../../src/core/workspace.ts#L223-L241)。
+- `pnpm run build`、钱包快测 20/20、`pnpm run check:arch` 均通过。`node --test tests/migrate/*.test.mjs` 重跑 212/212，首轮 211/212，失败发生在 `compatibility.test.mjs` 的 Memory 合成数据准备阶段，返回 HTTP 422。
+- 从 `v0.4.0`（`4a46daa`）和 `v0.5.0` 构建并打包，设置 `HER_WORLD_040_ROOT` 与 `HER_WORLD_050_ROOT` 跑 `wallet-rollback-040.mjs`，4/4 通过。`pnpm run test:behavior-list` 的索引检查 11/11、行为 170/170 通过。
+- 未验证主人同型 DSH 的实机停写探测、Electron 实际分区和真实副本验收。全量 `pnpm run verify` 留待合并前运行。
+
 ## 附录：未来需要时
 
 A．离线直读扩到 Electron 存储，先验证 profile／分区、独占与原值保真；B．新包同源页用专用 RPC 暂存，再离线导入；C．主人用开发者工具手动导出，供本地取证。出现真实待办或外部来源时另行拍板。
