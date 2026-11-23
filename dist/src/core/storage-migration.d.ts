@@ -186,7 +186,6 @@ export declare function parseMigrationJournal(text: string): {
 };
 export declare function decodeMigrationJournal(journal: ReturnType<typeof parseMigrationJournal>, storageId: string): {
     last: JournalSegment | undefined;
-    settledStepCount: number;
     truncated: boolean;
 };
 export {};

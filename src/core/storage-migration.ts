@@ -128,7 +128,7 @@ export function parseMigrationJournal(text: string) {
 
 export function decodeMigrationJournal(journal: ReturnType<typeof parseMigrationJournal>, storageId: string) {
   const ids = new Set<string>();
-  let last: JournalSegment | undefined, settledStepCount = 0;
+  let last: JournalSegment | undefined;
   for (const value of journal.rows) {
     assert.ok(value && typeof value === 'object' && !Array.isArray(value));
     const row = value as Partial<JournalHeader> & {event?: string; schema?: number; manifestHash?: string; migrationId?: string; step?: string};
@@ -149,7 +149,6 @@ export function decodeMigrationJournal(journal: ReturnType<typeof parseMigration
         if (last) {
           const prior = last.header.steps;
           assert.ok(settled(last) && steps.length > prior.length && isDeepStrictEqual(steps.slice(0, prior.length), prior));
-          settledStepCount = prior.length;
         }
         header = {...row, id, backup, steps, binding, backupHash};
       }
@@ -163,6 +162,5 @@ export function decodeMigrationJournal(journal: ReturnType<typeof parseMigration
       last.states.set(row.step, row.event);
     } else assert.ok(otherEvents.has(row.event));
   }
-  if (last && settled(last)) settledStepCount = last.header.steps.length;
-  return {last, settledStepCount, truncated:journal.truncated};
+  return {last, truncated:journal.truncated};
 }

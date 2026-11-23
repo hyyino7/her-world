@@ -76,7 +76,7 @@ export function parseMigrationJournal(text) {
 }
 export function decodeMigrationJournal(journal, storageId) {
     const ids = new Set();
-    let last, settledStepCount = 0;
+    let last;
     for (const value of journal.rows) {
         assert.ok(value && typeof value === 'object' && !Array.isArray(value));
         const row = value;
@@ -99,7 +99,6 @@ export function decodeMigrationJournal(journal, storageId) {
                 if (last) {
                     const prior = last.header.steps;
                     assert.ok(settled(last) && steps.length > prior.length && isDeepStrictEqual(steps.slice(0, prior.length), prior));
-                    settledStepCount = prior.length;
                 }
                 header = { ...row, id, backup, steps, binding, backupHash };
             }
@@ -115,8 +114,6 @@ export function decodeMigrationJournal(journal, storageId) {
         else
             assert.ok(otherEvents.has(row.event));
     }
-    if (last && settled(last))
-        settledStepCount = last.header.steps.length;
-    return { last, settledStepCount, truncated: journal.truncated };
+    return { last, truncated: journal.truncated };
 }
 //# sourceMappingURL=storage-migration.js.map
