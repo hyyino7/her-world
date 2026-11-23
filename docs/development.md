@@ -71,10 +71,10 @@ L1 是插件入口的完整流程，L2 是公开面行为，L3 是保留在全�
 
 存储清单落后于代码时，运行时进入「需要迁移」：对外状态和拒写码都是 `migration-required`，DSH 普通聊天照常，伙伴的设置、身份、策略、生活世界和记忆写入全部拒绝，设置页显示细因和操作提示。细因有 `storage-version-outdated`、`manifest-mismatch`、`migration-incomplete`、`journal-invalid`、`journal-step-mismatch`、`binding-changed`，以及 `binding-not-migratable`：绑定的形状离线迁移器接不了（例如选中的工作区和已初始化的绑定不一致），这时要在版本页换回 0.2.0，把工作区选择和初始化理顺后再升级。一旦判定需要迁移，本进程就锁定，迁移完成后要重启 DSH。新装由主人显式初始化时直接写最新清单，不需要迁移。
 
-用一个不存在或为空的输出目录生成 current 布局；legacy 布局把变体参数改为 `legacy`，并换一个空目录，两者互斥：
+用一个不存在或为空的输出目录生成 0.5.0 合成布局。
 
 ```sh
-node scripts/fixtures/synthetic-companion.mjs --out /tmp/her-world-synthetic --variant current
+node scripts/fixtures/synthetic-companion.mjs --out /tmp/her-world-synthetic
 ```
 
 盘点只输出路径、大小、表名、行数、已知记录数量和登记差异。浏览器存储显示为待主人检查。盘点和迁移预检在关闭写入者后读取 SQLite 私有副本，复制数据库和 WAL，由 SQLite 在副本上重建 SHM：

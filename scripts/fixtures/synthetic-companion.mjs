@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Fixed synthetic content only. No installed application, model or personal Repo.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createCore } from '../../dist/src/core/index.js';
@@ -37,8 +37,7 @@ export function openDomains(host) {
   body = new CompanionBehavior(ctx, host, {economy:()=>economy});
   return {body, economy, async close() { await body.close(); economy.close(); }};
 }
-export async function generateSynthetic(out, variant = 'current') {
-  assert.ok(['current','legacy'].includes(variant), 'Expected current or legacy');
+export async function generateSynthetic(out) {
   out = resolve(out); mkdirSync(out, {recursive:true}); out = realpathSync(out);
   assert.equal(readdirSync(out).length, 0, 'Synthetic output must be empty');
   const repo = join(out, 'repo'), home = join(out, 'dsh'), profile = join(home, 'profiles', 'fixture');
@@ -54,20 +53,10 @@ export async function generateSynthetic(out, variant = 'current') {
     const before = value(await host.services.preferences.read(request(), {}));
     const prefs = value(await host.services.preferences.save(request(), {expectedRevision:before.revision, workspace:target, conversation:before.conversation}));
     assert.equal(value(await host.services.workspace.initialize(request(), {expectedPreferencesRevision:prefs.revision})).state, 'ready');
-    // Lay out the synthetic legacy files after admitting a genuinely new Repo.
-    const bodyDirectory = join(data, variant === 'legacy' ? 'life' : 'behavior');
+    const bodyDirectory = join(data, 'behavior');
     mkdirSync(bodyDirectory, {recursive:true});
     const initial = new CompanionRoom(bodyDirectory, () => undefined);
     initial.setAutonomy(true); initial.setAutonomy(false); initial.flush();
-    if (variant === 'legacy') {
-      const manifestFile = join(managed, 'manifest.json'), manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
-      for (const [from,to] of [['self.md','data/life/self.md'], ['diary/','data/life/diary/'],
-        ['self.history/','data/life/self.history/'], ['data/core/photos/','data/life/photos/']]) {
-        renameSync(join(managed, from), join(managed, to));
-        manifest.files = manifest.files.map(name => name.startsWith(from) ? to + name.slice(from.length) : name);
-      }
-      writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
-    }
     const profileValue = value(await host.services.workspace.readProfile(request(), {}));
     value(await host.services.workspace.saveProfile(request(), {expectedScope:host.workspace.editScope(), expectedRevision:profileValue.revision, text:content.profile}));
     const foundation = value(await host.services.workspace.readFoundation(request(), {}));
@@ -109,7 +98,7 @@ export async function generateSynthetic(out, variant = 'current') {
     assert.ok((await host.native.memory.findForOwner(target.id, content.memory)).items.some(row => row.id === memory.id));
     assert.ok(!(await host.native.memory.findForOwner(target.id, content.withdrawn)).items.some(row => row.id === withdrawn.id));
     const binding = {root:repo, storageId:host.workspace.storageId()};
-    write(join(profile, 'node_modules/her-world/package.json'), JSON.stringify({name:'her-world',version:'0.1.8',synthetic:true}));
+    write(join(profile, 'node_modules/her-world/package.json'), JSON.stringify({name:'her-world',version:'0.5.0',synthetic:true}));
     write(join(profile, 'cordis.patch.yml'), '# Synthetic configuration\n');
     const registryFile = join(home, 'storages/workspace.json');
     write(registryFile, JSON.stringify({unit:{name:'workspace',version:1},global:{workspaceIds:[target.id],archivedSessionIds:[],pinnedSessionIds:[],defaultWorkspaceId:target.id},
@@ -139,24 +128,20 @@ export async function generateSynthetic(out, variant = 'current') {
     try { await voice.handle({rest:'voice/voices',method:'GET'}); } finally { voice.release(); }
     // Browser-only rows have no filesystem owner; keep an explicit synthetic
     // export outside the backed-up Repo instead of inventing a runtime location.
-    write(join(out, 'browser-localStorage.json'), JSON.stringify({'chatpet:economy:pending:fixture':{synthetic:true},'home-fixture':{synthetic:true}}));
+    write(join(out, 'browser-localStorage.json'), JSON.stringify({'home-fixture':{synthetic:true}}));
     const installation = join(out, 'installation.json');
     write(installation, JSON.stringify({status:'installed',packageInstalled:true,profileDir:profile,config}, null, 2));
     assert.equal((await host.records.readSelf(target.id)).text, content.self);
     assert.equal(plan.read().plan.goal, 'SYNTHETIC_PLAN_817');
     assert.equal(inspectRepoBinding(config).storageId, binding.storageId);
     return {out,repo,home,profile,managed,data,config,target,installation,storageId:binding.storageId,
-      variant, memoryId:memory.id, withdrawnId:withdrawn.id, declaredEntries:storage.entries.map(row => row.id)};
+      memoryId:memory.id, withdrawnId:withdrawn.id, declaredEntries:storage.entries.map(row => row.id)};
   } finally { try { await domains?.close(); } finally { await host.close(); } }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const args = process.argv.slice(2), options = {};
-    while (args.length) {
-      const key = args.shift(); assert.ok(['--out','--variant'].includes(key) && !options[key]); options[key] = args.shift();
-    }
-    assert.ok(options['--out']);
-    await generateSynthetic(options['--out'], options['--variant'] ?? 'current');
-    console.log(JSON.stringify({generated:true, variant:options['--variant'] ?? 'current'}));
+    assert.ok(process.argv.length === 4 && process.argv[2] === '--out' && process.argv[3], 'Specify --out <new-directory>');
+    await generateSynthetic(process.argv[3]);
+    console.log(JSON.stringify({generated:true}));
   } catch (error) { console.error('Synthetic generation failed:', error.message); process.exitCode = 1; }
 }

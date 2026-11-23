@@ -12,7 +12,7 @@ const restoreCommand = (f, backup, before) => ['--import',resolve('tests/migrate
   resolve('scripts/companion-backup.mjs'),'restore','--installation',f.installation,'--backup',backup,'--before',before];
 
 test('同一仓库的两个 restore 进程只有一个能持有互斥锁', {timeout:30000}, async t => {
-  const f = await offlineFixture(t,false,{keepStorageManifest:true});
+  const f = await offlineFixture(t,false);
   const backup = join(f.out,'backup'), gate = join(f.out,'restore-gate');
   createOfflineBackup(planFor(f),backup,{probe() {}});
   const original = join(f.managed,'SOUL.md'), saved = readFileSync(original);
@@ -40,7 +40,7 @@ test('同一仓库的两个 restore 进程只有一个能持有互斥锁', {time
 });
 
 test('restore 拒绝仍有持有者的历史锁并允许已退出进程留下的锁', async t => {
-  const f = await offlineFixture(t,false,{keepStorageManifest:true});
+  const f = await offlineFixture(t,false);
   const lock = join(f.data,'migration.lock'), backup = join(f.out,'backup'), before = join(f.out,'before');
   createOfflineBackup(planFor(f),backup,{probe() {}});
   const lease = `${process.pid}:history`;

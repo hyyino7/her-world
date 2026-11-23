@@ -7,7 +7,7 @@ import { once } from 'node:events';
 import { inspectRepoBinding } from '../../scripts/lib/repo-storage.mjs';
 import { inventory } from '../../scripts/migrate/inventory.mjs';
 import { offlineFixture } from './offline-helpers.mjs';
-import { refusedCli } from './helpers.mjs';
+import { refusedInventory } from './helpers.mjs';
 
 test('binding and inventory preserve the stopped WAL database and its directory', async t => {
   const f = await offlineFixture(t, false), directory = f.config.dataDir;
@@ -57,5 +57,5 @@ test('binding inspection rejects a live external Core lease before reading SQLit
   await once(child,'spawn');
   writeFileSync(join(f.config.dataDir,'core.lock'),`${child.pid}:fixture`);
   assert.throws(() => inspectRepoBinding(f.config), /core still has a live writer/);
-  refusedCli(f,['--installation',f.installation],'writer-running',{inventory:true});
+  refusedInventory(f,['--installation',f.installation],'writer-running');
 });

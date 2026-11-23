@@ -148,7 +148,7 @@ test('同一组待升级的合成形状，运行时可迁移与 inspectRepoBindi
     ['foreign companion manifest', f => edit(f, {companionId:'another'}), false],
     ['hardlinked managed document', f => linkSync(join(f.managed, 'SOUL.md'), join(f.out, 'other-link')), false],
   ]) for (const version of ['absent', 'v2']) await t.test(`${label} / ${version}`, async t => {
-    const f = await offlineFixture(t, false);
+    const f = await offlineFixture(t, false,{legacyStorage:true});
     if (version === 'v2') writeFileSync(join(f.data, 'storage-manifest.json'),
       JSON.stringify(storageManifest(f.config.companionId, HOME_STORAGE_STEP.to)));
     prepare(f);
@@ -171,7 +171,7 @@ for (const [scenario, reason] of [
   ['日志损坏', 'journal-invalid'],
   ['清单损坏', 'manifest-mismatch'],
 ]) test(`${scenario}时保留固定拒写并提示使用 v0.5.0 工具`, async t => {
-  const f = await offlineFixture(t, false);
+  const f = await offlineFixture(t, false,{legacyStorage:true});
   const journal = join(f.data, 'migrations.jsonl');
   if (scenario === '旧轮次未完成') writeFileSync(journal, JSON.stringify({event:'migration', id:'old-run',
     backup:f.out, manifestHash:'a'.repeat(64)}) + '\n');
@@ -196,7 +196,7 @@ for (const [scenario, reason] of [
 
 for (const [label, mirror] of [['没有镜像 ID', {version:1}], ['镜像 ID 滞后', {version:1, homeSessionId:'old-home'}]]) {
   for (const adopted of [false, true]) test(`新装由前台开 home 后，${label}且${adopted ? '已' : '未'}采用钱包时仍无旧浏览器来源`, async t => {
-    const f = await offlineFixture(t, false, {keepStorageManifest:true});
+    const f = await offlineFixture(t, false);
     const registry = {workspaces:[{...f.target, sessionIds:[]}], archived:[]};
     const running = await cordisFixture(t, {existing:{...f, registry}, order:adopted ? ['economy'] : []});
     const home = await resolveCompanionHome(running.ctx, running.core);

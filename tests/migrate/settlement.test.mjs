@@ -9,7 +9,7 @@ import { createOfflineBackup, restoreOfflineBackup } from '../../scripts/lib/off
 import { fixture, mockDsh, planFor, read } from './helpers.mjs';
 
 test('0.5.0 备份恢复后已生效的 Body 动作仍只结算一次', {timeout:60000}, async t => {
-  mockDsh(t); const f = await fixture(t,'current',{keepStorageManifest:true});
+  mockDsh(t); const f = await fixture(t);
   t.mock.timers.enable({apis:['Date'],now:Date.now()});
   const file = join(f.data,'economy/economy.sqlite');
   const sql = text => {const db = new DatabaseSync(file);try {db.exec(text);} finally {db.close();}};

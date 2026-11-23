@@ -17,7 +17,7 @@ const checked = result => { assert.equal(result.status,0,result.stderr); return 
 const write = (file,text) => { mkdirSync(dirname(file),{recursive:true}); writeFileSync(file,text); };
 
 test('0.5.0 同包恢复保留绑定、原生日志和不可逆状态', {timeout:30000}, async t => {
-  const f = await offlineFixture(t,false,{keepStorageManifest:true}), plan = planFor(f);
+  const f = await offlineFixture(t,false), plan = planFor(f);
   const backup = (...args) => run(['scripts/companion-backup.mjs',...args,'--installation',f.installation]);
   const old = join(f.out,'same-package');
   const restore = (source, name) => backup('restore','--backup',source,'--before',join(f.out,name));

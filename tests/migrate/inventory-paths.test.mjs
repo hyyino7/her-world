@@ -6,10 +6,10 @@ import { join } from 'node:path';
 import { inventoryPlan } from '../../scripts/migrate/inventory-plan.mjs';
 import { inventory } from '../../scripts/migrate/inventory.mjs';
 import { fileHashes } from '../../scripts/lib/repo-storage.mjs';
-import { fixture, planFor, variants } from './helpers.mjs';
+import { fixture, planFor } from './helpers.mjs';
 
-for (const variant of variants) test(`${variant}: symlinked temporary parent preserves inventory paths and all source files`, {timeout:60000}, async t => {
-  const f = await fixture(t, variant, {keepStorageManifest:true});
+test(`current: symlinked temporary parent preserves inventory paths and all source files`, {timeout:60000}, async t => {
+  const f = await fixture(t);
   const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'inventory-paths-')));
   t.after(() => rmSync(temporary, {recursive:true, force:true}));
   const physical = join(temporary, 'physical'), alias = join(temporary, 'alias');
