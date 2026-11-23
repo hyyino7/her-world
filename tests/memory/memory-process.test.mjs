@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { MemoryProcessHost } from '../../vendor/mnemosyne/src/memory-process.js';
 import { MemoryClient } from '../../vendor/mnemosyne/src/memory-client.js';
 
-const scope = { companionId: 'fixture-pet', scopeId: 'fixture-owner', workspaceId: 'fixture-repo' };
+const scope = { companionId: 'fixture-pet', scopeId: 'fixture-owner', bankId: 'fixture-bank' };
 
 test('owner archive searches the bound Bank and rechecks corrected and forgotten originals', { timeout: 30000 }, async () => {
   const { createCore } = await import('../../dist/src/core/index.js');
@@ -19,8 +19,9 @@ test('owner archive searches the bound Bank and rechecks corrected and forgotten
     mkdirSync(path);
     return { id, path, title: id, status: async () => 'ok', sessionIds: [] };
   });
-  const host = createCore({ dataDir: join(root, 'core'), ...scope, ownerActorId: 'owner',
+  const host = createCore({ dataDir: join(repos[0].path, '.chatpet/data/core'), companionId: scope.companionId, scopeId: scope.scopeId, ownerActorId: 'owner',
     displayName: 'Fish', character: 'Fixture', memory: { python: resolve('.venv/bin/python'), dataDir: join(root, 'memory') } });
+  host.workspace.runtime.store.setMeta('workspace.storage-id', scope.bankId);
   const registry = { list: () => repos, get: id => repos.find(repo => id === repo.id) };
   const handler = settingsHandler(() => host, () => registry, () => ['memory', 'archive', 'persona']);
   const signal = new AbortController().signal;
@@ -38,6 +39,8 @@ test('owner archive searches the bound Bank and rechecks corrected and forgotten
   }
   try {
     await bind('A');
+    const bankId = host.workspace.storageId();
+    assert.equal(bankId, scope.bankId);
     assert.equal(host.native.memory.connection.lifecycle, 'stopped');
     const find = workspaceId => value('archiveFind', { workspaceId, query: 'tea' });
     assert.deepEqual((await find('A')).items, []);
@@ -45,6 +48,7 @@ test('owner archive searches the bound Bank and rechecks corrected and forgotten
     const observe = (id, text) => port.call('observe', { source_id: id, content: text, revision: '1', actor_id: 'owner' });
     await observe('tea-v1', 'I drink jasmine tea.');
     const memory = await port.call('propose', { operation_id: 'tea', content: 'Jasmine tea', sources: [{ id: 'tea-v1', revision: '1' }] });
+    assert.deepEqual(memory.metadata.pet_scope, { companionId: scope.companionId, scopeId: scope.scopeId, workspaceId: bankId });
     assert.ok((await find('A')).items.some(hit => hit.id === memory.id && hit.excerpt === memory.content));
     const item = { workspaceId: 'A', memoryId: memory.id };
     assert.deepEqual((await value('archiveRead', item)).dialogue, [{ role: 'user', text: 'I drink jasmine tea.' }]);
@@ -78,15 +82,18 @@ test('P2 owned service/client: ready, scoped replay, actual exit and restart', {
   try {
     const began = Date.now();
     const info = await host.start({ timeoutMs: 5000 });
-    const rssKiB = Number(execFileSync('/bin/ps', ['-o', 'rss=', '-p', String(info.pid)], { encoding: 'utf8' }).trim());
     const client = new MemoryClient(info);
     assert.ok(await client.health());
     await assert.rejects(client.request('POST', '/pet/v1/recall', { scope: { ...scope, scopeId: 'other' }, query: '' }), { status: 403 });
+    await assert.rejects(client.request('POST', '/pet/v1/recall', { scope: { ...scope, bankId: 'other-bank' }, query: '' }), { status: 403 });
+    const { bankId, ...identity } = scope;
+    await assert.rejects(client.request('POST', '/pet/v1/recall', { scope: { ...identity, workspaceId: bankId }, query: '' }), { status: 403 });
     const body = { scope, source_id: 'synthetic-source', content: 'Owner preference tea', revision: '1', actor_id: 'fixture-owner' };
     const first = await client.request('POST', '/pet/v1/observe', body);
     const replay = await client.request('POST', '/pet/v1/observe', body);
     assert.equal(first.observationId, replay.observationId);
     assert.equal(replay.state, 'duplicate');
+    const rssKiB = Number(execFileSync('/bin/ps', ['-o', 'rss=', '-p', String(info.pid)], { encoding: 'utf8' }).trim());
     const stopped = await host.stop();
     assert.equal(stopped.state, 'stopped');
     assert.equal(host.child, null);

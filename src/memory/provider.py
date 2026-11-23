@@ -23,6 +23,8 @@ class MemoryPort:
             raise ValueError("explicit Memory scope required")
         self.service = service
         self.clock = clock
+        self._wire_scope = dict(companionId=companion_id, scopeId=scope_id, bankId=workspace_id)
+        # Keep the persisted metadata and evidence keys readable by 0.5.0.
         self.scope = dict(companionId=companion_id, scopeId=scope_id, workspaceId=workspace_id)
         self.derivations = DerivationStore(service.db)
         grant_workspace_read(service.db, workspace_id)
@@ -184,6 +186,11 @@ class MemoryPort:
         if not row:
             return []
         return list(reversed(json.loads(row["manifest_json"])["evidence_revisions"][-limit:]))
+
+    def scope_for_request(self, scope: dict) -> dict:
+        if scope != self._wire_scope:
+            raise PermissionError("Memory scope mismatch")
+        return self.scope
 
     def authorize(self, scope: dict) -> None:
         if scope != self.scope:
