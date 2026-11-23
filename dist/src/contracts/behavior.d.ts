@@ -80,7 +80,6 @@ type ActionIn<Group extends keyof ActionMembership> = {
     [Action in BodyAction]: Group extends keyof (typeof BODY_ACTIONS)[Action] ? Action : never;
 }[BodyAction];
 export type CareAction = ActionIn<'care'>;
-export type RoleAction = ActionIn<'role'>;
 export type PlanBodyAction = ActionIn<'plan'>;
 export type FeedbackAction = ActionIn<'feedback'>;
 export declare const BODY_ACTION_NAMES: readonly BodyAction[];
