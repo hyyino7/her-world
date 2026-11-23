@@ -6,7 +6,6 @@ import {scan} from './lib/scan.mjs';
 import {summarizeJudgments,summarizeRules} from './lib/counts.mjs';
 import {updateBaselines} from './lib/ratchet.mjs';
 import {baselineMove} from './lib/move.mjs';
-import {vocabularyDeltaLines} from './lib/vocabulary-delta.mjs';
 
 export function report(result,log=console.log) {
   for(const {rule,entries,callSites,violationEdges,dependencyEdges} of summarizeRules(result)) {
@@ -41,12 +40,8 @@ export function main(args=process.argv.slice(2),root=resolve(import.meta.dirname
   const rewrite=movePath?baselineMove(resolve(root,movePath)):undefined;
   const vocabularyFile=join(root,'arch/baseline/vocabulary.json');
   const objectTables=existsSync(vocabularyFile)&&readJson(vocabularyFile).objectTables===true;
-  const preview=flags.includes('--report');
-  const result=scan(root,{objectTables:objectTables||preview});
-  if(preview) {
-    report(result);
-    if(!objectTables)for(const line of vocabularyDeltaLines(result.objectTableRelations))console.log(line);
-  }
+  const result=scan(root,{objectTables});
+  if(flags.includes('--report'))report(result);
   const outcomes=updateBaselines([
     {file:join(root,'arch/baseline/rules.json'),items:result.rules},
     {file:vocabularyFile,items:objectTables?result.vocabulary:result.legacyVocabulary,metadata:objectTables?{objectTables}:undefined},
