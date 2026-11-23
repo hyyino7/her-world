@@ -1,7 +1,7 @@
 import {equal, deepEqual, throws} from 'node:assert/strict';
 import test from 'node:test';
 import {desktopAppearanceDefaults, parseDesktopAppearance} from '../../src/desktop/appearance.js';
-import {DEFAULT_COMPANION_SETTINGS, parseCompanionConfiguration, parseCompanionSettings} from '../../src/core/companion-settings.js';
+import {DEFAULT_COMPANION_SETTINGS, parseCompanionConfiguration, resolveCompanionSettings} from '../../src/core/companion-settings.js';
 
 test('desktop defaults and complete upstream pools refer to shipped media', () => {
   const defaults = desktopAppearanceDefaults();
@@ -37,8 +37,8 @@ test('portable Desktop fields keep old omissions, bounds and localized appearanc
   equal(saved.desktopSize,96);
   equal(saved.desktopSleepTalkSeconds,86400);
   deepEqual((saved.desktopAppearance?.animations as {clicks:string[]}).clicks,['wave']);
-  equal(parseCompanionSettings(prior).desktopClickSound,false);
-  equal(parseCompanionSettings({}).desktopSize,232);
+  equal(resolveCompanionSettings(saved).desktopClickSound,false);
+  equal(resolveCompanionSettings(parseCompanionConfiguration({})).desktopSize,232);
   equal(parseCompanionConfiguration({desktopSize:512}).desktopSize,512);
   throws(()=>parseCompanionConfiguration({desktopSize:513}),/Invalid desktopSize/);
   throws(()=>parseCompanionConfiguration({desktopFixed:1}),/Invalid Desktop switch/);
