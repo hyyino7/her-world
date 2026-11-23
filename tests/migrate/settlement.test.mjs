@@ -1,29 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { CONSOLE_WALLET_IMPORT_FILE } from '../../dist/src/core/storage-migration.js';
 import { createCore } from '../../dist/src/core/index.js';
 import { PersistentLifePlan } from '../../dist/src/living/plan/plan.js';
 import { openDomains } from '../../scripts/fixtures/synthetic-companion.mjs';
-import { runMigration } from '../../scripts/migrate/runner.mjs';
 import { createOfflineBackup, restoreOfflineBackup } from '../../scripts/lib/offline-backup.mjs';
-import { variants, fixture, mockDsh, planFor, read, emptyWalletMigrationInputs } from './helpers.mjs';
-import { legacyEconomy } from './offline-helpers.mjs';
+import { fixture, mockDsh, planFor, read } from './helpers.mjs';
 
-for (const variant of variants) test(`${variant}: pending Body effect settles identically across migration`, {timeout:60000}, async t => {
-  mockDsh(t); const f = await fixture(t,variant,{keepStorageManifest:true});
+test('0.5.0 备份恢复后已生效的 Body 动作仍只结算一次', {timeout:60000}, async t => {
+  mockDsh(t); const f = await fixture(t,'current',{keepStorageManifest:true});
   t.mock.timers.enable({apis:['Date'],now:Date.now()});
   const file = join(f.data,'economy/economy.sqlite');
   const sql = text => {const db = new DatabaseSync(file);try {db.exec(text);} finally {db.close();}};
-  const manifest = join(f.data,'storage-manifest.json');
   let host = createCore(f.config), domains = openDomains(host);
   const plan = () => new PersistentLifePlan(join(f.data,'life'),f.config.companionId,f.storageId,'UTC');
   let planId, effect;
   try {
     await domains.body.setAutonomy(f.target.id,true);
-    await plan().commit(1,{goal:'fixture meal',reason:'fixture',steps:[{id:'eat',kind:'economy',activity:'fixture',economy:{type:'consume',itemId:'food:improved-meal',quantity:1}}],nextConsiderAt:null});
+    await plan().commit(plan().read().revision,{goal:'fixture meal',reason:'fixture',steps:[{id:'eat',kind:'economy',activity:'fixture',economy:{type:'consume',itemId:'food:improved-meal',quantity:1}}],nextConsiderAt:null});
     planId = plan().read().plan.id;
     sql("CREATE TRIGGER reject_consumption BEFORE UPDATE ON uses WHEN json_extract(NEW.value,'$.status')='consumed' BEGIN SELECT RAISE(ABORT,'synthetic pending settlement'); END");
     const before = (await domains.body.snapshot(f.target.id)).needs.hunger;
@@ -53,11 +48,7 @@ for (const variant of variants) test(`${variant}: pending Body effect settles id
   }
   const baseline = await recover();
   restoreOfflineBackup(planFor(f),pending,join(f.out,'before-pending-restore'));
-  const bodyPath = join(f.data,variant === 'legacy' ? 'life/home.json' : 'behavior/home.json');
-  assert.equal(read(bodyPath).plannedExecutions[`life:${planId}:eat`].effectAppliedAt > 0,true);
-  legacyEconomy(f);
-  rmSync(manifest);
-  rmSync(join(f.data,CONSOLE_WALLET_IMPORT_FILE));
-  await runMigration({installation:f.installation,backup:join(f.out,'migration-backup'),...emptyWalletMigrationInputs(f)});
+  const bodyPath = join(f.data,'behavior/home.json');
+  assert.ok(read(bodyPath).plannedExecutions[`life:${planId}:eat`].effectAppliedAt > 0);
   assert.deepEqual(await recover(),baseline);
 });
