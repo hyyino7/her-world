@@ -2,13 +2,6 @@ import { realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { InFlight, settleCleanup } from '../index.js';
-/** This is a native file-tool guard, not an operating-system security boundary.
- * Installed DSH 0.2.2-rc.2 exposes whole-workspace write grants, without excluded roots.
- * Arbitrary process execution and other plugin capabilities can bypass it. */
-export const economyAccessBoundary = {
-    mode: 'bounded',
-    detail: '原生文件工具会保护账本目录和采用证据。通用命令和其他插件仍沿用 DSH 权限。',
-};
 const directFiles = new Set(['read', 'write', 'edit', 'read_image']);
 const knownFiles = new Set([...directFiles, 'str_replace_editor', 'apply_patch']);
 /** Only inspect native path fields. File contents and command strings are never

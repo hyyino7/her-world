@@ -1,4 +1,5 @@
 import { planOverview } from './tool-context.js';
+import { PLAN_COMPARISONS } from './plan.js';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { OWNER_LIFE_TOOL_SOURCES } from '../../core/native/conversation.js';
 import { isHistoryObject } from '../../core/native/history-maintenance.js';
@@ -132,7 +133,7 @@ export function registerPlanTools(ctx, host, life) {
                     plan: { type: 'object', required: true, properties: {
                             goal: { type: 'string', required: true }, reason: { type: 'string', required: true }, nextConsiderAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true, description: 'ISO time with timezone, or null to wait for an explicit event. Finishing the last finite activity is one such event. Empty steps with null explicitly choose quiet waiting. No fixed interval.' },
                             steps: { type: 'array', required: true, description: 'Ordered explicit activities. Empty steps are valid quiet waiting. Each kind has its own required fields; labels alone cannot execute an activity.', items: planStepSchema },
-                            reconsiderWhen: { type: 'array', items: { type: 'object', properties: { metric: { type: 'string', enum: [...BODY_METRIC_NAMES], required: true }, comparison: { type: 'string', enum: ['gte', 'lte'], required: true }, value: { type: 'number', required: true } }, additionalProperties: false } },
+                            reconsiderWhen: { type: 'array', items: { type: 'object', properties: { metric: { type: 'string', enum: [...BODY_METRIC_NAMES], required: true }, comparison: { type: 'string', enum: [...PLAN_COMPARISONS], required: true }, value: { type: 'number', required: true } }, additionalProperties: false } },
                         }, additionalProperties: false },
                 }, output, execute: async (args, exec) => { const guard = admission(exec.agent, exec.signal); return JSON.stringify(await life.updatePlan(guard.id, args.expectedRevision, args.plan, guard.validate)); } }) },
         { sources: OWNER_LIFE_TOOL_SOURCES, ...defineTool({ name: 'life_read_segment', description: '读取当前生活计划正在执行的真实读物片段。先读计划及版本，使用当前执行的原operationId；返回实际文字和持久receiptToken。取得内容不会自动推进书签，也不代表读懂。读到返回文字后才可明确调用life_read_confirm。沿用当前原生会话，不创建第二个阅读代理。', parameters: {

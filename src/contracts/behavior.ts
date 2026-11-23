@@ -26,7 +26,6 @@ type ActionIn<Group extends keyof ActionMembership> = {
 }[BodyAction];
 
 export type CareAction = ActionIn<'care'>;
-export type RoleAction = ActionIn<'role'>;
 export type PlanBodyAction = ActionIn<'plan'>;
 export type FeedbackAction = ActionIn<'feedback'>;
 

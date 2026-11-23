@@ -42,7 +42,7 @@ export function adaptRoomApp(source:string):string {
 }
 
 /** Adapt shipped template labels, never user text or stable action identifiers. */
-export function adaptRoomIdentityScript(source:string):string {
+function adaptRoomIdentityScript(source:string):string {
   source = source.replace(/('(?:[^'\\\r\n]|\\.)*'|"(?:[^"\\\r\n]|\\.)*"|`(?:[^`\\\r\n]|\\.)*`)/g, literal => {
     if (!literal.includes('小蓝鱼') && !literal.includes('大肥鱼当前的心情')) return literal;
     // Shipped HTML templates require escaped interpolation; textContent,
@@ -103,7 +103,7 @@ function refreshCompanionRoom(change) {
 }
 
 /** Extend the existing owner RPC transport; no public audio/state HTTP route. */
-export function adaptRoomTransport(source:string):string {
+function adaptRoomTransport(source:string):string {
   const table=/^const endpoints = new Map\(\[[\s\S]*?^\]\);/gm;
   const lookup='  const endpoint = endpoints.get(new URL(url, location.origin).pathname);';
   const deadline=/\['roomTelevision','roomChat'\]\.includes\(endpoint\)\s*\?\s*310000\s*:\s*20000/g;
@@ -115,7 +115,7 @@ export function adaptRoomTransport(source:string):string {
 }
 
 /** The saved garden preference never claims a second autonomous planner. */
-export function adaptRoomGarden(source:string):string {
+function adaptRoomGarden(source:string):string {
   const replace=(before:string,after:string)=>{
     if(source.split(before).length!==2)throw Error('Room garden presentation source changed: '+before.slice(0,60));
     source=source.replace(before,()=>after);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {workspace,saveBaseline,check} from './helpers.mjs';
+import {scan} from '../../scripts/arch/lib/scan.mjs';
 
 const old="export function old(ctx) { ctx.get('petLife'); }";
 const create=t=>{const work=workspace(t,{'src/core/example.ts':old});saveBaseline(work);return work;};
@@ -87,5 +88,38 @@ test('R8 新增一对重复或同一函数内增加一份重复仍阻断',t=>{
   assert.equal(check(work.root).status,1);
   work.write('src/room/c.ts','');
   work.write('src/core/a.ts',"export function words(){const extra=['a','b','c'];return ['a','b','c'];}");
+  assert.equal(check(work.root).status,1);
+});
+
+test('R8 对象表沿用现行报告和棘轮，按重数拦截新增并允许收紧',t=>{
+  const room='src/room/words.ts';
+  const table=name=>`const ${name} = {a: true, b: false, c: true} as const; Object.hasOwn(${name}, 'a');\n`;
+  const before=table('First')+table('Second');
+  const work=workspace(t,{'src/living/plan/words.ts':"export type State = 'a'|'b'|'c';",[room]:before});
+  saveBaseline(work);
+  const file='arch/baseline/vocabulary.json';
+  const baseline={schemaVersion:1,objectTables:true,entries:scan(work.root,{objectTables:true}).vocabulary};
+  assert.equal(baseline.entries.length,4);
+  const baselineJson=JSON.stringify(baseline);
+  work.write(file,baselineJson);
+  const read=()=>readFileSync(join(work.root,file),'utf8');
+  const detail=check(work.root,['--report']);
+  assert.equal(detail.status,0,detail.stderr);
+  assert.match(detail.stdout,/R8：4 条重复关系/);
+  assert.match(detail.stdout,/R8 定义 src\/room\/words\.ts:2 object table/);
+
+  work.write(room,before+table('Third'));
+  const added=check(work.root);
+  assert.equal(added.status,1);
+  assert.match(added.stdout,/新增 2；消失 0/);
+  assert.match(check(work.root,['--write-baseline']).stderr,/只能删条目/);
+  assert.equal(read(),baselineJson);
+
+  work.write(room,'');
+  const tightened=check(work.root,['--write-baseline']);
+  assert.equal(tightened.status,0,tightened.stderr);
+  assert.deepEqual(JSON.parse(read()),{schemaVersion:1,objectTables:true,entries:[]});
+  assert.equal(check(work.root).status,0);
+  work.write(room,table('First'));
   assert.equal(check(work.root).status,1);
 });

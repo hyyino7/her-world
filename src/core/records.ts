@@ -7,7 +7,7 @@ import { sameHomeBinding } from './home-binding.js';
 import type { CoreWorkspace } from './workspace.js';
 import type { CoreNative } from './native/conversation.js';
 import type { ActivityReader, CompanionBinding } from './tables/companion-ports.js';
-import { companionRecordPaths, prepareRecordDirectory } from './record-paths.js';
+import { COMPANION_ALBUM_FILES, companionRecordPaths, prepareRecordDirectory } from './record-paths.js';
 import { readCompanionWriting, companionWritingFile, type CompanionWritingScope } from './companion-writing.js';
 import { bytesDigest, check } from './storage.js';
 
@@ -26,7 +26,7 @@ export class CompanionRecordLibrary {
     if (this.photos) return this.photos;
     const dir = join(this.paths.photoDirectory, 'photos');
     prepareRecordDirectory(this.paths.photoDirectory); prepareRecordDirectory(dir);
-    for (const name of ['album.sqlite', 'album.sqlite-wal', 'album.sqlite-shm', 'album.sqlite-journal', 'index.json']) checked(join(dir, name));
+    for (const name of COMPANION_ALBUM_FILES) checked(join(dir, name));
     return this.photos = createPhotoStore(this.paths.photoDirectory);
   }
   readonly photoTools = Object.freeze({

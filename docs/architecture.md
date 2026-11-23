@@ -1,10 +1,8 @@
 # Her World 架构
 
-这里写三层重构的目标结构和现状基线。阶段安排和完成标准见 [product.md](product.md)，拍板过的取舍见 [decisions.md](decisions.md)。
+这里记录 Her World 的三层结构和模块职责。版本与阶段进度见[产品当前状态](product.md#当前状态)，取舍见[决策](decisions.md)。
 
-- 2.1 的行数以 Her World 0.1.8（提交 `0a45ada`）为基线。阶段 3 的收尾状态以各段列出的源码和执行记录为准。
-- 代码路径默认相对 `src/`；`scripts/`、`tests/`、`vendor/` 下的文件写全路径。
-- 目录：阶段 1 缩小后（[decisions.md](decisions.md)「阶段 1 缩小」），第一层、第三层保留现有目录（`src/core/`、`src/room/` 等）；第二层在 2a 合并进 `src/living/`。下面总览里的 `kernel / surface` 只是层的代号，不是目录。
+代码路径默认相对 `src/`。`scripts/`、`tests/`、`vendor/` 下的文件写全路径。
 
 ---
 
@@ -14,9 +12,10 @@
         你（桌宠 / Room / QQ / 微信 / 语音 / 设置页）
                        │
 ┌──────────────────────▼─────────────────────────────┐
-│ 第三层  呈现与连接  surface/                       │
-│   Desktop·PetPlatform   Room   Channels   Voice   Console │
-│   只往下依赖，同层不互相引用；只存自己的数据          │
+│ 第三层  呈现与连接                                 │
+│   Desktop · Room · Presentation                    │
+│   Channels · Voice · Console                       │
+│   向下依赖；按登记复用 Presentation；只存自己的数据          │
 └──────────────────────┬─────────────────────────────┘
         向下：调用（读快照、发命令） │ 向上：事件、登记
 ┌──────────────────────▼─────────────────────────────┐
@@ -26,8 +25,8 @@
 └──────────────────────┬─────────────────────────────┘
         向下：调用            │ 向上：事件、登记
 ┌──────────────────────▼─────────────────────────────┐
-│ 第一层  伙伴本体  kernel/                          │
-│   身份与绑定 · DSH 聊天接缝 · 记忆 · 情绪 · 记录库       │
+│ 第一层  伙伴本体                                   │
+│   Core · Memory · Emotion · Contracts · World       │
 │   登记口：来源适配 · 能力状态 · 工具声明 · 初始化 · 运维操作      │
 └────────────────────────────────────────────────────┘
                     DSH（聊天、调度、会话日志）
@@ -51,19 +50,22 @@
 
 ### 2.1 模块归属
 
-| 现在的目录 | 行数（不含上游生成文件） | 去哪里 | 说明 |
-| --- | ---: | --- | --- |
-| `core/` | 3370 | 第一层 | 2a 清理后，阶段 3 保留 Core 外观校验的 R1 例外，见[第一层剩余违规的去向](product.md#第一层剩余违规的去向)（`docs/decisions.md:280`、`arch/baseline/rules.json:3–36`） |
-| `memory/` | 966 | 第一层 | 记忆的创建和关闭归第一层 |
-| `emotion/` | 698 | 第一层 | 含近期互动账本 |
-| `contracts/` | 268 | 仍共用 `src/contracts/` | 共用物理目录位于第一层，照料表由 Living 拥有，见[阶段 4](product.md#stage-4) |
-| `living/body/` + `living/plan/` + `living/economy/` | 6430（0.1.8 时三个旧目录合计） | 第二层 | 2a 已合并成 `src/living/` 和一个常驻实例，见 2.3 与第 6 节 |
-| `desktop/` | 21380（大头是生成文件） | 第三层 | 生成文件改生成器，不手改 |
-| `room/` | 989 | 第三层 | 拥有房间窗口、交互接线和图片副本 |
-| `channels/` | 1818 | 第三层 | Core 中的原位例外见[状态拥有者表](#4-状态拥有者表) |
-| `voice/` | 71 | 第三层 | 通过第一层声明的「语音接口」使用，见 5.4 |
-| `console/` | 1674 | 第三层 | 通过「运维操作表」操作其他模块，见 5.5 |
-| `world/` | 74 | 第一层 | Core 的 `petWorld` 用其模块登记和会话归属，记忆批处理也使用模块登记 |
+模块及归层以 [arch/layers.json](../arch/layers.json) 为准。
+
+| 层 | 模块目录 | 职责 |
+| --- | --- | --- |
+| 第一层 | `core/` | 身份、存储与绑定、DSH 聊天接缝和登记口。R1 例外见[规则基线](../arch/baseline/rules.json) |
+| 第一层 | `memory/` | 记忆引擎的创建、关闭与绑定 |
+| 第一层 | `emotion/` | 情绪状态和近期互动账本 |
+| 第一层 | `contracts/` | 共用契约。照料表的取值由 Living 拥有 |
+| 第一层 | `world/` | Core 的 `petWorld` 使用其模块登记和会话归属，记忆批处理也使用模块登记 |
+| 第二层 | `living/` | 身体、计划和回顾、钱包背包菜园阅读三区共用一个常驻实例 |
+| 第三层 | `desktop/` | 桌宠与 PetPlatform 接线 |
+| 第三层 | `room/` | 房间窗口、交互接线和图片副本 |
+| 第三层 | `presentation/` | 桌宠与 Room 共用的呈现和播放契约、动画索引 |
+| 第三层 | `channels/` | QQ／微信等渠道。Core 原位例外见[状态拥有者表](#4-状态拥有者表) |
+| 第三层 | `voice/` | 通过[语音接口](#54-同层共用物)登记合成、识别和音色服务 |
+| 第三层 | `console/` | 设置页经[运维操作表](#55-控制台)操作各模块 |
 
 ### 2.2 第一层「伙伴本体」管什么
 
@@ -114,12 +116,9 @@
 
 ### 2.4 第三层「呈现与连接」管什么
 
-Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则：
+Desktop（含 PetPlatform）、Room、Channels、Voice 和 Console 经第一层接口或登记表使用同层能力。Desktop、Room 和 Console 可以依赖共用模块 `presentation/`。`presentation/` 独立于其他模块，也没有持久数据。
 
-1. **只往下依赖，同层不互相引用。** 需要别的同层模块的能力时，经第一层的接口或登记表。
-2. **只存自己的数据，不往第一层、第二层的存储里写。**
-
-共用呈现代码登记在第三层（`arch/layers.json:104–115`），数据的原位例外见[状态拥有者表](#4-状态拥有者表)。
+第三层各模块只写自己拥有的数据。Core 原位例外见[状态拥有者表](#4-状态拥有者表)。
 
 ---
 
@@ -127,7 +126,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 规则写成机器可读的清单 [arch/layers.json](../arch/layers.json)：每个模块属于哪层，允许依赖谁，允许读哪些服务，允许发布和订阅哪些事件。检查脚本用仓库已有的 TypeScript 编译器接口写，不加新依赖。
 
-- **R0**：第三层 → 第二层 → 第一层；第三层模块之间禁止互相依赖。向下调用、向上事件与登记。
+- **R0**：第三层 → 第二层 → 第一层；第三层依照 `layers.json` 允许的入边复用 Presentation。向下调用、向上事件与登记。
 
 | 编号 | 检查什么 | 覆盖范围 | 怎么查 | 建立时间 |
 | --- | --- | --- | --- | --- |
@@ -138,14 +137,14 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | **R5** | 谁在写哪份数据 | 见下 | 见下 | M1 起只报告。存储句柄延期，见下方边界 |
 | **R6** | 关闭后不留尾巴 | 定时器、订阅、在途请求，以及在途 I/O 和子进程 | 见第 8 节 | 从阶段 2a 起，每个新写的模块各带一条 |
 | **R7** | 外围可关闭 | 见下 | 组合测试 | 阶段 2 覆盖生活世界的卸载与暂停；阶段 3 覆盖全部外围模块 |
-| **R8** | 词汇重复与裸字符串 | 同一组字符串取值出现在多个文件，阶段 3 纳入有类型或用途证据的对象表和布尔值表的键。另检查公开接口的 `kind / action / status / type` 裸 `string` 字段 | 扫描，旧重复按基线放行，新增重复阻断（`scripts/arch/check.mjs:38–49`、`tests/arch/object-vocabulary.test.mjs:8–33`） | M1，阶段 3 扩面 |
+| **R8** | 词汇重复与裸字符串 | 同一组字符串取值出现在多个文件，阶段 3 纳入有类型或用途证据的对象表和布尔值表的键。另检查公开接口的 `kind / action / status / type` 裸 `string` 字段 | 扫描，旧重复按基线放行，新增重复阻断（[检查入口](../scripts/arch/check.mjs)、[对象表扫描](../tests/arch/object-vocabulary.test.mjs)与[棘轮测试](../tests/arch/ratchet.test.mjs)） | M1，阶段 3 扩面 |
 
-**棘轮**：R1–R4 的基线在 [arch/baseline/rules.json](../arch/baseline/rules.json)，R8 在 [arch/baseline/vocabulary.json](../arch/baseline/vocabulary.json)；R5 的 [arch/baseline/writers.json](../arch/baseline/writers.json) 只作报告，不参与棘轮。已建立的检查出现新增违规，或旧条目消失而未同步收紧基线，都会失败；更新基线只能删条目，清理旧违规时同提交收紧。检查与报告命令见 [开发说明](development.md#architecture-behavior)。尚未建立的检查不计为已生效。
+**棘轮**：R1–R4 的基线在 [arch/baseline/rules.json](../arch/baseline/rules.json)，R8 在 [arch/baseline/vocabulary.json](../arch/baseline/vocabulary.json)。运行 `pnpm run check:arch -- --report` 可查看 R5 实时读写报告。已建立的检查出现新增违规，或旧条目消失而未同步收紧基线，都会失败；更新基线只能删条目，清理旧违规时同提交收紧。检查与报告命令见 [开发说明](development.md#architecture-behavior)。尚未建立的检查不计为已生效。
 
 **R5 的做法**
 
 - 状态拥有者表（第 4 节）登记每份持久数据的路径或表名、拥有者、**唯一写入协议**。
-- 按拥有者限制表和行的通用存储句柄，以及 `records.kind` 公共类型化，均延期至阶段 3 之后，具体阶段待核实（`docs/decisions.md:268`）。
+- 按拥有者限制表和行的通用存储句柄与 `records.kind` 公共类型化仍在延期，见[长期有效的规则](decisions.md#2026-11-23-阶段-3-拍板中长期有效的规则)。
 - Core 的 SQLite 只放 Core 拥有的表、记录 kind 和[拥有者表](#4-状态拥有者表)批准的原位例外。拥有者边界覆盖**记录 kind 和写入端口**。
 - **局限**。R5 能报告文件、表和记录 kind 的可识别写入点。对已有文件某一行的越权更新仍超出静态扫描边界，见下方已知局限（`scripts/arch/lib/storage.mjs:28,60`）。
 
@@ -189,7 +188,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 未采用 Economy 的菜园 `garden.json` | 第二层·生活世界 | Body | 首次采用时由 Economy 在建库事务里接收当前菜园。已采用的存档从钱包读写 |
 | 钱包背包 `data/economy/*` | 第二层·钱包区 | Economy | 不变；只用 `mode=rw` 打开已存在的库，库存在就必须有同绑定的库内标记，空壳库拒绝。`console_wallet_requests` 保存 Console 原请求号和规范指纹，待办保留重试所需输入，结清后清除输入。余额、配置和库存仍由原交易、库存回执和 Body 检查点证明。查证读原号，显式重试续做，存在待办时拒绝新的 Console 钱包写入 |
 | `data/life/control.json`、`life.json`（计划部分）、`data/life/life/wakes.jsonl`、`activity/*`、`compactions.jsonl` | 第二层·计划区 | Life | 计划区独占 `life.json` 的 home ID 镜像和待迎接 `greeting`（上游运行时要读，经 `living/plan/home-store.ts:12-57,63-76` 包装的 store 访问，以 Core 记录为准）。Core 置了 `arrivalPending` 时，计划区先把迎接写盘，再请 Core 清除这个标记；交接以镜像落盘为准，计划区不在时标记留着，下次装载时补交接（`living/plan/plugin.ts:193-213`）。记录库的日期、日记和搜索按当前存储绑定读取第二层登记的只读活动接口（`core/records.ts:103-132`、`living/plan/activity-reader.ts:17-43`）。任一区对 Core 可见时可读历史活动，三区都缺席时日期和正文由日记提供。活动目录已登记但为空时查询返回空结果；登记目录缺失时拒绝读旧绑定。`control.json` 的可选字段 `pauses`（暂停区间 `{from, to|null}` 的有序列表，缺省等于没有区间记录、沿用旧开关）只由 Life 改开关时维护，按 Economy 已提交的菜园时钟清理已经扣过的区间；Body、Economy 推进菜园时只读它，Life 服务不在时用 `living/plan/control-file.ts:25-51` 的 `readLifeControl` 读 |
-| 日记、自述、历史 | 第一层·记录库 | 主人设置、DSH 原生 `write/edit` 工具、Life/World 回顾复制 | **唯一写入协议待定**：原生工具仍可直接写文件，需要决定经记录库守卫还是保留现状；路径为 `.chatpet/{self.md, self.history/, diary/}` |
+| 日记、自述、历史 | 第一层·记录库 | 主人设置、DSH 原生 `write/edit` 工具、Life 回顾复制 | **唯一写入协议待定**：原生工具仍可直接写文件，需要决定经记录库守卫还是保留现状；路径为 `.chatpet/{self.md, self.history/, diary/}` |
 | 相册 `data/core/photos/album.sqlite` | 第一层·记录库 | Core 和 Life 通过记录库写入 | Core 的带前缀相册工具与 Life 的原生相册使用同一个受限句柄，提供 `keep`、`list`、`forget`（`core/records.ts:24-35`）。会话门控见 5.8.3。 |
 | 原生会话副本 `data/core/native-sessions/*` | 第一层 | NativeTranscripts | 不变 |
 | Desktop 待办 `data/desktop/*` | 第三层·Desktop | Desktop | 沿用原写入协议 |
@@ -271,11 +270,11 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 事实 `CompanionFact` | 第二层 | `domain` 封闭；`type` 是裸 `string` | 补 `domain` 与 `type` 的关联类型和统一解码器；Python 侧的识别清单与它由同一份声明生成，或用契约测试对齐 |
 | 会话来源 `source.kind / scope / admission` | 第一层 | `source.kind` 内建 7 种，可经 DSH 的 `MessageSourceMap` 扩展；`scope` 有三种含义 | 并入来源适配表（2.2、5.8）；`NativeScope`、`MemoryScope`、`scopeId` 分别命名，不再共用「scope」一词 |
 
-第一批（动作、行为、活动、阶段、命令、事实）见 5.6.1。阶段 3 开工时交付了第二批概念表（`6dd3e4c:docs/plans/stage3-presentation.md:299–310`），涉及表情与贴纸、情绪、槽位与素材的现行边界见 [5.7](#57-动作与行为)，各项取舍见[阶段 3 结果](product.md#阶段-3-结果)。
+第一批（动作、行为、活动、阶段、命令、事实）见 5.6.1。阶段 3 开工时交付了第二批概念表（`6dd3e4c:docs/plans/stage3-presentation.md:299–310`），涉及表情与贴纸、情绪、槽位与素材的现行边界见 [5.7](#57-动作与行为)，各项取舍见[长期有效的规则](decisions.md#2026-11-23-阶段-3-拍板中长期有效的规则)。
 
 #### 5.6.1 第一批概念细表
 
-第一批（动作、行为、活动、阶段、命令、事实）在阶段 2b 已收成各自一份声明，行号按 2b 收尾时的代码。声明大多由取值表派生数组、类型和守卫。阶段 3 扩面后的词表扫描范围见 [R8](#3-依赖规则和自动检查)，实际份数见[词表重复基线与目标](product.md#词表重复基线与目标)。
+第一批（动作、行为、活动、阶段、命令、事实）在阶段 2b 已收成各自一份声明，行号按 2b 收尾时的代码。声明大多由取值表派生数组、类型和守卫。阶段 3 扩面后的词表扫描范围见 [R8](#3-依赖规则和自动检查)。
 
 ##### 动作 `action`
 
@@ -506,13 +505,13 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 新增工具 | 工具定义旁声明 `sources`（没写的只给主人），需要历史瘦身时再声明 `historyOverview`，登记到工具声明表 `host.native.toolTable`（M2 已落地） | Life 和回顾名单、历史瘦身识别、来源适配的工具限制 |
 | 新增输入来源 | 在模块里写一个来源适配器（准入、分支、`turnKind`、工具策略、记忆观察、情绪更新、历史投影、会话策略行），在入口登记到 `host.native.sourceTable`；新的 `source.kind` 在 DSH 的 `MessageSourceMap` 声明，新的工具来源用 `toolTable.registerSource` 登记（M2 已落地） | 入队和首步准入、工具限制、记忆观察、情绪 footer、历史投影、会话策略一行 |
 | 新增上下文段 | 在模块入口用 `registerWorldPrompt` 登记（缩小后不做段声明，5.9） | 无；顺序、可见性由登记处自己写 |
-| 新增伙伴设置项 | 便携字段的默认值和校验在 Core（`src/core/companion-settings.ts:6–43,54–76`） | 页面控件、保存键和实际消费仍分别接线（`src/console/client.js:1111`、`src/emotion/recent.ts:71–72`）。第 7 类试做完成，阶段 4 确认维持现有接线，见[阶段 4](product.md#stage-4) |
+| 新增伙伴设置项 | 便携字段的默认值和校验在 Core（`src/core/companion-settings.ts:6–43,54–76`） | 页面控件、保存键和实际消费仍分别接线（`src/console/client.js:1111`、`src/emotion/recent.ts:71–72`）。试做结果见[典型修改前后对比](product.md#典型修改前后对比) |
 | 新增 QQ／微信设置项 | `channels/messaging-settings.ts` 声明可编辑字段并维护缺省值及校验 | Console 与生成的桌宠客户端从 Channels 的状态响应读取控件和保存键。Channels 按字段的设备归属落盘 |
 | 新增设置页操作 | 拥有者声明校验和执行并登记到 `host.native.consoleOperations` | Console 用公开端点名映射到登记，入口统一管理准入和撤销 |
 | 新增照料动作 | 第二层的 `BodyAction` 基础表（`contracts/behavior.ts:10`），每个动作在照料、角色、计划、反馈各集合里记序号 | 主人入口、角色工具枚举、计划类型与校验、计划 schema、设置页白名单和按钮（`lifeView.careActions`）。动作的执行和事实标签仍在 Body 里写 |
 | 新增事实领域 | `contracts/interaction.ts` 的 `FACT_DOMAINS` | 读写类型、领域清单（Core 准入、World、Life、提示词段）。领域提供者要另写；Python 元组要跟着改，契约测试会失败提醒；上游 Life 的 `FactRef` 领域封闭、vendor 不能改，要经 Life 的回读适配 |
 
-重构前的基线和 M2 后的复测见 [product.md](product.md) 的「典型修改前后对比」。
+历次试做的最终判定见[典型修改前后对比](product.md#典型修改前后对比)。
 
 ---
 
@@ -604,33 +603,8 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 ---
 
-## 9. 重写顺序
-
-第一层分步完成。共享 home 身份由 Core 的 `companion-home` 记录持有，Life 回顾完成时向下调用 Memory，记录库经登记口读取 Life 活动。各步对应的里程碑和完成标准见 [product.md](product.md) 的「阶段」。阶段 1 缩小后（[decisions.md](decisions.md)「阶段 1 缩小」），第一层停在 P2b，P2c 取消，其中属于第二层的部分并入 P3。
-
-| 步 | 做什么 |
-| --- | --- |
-| P0 | 行为基线：拆行为清单；定 `layers.json`；R1–R4、R8 先对旧代码跑，用已知违规样例集验证脚本抓得到，现状违规清单固定 |
-| P1 | 存储清单、离线备份与历史完成凭证，现行准入见第 7 节 |
-| P2a | 能力状态表：Core 不再读上层服务拼状态（已完成）。原定的初始化表缩小后不做 |
-| P2b | 来源适配表和工具声明表：把 Life 一类原生输入的整套适配（准入、工具限制、回顾守卫、历史投影）迁出第一层；`host.native.xxxAdmission` 赋值消失（已完成） |
-| P2c | 取消。Life 向下调用 Memory、记录库改读第二层只读接口并入 P3；提示词段表砍掉；共享 home 身份记录的归属已定（第 4 节） |
-| P3 | 合并生活三区、共用登记实例，确定共享 home 和钱包采用证据的归属；沿用三个生活入口 |
-| P4 | 第三层使用共用图片准入、语音表、运维操作表和持久钱包请求；Core 保留[批准的原位例外](#4-状态拥有者表) |
-| P5 | 支持基线上移至已迁移的 0.5.0，收紧公开面与数据准入；收尾状态见[阶段 4](product.md#stage-4) |
-
-每步结束都要：行为清单全绿、门禁通过、能发一个版本、更新「典型修改前后对比」。
-
----
-
-## 10. 特殊情况
+## 9. 特殊情况
 
 - **首次安装 / 空状态**：没有绑定资料目录时，第一层只开聊天，不创建上层数据。主人明确初始化时，Core 一次建好全部技术容器，可选服务既不打开也不启用（`core/initialization.ts:16`）；Economy、Memory Bank、近期账本经 `registerInitializer` 登记自己的初始化。沿用现状。
 - **存储准入失败**：保留原资料并显示原因码。需历史升级时，从第 7 节进入对应版本的操作说明。
 - **外围模块关闭**：关掉 Desktop、Room、Channels、Voice 任一个，聊天、记忆、身体、计划都不受影响（R7）。
-
----
-
-## 11. 待实测的边界
-
-正式包在隔离 DSH 更新后验证 bundle、本地化、外观编辑器，以及设置、Bank 和钱包请求的双向读回。具体步骤见[隔离验收与换包回退](release/notes.md#隔离验收与换包回退)。长期例外以架构登记和基线为准。

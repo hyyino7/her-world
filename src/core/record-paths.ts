@@ -29,7 +29,7 @@ export function initializeCompanionRecords(root: string) {
   const self = lstatSync(paths.selfFile, {throwIfNoEntry:false});
   if (self && (!self.isFile() || self.isSymbolicLink() || self.nlink !== 1)) throw Error('Companion self-description is invalid');
   if (!self) writeFileSync(paths.selfFile, '', {flag:'wx', mode:0o600});
-  for (const name of ['album.sqlite', 'album.sqlite-wal', 'album.sqlite-shm', 'album.sqlite-journal', 'index.json']) {
+  for (const name of COMPANION_ALBUM_FILES) {
     const stat = lstatSync(join(paths.photoDirectory, 'photos', name), {throwIfNoEntry:false});
     if (stat && (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1)) throw Error('Companion album is invalid');
   }
@@ -37,3 +37,5 @@ export function initializeCompanionRecords(root: string) {
   album.close();
   return paths;
 }
+
+export const COMPANION_ALBUM_FILES = ['album.sqlite', 'album.sqlite-wal', 'album.sqlite-shm', 'album.sqlite-journal', 'index.json'] as const;

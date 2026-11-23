@@ -3,6 +3,8 @@ import { type LifeStore } from '#dsh-world/life/lifeStore';
 import type { CompanionBehavior } from '../body/plugin.js';
 import { type BodyMetric, type PlannedActivity, type PlannedAdmissionWait } from '../../contracts/behavior.js';
 export type PlanStatus = 'active' | 'paused' | 'waiting' | 'completed' | 'cancelled';
+export declare function canContinuePlan(status: PlanStatus): boolean;
+export declare const PLAN_COMPARISONS: readonly ["gte", "lte"];
 export declare const expiredDispatchDeadline = "The activity absolute deadline elapsed before Body admission; revise the original plan explicitly";
 export interface LifeStep {
     id: string;
@@ -20,7 +22,7 @@ export interface LifeStep {
 }
 export interface LifeCondition {
     metric: BodyMetric;
-    comparison: 'gte' | 'lte';
+    comparison: typeof PLAN_COMPARISONS[number];
     value: number;
 }
 export interface CurrentLifePlan {
