@@ -39,9 +39,6 @@ export declare class CompanionEmotion {
     private file;
     ledger(id: string): RecentLedger | null;
     recordPlayback(receipt: PlaybackReceipt): void;
-    /** Emotion is companion-owned state, not a cached Memory projection. Legacy
-     * source fields remain readable metadata and never make a missing Bank a
-     * prerequisite for feeling, displaying or updating the current state. */
     read(workspaceId: string): Promise<EmotionSnapshot>;
     current(workspaceId: string): EmotionState | undefined;
     roomSnapshot(workspaceId: string): {

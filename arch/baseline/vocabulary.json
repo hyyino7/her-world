@@ -3688,13 +3688,13 @@
       "other": {
         "file": "src/contracts/emotion.ts",
         "scope": "<module>",
-        "line": 26
+        "line": 24
       }
     },
     {
       "rule": "R8",
       "file": "src/contracts/emotion.ts",
-      "line": 26,
+      "line": 24,
       "column": 11,
       "scope": "<module>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EmotionEditor\"}",
@@ -4792,13 +4792,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 316
+        "line": 312
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 316,
+      "line": 312,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/core/native/agent.ts\",\"scope\":\"<module>\"}",
@@ -6862,13 +6862,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "CompanionEmotion/recordPlayback",
-        "line": 69
+        "line": 68
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 69,
+      "line": 68,
       "column": 10,
       "scope": "CompanionEmotion/recordPlayback",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -6906,13 +6906,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "installEmotion/<callback>",
-        "line": 189
+        "line": 185
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 189,
+      "line": 185,
       "column": 20,
       "scope": "installEmotion/<callback>",
       "target": "{\"file\":\"src/emotion/index.ts\",\"scope\":\"<module>\"}",
@@ -6934,7 +6934,7 @@
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 316,
+      "line": 312,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"<module>\"}",
@@ -6974,13 +6974,13 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 316
+        "line": 312
       }
     },
     {
       "rule": "R8",
       "file": "src/emotion/plugin.ts",
-      "line": 316,
+      "line": 312,
       "column": 23,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"<module>\"}",
@@ -7021,7 +7021,7 @@
       "other": {
         "file": "src/emotion/plugin.ts",
         "scope": "<module>",
-        "line": 316
+        "line": 312
       }
     },
     {

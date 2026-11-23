@@ -211,9 +211,7 @@ persists across expiry of the recent-change list. Its canonical file is
 Existing text-only states do not receive invented numeric values; existing Room
 0–100 values are retained when present. Current Emotion is an independent state:
 correcting or forgetting a Bank record does not automatically rewrite or hide its
-text/reason. Optional legacy memory/dependency references are retained metadata,
-not a promise of live qualification checks before displaying Emotion. The owner
-can edit the current state explicitly. A damaged file is reported and retained.
+text/reason. The owner can edit the current state explicitly. A damaged file is reported and retained.
 An update whose final encoded document exceeds the reader's existing size limit
 is refused before replacement; the previous feeling stays readable and editable.
 Emotion does not write a second Room mood file.

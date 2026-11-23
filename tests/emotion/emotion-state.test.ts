@@ -41,7 +41,7 @@ test('text-only emotion survives neutral replies, ledger expiry and restart with
 });
 
 
-test('canonical emotion imports legacy once, rejects stale writers and remains independent of Memory after reload', async () => {
+test('canonical emotion ignores retired Core rows, rejects stale writers and remains independent of Memory after reload', async () => {
   const root=realpathSync(mkdtempSync(join(tmpdir(),'pet-emotion-file-'))),repo=join(root,'repo');mkdirSync(repo);
   const host=createCore({dataDir:join(repo,'.chatpet/data/core'),companionId:'fish',scopeId:'owner',ownerActorId:'owner',displayName:'Fish',character:'Fixture'});
   const ok=<T>(r:Result<T>)=>{if(!r.ok)throw Error(r.error.message);return r.value;};
@@ -49,31 +49,32 @@ test('canonical emotion imports legacy once, rejects stale writers and remains i
     const prefs=ok(await host.services.preferences.read(host.operator.request('prefs'),{}));
     const saved=ok(await host.services.preferences.save(host.operator.request('bind'),{expectedRevision:prefs.revision,workspace:{id:'repo',path:repo,title:'Repo'},conversation:prefs.conversation}));
     const legacy={mood:'有点无聊',reason:'先前聊过的偏好',at:1234,memories:['fact'],roomMood:{mood:44,dims:{calm:12}}};
-    // Simulate the pre-canonical store before the public initializer performs
-    // the one-time adoption, rather than injecting a stale row after it.
     host.workspace.runtime.store.put('emotion-state',host.workspace.storageId(),legacy);
     ok(await host.services.workspace.initialize(host.operator.request('init'),{expectedPreferencesRevision:saved.revision}));
-    let eligible=true;
-    host.native.memory={validateMemoryIds:async()=>eligible?'eligible':'ineligible',validateMaterial:async()=>eligible?'eligible':'ineligible',resolveMemoryMaterial:async()=>({decision:eligible?'eligible':'ineligible',dependencies:{sources:[],memories:[{id:'fact',revision:'1'}]}})} as unknown as NonNullable<typeof host.native.memory>;
     let emotion=new CompanionEmotion(host);
-    const initial=await emotion.read('repo');assert.equal(initial.status,'ready');assert.deepEqual(initial.state,legacy);
-    assert.deepEqual(host.workspace.runtime.store.get('emotion-state',host.workspace.storageId()),legacy,'Import preserves original Core row');
+    const initial=await emotion.read('repo');assert.equal(initial.status,'empty');assert.equal(initial.state,undefined);
+    assert.deepEqual(host.workspace.runtime.store.get('emotion-state',host.workspace.storageId()),legacy);
     const changed=await emotion.update('repo',{expectedRevision:initial.revision,expectedHash:initial.contentHash,mood:'生气但正在吃饭',reason:'自己的感受',feelings:['anger','boredom']});
     assert.deepEqual(changed.state?.feelings,['anger','boredom']);assert.equal(changed.state?.roomMood,undefined,'Text update invents no numeric mood');
     await assert.rejects(emotion.update('repo',{expectedRevision:initial.revision,expectedHash:initial.contentHash,mood:'stale'}),/changed/);
-    const linked=await emotion.update('repo',{expectedRevision:changed.revision,expectedHash:changed.contentHash,mood:'平静',reason:'关联旧事实',memories:['fact'],dependencies:{sources:[],memories:[{id:'fact',revision:'1'}]}});
+    const linked=await emotion.update('repo',{expectedRevision:changed.revision,expectedHash:changed.contentHash,mood:'平静',reason:'关联旧事实',memories:['fact']});
     assert.equal(linked.status,'ready');
     const file=join(repo,'.chatpet/data/emotion/state.json'),retained=readFileSync(file,'utf8');
-    eligible=false;emotion=new CompanionEmotion(host);
-    assert.equal(emotion.current('repo')?.reason,'关联旧事实','Legacy references are metadata, not a prerequisite for independent feeling');
+    emotion=new CompanionEmotion(host);
+    assert.deepEqual(emotion.current('repo')?.memories,['fact']);
     const withdrawn=await emotion.read('repo');assert.equal(withdrawn.status,'ready');assert.equal(withdrawn.state?.reason,'关联旧事实');
     assert.equal(readFileSync(file,'utf8'),retained,'An unavailable Bank neither rewrites nor clears the emotion file');
-    host.native.memory=undefined;
     const offline=await emotion.update('repo',{expectedRevision:withdrawn.revision,expectedHash:withdrawn.contentHash,mood:'不依赖记忆的平静',feelings:['calm']});
     assert.equal(offline.state?.mood,'不依赖记忆的平静');
     assert.equal((await emotion.read('repo')).status,'ready');
     host.workspace.runtime.store.put('emotion-state',host.workspace.storageId(),{...legacy,mood:'stale legacy overwrite'});
     assert.equal((await emotion.read('repo')).state?.mood,'不依赖记忆的平静','Canonical file never falls back to old Core state');
+    const document=JSON.parse(readFileSync(file,'utf8'));
+    for (const old of [{...document,importedLegacy:true}, {...document,current:{...document.current,dependencies:{sources:[],memories:[]}}}]) {
+      const bytes=JSON.stringify(old);writeFileSync(file,bytes);
+      assert.equal((await emotion.read('repo')).status,'unavailable');
+      assert.equal(readFileSync(file,'utf8'),bytes);
+    }
     writeFileSync(file,'{manual edit still incomplete');
     assert.equal((await emotion.read('repo')).status,'unavailable');
     await assert.rejects(emotion.update('repo',{expectedRevision:linked.revision,expectedHash:linked.contentHash,mood:'replace corruption'}));
@@ -82,7 +83,7 @@ test('canonical emotion imports legacy once, rejects stale writers and remains i
     const disposeNew=emotion.registerCatalog('display',{actions:[{name:'wave',description:'A wave'}],stickers:[]});
     disposeOld();assert.equal(emotion.catalog.actions[0]?.name,'wave','Old display cleanup cannot remove the replacement registration');
     disposeNew();assert.deepEqual(emotion.catalog.actions,[]);
-  } finally {host.native.memory=undefined;await host.close();rmSync(root,{recursive:true,force:true});}
+  } finally {await host.close();rmSync(root,{recursive:true,force:true});}
 });
 
 

@@ -23,8 +23,6 @@ export interface EmotionState {
     /** Semantic feelings, including anger and boredom, never inferred from words or converted to numeric happiness. */
     feelings?: string[];
     roomMood?: EmotionRoomMood;
-    /** Retained legacy provenance metadata; Emotion no longer requires a live Memory provider. */
-    dependencies?: EmotionDependencies;
 }
 export interface EmotionSnapshot {
     status: 'ready' | 'empty' | 'unavailable';
@@ -43,7 +41,6 @@ export interface EmotionUpdate {
     feelings?: string[];
     roomMood?: EmotionRoomMood;
     memories?: string[];
-    dependencies?: EmotionDependencies;
 }
 export interface EmotionAsset {
     name: string;

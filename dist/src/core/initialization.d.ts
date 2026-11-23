@@ -5,4 +5,4 @@ export declare function initializeCompanionFiles(root: string, identity: {
     companionId: string;
     scopeId: string;
     storageId: string;
-}, legacyEmotion: () => unknown): void;
+}): void;

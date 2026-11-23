@@ -503,7 +503,7 @@ export class CoreWorkspace {
         store.put('workspace-binding', 'current', binding);
         try {
             initializeCompanionFiles(target.path, { companionId: identity.companionId, scopeId: this.runtime.config.scopeId,
-                storageId: this.storageId() }, () => store.get('emotion-state', this.storageId()));
+                storageId: this.storageId() });
             initializeCompanionRecords(target.path);
             for (const entry of this.initializers.values())
                 entry.run(target);

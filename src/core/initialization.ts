@@ -60,7 +60,7 @@ export function validateCompanionConfiguration(root: string): void {
   if (saved.preferences !== undefined) parseLifePreferences(saved.preferences);
 }
 
-export function initializeCompanionFiles(root: string, identity: {companionId: string; scopeId: string; storageId: string}, legacyEmotion: () => unknown) {
+export function initializeCompanionFiles(root: string, identity: {companionId: string; scopeId: string; storageId: string}) {
   containers(root);
   const managed = join(root, '.chatpet');
   createEmpty(join(managed, 'data/pet-platform/main-config.jsonc'), {pets: []});
@@ -68,6 +68,5 @@ export function initializeCompanionFiles(root: string, identity: {companionId: s
   createEmpty(control, {version: 1, enabled: false, preferences: {...defaultLifePreferences}});
   validateCompanionConfiguration(root);
 
-  // Emotion owns its format and legacy import. A null state is valid, not a mood.
-  new EmotionFile({path: root, ...identity}, legacyEmotion).initialize();
+  new EmotionFile({path: root, ...identity}).initialize();
 }
