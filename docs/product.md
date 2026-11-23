@@ -156,7 +156,7 @@ Her World 是跑在 DSH 里的伙伴插件，同一个伙伴的身份、记忆�
 
 #### 绑定代次的 G3 复盘
 
-- **不变量。** 异步任务只在准入时捕获的绑定代次内继续派发、写入、通知与回包。A→B→A 后，旧 A 和新 A 即使工作区、路径、存储 ID、修订都相同，旧 A 的任务也不能继续。已提交的效果按原号核对。已经派发给上游的单笔桌宠关闭有已知边界，见[已知问题 12](#已知问题)（`src/core/home-binding.ts:3–6`、`6dd3e4c:docs/plans/stage3-presentation.md:205–211,226`）。
+- **不变量。** 异步任务只在准入时捕获的绑定代次内继续派发、写入、通知与回包。A→B→A 后，旧 A 和新 A 即使工作区、路径、存储 ID、修订都相同，旧 A 的任务也不能继续。已提交的效果按原号核对。已经派发给上游的单笔桌宠关闭有已知边界，见[已知问题 12](#known-issue-12)（`src/core/home-binding.ts:3–6`、`6dd3e4c:docs/plans/stage3-presentation.md:205–211,226`）。
 - **第一轮。** `1e425cf` 给生活世界通知及区内工作带上原代次，`1cb7390`、`e91ec7c` 守住 Room 换绑与写前取消，`0394ec3` 让 Body 计时器沿用原绑定。`ed6fb4f`、`d29438f` 把同一思路接到 Channels 和 Desktop 刷新。这轮主要覆盖状态刷新和 Room 入口。排队中的渠道请求与送达、Room 原生恢复及语音提供方准入、钱包等待登记、桌宠逐笔关闭和 Core 初始化还各有自己的异步边界（`tests/behavior-list/presentation-r7.test.mjs:186–234`、`6dd3e4c:docs/plans/stage3-presentation.md:205–211`）。
 - **第二轮。** 审查发现入口或回包校验之间仍可换绑。旧调用经过队列、外部查询、提供方准入或 SQLite 等待，可能重新取到新 A，或在拒绝回包前已经产生效果。`406ed1b` 把比较提到 Core。`6fb06e3` 把渠道原代次贯穿请求、适配器和送达，`b08195a` 把钱包校验推进到登记等待与持久写前，`f08e5f1` 补 Room 原生取消、恢复落盘和语音提供方准入，`f418eec` 在逐笔关闭前后复核，`6ad9e8f` 补 Core 自述落盘与初始化等待结束后的复核（`6dd3e4c:docs/plans/stage3-presentation.md:205–211,247–254`）。共用比较解决字段口径，各入口仍需在能产生效果的地方实际调用它。
 - **目前的防线。** `sameHomeBinding` 比较 `workspaceId`、`path`、`storageId`、`bootId` 和 `generation`（`src/core/home-binding.ts:3–6`）。行为清单覆盖旧渠道通知、Room 会话恢复及取消、语音提供方零调用、旧钱包写入和恢复入口拒绝（`tests/behavior-list/index.json:1787–1860`）；桌宠与 Core 的回归及由红转绿记录见 `6dd3e4c:docs/plans/stage3-presentation.md:210–211,234`。
@@ -168,14 +168,8 @@ Her World 是跑在 DSH 里的伙伴插件，同一个伙伴的身份、记忆�
 
 | 问题 | 收尾结果与证据 |
 | --- | --- |
-| 1. guest／电视回复改共享情绪 | **已改**。主人确认两者均无写权限，输入来源拒绝会覆盖同轮其他来源的 footer 许可。策略回归和真实宿主原生服务检查通过（`8acb7fa`，`tests/behavior-list/policy-qq.test.mjs`、`tests/behavior-list/policy-room.test.mjs`）。 |
-| 2. provider 传输字段与工作区 ID 混淆 | **已改**。启动和 HTTP scope 用 `bankId`，SQLite 的 `pet_scope.workspaceId` 沿用原落盘字段。原生服务与进程检查通过；换回 0.5.0 的实际读回仍属发布验收（`59cc109`）。 |
-| 3. `EXPIRED_USE` 与拒绝助手不一致 | **已改**。删无消费者的拒绝码，`reject()` 统一接 `RejectedCode`，设置仍传递 `effect/retry`（`18af12f`，`src/core/storage.ts`、`src/console/settings.ts`）。 |
 | 6. 新装桌宠外观编辑器未加载 | 0.1.8 在新设备曾出现 `EDITOR_NOT_LOADED`。0.6.0 正式包在主人隔离环境经更新按钮激活后，外观编辑器可打开（主人验收）。全新设备的新装路径未复测，再出现时记录入口和加载结果。 |
-| 9. 旧布局的合成迁移夹具在 CI 偶发失败 | **旧夹具已退役**，当前布局和真实 Memory 检查继续保留（`51c9ba6`）。 |
-| 10. 付费实测脚本读取旧 `archive` 回执 | **已关闭**。旧脚本已删除，现行原生服务和 provider 测试覆盖召回及重启（`5730d79`）。 |
-| 12. 关闭多只桌宠时换绑 | **保持主人接受的边界**。已交给上游的那一只可能在原工作区保存显示状态；后续宠物和新工作区受绑定校验保护（`src/desktop/platform/plugin.ts` 的 `hide()`、`tests/desktop/pet-platform.test.mjs:123–153`）。 |
-| 13. 设置窗夹具无法走完整入口 | **已修**。夹具已接真实 Cordis 上下文并补 Core 位置、运行时回执及当前按钮文案。核对 `storageStatus()` 在 `main`、`v0.5.0` 和实现 HEAD 一致。Claude 沙箱外整窗退出 0（`3405743`、`1153f2b`）。 |
+| <a id="known-issue-12"></a>12. 关闭多只桌宠时换绑 | **保持主人接受的边界**。已交给上游的那一只可能在原工作区保存显示状态；后续宠物和新工作区受绑定校验保护（`src/desktop/platform/plugin.ts` 的 `hide()`、`tests/desktop/pet-platform.test.mjs:163–193`）。 |
 
 ## 当前状态
 
