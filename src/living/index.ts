@@ -1,6 +1,7 @@
 import {Context, FiberState, type Fiber} from '@deepseek-ai/cordis';
 import type {PetCoreHost} from '../core/index.js';
 import {RegistrationTable} from '../core/tables/registry.js';
+import {sameHomeBinding} from '../core/home-binding.js';
 import type {HomeBinding} from '../core/workspace.js';
 import {Rejection, reject, text} from '../core/storage.js';
 import type {CallOptions, ContractError, Result} from '../contracts/common.js';
@@ -37,11 +38,7 @@ declare module '@deepseek-ai/cordis' {
   interface Events {'world.changed'(value: WorldChanged): void}
 }
 
-export function sameHomeBinding(current: HomeBinding | undefined, captured: HomeBinding | undefined) {
-  return current === captured || !!current && !!captured && current.workspaceId === captured.workspaceId &&
-    current.path === captured.path && current.storageId === captured.storageId &&
-    current.bootId === captured.bootId && current.generation === captured.generation;
-}
+export {sameHomeBinding};
 
 export function serviceLabel(contextScope: Context, name: string) {
   const defaults = contextScope.root[Context.isolate];

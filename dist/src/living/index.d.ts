@@ -1,5 +1,6 @@
 import { Context, type Fiber } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../core/index.js';
+import { sameHomeBinding } from '../core/home-binding.js';
 import type { HomeBinding } from '../core/workspace.js';
 import type { CallOptions, ContractError, Result } from '../contracts/common.js';
 import { type CompanionFactSource } from '../contracts/interaction.js';
@@ -19,7 +20,7 @@ declare module '@deepseek-ai/cordis' {
         'world.changed'(value: WorldChanged): void;
     }
 }
-export declare function sameHomeBinding(current: HomeBinding | undefined, captured: HomeBinding | undefined): boolean;
+export { sameHomeBinding };
 export declare function serviceLabel(contextScope: Context, name: string): symbol;
 export interface AreaReference<T> {
     readonly value: T;
@@ -86,4 +87,3 @@ export declare class InFlight {
     run<T>(start: () => Promise<T>): Promise<T>;
     settled(): Promise<void>;
 }
-export {};

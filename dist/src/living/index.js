@@ -1,5 +1,6 @@
 import { Context } from '@deepseek-ai/cordis';
 import { RegistrationTable } from '../core/tables/registry.js';
+import { sameHomeBinding } from '../core/home-binding.js';
 import { Rejection, reject, text } from '../core/storage.js';
 import { FACT_DOMAIN_NAMES, factDomainOf } from '../contracts/interaction.js';
 import { activityReader } from './plan/activity-reader.js';
@@ -8,11 +9,7 @@ import { installLivingPrompt } from './prompt-context.js';
 const bodyService = 'petBehavior', lifeService = 'petLife', economyService = 'petEconomy';
 const services = { body: bodyService, plan: lifeService, economy: economyService };
 const domains = new WeakMap();
-export function sameHomeBinding(current, captured) {
-    return current === captured || !!current && !!captured && current.workspaceId === captured.workspaceId &&
-        current.path === captured.path && current.storageId === captured.storageId &&
-        current.bootId === captured.bootId && current.generation === captured.generation;
-}
+export { sameHomeBinding };
 export function serviceLabel(contextScope, name) {
     const defaults = contextScope.root[Context.isolate];
     defaults[name] ??= Symbol(name);
