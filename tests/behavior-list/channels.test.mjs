@@ -26,7 +26,6 @@ test('Channels 只刷新当前绑定并跟随 home 写入、运行、暂停和�
   })));
 
   const before=sync.mock.callCount();
-  f.ctx.emit('pet/life.changed');
   f.ctx.emit('world.changed',{...scope,generation:generation+1});
   f.ctx.emit('world.changed',{...scope,bootId:'another-boot'});
   f.ctx.emit('world.changed',{...scope,storageId:'another-store'});

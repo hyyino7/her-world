@@ -18,9 +18,9 @@ test('R2 覆盖 bind、解构、对象别名、scope、计算名、inject 和未
     assert.deepEqual(rows.filter(r=>r.line===line).map(r=>r.target).sort(),targets.sort(),`services.ts:${line}`);
   }
 });
-test('R3 上层事件被拒绝，原生订阅已登记；未声明发布被拒绝',t=>{
+test('R3 拒绝未登记的订阅和发布，允许已登记的原生订阅',t=>{
   const rows=workspace(t,{},'known-violations').scan().rules.filter(r=>r.rule==='R3');
-  assert.deepEqual(rows.map(r=>r.target).sort(),['?','?','pet/life.review','pet/not-declared']);
+  assert.deepEqual(rows.map(r=>r.target).sort(),['?','?','pet/fixture-unregistered-subscription','pet/not-declared']);
 });
 test('R1 未解析的模板依赖明示未知，内联类型导入和完整模板走同一解析器',t=>{
   const rows=workspace(t,{},'known-violations').scan().rules.filter(r=>r.rule==='R1'&&r.file.endsWith('/resolution.ts'));

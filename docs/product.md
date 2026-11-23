@@ -348,7 +348,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | `src/core/companion-foundation.ts` 读 `petBehavior / petLife / petEconomy`：事实准备、`environment` 和 `interactions` 段 11 条，`chatpet.foundation` 模板的身体条件 1 条 | 12 | 2a：事实准备和这两段搬入第二层；模板条件改用已有登记判断 |
 | `src/core/plugin.ts` import `living/plan/album-tools`，读 `petRoom`、`petLife` 做相册门控 | 3 | 2a 已清：相册工具搬进 `src/core/` 由 Core 继续挂载，门控改为第二层和 Room 登记的两个判定（拍板点 9）；Life 没加载、三入口全卸载都不丢相册 |
 | `src/core/native/memory.ts` import `living/plan/review-dialogue` | 1 | 2a：只搬家，该文件只依赖第一层和 vendor |
-| `src/memory/batch.ts` 订阅 `pet/life.review`、读 `petLife` | 2 | 2a：回顾完成时 Life 向下调用 Memory，调度语义不变 |
+| `src/memory/batch.ts` 跨层依赖 Life 的回顾通知和服务 | 2 | 2a：回顾完成时 Life 向下调用 Memory，调度语义不变 |
 | `src/core/companion-settings.ts` import `desktop/appearance` | 1 | 阶段 3 批准保留为长期例外（`docs/decisions.md:280`、`arch/baseline/rules.json:5–14`） |
 | `src/core/initialization.ts` import `living/plan/library`，按安装根加载 `vendor/dsh-pet` | 2 | 长期例外：Core 在显式初始化时一次建好并校验全部容器，不改成模块登记 |
 | `src/memory/client.ts` 动态 import `vendor/mnemosyne` | 2 | 长期例外：按构建产物位置加载上游引擎，包内运行由 `check:package` 验证 |
@@ -452,7 +452,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 - [ ] **按拍板完成局部收拢，其余延期。** Body 保留槽位准入，素材投影归呈现。桌宠本轮只收语音、Room 开窗和吃饭接点，便携设置默认值与校验已收拢，Channels 已合并连接返回类型。完整桌宠命令与通知协议、`WorkStage`、设备键重排、Channels 其余状态命名及素材目录合并延后，排期待核实（`src/living/body/animation-slots.ts:1–20`、`src/presentation/animation-map.ts:3–6`、`src/core/companion-settings.ts:6–43,54–76`、`ed6fb4f`、`6dd3e4c:docs/plans/stage3-presentation.md:29–33,305–310`）。
 - [x] 情绪与呈现四项完成。九种 feeling 和 Room 七维各有一份声明，两套分类器共用 `classifyActivity`，`ActivityClip`、`ActivityPlayback` 及 `roomClip / desktopClip` 已搬到呈现层（`src/contracts/emotion.ts:2–6`、`src/living/body/presentation.ts:11–29`、`src/presentation/playback.ts:4–17,34–36`、`19fcdae`）。
 - [x] R8 已识别对象表和布尔值表的键（`7a9baa5`），主人核准一次性补录 78 条（`a073826`）。扩面后基线 715 → 590，之后新增为零（`arch/baseline/vocabulary.json:2–4`、`tests/arch/object-vocabulary.test.mjs:8–33`、`tests/arch/approve-r8-baseline.test.mjs:36–61`）。
-- [x] 生活三区经登记实例直调，呈现层订阅 `world.changed`，三个旧事件已退役（`src/living/index.ts:166–188,352–379`、`tests/living/living-lifecycle.test.mjs:1038`、`dacfd25`）。时序见[第二层职责](architecture.md#23-第二层生活世界管什么)。
+- [x] 生活三区经登记实例直调，呈现层订阅 `world.changed`（`src/living/index.ts:166–188,352–379`、`tests/living/living-lifecycle.test.mjs:1038`、`dacfd25`）。时序见[第二层职责](architecture.md#23-第二层生活世界管什么)。
 - [x] 桌宠投喂由 Body 按目标动作串行准入，可开始时投喂，已呈现时只播放，忙碌或读失败时拒绝，断开后可按原号核对已提交效果（`tests/behavior-list/presentation-r7.test.mjs:336–486`）。
 - [x] 合并前全量门禁的 Node 部分 1777/1777、行为清单 170/170，真实 Electron 的 Room 语音、Room 刷新、桌宠平台和 Compact 语音窗口均已通过；钱包声明补丁后行为清单仍为 170/170（`6dd3e4c:docs/plans/stage3-presentation.md:234–237`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:50`）。
 
