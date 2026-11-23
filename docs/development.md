@@ -108,7 +108,7 @@ node scripts/migrate/companion-migrate.mjs run --installation /tmp/her-world-syn
 
 日志头记录 `storageId` 和仓库路径摘要。已收尾的轮次只核对 `storageId`，所以按 [portability.md](portability.md) 把 Repo 搬到新路径后，`status` 和下一轮迁移照常可用；未收尾的轮次只能在原路径、用原备份续做。
 
-迁移和恢复按仓库路径互斥。互斥文件在仓库外：`/tmp/her-world-offline-<uid>/<仓库路径的 sha256>.sqlite`，目录权限 0700、只属于当前用户，进程退出或被杀时 SQLite 自动释放，不留陈旧锁。只有本检出的 `companion-migrate.mjs run` 和 `companion-backup.mjs restore` 持有它；已安装旧包里的 `companion-backup.mjs` 不持有，所以回退恢复要用本检出的命令。仓库内的 `.chatpet/data/migration.lock` 照旧：恢复带回的已退出进程旧锁会被下一轮接管并记入日志；若 PID 被复用而报 `lock-held`，先确认迁移和恢复都已结束，再按提示处理旧锁。
+迁移和恢复按仓库路径互斥。互斥文件在仓库外：`/tmp/her-world-offline-<uid>/<仓库路径的 sha256>.sqlite`，目录权限 0700、只属于当前用户，进程退出或被杀时 SQLite 自动释放，不留陈旧锁。迁移 `run`、本检出的备份 `restore`、钱包封锚、声明预检及浏览器离线操作使用这把锁。已安装旧包里的 `companion-backup.mjs` 不持有，所以回退恢复要用本检出的命令。仓库内的 `.chatpet/data/migration.lock` 照旧：恢复带回的已退出进程旧锁会被下一轮接管并记入日志；若 PID 被复用而报 `lock-held`，先确认迁移和恢复都已结束，再按提示处理旧锁。
 
 要回退安装版本，在旧包下退出 DSH，用 `companion-backup.mjs create` 预先做回退备份，再启动 DSH 从版本页换包。回退时先从版本页换回旧包，再退出 DSH，用本检出的命令恢复旧包对应的回退备份。同包续做备份也可在安装指纹相同的情况下恢复。恢复器先备份当前状态，并保留已送达、已消耗额度及 Life 花费：
 
@@ -135,6 +135,18 @@ node scripts/companion-backup.mjs restore --installation /tmp/her-world-syntheti
 
 <a id="console-wallet-migration"></a>
 ### Console 钱包迁移
+
+#### 主人声明无待办（0.4.0 → 0.5.0）
+
+在隔离副本演练。用包含声明工具、已构建的 0.5.0 对应源码检出执行离线命令。`RECEIPT`、`ROLLBACK`、`RESUME_BACKUP` 和 `ANCHOR` 都用真实绝对路径，锚放在权限 `0700` 的私有材料目录。
+
+1. 仅在一直使用 DSH 桌面设置页、从未用外部浏览器时采用。在 0.4.0 当前绑定确认钱包正常加载、无待确认、读取错误或在途操作，然后停止新写入、停 Life、退出 DSH。工具会拒绝私有材料目录里的 `wallet-export.json` 或 `wallet-sources.json`，由主人核对其他位置；发现待办或浏览器来源材料就走下方导出路线。
+2. 仍装 0.4.0 时，用 `node scripts/companion-backup.mjs create --installation "$RECEIPT" --output "$ROLLBACK"` 建旧备份，再用同一脚本 `verify --installation "$RECEIPT" --backup "$ROLLBACK"` 核对。运行 `node scripts/migrate/companion-migrate.mjs seal-wallet-rollback --installation "$RECEIPT" --backup "$ROLLBACK" --output "$ANCHOR" --owner-attests-no-pending`。
+3. 保持业务停写，换到 0.5.0 后再次退出 DSH。用 `node scripts/migrate/companion-migrate.mjs` 依次执行 `plan`、`run`、`status`，均带 `--installation "$RECEIPT" --wallet-rollback "$ANCHOR" --owner-attests-no-pending`。仅 `run` 另加 `--backup "$RESUME_BACKUP"`。中断后用同一工具 `run --installation "$RECEIPT" --resume`。
+4. 核对 `0004-console-wallet` 为 `complete`、`segment=settled`、`walletImport.requestCount=0`。再在隔离验收环境打开 0.5.0，核对钱包、余额、库存和 Body。两份备份及锚保留到主人关闭回退窗口。
+5. 需要回退时换回 0.4.0 并退出 DSH，以迁移工具 `verify-wallet-rollback --installation "$RECEIPT" --wallet-rollback "$ANCHOR"` 验锚，再用本检出的备份 `restore --installation "$RECEIPT" --backup "$ROLLBACK" --before "$BEFORE_RESTORE"` 恢复并核对钱包和 Body；旧页若显示待办，先核对流水再决定是否按原号处理。
+
+#### 浏览器导出路线
 
 隔离副本从备份到旧键清除一直保持停写。先隔离所有授权 profile／origin 的旧页面和写入口，核实 Economy 与 Body 在途已排空。若无法核实，停在导出之前。浏览器导出、清源和回插函数在 `scripts/migrate/browser-wallet.mjs`，要求调用方持有可复核的来源冻结租约。现有合成适配只用于测试。生产浏览器需要能核验冻结和排空的适配入口。
 

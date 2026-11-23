@@ -12,10 +12,10 @@ import { acquireMigrationMutex } from '../../scripts/companion-backup.mjs';
 import { createOfflineBackup, restoreOfflineBackup, verifyOfflineBackup } from '../../scripts/lib/offline-backup.mjs';
 import { exportWalletSources, reconcileWalletSources } from '../../scripts/migrate/browser-wallet.mjs';
 import { hash } from '../../scripts/migrate/io.mjs';
-import { migrationStatus, runMigration, runWalletBrowserOperation } from '../../scripts/migrate/runner.mjs';
+import { migrationStatus, runMigration, runWalletBrowserOperation, steps } from '../../scripts/migrate/runner.mjs';
 import { sealWalletRollback, verifyWalletRollback } from '../../scripts/migrate/wallet-rollback.mjs';
 import { economyPaths } from './offline-helpers.mjs';
-import { mockDsh, planFor, read } from './helpers.mjs';
+import { cli, mockDsh, planFor, read } from './helpers.mjs';
 import { panelNodes, renderEconomyPanel } from '../behavior-list/economy-panel.mjs';
 
 const project = realpathSync(new URL('../..', import.meta.url));
@@ -102,28 +102,36 @@ function stagePackage(root, installed, temporary) {
     cwd: root, encoding: 'utf8', env: {...process.env, npm_config_cache: join(temporary, 'npm-cache'), npm_config_update_notifier: 'false'},
   });
   const [archive] = JSON.parse(pack);
+  const file = join(temporary,archive.filename);
+  unpackPackage(file,installed);
+  return file;
+}
+
+function unpackPackage(archive, installed) {
   rmSync(installed, {recursive:true, force:true});
   mkdirSync(installed);
-  execFileSync('tar', ['-xf', join(temporary, archive.filename), '--strip-components=1', '-C', installed]);
+  execFileSync('tar', ['-xf', archive, '--strip-components=1', '-C', installed]);
   symlinkSync(join(project, 'node_modules'), join(installed, 'node_modules'), 'dir');
 }
 
-async function oldRuntime(installed, f, work) {
+async function installedWallet(installed, f, work) {
   const { createCore } = await load(installed, 'dist/src/core/index.js');
   const { CompanionEconomy } = await load(installed, 'dist/src/living/economy/plugin.js');
   const { CompanionBehavior } = await load(installed, 'dist/src/living/body/plugin.js');
   const { LivingView } = await load(installed, 'dist/src/living/index.js');
   const { settingsHandler } = await load(installed, 'dist/src/console/settings.js');
   const host = createCore(f.config);
-  assert.equal(host.workspace.status().state, 'ready');
+  const status = host.workspace.status();
+  assert.equal(status.state, 'ready',status.migrationReason);
   const ctx = {get:() => undefined, on:() => () => {}, logger:() => ({warn(){}})};
   let body;
   const economy = new CompanionEconomy(ctx, host, {body:() => body});
   const registry = new Map([[f.target.id, {...f.target, status:async () => 'ok'}]]);
-  const dispatch = settingsHandler(() => host, () => registry, undefined, undefined, undefined,
-    undefined, undefined, undefined, undefined, () => economy);
-  const send = async ({endpoint, input, requestId}) => {
-    const {signal} = new AbortController();
+  const registration = economy.consoleOperations && host.native.consoleOperations.register('economy',economy.consoleOperations());
+  const dispatch = registration ? settingsHandler(() => host, () => registry, undefined, () => economy)
+    : settingsHandler(() => host, () => registry, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, () => economy);
+  const send = async ({endpoint, input, requestId = randomUUID(), signal = new AbortController().signal}) => {
     const result = await dispatch(endpoint, {input, requestId}, signal, {principal:{kind:'owner'}, signal});
     assert.equal(result.ok, true, JSON.stringify(result.error));
     return result.value;
@@ -134,6 +142,7 @@ async function oldRuntime(installed, f, work) {
       body = new CompanionBehavior(ctx, host, new LivingView({economy:() => economy}));
     });
   } finally {
+    registration?.revoke();
     economy.stopAdmission();
     try { await Promise.all([economy.settled(),body?.close()]); }
     finally { economy.close(); await host.close(); }
@@ -191,7 +200,7 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
 
   const workspaceId = f.target.id;
   const action = (requestId, action) => ({endpoint:'economyAction', input:{workspaceId, action}, requestId});
-  await oldRuntime(installed, f, async send => {
+  await installedWallet(installed, f, async send => {
     await send(action('old-gift', {kind:'gift', itemId:meal, quantity:2}));
   });
 
@@ -212,7 +221,7 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
     db.exec(work);
   };
   tripped("CREATE TRIGGER abort_settlement BEFORE UPDATE ON uses WHEN json_extract(NEW.value,'$.status')='consumed' BEGIN SELECT RAISE(ABORT,'synthetic interruption'); END");
-  await oldRuntime(installed, f, async (send, openBody) => {
+  await installedWallet(installed, f, async (send, openBody) => {
     const view = await send({endpoint:'economyView', input:{workspaceId}, requestId:'old-view'});
     configure.input.expectedVersion = view.configurationVersion;
     assert.equal((await send(configure)).configuration.compostCost, 17);
@@ -354,7 +363,7 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
   assert.deepEqual(importedWallet(f), {count:0, proof:undefined});
   assert.deepEqual(walletState(f, checkpoint), original);
 
-  await oldRuntime(installed, f, async (send, openBody) => {
+  await installedWallet(installed, f, async (send, openBody) => {
     const readPending = index => JSON.parse(browser.get(sources[index].profile));
     assert.equal((await send(readPending(0))).configuration.compostCost, 17);
     openBody();
@@ -366,4 +375,103 @@ test('合成 v3 的原安装升级、导入断点续做和实际 v0.4.0 回退',
   assert.equal(after.requests.filter(row => row.id === configure.requestId).length, 1);
   assert.equal(after.ledger.filter(row => row.kind === 'use-consume').length, 1);
   assert.equal(JSON.parse(after.uses[0].value).status, 'consumed');
+});
+
+test('主人声明从正式标签打包的 0.4.0 升级到 0.5.0，续做后激活并可回退', {timeout:60000}, async t => {
+  const old = realpathSync(process.env.HER_WORLD_040_ROOT);
+  const current = realpathSync(process.env.HER_WORLD_050_ROOT ?? project);
+  assert.equal(read(join(current,'release.json')).version,'0.5.0');
+  const {offlineFixture} = await load(old,'tests/migrate/offline-helpers.mjs');
+  const oldRunner = await load(old,'scripts/migrate/runner.mjs');
+  mockDsh(t);
+  const f = await offlineFixture(t,false,{withLegacyEconomy:true});
+  const plan = planFor(f), installed = plan.installedPackage, workspaceId = f.target.id;
+  stagePackage(old,installed,join(f.out,'attestation-package-old'));
+  await oldRunner.runMigration({installation:f.installation,backup:join(f.out,'v3-resume')});
+  await installedWallet(installed,f,send => send({endpoint:'economyAction',requestId:'before-upgrade',
+    input:{workspaceId,action:{kind:'gift',itemId:meal,quantity:2}}}));
+  const {emptyHomeState} = await load(installed,'vendor/feiyu-room-template/home-state.js');
+  const directory = join(f.data,'life'), checkpoint = join(directory,'home.json');
+  mkdirSync(directory,{recursive:true});
+  writeFileSync(checkpoint,JSON.stringify(emptyHomeState(Date.now())));
+  const original = walletState(f,checkpoint);
+
+  const oldBackup = join(f.out,'attestation-backup-old'), backup = join(f.out,'attestation-backup-new');
+  const privateDir = join(f.out,'attestation');
+  mkdirSync(privateDir,{mode:0o700});
+  const walletRollback = join(privateDir,'rollback.json'), installation = f.installation;
+  createOfflineBackup(plan,oldBackup);
+  sealWalletRollback({installation,backup:oldBackup,output:walletRollback,ownerAttestsNoPending:true});
+  const anchorBytes = readFileSync(walletRollback), anchor = JSON.parse(anchorBytes);
+  const archive = stagePackage(current,installed,join(f.out,'attestation-package-new'));
+
+  const walletStep = steps.at(-1), interrupted = [...steps.slice(0,-1),{...walletStep,apply(context) {
+    walletStep.apply(context);
+    throw Error('synthetic interruption after proof');
+  }}];
+  await assert.rejects(runMigration({installation,backup,walletRollback,ownerAttestsNoPending:true},interrupted),/synthetic interruption/);
+  const imported = importedWallet(f);
+  assert.equal(imported.count,0);
+  assert.deepEqual(JSON.parse(imported.proof).ownerAttestation,anchor.ownerAttestation);
+  assert.equal(migrationStatus(installation).segment,'unfinished');
+  assert.notEqual(verifyOfflineBackup(backup,plan).codeFingerprint,anchor.codeFingerprint);
+  writeFileSync(walletRollback,Buffer.concat([anchorBytes,Buffer.from('\n')]));
+  await assert.rejects(runMigration({installation,resume:true}),{code:'wallet-import-invalid'});
+  writeFileSync(walletRollback,anchorBytes);
+  const resume = cli(f,['run','--installation',installation,'--resume']);
+  assert.equal(resume.status,0,resume.stderr);
+  assert.deepEqual(importedWallet(f),imported);
+  const status = migrationStatus(installation,undefined,{ownerAttestsNoPending:true,walletRollback});
+  assert.equal(status.segment,'settled');
+  assert.deepEqual(status.steps.at(-1),{id:step,state:'complete'});
+  assert.deepEqual(walletState(f,checkpoint),original);
+
+  const key = 'chatpet:economy:pending:' + workspaceId;
+  const raw = JSON.stringify({endpoint:'economyAction',requestId:'residual-old-request',input:{workspaceId,action:{kind:'grant',amount:87}}});
+  const residual = new Map([[key,raw]]), touches = [], calls = [], errors = [];
+  const storage = {
+    get(key) { touches.push('read'); return residual.get(key); },
+    set(key,value) { touches.push('write'); residual.set(key,value); },
+    delete(key) { touches.push('delete'); return residual.delete(key); },
+  };
+  // Load the same archive at a fresh URL so Node cannot reuse v0.4.0 modules.
+  const currentRuntime = join(f.out,'runtime-050');
+  unpackPackage(archive,currentRuntime);
+  await installedWallet(currentRuntime,f,async send => {
+    const panel = renderEconomyPanel(async (endpoint,input,signal,requestId) => {
+      calls.push({endpoint,requestId});
+      try { return await send({endpoint,input:structuredClone(input),signal,requestId}); }
+      catch (error) { errors.push(error.message); throw error; }
+    },workspaceId,{storage,sourceFile:join(currentRuntime,'src/console/client.js')});
+    panel.render();
+    const unmount = panel.mount();
+    try {
+      await setImmediate();
+      const [amount] = panelNodes(panel.render(),node => node.type === 'field' && node.props.label === '金额');
+      amount.props.onChange('1');
+      const nodes = panel.render();
+      assert.equal(panelNodes(nodes,node => node.props?.role === 'alert' || node.children.some(child =>
+        typeof child === 'string' && (child.includes('待确认钱包操作') || child.includes('residual-old-request')))).length,0);
+      const [grant] = panelNodes(nodes,node => node.type === 'button' && node.children[0] === '给零花钱');
+      assert.equal(grant.props.disabled,false);
+      await grant.props.onClick();
+      assert.deepEqual(errors,[]);
+      assert.equal(calls.filter(({endpoint}) => endpoint === 'economyAction').length,1);
+      assert.equal(calls.some(({endpoint,requestId}) => endpoint === 'economyRetry' || requestId === 'residual-old-request'),false);
+      assert.equal((await send({endpoint:'economyPending',input:{workspaceId}})).length,0);
+      assert.ok((await send({endpoint:'economyView',input:{workspaceId}})).ledger.some(row =>
+        row.requestId === calls.find(({endpoint}) => endpoint === 'economyAction').requestId));
+      assert.deepEqual(touches,[]);
+      assert.equal(residual.get(key),raw);
+    } finally { unmount(); }
+  });
+
+  stagePackage(old,installed,join(f.out,'attestation-package-restore'));
+  const verify = cli(f,['verify-wallet-rollback','--installation',installation,'--wallet-rollback',walletRollback]);
+  assert.equal(verify.status,0,verify.stderr);
+  assert.equal(restoreOfflineBackup(plan,oldBackup,join(f.out,'before-attestation-rollback')).restored,true);
+  assert.deepEqual(walletState(f,checkpoint),original);
+  assert.deepEqual(importedWallet(f),{count:0,proof:undefined});
+  assert.equal(oldRunner.migrationStatus(installation).segment,'settled');
+  await installedWallet(installed,f,send => send({endpoint:'economyView',input:{workspaceId}}));
 });

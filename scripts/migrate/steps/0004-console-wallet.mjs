@@ -4,9 +4,10 @@ import { CONSOLE_WALLET_IMPORT_FILE, CONSOLE_WALLET_STEP, freshWalletImportProof
   isWalletImportProof } from '../../../dist/src/core/storage-migration.js';
 import { readEconomyDatabaseMarker, readEconomyFileEvidence, syncPath } from '../../../dist/src/living/economy/adoption.js';
 import { ConsoleRequests, importConsoleRequests, readConsoleImportProof } from '../../../dist/src/living/economy/console-requests.js';
-import { assertOffline } from '../context.mjs';
+import { assertOffline, assertWalletBrowserOffline } from '../context.mjs';
 import { checked, requireMigration } from '../errors.mjs';
 import { atomicWrite, hash, json, regular } from '../io.mjs';
+import { validateWalletAttestation } from '../wallet-rollback.mjs';
 import { observe, update } from './0003-economy-marker.mjs';
 
 const identity = ({storageId, companionId}) => ({storageId, companionId});
@@ -23,14 +24,18 @@ function validateWallet(context, db) {
   requireMigration(result.length === 1 && result[0].quick_check === 'ok',walletInvalid);
 }
 
-export function walletImportProof(context, exported, economyAdopted) {
-  requireMigration(economyAdopted || exported.entries.length === 0,'wallet-not-adopted');
-  const sources = exported.sources.map(({profile,origin,key,rawDigest}) => [profile,origin,key,rawDigest]);
-  const requests = exported.entries.map(({requestId,fingerprint}) => [requestId,fingerprint])
+export function walletImportProof(context, {exported,entries,ownerAttestation}, economyAdopted) {
+  requireMigration(economyAdopted || entries.length === 0,'wallet-not-adopted');
+  const sources = ownerAttestation ? [ownerAttestation]
+    : exported.sources.map(({profile,origin,key,rawDigest}) => [profile,origin,key,rawDigest]);
+  const requests = entries.map(({requestId,fingerprint}) => [requestId,fingerprint])
     .sort(([left],[right]) => left < right ? -1 : left > right ? 1 : 0);
-  return {format:1,mode:'import',binding:identity(context.plan),wallet:economyAdopted ? 'adopted' : 'absent',round:exported.round,
+  return {format:1,mode:'import',binding:identity(context.plan),wallet:economyAdopted ? 'adopted' : 'absent',
+    round:ownerAttestation?.round ?? exported.round,
     sourceCount:sources.length,sourceDigest:hash(JSON.stringify(sources)),
-    requestCount:requests.length,requestDigest:hash(JSON.stringify(requests)),exportDigest:exported.digest};
+    requestCount:requests.length,requestDigest:hash(JSON.stringify(requests)),
+    exportDigest:ownerAttestation ? validateWalletAttestation(context,ownerAttestation) : exported.digest,
+    ...(ownerAttestation && {ownerAttestation})};
 }
 
 export default {
@@ -56,7 +61,7 @@ export default {
       const rows = new ConsoleRequests(db,binding);
       const pending = checked('wallet-import-invalid',() => rows.pending());
       if (!context.walletImport) return true;
-      const {entries} = context.walletImport.exported;
+      const {entries} = context.walletImport;
       return pending.length === entries.length && entries.every(({requestId,fingerprint}) => {
         const row = checked('wallet-import-invalid',() => rows.get(requestId));
         return row?.state === 'pending' && row.fingerprint === fingerprint;
@@ -64,8 +69,9 @@ export default {
     });
   },
   apply(context) {
-    assertOffline(context);
-    const {exported, proof} = context.walletImport;
+    const {entries, proof} = context.walletImport;
+    if (proof.ownerAttestation) assertWalletBrowserOffline(context);
+    else assertOffline(context);
     const evidence = files(context);
     if (proof.wallet === 'absent') {
       requireMigration(!evidence.database && !evidence.adoption && !evidence.storage,'wallet-import-invalid');
@@ -79,7 +85,7 @@ export default {
     update(file,'economy-database-missing',walletInvalid,db => {
       validateWallet(context,db);
       requireMigration(readConsoleImportProof(db) === undefined,'wallet-import-invalid');
-      checked('wallet-import-invalid',() => importConsoleRequests(db,proof.binding,exported.entries,proof));
+      checked('wallet-import-invalid',() => importConsoleRequests(db,proof.binding,entries,proof));
     });
     syncPath(dirname(file));
   },

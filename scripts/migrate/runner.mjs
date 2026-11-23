@@ -15,7 +15,8 @@ import homeIdentityStep from './steps/0002-home-identity.mjs';
 import economyMarkerStep from './steps/0003-economy-marker.mjs';
 
 import consoleWalletStep, { walletImportProof } from './steps/0004-console-wallet.mjs';
-import { assertWalletArtifactExternal, readWalletMigrationInputs, verifyWalletRestore, walletBinding } from './wallet-rollback.mjs';
+import { assertWalletArtifactExternal, assertWalletAttestationReady, readWalletMigrationInputs,
+  verifyWalletRestore, walletBinding } from './wallet-rollback.mjs';
 import { exportWalletSources, reconcileWalletSources } from './browser-wallet.mjs';
 
 export const steps = [manifestStep, homeIdentityStep, economyMarkerStep, consoleWalletStep];
@@ -34,9 +35,17 @@ function targetComplete(step, context, evidence) {
   return complete;
 }
 
-export function migrationStatus(installation, selected = steps, { plan = false } = {}) {
+export function migrationStatus(installation, selected = steps, {plan = false, ownerAttestsNoPending, walletRollback} = {}) {
   const context = loadInstallation(installation), journal = validateJournal(context);
   const contract = contractFor(selected), previous = journal.last;
+  if (ownerAttestsNoPending) {
+    const header = previous?.header, wallet = header?.walletImport;
+    requireMigration(wallet && !journal.truncated && settled(previous) && wallet.exportFile === wallet.rollbackFile
+      && (walletRollback === undefined || wallet.rollbackFile === walletRollback),'wallet-attestation-invalid');
+    const {ownerAttestation} = wallet.proof;
+    requireMigration(ownerAttestation && isDeepStrictEqual(wallet.proof,
+      walletImportProof(context,{ownerAttestation,entries:[]},header.economyAdopted)),'wallet-attestation-invalid');
+  }
   const reported = !plan && previous ? previous.header.steps : contract;
   const version = manifestVersion(context, reported);
   const result = {steps:reported.map((step, index) => {
@@ -58,11 +67,18 @@ export function migrationStatus(installation, selected = steps, { plan = false }
   }), truncated:journal.truncated};
   if (plan) return result;
   const segment = previous ? settled(previous) ? 'settled' : 'unfinished' : 'none';
+  if (ownerAttestsNoPending && result.steps.some(step => step.id === CONSOLE_WALLET_STEP.id && step.state === 'complete')) {
+    const {requestCount,sourceCount} = previous.header.walletImport.proof;
+    return {...result,segment,walletImport:{requestCount,sourceCount}};
+  }
   return {...result, segment};
 }
 
-function checkAdmission(context, journal, selected, contract, { resume, backup }) {
+function checkAdmission(context, journal, selected, contract, {resume,ownerAttestsNoPending}) {
   const previous = journal.last;
+  const wallet = previous?.header.walletImport;
+  if (ownerAttestsNoPending && wallet)
+    requireMigration(wallet.proof.ownerAttestation,'wallet-attestation-conflict');
   if (resume) {
     requireMigration(previous, 'resume-journal-missing');
     requireMigration(isDeepStrictEqual(previous.header.steps, contract), 'journal-step-mismatch');
@@ -85,16 +101,38 @@ function checkAdmission(context, journal, selected, contract, { resume, backup }
     assertPreviousTargets(context, selected, prior.length, version, previous.header);
     requireMigration(contract.length > prior.length, 'journal-exists');
   }
-  requireMigration(backup, 'usage');
   return version;
+}
+
+function readNewWalletInputs(context, initialVersion, contract, options) {
+  const {walletExport,walletRollback,ownerAttestsNoPending} = options;
+  requireMigration(!ownerAttestsNoPending || initialVersion < contract.length,'wallet-attestation-invalid');
+  return readWalletMigrationInputs(context,walletExport,walletRollback,ownerAttestsNoPending);
+}
+
+export function planWalletAttestation({installation,walletExport,walletRollback}) {
+  const options = {ownerAttestsNoPending:true,walletExport,walletRollback};
+  const contract = contractFor(steps);
+  const repo = loadInstallation(installation).plan.repo, release = acquireMutex(repo);
+  try {
+    const context = loadInstallation(installation);
+    requireMigration(context.plan.repo === repo,'binding-changed');
+    const journal = validateJournal(context);
+    const version = checkAdmission(context,journal,steps,contract,options);
+    readNewWalletInputs(context,version,contract,options);
+    return migrationStatus(installation,steps,{plan:true});
+  } finally { release(); }
 }
 
 function recheckWalletInputs(context, header, saved, exportDigest) {
   const wallet = header.walletImport;
-  const inputs = readWalletMigrationInputs(context,wallet.exportFile,wallet.rollbackFile);
-  requireMigration(exportDigest === undefined || inputs.exported.digest === exportDigest,'wallet-source-conflict');
-  const proof = walletImportProof(context,inputs.exported,header.economyAdopted);
+  const attested = wallet.proof.ownerAttestation !== undefined || wallet.exportFile === wallet.rollbackFile;
+  requireMigration(!attested || wallet.exportFile === wallet.rollbackFile,'wallet-attestation-invalid');
+  const inputs = readWalletMigrationInputs(context,attested ? undefined : wallet.exportFile,wallet.rollbackFile,attested);
+  requireMigration(exportDigest === undefined || inputs.exported?.digest === exportDigest,'wallet-source-conflict');
+  const proof = walletImportProof(context,inputs,header.economyAdopted);
   requireMigration(wallet.codeFingerprint === saved.codeFingerprint
+    && saved.codeFingerprint !== inputs.rollback.codeFingerprint
     && wallet.rollbackDigest === inputs.rollback.digest && isDeepStrictEqual(wallet.proof,proof),'wallet-import-invalid');
   context.walletImport = {...inputs,proof};
 }
@@ -105,7 +143,8 @@ export function verifyWalletImport({installation,walletExport,walletRollback,exp
   const {last,truncated} = validateJournal(context);
   const header = last?.header, wallet = header?.walletImport, contract = contractFor(steps);
   requireMigration(wallet && !truncated && settled(last) && isDeepStrictEqual(header.steps,contract)
-    && wallet.exportFile === walletExport && wallet.rollbackFile === walletRollback,'wallet-import-invalid');
+    && wallet.exportFile !== wallet.rollbackFile && wallet.exportFile === walletExport
+    && wallet.rollbackFile === walletRollback,'wallet-import-invalid');
   recheckWalletInputs(context,header,verifySaved(context,header),exportDigest);
   assertPreviousTargets(context,steps,steps.length,manifestVersion(context,contract),header);
   assertOffline(context);
@@ -158,8 +197,10 @@ export async function runWalletBrowserOperation({installation,mode,walletExport,
 
 /** Complete observes the actual target. Apply makes it durable before its manifest advances. */
 export async function runMigration(options, selected = steps) {
-  const {installation, resume = false, walletExport, walletRollback} = options, contract = contractFor(selected);
+  const {installation, resume = false, walletExport, walletRollback, ownerAttestsNoPending} = options;
+  const contract = contractFor(selected);
   const walletStep = selected.find(step => step.id === CONSOLE_WALLET_STEP.id);
+  requireMigration(!ownerAttestsNoPending || walletStep && !resume,'usage');
   const economy = selected.find(step => step.adopted);
   const complete = () => ({steps:selected.map(step => ({id:step.id, state:'complete'}))});
   let context = loadInstallation(installation);
@@ -171,15 +212,16 @@ export async function runMigration(options, selected = steps) {
     assertOffline(context);
     const journal = validateJournal(context);
     const initialVersion = checkAdmission(context, journal, selected, contract, options);
+    requireMigration(resume || options.backup,'usage');
     const headerBefore = journal.last?.header;
     const economyAdopted = resume ? headerBefore?.economyAdopted : economy?.adopted(context);
     if (!resume && walletStep) {
-      if (!headerBefore && initialVersion === selected.length) {
+      if (!ownerAttestsNoPending && !headerBefore && initialVersion === selected.length) {
         requireMigration(targetComplete(walletStep,context),'wallet-import-invalid');
         return complete();
       }
-      const inputs = readWalletMigrationInputs(context,walletExport,walletRollback);
-      context.walletImport = {...inputs,proof:walletImportProof(context,inputs.exported,economyAdopted)};
+      const inputs = readNewWalletInputs(context,initialVersion,contract,options);
+      context.walletImport = {...inputs,proof:walletImportProof(context,inputs,economyAdopted)};
     }
     const lease = acquireLock(context.lockFile);
     try {
@@ -195,8 +237,10 @@ export async function runMigration(options, selected = steps) {
         if (economy) header.economyAdopted = economyAdopted;
         if (walletStep) {
           const {proof,rollback} = context.walletImport;
+          if (ownerAttestsNoPending) assertWalletAttestationReady(context,walletRollback,walletExport,rollback.digest);
           requireMigration(saved.codeFingerprint !== rollback.codeFingerprint,'wallet-rollback-invalid');
-          header.walletImport = {exportFile:walletExport,rollbackFile:walletRollback,rollbackDigest:rollback.digest,
+          header.walletImport = {exportFile:ownerAttestsNoPending ? walletRollback : walletExport,
+            rollbackFile:walletRollback,rollbackDigest:rollback.digest,
             codeFingerprint:saved.codeFingerprint,proof};
         }
         appendJournal(context.journalFile, header);
