@@ -74,17 +74,12 @@ export function profileFixture(t) {
         return { status: mode.running ? 0 : 1, stdout: mode.running ? '999999999' : '' };
       }
       assert.equal(command, ${JSON.stringify(join(app, 'Contents/Resources/runtime/cli/bin/dsh'))});
-      const action = args[3];
-      assert.deepEqual(args.slice(0, 3), ['plugin', '--profile', 'fixture']);
-      assert.ok(action === 'add' || action === 'remove');
+      assert.deepEqual(args.slice(0, 4), ['plugin', '--profile', 'fixture', 'add']);
       assert.equal(options.env.DSH_HOME, ${JSON.stringify(home)});
       assert.equal(options.env.npm_config_ignore_scripts, 'true');
       const offline = args.includes('--offline');
-      if (action === 'remove') assert.deepEqual(args.slice(4), ['codex-pet']);
-      else {
-        assert.ok(args.includes('--ignore-scripts'));
-        assert.equal(offline, mode.offline);
-      }
+      assert.ok(args.includes('--ignore-scripts'));
+      assert.equal(offline, mode.offline);
       if (mode.offline) {
         assert.equal(options.env.npm_config_offline, 'true');
         assert.equal(options.env.pnpm_config_offline, 'true');
@@ -96,13 +91,6 @@ export function profileFixture(t) {
       if (mode.cliFailure) return { status: 1 };
       const manifest = ${JSON.stringify(manifest)};
       const before = JSON.parse(readFileSync(manifest));
-      if (action === 'remove') {
-        delete before.dependencies['codex-pet'];
-        before.dsh.profile.bundles = before.dsh.profile.bundles.filter(name => name !== 'codex-pet');
-        writeFileSync(manifest, JSON.stringify(before));
-        fs.rmSync(${JSON.stringify(join(profileDir, 'node_modules/codex-pet'))}, { recursive: true });
-        return { status: 0 };
-      }
       const installed = ${JSON.stringify(installed)};
       mkdirSync(installed, { recursive: true });
       const spec = args[4];

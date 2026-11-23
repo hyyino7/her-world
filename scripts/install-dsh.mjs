@@ -31,21 +31,16 @@ function usage() {
   console.log(`dafeiyu-setup [--apply] [--version <version>] [--offline] [--no-backup]
              [--resume-repo <path>] [--storage-repo <path>] [--data-dir <path>]
              [--memory-python <path>] [--memory-data-dir <path>] [--memory-service-entry <bundled|path>]
-             [--device-runtime <path>] [--replace-codex-pet]
+             [--device-runtime <path>]
 dafeiyu-setup migrate-core-config [--apply]
 Both commands accept --dsh-app, --dsh-home, --profile and --output-dir.`);
 }
 
 async function main() {
-  if (options.some(option => /^--archive(?:=|$)/.test(option))) {
-    console.error('archive-unsupported: use --version <version> or omit it for the stable npm release.');
-    process.exitCode = 1;
-    return;
-  }
   if (options.includes('--help') || options.includes('-h')) return usage();
   const strings = migrating ? shared : [...shared, 'version', 'data-dir', 'resume-repo', 'storage-repo',
     'memory-python', 'memory-data-dir', 'memory-service-entry', 'device-runtime'];
-  const booleans = migrating ? ['apply'] : ['apply', 'offline', 'no-backup', 'replace-codex-pet'];
+  const booleans = migrating ? ['apply'] : ['apply', 'offline', 'no-backup'];
   ({values} = checkedSetup('invalid-arguments', () => parseArgs({args: options.slice(migrating ? 1 : 0), options: Object.fromEntries([
     ...strings.map(name => [name, {type: 'string'}]), ...booleans.map(name => [name, {type: 'boolean'}]),
   ])})));
@@ -147,7 +142,7 @@ function readProfile() {
   const effective = resolveCoreEntry(bundlePatches, profilePatches, homePatches, applyEntryPatches);
   const config = coreConfiguration(effective.config), base = coreConfiguration(declaration.config);
   requireSetup(!base || config && sameCoreBinding(base, config, [packageRoot, installedRoot]), 'core-binding-conflict');
-  return {manifest, installed, enabled, patch, profilePatches, homePatch, homePatches, override, bundlePatches, config};
+  return {installed, enabled, patch, profilePatches, homePatch, homePatches, override, bundlePatches, config};
 }
 
 function readReceipt() {
@@ -212,14 +207,10 @@ function verifyProfile(before, patch, config) {
 function packageState() {
   const manifestFiles = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'node_modules/.pnpm/lock.yaml']
     .map(name => readFileState(join(profileDir, name)));
-  const packages = ['her-world', 'codex-pet'].map(name => {
-    const target = join(profileDir, 'node_modules', name);
-    if (!lstatSync(target, {throwIfNoEntry: false})) return null;
-    const root = realpathSync(target);
-    const files = readdirSync(root).sort().filter(name => name !== 'node_modules');
-    return {root, hashes: files.map(name => [name, fileHashes(join(root, name))])};
-  });
-  return {manifestFiles, packages};
+  if (!lstatSync(installedRoot, {throwIfNoEntry: false})) return {manifestFiles};
+  const root = realpathSync(installedRoot);
+  const files = readdirSync(root).sort().filter(name => name !== 'node_modules');
+  return {manifestFiles, root, hashes: files.map(name => [name, fileHashes(join(root, name))])};
 }
 
 async function applyProfileChange(state, previous, patch, attempt, bindingUnchanged, apply, completedReceipt) {
@@ -265,11 +256,11 @@ async function applyProfileChange(state, previous, patch, attempt, bindingUnchan
   }
 }
 
-function runPlugin(args) {
+function installPackage(packageSpec) {
   const env = {...process.env, DSH_HOME: home, npm_config_ignore_scripts: 'true', pnpm_config_ignore_scripts: 'true'};
   if (values.offline) env.npm_config_offline = env.pnpm_config_offline = 'true';
   const result = spawnSync(join(app, 'Contents/Resources/runtime/cli/bin/dsh'),
-    ['plugin', '--profile', profile, ...args, ...(values.offline && args[0] === 'add' ? ['--offline'] : [])], {env, stdio: 'ignore'});
+    ['plugin', '--profile', profile, 'add', packageSpec, '--ignore-scripts', ...(values.offline ? ['--offline'] : [])], {env, stdio: 'ignore'});
   requireSetup(!result.error && result.status === 0, 'package-install-failed');
 }
 
@@ -331,19 +322,17 @@ async function migrateCoreConfig(state) {
 async function setup(state) {
   const receipt = readReceipt();
   const installedConfig = state.config;
-  const replacedBundle = Boolean(state.manifest.dependencies?.['codex-pet']);
-  requireSetup(!replacedBundle || values['replace-codex-pet'], 'replace-codex-pet-required');
   requireSetup(!state.installed || installedConfig, 'migrate-core-config-required');
   requireSetup(!receipt.config || installedConfig && sameCoreBinding(receipt.config, installedConfig, [packageRoot, installedRoot]), 'receipt-binding-conflict');
   if (installedConfig) inspectBinding(installedConfig);
-  const defaultDataDir = join(home, 'codex-pet/core');
+  const defaultDataDir = join(home, 'her-world/core');
   const dataDir = arg('--data-dir', installedConfig?.dataDir ?? defaultDataDir);
   requireSetup(isAbsolute(dataDir), 'core-config-invalid');
   const emptyDataDir = path => {
     const stat = lstatSync(path, {throwIfNoEntry: false});
     return !stat || stat.isDirectory() && readdirSync(path).length === 0;
   };
-  requireSetup(installedConfig || arg('--resume-repo') || !replacedBundle && [dataDir, defaultDataDir].every(emptyDataDir), 'migrate-core-config-required');
+  requireSetup(installedConfig || arg('--resume-repo') || [dataDir, defaultDataDir].every(emptyDataDir), 'migrate-core-config-required');
   const config = installedConfig ? prepareCoreConfiguration(installedConfig) : {
     dataDir, companionId: '', scopeId: '', ownerActorId: '', displayName: '', character: '',
   };
@@ -444,7 +433,7 @@ async function setup(state) {
   }
   let backupDir = null;
   if (backupRequested) {
-    backupDir = join(profileDir, 'backups/codex-pet', new Date().toISOString().replace(/[:.]/g, '-'));
+    backupDir = join(profileDir, 'backups/her-world', new Date().toISOString().replace(/[:.]/g, '-'));
     mkdirSync(backupDir, { recursive: true, mode: 0o700 });
     for (const file of ['package.json', 'cordis.patch.yml', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
       if (existsSync(join(profileDir, file))) { copyFileSync(join(profileDir, file), join(backupDir, file)); chmodSync(join(backupDir, file), 0o600); }
@@ -465,8 +454,7 @@ async function setup(state) {
   let initializing = false;
   await applyProfileChange(state, receipt, patch, attempt, () => !initializing
     && isDeepStrictEqual(inspectBinding(rollbackConfig), previousBinding), async () => {
-    if (replacedBundle) runPlugin(['remove', 'codex-pet']);
-    runPlugin(['add', packageSpec, '--ignore-scripts']);
+    installPackage(packageSpec);
     const actual = verifyProfile(state, patch, config);
     const version = typeof actual.installed.version === 'string' && versionPattern.exec(actual.installed.version);
     requireSetup(version && (values.version ? actual.installed.version === values.version : !version[1]), 'package-version-conflict');

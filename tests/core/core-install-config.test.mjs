@@ -16,7 +16,7 @@ test('actual installer preparation requires no default model and creates only na
   const {config} = JSON.parse(readFileSync(attemptReceipt));
   assert.deepEqual(Object.keys(config).sort(),['character','companionId','dataDir','displayName','ownerActorId','scopeId'].sort());
   assert.ok(config.companionId&&config.scopeId&&config.ownerActorId);
-  assert.equal(config.dataDir, join(f.home, 'codex-pet/core'));
+  assert.equal(config.dataDir, join(f.home, 'her-world/core'));
   assert.equal(readFileSync(f.patchPath, 'utf8'), patch);
   assert.equal(readFileSync(f.manifest, 'utf8'), '{}');
   assert.deepEqual(f.calls(), [], 'Preparation installs no package and starts no host or model');
@@ -237,12 +237,8 @@ test('migrate-core-config leaves invalid, conflicting or in-progress evidence un
   assert.deepEqual(f.calls().filter(call => call.args), []);
 });
 
-test('setup rejects a legacy archive and refuses to invent identity for an unconfigured installed package', t => {
+test('setup refuses to invent identity for an unconfigured installed package', t => {
   const f = profileFixture(t);
-  const gone = f.command(['--apply', '--archive=/fixture/old.tgz']);
-  assert.equal(gone.status, 1);
-  assert.match(gone.stderr, /archive-unsupported.*--version/);
-  assert.deepEqual(f.calls(), []);
   f.installFixture(undefined, {version: '0.2.0', spec: '0.2.0'});
   assertRejected(f.command(['--apply']), 'migrate-core-config-required', identity);
   assert.deepEqual(f.calls().filter(call => call.args), []);

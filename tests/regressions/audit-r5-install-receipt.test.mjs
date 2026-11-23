@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
-import {join, basename} from 'node:path';
+import {join, basename, dirname} from 'node:path';
 import vm from 'node:vm';
 import {profileFixture} from '../behavior-list/setup-config.test.mjs';
 import {createCore} from '../../dist/src/core/index.js';
@@ -12,7 +12,7 @@ function fixture(t, {fresh = false, runtime = false} = {}) {
   const config = {companionId: 'fish', scopeId: 'scope', ownerActorId: 'owner', displayName: '', character: '',
     dataDir: join(repo, '.chatpet/data/core')};
   const memory = runtime ? {python: join(f.home, 'python'), dataDir: join(f.home, 'bank')} : undefined;
-  const oldConfig = {...config, dataDir: join(f.home, 'old-core'), ...(runtime ? {memory} : {})};
+  const oldConfig = {...config, dataDir: join(f.home, 'codex-pet/core'), ...(runtime ? {memory} : {})};
   const old = {status:'installed', packageInstalled:true, profileDir: f.profileDir, config: oldConfig,
     actualPaths:{coreDataDir: oldConfig.dataDir, memoryDataDir: memory?.dataDir ?? null, memoryPython: memory?.python ?? null}};
   const oldBytes = JSON.stringify(old, null, 2) + '\n';
@@ -147,22 +147,23 @@ test('R5: a fresh offline cache miss removes the new patch and applying receipt,
   assert.ok(f.coreConfig().companionId);
 });
 
-test('R5: offline replacement removes codex-pet before adding her-world with --offline', t => {
-  const f = fixture(t), codexPet = join(f.profileDir, 'node_modules/codex-pet');
-  fs.mkdirSync(codexPet);
-  fs.writeFileSync(join(codexPet, 'package.json'), JSON.stringify({name: 'codex-pet', dsh: {bundle: {patch: 'cordis.patch.yml'}}}));
-  fs.writeFileSync(join(codexPet, 'cordis.patch.yml'), '[]\n');
-  const manifest = json(f.manifest);
-  manifest.dependencies['codex-pet'] = '0.1.0';
-  manifest.dsh.profile.bundles.push('codex-pet');
-  fs.writeFileSync(f.manifest, JSON.stringify(manifest));
-
-  assert.equal(f.checked([...f.args, '--apply', '--replace-codex-pet', '--offline']).status, 'installed');
+test('R5: offline npm setup keeps the configured Core path and backs it up in the Her World directory', async t => {
+  const f = fixture(t), host = createCore(f.oldConfig);
+  await host.close();
+  const coreFile = join(f.oldConfig.dataDir, 'core.sqlite');
+  const original = fs.readFileSync(coreFile);
+  const result = f.checked(['--apply', '--offline']);
+  assert.equal(result.status, 'installed');
   assert.deepEqual(f.calls().filter(call => call.args), [
-    {args: ['plugin', '--profile', 'fixture', 'remove', 'codex-pet'], offline: false, status: 'applying'},
     {args: ['plugin', '--profile', 'fixture', 'add', 'her-world@latest', '--ignore-scripts', '--offline'], offline: true, status: 'applying'},
   ]);
-  assert.equal(fs.existsSync(codexPet), false);
+  assert.equal(result.actualPaths.coreDataDir, f.oldConfig.dataDir);
+  assert.equal(f.coreConfig().dataDir, f.oldConfig.dataDir);
+  assert.equal(json(f.receiptPath).actualPaths.coreDataDir, f.oldConfig.dataDir);
+  assert.equal(dirname(result.backupDir), join(f.profileDir, 'backups/her-world'));
+  assert.deepEqual(fs.readFileSync(join(result.backupDir, 'core-data', 'core.sqlite')), original);
+  assert.deepEqual(fs.readFileSync(coreFile), original);
+  assert.equal(fs.existsSync(join(f.home, 'her-world/core')), false);
 });
 
 // Invalid receipts must be rejected by the actual backup CLI before Core,
