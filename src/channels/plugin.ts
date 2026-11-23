@@ -10,7 +10,7 @@ import {digest, Rejection} from '../core/storage.js';
 import {object, requiredText, type ConsoleOperation} from '../core/tables/console.js';
 import type {PetCoreHost} from '../core/index.js';
 import type {HomeBinding} from '../core/workspace.js';
-import {sameHomeBinding} from '../living/index.js';
+import {isWorldChangeFor, sameHomeBinding} from '../core/home-binding.js';
 import {readRunningLifeHome, registerLifeOutlet} from '../living/outlets.js';
 import {bridgePrefix, LocalBridge, privateDeviceDirectory} from './bridge.js';
 import {createMessaging} from './messaging.js';
@@ -68,8 +68,7 @@ export class CompanionChannels {
   }
   async refresh(change?: WorldChanged) {
     const binding = this.scope();
-    if (change && (!binding || change.workspaceId !== binding.workspaceId || change.storageId !== binding.storageId ||
-      change.bootId !== binding.bootId || change.generation !== binding.generation)) return;
+    if (change && !isWorldChangeFor(change, binding)) return;
     if (this.bound && !this.current(this.bound)) this.bound.messaging.cancelVoice();
     return this.serial(() => this.reconcile(binding));
   }

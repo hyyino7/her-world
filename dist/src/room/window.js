@@ -4,7 +4,7 @@ import { createInterface } from 'node:readline';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
-import { sameHomeBinding } from '../living/index.js';
+import { isWorldChangeFor, sameHomeBinding } from '../core/home-binding.js';
 import { isRoomEndpoint } from '../presentation/room-transport.js';
 /** Presentation-only process. Owner state and every native turn stay in DSH. */
 export class RoomWindow {
@@ -27,10 +27,9 @@ export class RoomWindow {
     changed(change, version) {
         this.reconcile();
         const bound = this.bound;
-        if (!this.child || !bound || bound.workspaceId !== change.workspaceId || bound.storageId !== change.storageId ||
-            bound.bootId !== change.bootId || bound.generation !== change.generation)
+        if (!this.child || !isWorldChangeFor(change, bound))
             return;
-        this.send({ type: 'changed', change: { workspaceId: bound.workspaceId, ...version, reason: change.bodyOnly ? 'transition' : 'world' } });
+        this.send({ type: 'changed', change: { workspaceId: change.workspaceId, ...version, reason: change.bodyOnly ? 'transition' : 'world' } });
     }
     async open(workspaceId) {
         this.reconcile();

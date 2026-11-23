@@ -5,8 +5,8 @@ export declare const INTERACTION_CONTEXT = "chatpet.interactions";
 export declare function presentFact(fact: CompanionFact): {
     operationId?: string | undefined;
     id: string;
-    domain: "economy" | "body";
-    type: "sleep" | "wake" | "command" | "pet" | "poke" | "feed" | "water" | "play" | "talk" | "lamp" | "visit" | "go" | "place" | "sick" | "heal" | "purchase" | "sale" | "money-grant" | "item-gift" | "reading-import" | import("../contracts/interaction.js").LegacyFactType;
+    domain: "body" | "economy";
+    type: "command" | "pet" | "poke" | "feed" | "water" | "play" | "talk" | "sleep" | "wake" | "lamp" | "visit" | "go" | "place" | "sick" | "heal" | "purchase" | "sale" | "money-grant" | "item-gift" | "reading-import" | import("../contracts/interaction.js").LegacyFactType;
     at: string;
     actor: import("../contracts/interaction.js").CompanionFactActor;
     status: "failed" | "completed" | "unchanged";

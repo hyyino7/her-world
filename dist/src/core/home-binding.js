@@ -1,6 +1,6 @@
+import { isWorldChangeFor } from '../contracts/living.js';
+export { isWorldChangeFor };
 export function sameHomeBinding(current, captured) {
-    return current === captured || !!current && !!captured && current.workspaceId === captured.workspaceId &&
-        current.path === captured.path && current.storageId === captured.storageId &&
-        current.bootId === captured.bootId && current.generation === captured.generation;
+    return current === captured || !!current && current.path === captured?.path && isWorldChangeFor(current, captured);
 }
 //# sourceMappingURL=home-binding.js.map
