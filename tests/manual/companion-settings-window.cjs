@@ -9,7 +9,7 @@ const { randomUUID } = require('node:crypto');
 const { createServer } = require('node:http');
 const { basename } = require('node:path');
 const { setTimeout: pause } = require('node:timers/promises');
-const root = fs.mkdtempSync(join(tmpdir(), 'chatpet-settings-ui-'));
+const root = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'chatpet-settings-ui-')));
 app.setPath('userData', join(root, 'profile'));
 const frontend = join(process.env.DSH_APP || '/Applications/DeepSeek Harness.app',
   'Contents/Resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets');
@@ -41,6 +41,7 @@ async function check() {
   const { Context } = await import('@deepseek-ai/cordis');
   const { createCore } = await import('../../dist/src/core/index.js');
   const { settingsHandler } = await import('../../dist/src/console/settings.js');
+  const { ensureDeviceRuntime } = await import('../../scripts/lib/device-runtime.mjs');
   const { CompanionEmotion, emotionConsoleOperations } = await import('../../dist/src/emotion/plugin.js');
   const { lifeConsoleOperations } = await import('../../dist/src/living/plan/plugin.js');
   const { roomConsoleOperations } = await import('../../dist/src/room/plugin.js');
@@ -56,10 +57,11 @@ async function check() {
   const secondWorkspace = { id: 'second', title: '新小屋', path: fs.realpathSync(secondDirectory),
     sessionIds: [], status: async () => 'ok' };
   const targets = [workspace, secondWorkspace];
-  const config = { dataDir: join(root, 'core'), companionId: 'settings-fixture', scopeId: 'fixture',
+  const runtime = ensureDeviceRuntime({ python: join(__dirname, '../../.venv/bin/python'),
+    deviceRoot: join(root, 'profile', 'chatpet-runtime'), sourceRepo: join(__dirname, '../..') });
+  const config = { dataDir: join(workspace.path, '.chatpet/data/core'), companionId: 'settings-fixture', scopeId: 'fixture',
     ownerActorId: 'owner', displayName: '大肥鱼', character: '一条喜欢听你说话的蓝鱼。',
-    // Invoke the venv entry point so Python loads the fixture's installed Memory dependencies.
-    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: join(__dirname, '../../.venv/bin/python') } };
+    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: runtime.python, runtimeRoot: runtime.deviceRoot } };
   const host = createCore(config);
   const emotion = new CompanionEmotion(host);
   const searchCalls = [];
@@ -271,7 +273,10 @@ async function check() {
     await click('刷新设置');
     await waitFor(() => !document.querySelector('#fixture [role=alert]') && !!document.querySelector('#fixture [role=tabpanel] h3'));
     let preferences = await call('preferences', {expectedRevision:(await call('snapshot')).preferences.revision,workspaceId:'fixture',conversation:(await call('snapshot')).preferences.conversation});
-    await call('initialize',{expectedPreferencesRevision:preferences.revision});
+    const initialized = await call('initialize',{expectedPreferencesRevision:preferences.revision});
+    assert.equal(initialized.state, 'ready');
+    const {storage} = await call('snapshot');
+    assert.equal(storage.complete, true, JSON.stringify(storage));
     platform.ownerAccess('fixture');
     const configUrl = new URL('/chatpet-presentation/config', address);
     const {obj:{main:{bodyTemplate}}} = await platform.handle(configUrl, 'GET', undefined, signal);
@@ -328,7 +333,14 @@ async function check() {
         if(!size)throw Error('Original size field missing');
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(size,'289');size.dispatchEvent(new Event('input',{bubbles:true}));
       });
-      await click('生活','[role=tab]');assert.ok(!(await panelText()).includes('此刻的心情'),'Previous Emotion panel must unmount');await waitFor(()=>[...document.querySelectorAll('button')].find(e=>e.textContent==='喂小鱼干'&&!e.disabled));
+      const lifeView = await call('lifeView', {workspaceId: workspace.id});
+      assert.equal(lifeView.enabled, false);
+      const feed = lifeView.careActions.find(({action}) => action === 'feed');
+      assert.ok(feed?.label, 'The paused Life view must offer free feeding');
+      await click('生活','[role=tab]');
+      assert.ok(!(await panelText()).includes('此刻的心情'),'Previous Emotion panel must unmount');
+      await waitFor(label => [...document.querySelectorAll('[role=tabpanel] button')]
+        .some(button => button.textContent === label && !button.disabled), feed.label);
       await click('桌宠','[role=tab]');assert.ok(await evaluate(()=>[...document.querySelectorAll('.cp-appearance input')].some(e=>e.type==='number'&&e.value==='289')),'Original appearance draft must survive tab changes');
       await screenshot('after-桌宠');
       await click('角色','[role=tab]');await setField('角色名称','Unsaved fixture name');
