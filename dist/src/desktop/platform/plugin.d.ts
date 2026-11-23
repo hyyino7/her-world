@@ -36,6 +36,7 @@ export declare class PetPlatform {
     private behaviorRead?;
     private playbackKinds;
     private playbackReported;
+    private feedPlaybacks;
     private migration?;
     private restartPresentation?;
     private presentationStatus?;

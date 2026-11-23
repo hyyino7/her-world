@@ -423,6 +423,31 @@ test('桌宠投喂提交后取消，重载后在新活动中按原号核对',asy
   await assert.rejects(f.feed('desktop-retry-conflict'),/同一互动请求不能用于不同内容/);
 });
 
+test('桌宠同号查到原播放编号并在移除桌宠后核对已提交的投喂',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const id='desktop-feed-with-playback';
+  const first=await f.feed(id);
+  assert.equal(first.obj.admission,'started');
+  assert.ok(first.obj.playbackId);
+  const [fact]=await f.effects(id);
+  const expected={ok:true,requestId:id,admission:'replayed',effect:fact.result.status,playbackId:first.obj.playbackId};
+  const ordinary=(await f.feed(id)).obj;
+  const animations=(await f.request('config')).obj.main.animations;
+  const configFile=(await f.request('config/meta')).obj.user;
+  const saved=JSON.parse(readFileSync(configFile,'utf8'));
+  const withoutFeed=names=>names.map(name=>name==='吃饭团'?'开心小跑':name);
+  saved.animations={...animations,baifan:withoutFeed(animations.baifan),
+    categories:animations.categories.map(category=>({...category,actions:withoutFeed(category.actions)}))};
+  writeFileSync(configFile,JSON.stringify(saved));
+  assert.equal((await f.feed('desktop-feed-missing-clip-new')).obj.reason,'unknown-animation');
+  const missingClip=(await f.feed(id)).obj;
+  assert.equal((await f.request('config','PUT',{pets:[]})).status,200);
+  const removed=(await f.feed(id)).obj;
+  assert.deepEqual([ordinary,missingClip,removed],[expected,expected,expected]);
+  assert.equal((await f.feed('desktop-feed-removed-new')).obj.reason,'unknown-pet');
+  assert.deepEqual(await f.effects(id,'desktop-feed-missing-clip-new','desktop-feed-removed-new'),[fact]);
+});
+
 test('桌宠在 Body 缺席时拒绝吃饭，重新挂载后恢复准入',async t=>{
   const f=await desktopFeedingFixture(t);
   await f.unload('body');

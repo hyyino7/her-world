@@ -83,7 +83,9 @@ test('settings read creates no body; one host preserves raw configuration while 
  const root=mkdtempSync(join(tmpdir(),'chatpet-platform-activity-'));
  let state={her:{kind:'idle',asleep:false},emotion:{feelings:[]}};
  let feeds=0;
- const {platform,chatOpens}=fixture(root,undefined,{petBehavior:{roomState:async()=>state,presentFeed:async()=>{
+ const {platform,chatOpens}=fixture(root,undefined,{petBehavior:{roomState:async()=>state,presentFeed:async(_workspaceId,_interaction,presentationBlocked)=>{
+   const blocked=presentationBlocked();
+   if(blocked)return {admission:'presentation-blocked',blocked};
    if(state.her.kind==='eat')return {admission:'already-presented'};
    feeds++;state={...state,her:{kind:'eat',asleep:false}};return {admission:'started'};
  }},petEmotion:{}});
@@ -101,7 +103,8 @@ test('settings read creates no body; one host preserves raw configuration while 
   await configureFixturePet(platform);
   await platform.show();await platform.show();assert.equal(platform.status().pets.length,1);assert.equal(platform.status().pets[0].display,'desktop');
   await request('native-chat-window','POST',{});assert.equal(chatOpens(),1);
-  assert.equal((await request('anim?pet=missing&surface=desktop','POST',{name:'吃饭团'})).obj.ok,false);assert.equal(feeds,0);
+  const missing=await request('anim?pet=missing&surface=desktop','POST',{name:'吃饭团'});
+  assert.equal(missing.obj.ok,false);assert.equal(missing.obj.reason,'unknown-pet');assert.equal(feeds,0);
   assert.equal((await request('anim?pet=main&surface=desktop','POST',{name:'吃饭团'})).obj.ok,true);assert.equal(feeds,1);assert.equal(state.her.kind,'eat');
   state={her:{kind:'eat',asleep:false},emotion:{feelings:['anger']}};await platform.refreshBehavior();
   const eating=(await request('config-live')).obj;

@@ -94,6 +94,7 @@ export class PetPlatform {
     behaviorRead;
     playbackKinds = new Map();
     playbackReported = new Map();
+    feedPlaybacks = new Map();
     migration;
     restartPresentation;
     presentationStatus;
@@ -129,6 +130,7 @@ export class PetPlatform {
         this.expressionAction = undefined;
         this.playbackKinds.clear();
         this.playbackReported.clear();
+        this.feedPlaybacks.clear();
         this.migration = undefined;
         this.restartPresentation = undefined;
         this.presentationStatus = undefined;
@@ -762,9 +764,20 @@ export class PetPlatform {
         if (result.admission === 'blocked')
             return json({ ok: false, reason: 'activity-busy', message: '当前活动进行中，请先完成或结束该活动' }, 409);
         const receipt = { requestId, admission: result.admission, ...(result.fact ? { effect: result.fact.result.status } : {}) };
-        if (result.admission === 'replayed')
-            return json({ ok: true, ...receipt });
-        const playback = await this.router(url.pathname + url.search, 'POST', raw, signal);
+        if (result.admission === 'replayed') {
+            const playbackId = await this.feedPlaybacks.get(requestId);
+            validate();
+            return json({ ok: true, ...receipt, ...(playbackId && { playbackId }) });
+        }
+        const pending = this.router(url.pathname + url.search, 'POST', raw, signal);
+        if (result.fact) {
+            // Body owns the durable fact. The playback ID lives with the upstream
+            // tracker, which is recreated when this presentation binding closes.
+            this.feedPlaybacks.set(requestId, pending.then(reply => reply.obj?.playbackId, () => undefined));
+            if (this.feedPlaybacks.size > 512)
+                this.feedPlaybacks.delete(this.feedPlaybacks.keys().next().value);
+        }
+        const playback = await pending;
         validate();
         return playback.kind === 'json' ? { ...playback, obj: { ...playback.obj, ...receipt } } : playback;
     }
@@ -893,17 +906,17 @@ export class PetPlatform {
         if (rest === 'anim' && method === 'POST') {
             const input = JSON.parse(raw || '{}');
             const requestId = typeof input.requestId === 'string' ? input.requestId : randomUUID();
-            const cfg = upstream.readAllConfig(this.setup.configPaths);
             const decide = (cfg) => upstream.decideAnim({ cfg, requested: String(url.searchParams.get('pet') ?? ''), name: input.name, url: input.url, facing: input.facing });
             const rejectPresentation = (cfg, petId) => this.lookup.surfaceBlocked(cfg, petId, url.searchParams) || this.lookup.lockBlocked(petId, url.searchParams);
-            const decision = decide(cfg);
+            if (typeof input.name === 'string' && eatingClips.has(input.name.trim()) && !(typeof input.url === 'string' && input.url.trim())) {
+                return this.feedAnimation(url, raw, signal, requestId, actor, () => {
+                    const current = upstream.readAllConfig(this.setup.configPaths), fresh = decide(current);
+                    return fresh.ok ? rejectPresentation(current, fresh.petId) : json({ ok: false, reason: fresh.reason, message: fresh.message });
+                });
+            }
+            const cfg = upstream.readAllConfig(this.setup.configPaths), decision = decide(cfg);
             if (decision.ok) {
                 const requested = decision.name;
-                if (eatingClips.has(requested))
-                    return this.feedAnimation(url, raw, signal, requestId, actor, () => {
-                        const current = upstream.readAllConfig(this.setup.configPaths), fresh = decide(current);
-                        return fresh.ok ? rejectPresentation(current, fresh.petId) : json({ ok: false, reason: fresh.reason, message: fresh.message });
-                    });
                 const blocked = rejectPresentation(cfg, decision.petId);
                 if (blocked)
                     return blocked;

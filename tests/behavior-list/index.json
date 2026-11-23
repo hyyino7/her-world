@@ -1894,6 +1894,15 @@
       "families": []
     },
     {
+      "id": "3-DESKTOP-FEED-10",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠同号查到原播放编号并在移除桌宠后核对已提交的投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-LIFE-PAUSE-01",
       "categories": [],
       "level": "L2",
