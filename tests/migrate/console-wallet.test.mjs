@@ -8,7 +8,7 @@ import {createCore} from '../../dist/src/core/index.js';
 import {CompanionEconomy} from '../../dist/src/living/economy/plugin.js';
 import {createOfflineBackup} from '../../scripts/lib/offline-backup.mjs';
 import {exportWalletSources} from '../../scripts/migrate/browser-wallet.mjs';
-import {migrationStatus, runMigration, steps, verifyWalletImport} from '../../scripts/migrate/runner.mjs';
+import {migrationStatus, runMigration, runWalletBrowserOperation, steps, verifyWalletImport} from '../../scripts/migrate/runner.mjs';
 import {sealWalletRollback, walletBinding} from '../../scripts/migrate/wallet-rollback.mjs';
 import {mockDsh, planFor, read} from './helpers.mjs';
 import {economyPaths, offlineFixture} from './offline-helpers.mjs';
@@ -92,4 +92,23 @@ test('存量钱包的已结清导入在私有导出封窗后仍可查历史证�
   assert.equal(current.segment, 'settled');
   assert.deepEqual(current.steps.at(-1), {id:'0004-console-wallet',state:'complete'});
   await runMigration({installation:f.installation, resume:true});
+});
+
+
+test('浏览器离线入口在配置移除后仍拒绝运行中的保留 Memory', async t => {
+  const f = await legacy(t,false);
+  const retained = join(f.data,'retained-bank','runtime');
+  mkdirSync(retained,{recursive:true});
+  const owner = join(retained,'service.json');
+  writeFileSync(owner,JSON.stringify({pid:process.pid,token_env:'DSH_MEMORY_TOKEN'}));
+  const directory = join(f.out,'private-browser');
+  mkdirSync(directory,{mode:0o700});
+  const walletExport = join(directory,'export.json');
+  const input = {installation:f.installation,mode:'export',walletExport,round:randomUUID(),
+    sources:[{profile:f.profile,origin:'https://fixture.invalid',key:'chatpet:economy:pending:' + f.target.id}],
+    acquire:async () => ({assertFrozen:() => true,read:() => null})};
+  await assert.rejects(runWalletBrowserOperation(input),{code:'writer-running'});
+  assert.equal(existsSync(walletExport),false);
+  rmSync(owner);
+  assert.deepEqual(await runWalletBrowserOperation(input),{sourceCount:1,complete:true});
 });

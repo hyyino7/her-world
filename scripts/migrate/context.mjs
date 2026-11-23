@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { dirname, join } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { storageManifestIndex } from '../../dist/src/core/storage-migration.js';
 import { backupPlan, assertDshStopped } from '../lib/offline-backup.mjs';
 import { inspectRepoBinding, assertStopped } from '../lib/repo-storage.mjs';
@@ -43,6 +44,29 @@ export function assertOffline(context) {
     assert.equal(binding.storageId, context.plan.storageId, 'Storage binding changed');
     assert.equal(binding.target.id, context.plan.workspaceId, 'Workspace binding changed');
     assert.equal(binding.root, context.plan.repo, 'Repo binding changed');
+  });
+}
+
+export function assertWalletBrowserOffline(context) {
+  assertOffline(context);
+  checked('writer-running', () => {
+    const managed = join(context.plan.repo,'.chatpet');
+    const declared = json(join(managed,'manifest.json')).files;
+    const known = new Set([join(managed,'data','memory'), ...declared
+      .filter(file => file.endsWith('/data/memory.db')).map(file => join(managed,dirname(dirname(file))))]);
+    for (const entry of readdirSync(managed,{recursive:true,withFileTypes:true})) {
+      if (entry.name !== 'service.json' || basename(entry.parentPath) !== 'runtime') continue;
+      const directory = dirname(entry.parentPath), owner = join(entry.parentPath,entry.name);
+      let memory = known.has(directory) || existsSync(join(directory,'data','memory.db'));
+      if (!memory && entry.isFile()) {
+        try { memory = json(owner)?.token_env === 'DSH_MEMORY_TOKEN'; }
+        catch (error) { if (!(error instanceof SyntaxError)) throw error; }
+      }
+      if (memory) {
+        regular(owner);
+        assertStopped(directory,'memory');
+      }
+    }
   });
 }
 

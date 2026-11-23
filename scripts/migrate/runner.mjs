@@ -6,7 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { CONSOLE_WALLET_STEP, isStepSettled } from '../../dist/src/core/storage-migration.js';
 import { acquireMigrationMutex } from '../companion-backup.mjs';
 import { createOfflineBackup, verifyOfflineBackup } from '../lib/offline-backup.mjs';
-import { loadInstallation, manifestVersion, assertOffline } from './context.mjs';
+import { loadInstallation, manifestVersion, assertOffline, assertWalletBrowserOffline } from './context.mjs';
 import { acquireLock, appendJournal, hash, regular } from './io.mjs';
 import { checked, MigrationError, requireMigration } from './errors.mjs';
 import { contractFor, journalBinding, settled, validateJournal } from './journal.mjs';
@@ -132,13 +132,13 @@ export async function runWalletBrowserOperation({installation,mode,walletExport,
   try {
     const context = loadInstallation(installation);
     requireMigration(context.plan.repo === repo,'binding-changed');
-    assertOffline(context);
+    assertWalletBrowserOffline(context);
     assertWalletArtifactExternal(context,walletExport);
     const binding = walletBinding(context.plan);
     const acquireOffline = async input => {
       const lease = await acquire(input);
       return {
-        async assertFrozen() { assertOffline(context); return lease.assertFrozen(); },
+        async assertFrozen() { assertWalletBrowserOffline(context); return lease.assertFrozen(); },
         read: source => lease.read(source),
         compareAndSet: (source,expected,next) => lease.compareAndSet(source,expected,next),
         release: () => lease?.release?.(),
