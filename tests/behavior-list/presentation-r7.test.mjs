@@ -352,6 +352,21 @@ test('桌宠两个并发吃饭请求只在 Body 投喂一次',async t=>{
   assert.equal((await f.effects(...ids)).length,1);
 });
 
+test('桌宠不在伙伴到达主人指定位置的停留期间投喂',async t=>{
+  const f=await desktopFeedingFixture(t);
+  const ordered=await f.body.roomAction(f.id,{action:'command',room:'her_room',spot:'bedside'},'主人');
+  assert.equal(ordered.changed,true);
+  const route=f.body.binding.room.state.route;
+  assert.ok(route);
+  t.mock.timers.setTime(Math.ceil(route.arriveAt)+1);
+  const before=await f.body.roomState(f.id);
+  assert.deepEqual([before.her.kind,before.her.busy],['idle',true]);
+  const ids=['wait-feed-1','wait-feed-2'];
+  const responses=await Promise.all(ids.map(id=>f.feed(id)));
+  assert.deepEqual(responses.map(reply=>reply.obj.reason),['activity-busy','activity-busy']);
+  assert.deepEqual(await f.effects(...ids),[]);
+});
+
 test('桌宠吃饭请求在 Body 准入读取时取消，保持零投喂',async t=>{
   const f=await desktopFeedingFixture(t);
   const entered=Promise.withResolvers(),resume=Promise.withResolvers();

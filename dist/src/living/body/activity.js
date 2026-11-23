@@ -9,6 +9,6 @@ export function feedAdmission(her) {
         return 'blocked';
     if (her.kind === 'eat')
         return 'already-presented';
-    return mealInsertionKinds.includes(her.kind) ? 'start' : 'blocked';
+    return !her.busy && mealInsertionKinds.includes(her.kind) ? 'start' : 'blocked';
 }
 //# sourceMappingURL=activity.js.map

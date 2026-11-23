@@ -4,6 +4,7 @@ export declare function bodyPhaseOf(phase: ExecutionPhase): BodyPhase;
 interface PresentedCompanion {
     asleep: boolean;
     walking: boolean;
+    busy: boolean;
     kind: string;
 }
 /** 吃饭准入使用 homeView 的画面状态，呈现分类器用自己的分类选画面。 */

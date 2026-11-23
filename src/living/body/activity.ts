@@ -10,6 +10,7 @@ const mealInsertionKinds = ['idle', 'play', 'idle_look', 'react_happy', 'react_p
 interface PresentedCompanion {
   asleep: boolean;
   walking: boolean;
+  busy: boolean;
   kind: string;
 }
 
@@ -17,5 +18,5 @@ interface PresentedCompanion {
 export function feedAdmission(her: PresentedCompanion | null | undefined): FeedAdmission {
   if (!her || her.asleep || her.walking) return 'blocked';
   if (her.kind === 'eat') return 'already-presented';
-  return mealInsertionKinds.includes(her.kind) ? 'start' : 'blocked';
+  return !her.busy && mealInsertionKinds.includes(her.kind) ? 'start' : 'blocked';
 }

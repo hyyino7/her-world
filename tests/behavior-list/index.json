@@ -1885,6 +1885,15 @@
       "families": []
     },
     {
+      "id": "3-DESKTOP-FEED-09",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠不在伙伴到达主人指定位置的停留期间投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-CONSOLE-11",
       "categories": [],
       "level": "L2",
