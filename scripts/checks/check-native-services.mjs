@@ -100,6 +100,7 @@ try{
   const guest=await homes.open(identity);
   assert.equal(host.native.isGuest(guest.id),true);
   assert.deepEqual(host.native.sourceTable.policyRows().filter(({row})=>row===5||row===6).map(({row})=>row),[5,6]);
+  const emotion=ctx.get('petEmotion'),beforeGuest=await emotion.read(workspace.id);
   program=async function*(options){
     assert.ok(system(options).includes('TURN_PERSONA_NEXT'),'Guest uses the same SOUL');
     assert.ok(system(options).includes('pet-expression') && all(options).includes('currentCompanionEmotion'),'Guest receives the shared Emotion guide/state sections');
@@ -109,7 +110,7 @@ try{
   };
   await askTurn(ctx,guest,createUserMessage({source:{kind:'user',identity},content:[{type:'text',text:'GUEST_GARDEN_STORY: I grew a sunflower.'}]}),{name:'fixture',inWorld:session=>homes.owns(session.id)});
   await guest.whenIdle();
-  assert.equal((await ctx.get('petEmotion').read(workspace.id)).state?.reason,'听了群友的菜园故事','Guest footer updates the same Emotion instance');
+  assert.deepEqual(await emotion.read(workspace.id),beforeGuest,'Guest footer leaves the shared Emotion instance unchanged');
   program=async function*(options){assert.ok(all(options).includes('GUEST_GARDEN_STORY'));assert.ok(all(options).includes('friend'));assert.ok(all(options).includes('group-fixture'));yield* say('The guest grew a sunflower.');};
   await send(b,'What did the guest grow?');
   // Restart the real provider before another cross-session recall.

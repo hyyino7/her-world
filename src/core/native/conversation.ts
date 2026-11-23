@@ -107,20 +107,22 @@ export class CoreNative {
     return this.playbackProviders.register('playback', resolve);
   }
   emotionAllowed(sessionId: string, turn: number, permission: 'footer' | 'tool'): boolean {
+    if (permission === 'footer') return this.captureEmotionFooter(sessionId, turn) !== undefined;
     const current = this.turns.get(sessionId);
     if (current?.turn !== turn || !matchesNativeScope(this.nativeScopeFor(sessionId), current.scope)) return false;
     const sources = [...current.sources.values()];
-    if (permission === 'tool' && sources.some(source =>
+    if (sources.some(source =>
       source.guardDuringTakeover && (!source.lease.isCurrent() || !source.emotionUpdate.tool))) return false;
-    return sources.some(({emotionUpdate, lease}) => lease.isCurrent() && emotionUpdate[permission]);
+    return sources.some(({emotionUpdate, lease}) => lease.isCurrent() && emotionUpdate.tool);
   }
   captureEmotionFooter(sessionId: string, turn: number): (() => boolean) | undefined {
     const current = this.turns.get(sessionId);
-    if (current?.turn !== turn || !matchesNativeScope(this.nativeScopeFor(sessionId), current.scope)) return;
+    if (current?.turn !== turn || current.scope.guest || !matchesNativeScope(this.nativeScopeFor(sessionId), current.scope)) return;
+    const sources = [...current.sources.values()];
+    // The final reply belongs to the whole turn, including any input before an owner takeover.
+    if (sources.some(({emotionUpdate}) => !emotionUpdate.footer)) return;
     const scope = {...current.scope};
-    const leases = [...current.sources.values()]
-      .filter(({emotionUpdate, lease}) => emotionUpdate.footer && lease.isCurrent())
-      .map(({lease}) => lease);
+    const leases = sources.map(({lease}) => lease).filter(lease => lease.isCurrent());
     if (!leases.length) return;
     return () => matchesNativeScope(this.nativeScopeFor(sessionId), scope) && leases.some(lease => lease.isCurrent());
   }
