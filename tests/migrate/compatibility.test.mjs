@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import {existsSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {fixture, coreReady, recall} from './helpers.mjs';
-import {inventory} from '../../scripts/migrate/inventory.mjs';
-import {storage} from '../../scripts/migrate/context.mjs';
+import {inventory, storage} from '../../scripts/migrate/inventory.mjs';
 
 test('0.5.0 保留当前盘点、身份和记忆召回', {timeout:60000}, async t => {
   const f = await fixture(t,'current',{keepStorageManifest:true});

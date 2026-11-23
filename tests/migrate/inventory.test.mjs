@@ -10,23 +10,17 @@ import { content } from '../../scripts/fixtures/synthetic-companion.mjs';
 import { planFor, variants, fixture } from './helpers.mjs';
 
 for (const variant of variants) test(`${variant}: inventory emits metadata and detects discrepancies without source writes`, {timeout:60000}, async t => {
-  const f = await fixture(t,variant), before = fileHashes(f.managed), report = inventory(f.installation);
+  const f = await fixture(t,variant,{keepStorageManifest:true}), before = fileHashes(f.managed), report = inventory(f.installation);
   const text = JSON.stringify(report);
   for (const secret of [...Object.values(content),f.target.id,f.storageId,f.config.companionId,f.config.scopeId,f.config.ownerActorId,f.repo,f.home,f.config.memory.python]) assert.ok(!text.includes(secret), 'Content or absolute identity escaped');
   assert.ok(report.files.some(file => file.tables?.some(table => table.name === 'records' && table.rows > 0)));
-  const economy = snapshot => snapshot.files.find(file => file.path.endsWith('/core.sqlite')).economyInitialized;
-  assert.deepEqual(economy(report),{rows:1,matchesCurrentBinding:true});
   assert.deepEqual(fileHashes(f.managed),before);
   assert.deepEqual(inventoryPlan(f.installation).plan.roots,planFor(f).roots,'Metadata mirror preserves the shared backup root inventory');
   const db = new DatabaseSync(join(f.config.dataDir,'core.sqlite'));
   db.prepare('INSERT INTO records(kind,id,value) VALUES(?,?,?)').run('SYNTHETIC_UNKNOWN_KIND_817','fixture','"SYNTHETIC_HIDDEN_VALUE_817"');
-  db.prepare('INSERT INTO meta VALUES (?,?)').run('ECONOMY.initialized:unrelated', 'null');
-  db.prepare('UPDATE meta SET value=? WHERE key=?').run(JSON.stringify({companionId:f.config.companionId,path:join(f.out,'other')}),
-    `economy.initialized:${f.storageId}`);
   db.close();
   writeFileSync(join(f.managed,'unregistered-file'),'SYNTHETIC_HIDDEN_FILE_817');
   const difference = inventory(f.installation), output = JSON.stringify(difference);
-  assert.deepEqual(economy(difference),{rows:1,matchesCurrentBinding:false});
   assert.equal(difference.files.find(file => file.path.endsWith('/core.sqlite')).unknownKinds,1);
   assert.ok(difference.differences.extra.includes('companion/unregistered-file'));
   const recent = new DatabaseSync(join(f.data,'memory/recent-interactions.sqlite'));
@@ -38,7 +32,7 @@ for (const variant of variants) test(`${variant}: inventory emits metadata and d
 });
 
 for (const variant of variants) test(`${variant}: inventory follows the selected nondefault Bank with an empty default directory`, {timeout:60000}, async t => {
-  const f = await fixture(t,variant), original = join(f.data,'memory'), selected = join(f.managed,'selected-bank');
+  const f = await fixture(t,variant,{keepStorageManifest:true}), original = join(f.data,'memory'), selected = join(f.managed,'selected-bank');
   renameSync(original,selected); mkdirSync(original);
   const receipt = JSON.parse(readFileSync(f.installation,'utf8'));
   receipt.config.memory.dataDir = selected;

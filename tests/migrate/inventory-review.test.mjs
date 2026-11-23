@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renameSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, readFileSync, renameSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inventory } from '../../scripts/migrate/inventory.mjs';
 import { offlineFixture } from './offline-helpers.mjs';
-import { cli, planFor, read } from './helpers.mjs';
+import { cli, planFor, read, refusedCli } from './helpers.mjs';
 
 test('inventory metadata: public roots omit workspace and storage identifiers',async t => {
   const f = await offlineFixture(t), result = cli(f,['--installation',f.installation],{inventory:true});
@@ -63,5 +63,23 @@ test('inventory metadata: concrete containers require a file at either registere
     rmSync(file,{recursive:true}); writeFileSync(file,'{}');
     assert.equal(inventory(f.installation).coverage.find(row => row.id === 'body').state,'present');
     rmSync(file); mkdirSync(file);
+  }
+});
+
+test('inventory 拒绝无效回执和链接并保留源文件',async t => {
+  const f = await offlineFixture(t,false,{keepStorageManifest:true});
+  const args = ['--installation',f.installation], options = {inventory:true};
+  const receipt = readFileSync(f.installation);
+  refusedCli(f,[],'usage',options);
+  writeFileSync(f.installation,'{');
+  refusedCli(f,args,'receipt-invalid',options);
+  writeFileSync(f.installation,receipt);
+  const original = join(f.managed,'SOUL.md'), bytes = readFileSync(original);
+  for (const [makeLink,code] of [[symlinkSync,'symlink-or-hardlink'],[linkSync,'binding-changed']]) {
+    const link = join(f.data,'inventory-link');
+    makeLink(original,link);
+    try {refusedCli(f,args,code,options);}
+    finally {rmSync(link);}
+    assert.deepEqual(readFileSync(original),bytes);
   }
 });

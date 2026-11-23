@@ -19,6 +19,15 @@ export function inspectTree(path) {
   if (stat.isDirectory()) for (const name of readdirSync(path)) inspectTree(join(path, name));
   else regular(path);
 }
+export function readInstallation(file) {
+  return checked('receipt-invalid', () => {
+    regular(file); const receipt = json(file);
+    requireMigration(receipt?.status === 'installed' && receipt.packageInstalled === true &&
+      typeof receipt.config?.dataDir === 'string' && receipt.config.dataDir.length > 0 &&
+      typeof receipt.profileDir === 'string' && receipt.profileDir.length > 0, 'receipt-invalid');
+    return receipt;
+  });
+}
 export function atomicWrite(file, text) {
   regular(file);
   const stage = file + '.' + randomUUID() + '.tmp';

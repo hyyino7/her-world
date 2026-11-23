@@ -4,11 +4,10 @@ import { basename, dirname, join } from 'node:path';
 import { storageManifestIndex } from '../../dist/src/core/storage-migration.js';
 import { backupPlan, assertDshStopped } from '../lib/offline-backup.mjs';
 import { inspectRepoBinding, assertStopped } from '../lib/repo-storage.mjs';
-import { inspectTree, json, regular } from './io.mjs';
+import { inspectTree, json, readInstallation, regular } from './io.mjs';
 import { checked, requireMigration } from './errors.mjs';
 import manifestStep, { storageManifest } from './steps/0001-storage-manifest.mjs';
 
-export const storage = json(new URL('../../arch/storage.json', import.meta.url));
 export function loadInstallation(file) {
   const receipt = readInstallation(file);
   inspectTree(receipt.config.dataDir);
@@ -67,15 +66,5 @@ export function assertWalletBrowserOffline(context) {
         assertStopped(directory,'memory');
       }
     }
-  });
-}
-
-export function readInstallation(file) {
-  return checked('receipt-invalid', () => {
-    regular(file); const receipt = json(file);
-    requireMigration(receipt?.status === 'installed' && receipt.packageInstalled === true &&
-      typeof receipt.config?.dataDir === 'string' && receipt.config.dataDir.length > 0 &&
-      typeof receipt.profileDir === 'string' && receipt.profileDir.length > 0, 'receipt-invalid');
-    return receipt;
   });
 }
