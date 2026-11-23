@@ -448,7 +448,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 - [x] Channels 与桌宠的原位例外已登记，见[状态拥有者表](architecture.md#4-状态拥有者表)（`arch/storage.json:14–20`）。
 - [x] R7 组合检查历史记录通过，覆盖外围全关、逐关、反序装载、重载、卸载与暂停、A→B→A 换绑、写前取消和写后断回复（`tests/behavior-list/presentation-r7.test.mjs:46,78,156,186,207,234`、`tests/behavior-list/entries-lifecycle.test.mjs:551,637,943`）。
 - [x] 典型修改 2、3 按试做记录达标。Room 口渴项 3 文件／1 层，QQ 额度 9 文件／1 层。典型修改 2、3、7 的原始补丁或提交位置待核实（`6dd3e4c:docs/plans/stage3-presentation.md:145,155,291`）。
-- [x] Room 的端点派生自一份传输契约，保留 `lifeDates` 兼容端点（`src/presentation/room-transport.ts:9–36`、`src/console/settings.ts:37,40`、`tests/room/room-transport.test.mjs:93–140`）。
+- [x] Room 的端点派生自一份传输契约。`lifeDates` 等 Console 端点直接读取 Core 记录库（`src/presentation/room-transport.ts:9–36`、`src/core/console-operations.ts:22–41`、`tests/room/room-transport.test.mjs:93–140`）。
 - [ ] **按拍板完成局部收拢，其余延期。** Body 保留槽位准入，素材投影归呈现。桌宠本轮只收语音、Room 开窗和吃饭接点，便携设置默认值与校验已收拢，Channels 已合并连接返回类型。完整桌宠命令与通知协议、`WorkStage`、设备键重排、Channels 其余状态命名及素材目录合并延后，排期待核实（`src/living/body/animation-slots.ts:1–20`、`src/presentation/animation-map.ts:3–6`、`src/core/companion-settings.ts:6–43,54–76`、`ed6fb4f`、`6dd3e4c:docs/plans/stage3-presentation.md:29–33,305–310`）。
 - [x] 情绪与呈现四项完成。九种 feeling 和 Room 七维各有一份声明，两套分类器共用 `classifyActivity`，`ActivityClip`、`ActivityPlayback` 及 `roomClip / desktopClip` 已搬到呈现层（`src/contracts/emotion.ts:2–6`、`src/living/body/presentation.ts:11–29`、`src/presentation/playback.ts:4–17,34–36`、`19fcdae`）。
 - [x] R8 已识别对象表和布尔值表的键（`7a9baa5`），主人核准一次性补录 78 条（`a073826`）。扩面后基线 715 → 590，之后新增为零（`arch/baseline/vocabulary.json:2–4`、`tests/arch/object-vocabulary.test.mjs:8–33`、`tests/arch/approve-r8-baseline.test.mjs:36–61`）。

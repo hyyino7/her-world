@@ -12,7 +12,7 @@ import { ROOM_ENDPOINTS } from '../presentation/room-transport.js';
 import { estimateTokens } from '#dsh-world/console/snapshot';
 // Exact compatibility routes stay addressable while an optional owner is unloaded.
 const owners = {
-    core: ['foundation', 'self', 'desktopAppearance', 'companion', 'identity', 'quiet', 'preferences', 'initialize', 'profile',
+    core: ['foundation', 'self', 'companion', 'identity', 'quiet', 'preferences', 'initialize', 'profile',
         'lifeDates', 'lifeJournal', 'lifeAlbum', 'lifeSearch', 'lifePhoto', 'lifeForgetPhoto'],
     economy: ['economyView', 'economyPending', 'economyCheck', 'economyRetry', 'economyAbandon'],
     emotion: ['emotionState', 'emotionUpdate'],

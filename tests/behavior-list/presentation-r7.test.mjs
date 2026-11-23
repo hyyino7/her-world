@@ -516,7 +516,7 @@ test('桌宠投喂写入前复核占用锁，已提交结果仍可按原号核�
 test('Console 卸载后实际请求应找不到 Connection 路由',async t=>{
   const f=await presentationFixture(t);
   await f.mount('console');
-  const request=id=>f.request('desktopAppearance',id,{});
+  const request=id=>f.request('foundation',id,{workspaceId:f.id});
   const before=await readRpcResult(await f.dispatch(request('before-unload')),'before-unload');
   assert.equal(before.ok,true,JSON.stringify(before));
   await f.unmount('console');
@@ -528,11 +528,11 @@ test('Console 卸载后实际请求应找不到 Connection 路由',async t=>{
 test('Console 重载后 Connection 对同一路由应只登记一次',async t=>{
   const f=await presentationFixture(t);
   await f.mount('console');
-  assert.equal(f.rpcCount('desktopAppearance'),1);
+  assert.equal(f.rpcCount('foundation'),1);
   await f.unmount('console');
   await f.mount('console');
-  assert.equal(f.rpcCount('desktopAppearance'),1,'重载重复登记旧路由');
-  assert.equal((await readRpcResult(await f.dispatch(f.request('desktopAppearance','after-reload',{})),'after-reload')).ok,true);
+  assert.equal(f.rpcCount('foundation'),1,'重载后应只登记一次基础档案路由');
+  assert.equal((await readRpcResult(await f.dispatch(f.request('foundation','after-reload',{workspaceId:f.id})),'after-reload')).ok,true);
 });
 
 test('Console 旧外观设置在 Desktop 缺席、挂载和卸载时都可读', async t => {
@@ -544,7 +544,6 @@ test('Console 旧外观设置在 Desktop 缺席、挂载和卸载时都可读', 
   await f.mount('console');
   const rpc = async (endpoint, id, input = {}) => readRpcResult(await f.dispatch(f.request(endpoint, id, input)), id);
   const without = await rpc('snapshot', 'without-desktop');
-  const defaults = await rpc('desktopAppearance', 'defaults');
   assert.equal(without.ok, true, JSON.stringify(without));
   assert.equal(without.value.desktop, null);
   assert.deepEqual(without.value.companion.desktopAppearance, old);
@@ -554,9 +553,10 @@ test('Console 旧外观设置在 Desktop 缺席、挂载和卸载时都可读', 
   const withDesktop = await rpc('snapshot', 'with-desktop');
   assert.equal(typeof withDesktop.value.desktop.running, 'boolean');
   assert.deepEqual(withDesktop.value.companion.desktopAppearance, old);
-  assert.deepEqual(await rpc('desktopAppearance', 'defaults-with-desktop'), defaults);
   await f.unmount('desktop');
-  assert.equal((await rpc('snapshot', 'again-without-desktop')).value.desktop, null);
+  const afterUnload = await rpc('snapshot', 'again-without-desktop');
+  assert.equal(afterUnload.value.desktop, null);
+  assert.deepEqual(afterUnload.value.companion.desktopAppearance, old);
 });
 
 test('Console 丢弃卸载前的迟到回包并透传结构化设置错误', async t => {

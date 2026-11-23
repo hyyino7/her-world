@@ -3,7 +3,6 @@ import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../../core/index.js';
 import type { HomeBinding } from '../../core/workspace.js';
 import { type LifePreferences } from './library.js';
-import type { RecordOperation } from '../../core/records.js';
 import { type CurrentLifePlan } from './plan.js';
 import { type CompanionFact } from '../../contracts/interaction.js';
 import { type PlannedExecution } from '../../contracts/behavior.js';
@@ -165,47 +164,6 @@ export declare class CompanionLife {
     private forwardToBody;
     settings(workspaceId: string, expected: unknown, next: unknown, validate?: () => void): Promise<{
         preferences: LifePreferences;
-    }>;
-    library(workspaceId: string, operation: RecordOperation, input?: unknown): Promise<string[] | {
-        photos: import("../../../vendor/dsh-world/lib/life/photos.js").PhotoSummary[];
-        total: number;
-        hasMore: boolean;
-        limit: number;
-        offset: number;
-    } | {
-        diary: string | null;
-        day: string;
-        activity: readonly import("../../../vendor/dsh-world/lib/life/types.js").ActivityRecord[];
-        dialogue?: undefined;
-        diaries?: undefined;
-        removed?: undefined;
-        mediaType?: undefined;
-        data?: undefined;
-    } | {
-        dialogue: {
-            items: import("../../core/review-dialogue.js").DialogueLine[];
-            nextOffset: number | undefined;
-            coverage: "partial" | "eligible";
-        } | undefined;
-        diaries: {
-            date: string;
-            excerpt: string;
-        }[];
-        removed?: undefined;
-        mediaType?: undefined;
-        data?: undefined;
-    } | {
-        removed: boolean;
-        dialogue?: undefined;
-        diaries?: undefined;
-        mediaType?: undefined;
-        data?: undefined;
-    } | {
-        mediaType: any;
-        data: string;
-        dialogue?: undefined;
-        diaries?: undefined;
-        removed?: undefined;
     }>;
     close(): Promise<void>;
 }
