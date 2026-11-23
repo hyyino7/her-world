@@ -247,8 +247,7 @@ export class CompanionBehavior {
         this.expression = undefined;
         if (this.closed || !target || !storageId)
             return;
-        const legacy = join(target.path, '.chatpet', 'data', 'life');
-        const owner = ['home.json', 'garden.json'].some(name => existsSync(join(legacy, name))) ? 'life' : 'behavior';
+        const owner = existsSync(join(target.path, '.chatpet', 'data', 'life', 'home.json')) ? 'life' : 'behavior';
         let directory = target.path;
         for (const part of ['.chatpet', 'data', owner]) {
             directory = join(directory, part);

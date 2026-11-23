@@ -101,7 +101,7 @@
 
 | 区 | 现在对应 | 唯一拥有的数据 |
 | --- | --- | --- |
-| 身体 | `living/body/` | `data/behavior/home.json`（已有 `data/life/home.json` 则沿用） |
+| 身体 | `living/body/` | `data/behavior/home.json`（已有 `data/life/home.json` 则沿用）。首次采用钱包从同目录的 `garden.json` 交接。 |
 | 钱包背包菜园阅读 | `living/economy/` | `data/economy/economy.sqlite`、`storage.json`；和钱包目录分开的采用证据 `data/living/economy-adoption.json` |
 | 计划、回顾、闹钟、日记复盘 | `living/plan/` | `data/life/control.json`、`life.json`（home ID 镜像和待迎接）、`life/wakes.jsonl`、`activity/*`、`compactions.jsonl` |
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash, randomUUID} from 'node:crypto';
-import {existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
@@ -32,6 +32,29 @@ function worldAt(ctx, core) {
   release();
   return world;
 }
+
+test('孤立的 Life 菜园文件不改变 Body 选址或首次钱包采用', async t => {
+  const f = await cordisFixture(t, {order:[]});
+  const lifeHome = join(f.directory, 'home.json'), lifeGarden = join(f.directory, 'garden.json');
+  const body = join(f.repo, '.chatpet/data/behavior');
+  const bodyHome = join(body, 'home.json'), bodyGarden = join(body, 'garden.json');
+  renameSync(lifeHome, bodyHome);
+  const garden = JSON.parse(readFileSync(lifeGarden, 'utf8'));
+  const retained = JSON.stringify({...garden, coins:61});
+  writeFileSync(lifeGarden, retained);
+  writeFileSync(bodyGarden, JSON.stringify({...garden, coins:17}));
+
+  await f.load('body');
+  const before = (await f.body.snapshot(f.id)).needs.thirst;
+  await f.body.act(f.id, 'water', 'water-current-body');
+  assert.ok(JSON.parse(readFileSync(bodyHome, 'utf8')).needs.thirst < before);
+  assert.equal(existsSync(lifeHome), false);
+  assert.equal((await f.body.garden(f.id, 'state')).garden.coins, 17);
+
+  await f.load('economy');
+  assert.equal((await f.economy.snapshot(f.id)).balance, 17);
+  assert.equal(readFileSync(lifeGarden, 'utf8'), retained);
+});
 
 test('4 home 镜像写失败时保留 Core 身份，卸载并重挂只交接一次', async t => {
   const f = await cordisFixture(t);

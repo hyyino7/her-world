@@ -14,7 +14,7 @@ import {roomAsset} from '../../dist/src/room/assets.js';
 import {emptyHomeState} from '#feiyu-home';
 
 const temporary=realpathSync(mkdtempSync(join(tmpdir(),'room-event-window-')));
-const directory=join(temporary,'.chatpet/data/life');mkdirSync(directory,{recursive:true});
+const directory=join(temporary,'.chatpet/data/behavior');mkdirSync(directory,{recursive:true});
 writeFileSync(join(directory,'home.json'),JSON.stringify(emptyHomeState()));
 const errors=[];
 let target={id:'fixture',path:temporary,sessionIds:[]},origin,behavior,room,ready=false,reads=0;
