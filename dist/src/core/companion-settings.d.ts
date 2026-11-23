@@ -44,5 +44,3 @@ export declare const EMPTY_COMPANION_CONFIGURATION: Readonly<CompanionConfigurat
 export declare function isDesktopSwitch(key: string, value: unknown): value is boolean;
 export declare function parseCompanionConfiguration(raw: unknown): CompanionConfiguration;
 export declare function resolveCompanionSettings(configuration: CompanionConfiguration): CompanionSettings;
-/** Compatibility entry for native consumers that require complete mechanics. */
-export declare function parseCompanionSettings(raw: unknown): CompanionSettings;

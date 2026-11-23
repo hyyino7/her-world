@@ -16,7 +16,7 @@ export declare const lifeActivityClips: Readonly<{
     garden_buyCompost: "生活-整理交易";
 }>;
 export declare const physicalClips: Set<string>;
-export declare function activityPresentation(state: any, expression?: string): {
+export declare function activityPresentation(state: any): {
     exclusive: boolean;
     action: undefined;
     notice: undefined;
@@ -40,4 +40,4 @@ export declare function activityPresentation(state: any, expression?: string): {
     notice: string | undefined;
 };
 /** A renderer-only projection. Never return this from the configuration editor's read endpoint. */
-export declare function projectActivityConfig(config: any, state: any, expression?: string): any;
+export declare function projectActivityConfig(config: any, state: any): any;

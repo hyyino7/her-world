@@ -7416,48 +7416,6 @@
     },
     {
       "rule": "R8",
-      "file": "src/living/body/plugin.ts",
-      "line": 413,
-      "column": 42,
-      "scope": "CompanionBehavior/garden",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/garden\"}",
-      "expression": "\"state\" | \"act\" | \"control\"",
-      "values": [
-        "act",
-        "control",
-        "state"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/garden",
-        "line": 710
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 710,
-      "column": 42,
-      "scope": "CompanionLife/garden",
-      "target": "{\"file\":\"src/living/body/plugin.ts\",\"scope\":\"CompanionBehavior/garden\"}",
-      "expression": "\"state\" | \"act\" | \"control\"",
-      "values": [
-        "act",
-        "control",
-        "state"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/body/plugin.ts",
-        "scope": "CompanionBehavior/garden",
-        "line": 413
-      }
-    },
-    {
-      "rule": "R8",
       "file": "src/living/body/room.ts",
       "line": 29,
       "column": 25,
@@ -8004,48 +7962,6 @@
         "file": "src/living/body/room.ts",
         "scope": "CompanionRoom/act",
         "line": 1069
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/body/room.ts",
-      "line": 1117,
-      "column": 21,
-      "scope": "CompanionRoom/garden",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/garden\"}",
-      "expression": "\"state\" | \"act\" | \"control\"",
-      "values": [
-        "act",
-        "control",
-        "state"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/garden",
-        "line": 710
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 710,
-      "column": 42,
-      "scope": "CompanionLife/garden",
-      "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
-      "expression": "\"state\" | \"act\" | \"control\"",
-      "values": [
-        "act",
-        "control",
-        "state"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/body/room.ts",
-        "scope": "CompanionRoom/garden",
-        "line": 1117
       }
     },
     {

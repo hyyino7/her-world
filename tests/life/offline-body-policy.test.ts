@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {CompanionRoom} from '../../src/living/body/room.js';
 import {initialBodyState} from '../../src/living/body/initial-state.js';
 import {createGarden} from '#feiyu-garden';
-import {parseCompanionSettings,parseCompanionConfiguration} from '../../src/core/companion-settings.js';
+import {parseCompanionConfiguration,resolveCompanionSettings} from '../../src/core/companion-settings.js';
 const H=3_600_000, start=Date.parse('2026-11-14T00:00:00Z');
 function fixture(t:any,needs={},extra={},hours=4){
   t.mock.timers.enable({apis:['Date'],now:start});
@@ -20,10 +20,10 @@ function fixture(t:any,needs={},extra={},hours=4){
 }
 test('offline defaults remain configurable and legacy empty choices stay unconfigured',()=>{
   const config=parseCompanionConfiguration({});assert.equal(config.offlineBodyHours,null);
-  assert.equal(parseCompanionSettings({}).offlineBodyHours,4);
-  assert.equal(parseCompanionSettings({offlineBodyHours:1}).offlineBodyHours,1);
-  assert.equal(parseCompanionSettings({offlineBodyHours:0}).offlineBodyHours,0);
-  assert.throws(()=>parseCompanionSettings({offlineBodyHours:-1}));
+  assert.equal(resolveCompanionSettings(config).offlineBodyHours,4);
+  assert.equal(resolveCompanionSettings(parseCompanionConfiguration({offlineBodyHours:1})).offlineBodyHours,1);
+  assert.equal(resolveCompanionSettings(parseCompanionConfiguration({offlineBodyHours:0})).offlineBodyHours,0);
+  assert.throws(()=>parseCompanionConfiguration({offlineBodyHours:-1}),/Invalid offlineBodyHours/);
 });
 for(const hours of [0,1,4,12])test(`offline negative time uses configured ${hours} hours once`,t=>{
   const f=fixture(t,{}, {},hours),s=f.restore(start+72*H);

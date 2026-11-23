@@ -46,11 +46,6 @@ export declare class CompanionBehavior {
         comparison: string;
         value: number;
     }[]): Promise<void>;
-    nextWakeAt(workspaceId: string, conditions?: readonly {
-        metric: string;
-        comparison: string;
-        value: number;
-    }[]): Promise<number | null>;
     private synchronize;
     private checked;
     private activity;
@@ -81,7 +76,7 @@ export declare class CompanionBehavior {
         blocked: NonNullable<T>;
         fact?: undefined;
     } | {
-        admission: "blocked" | "already-presented";
+        admission: "already-presented" | "blocked";
         fact?: undefined;
         blocked?: undefined;
     } | {

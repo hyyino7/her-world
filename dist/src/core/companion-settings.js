@@ -79,8 +79,4 @@ const UNCONFIGURED_RUNTIME = {
 export function resolveCompanionSettings(configuration) {
     return Object.fromEntries(Object.entries(UNCONFIGURED_RUNTIME).map(([key, fallback]) => [key, configuration[key] ?? fallback]));
 }
-/** Compatibility entry for native consumers that require complete mechanics. */
-export function parseCompanionSettings(raw) {
-    return resolveCompanionSettings(parseCompanionConfiguration(raw));
-}
 //# sourceMappingURL=companion-settings.js.map

@@ -71,8 +71,10 @@ export function scanStorage(project,layers,storage) {
         const row=storage.entries.find(r=>r.selector?.table===table&&(table==='records'?r.selector.kind===name:r.selector.key&&(r.selector.key.endsWith('*')?name.startsWith(r.selector.key.slice(0,-1)):name===r.selector.key)));
         const owner=row?.owner??'core',containerOwner=row?.containerOwner??'core';
         const access=storeWrite?'写':'读';
-        const violation=writer!==owner||containerOwner!==owner;
-        reports.push(entry('R5',file,node,name,{writer,access,container:row?.container??`.chatpet/data/core/core.sqlite#${table}`,containerOwner,owner,violation,storageId:row?.id??`core-${table}`,reason:violation?'写入模块或物理容器不属于业务拥有者':'一致'}));
+        const inPlace=table==='records' && row?.disposition==='原位例外' && row.writers.includes(writer);
+        const violation=writer!==owner||(!inPlace&&containerOwner!==owner);
+        const reason=violation?'访问模块或物理容器不属于业务拥有者':inPlace?'原位例外':'一致';
+        reports.push(entry('R5',file,node,name,{writer,access,container:row?.container??`.chatpet/data/core/core.sqlite#${table}`,containerOwner,owner,violation,storageId:row?.id??`core-${table}`,reason}));
       }
     });
   }

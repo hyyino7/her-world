@@ -14,6 +14,7 @@ import {renderContextSections} from '@deepseek-ai/dsh-system-prompt';
 import {createLifeStore} from '#dsh-world/life/lifeStore';
 import {presentFact} from '../../dist/src/core/interaction-presentation.js';
 import {isCompanionHome, resolveCompanionHome} from '../../dist/src/core/companion-foundation.js';
+import {LivingWorld} from '../../dist/src/living/index.js';
 import {behaviorPlugin, corePlugin, economyPlugin} from '../../dist/tests/behavior-list/entries.js';
 import {cordisFixture, eventually, submitPlan} from '../behavior-list/entries-lifecycle.test.mjs';
 import {value} from '../behavior-list/fixture.mjs';
@@ -24,6 +25,13 @@ const services = {body: 'petBehavior', life: 'petLife', economy: 'petEconomy'};
 const homeRecord = f => f.core.workspace.runtime.store.get('companion-home', f.core.workspace.storageId());
 const mirrorFile = f => join(f.directory, 'life.json');
 const lifeStore = f => createLifeStore(f.directory, Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+function worldAt(ctx, core) {
+  // Use the same acquisition as mountLivingArea without extending any area's lifetime.
+  const {world, release} = LivingWorld.retain(ctx, core, 'body');
+  release();
+  return world;
+}
 
 test('4 home 镜像写失败时保留 Core 身份，卸载并重挂只交接一次', async t => {
   const f = await cordisFixture(t);
@@ -721,10 +729,8 @@ function livingTimers(t) {
 for (const order of orders) {
   for (const first of Object.keys(zones)) {
     test(`R6 ${order.join(' → ')}，先卸载 ${first} 再重挂`, async t => {
-      const {LivingWorld} = await import('../../dist/src/living/index.js');
       const f = await cordisFixture(t, {order});
-      const world = LivingWorld.find(f.ctx, f.core);
-      assert.ok(world);
+      const world = worldAt(f.ctx, f.core);
       const slots = Object.fromEntries(order.map(key => [key, world.lookup(zones[key])]));
       for (const key of order) assert.equal(slots[key].value, f.ctx.get(services[key]));
 
@@ -744,31 +750,30 @@ for (const order of orders) {
 
       await f.load(first);
       const next = world.lookup(zones[first]);
-      assert.equal(LivingWorld.find(f.ctx, f.core), world);
+      assert.equal(worldAt(f.ctx, f.core), world);
       assert.equal(next.value, f.ctx.get(services[first]));
       assert.notEqual(next.value, slots[first].value);
       assert.notEqual(next.lease.generation, slots[first].lease.generation);
       await fiber.dispose();
       assert.equal(world.lookup(zones[first]).lease, next.lease);
       for (const key of [...order].reverse()) await f.unload(key);
-      assert.equal(LivingWorld.find(f.ctx, f.core), undefined);
       for (const zone of Object.values(zones)) assert.equal(world.lookup(zone), undefined);
+      assert.notEqual(worldAt(f.ctx, f.core), world);
       assert.equal(existsSync(join(f.repo, '.chatpet/data/economy/economy.lock')), false);
     });
   }
 }
 
 test('R6 只隔离目标服务自己的标签，同标签能重新找到原区', async t => {
-  const {LivingWorld} = await import('../../dist/src/living/index.js');
   const f = await cordisFixture(t);
-  const original = LivingWorld.find(f.ctx, f.core);
+  const original = worldAt(f.ctx, f.core);
   const old = original.lookup('plan');
   assert.throws(() => original.register('plan', old.value, f.fiber('life')), /Duplicate registration/);
   await f.unload('life');
   const label = Symbol('isolated Life');
   const isolated = f.ctx.isolate('petLife', label);
   await f.load('life', isolated);
-  const world = LivingWorld.find(isolated, f.core);
+  const world = worldAt(isolated, f.core);
   const plan = isolated.get('petLife');
   assert.notEqual(world, original);
   assert.ok(plan);
@@ -776,17 +781,17 @@ test('R6 只隔离目标服务自己的标签，同标签能重新找到原区',
   assert.equal(world.lookup('plan').value, plan);
   assert.equal(world.lookup('body').lease, original.lookup('body').lease);
   assert.equal(world.lookup('economy').lease, original.lookup('economy').lease);
-  assert.equal(LivingWorld.find(f.ctx.isolate('petLife', label), f.core), world);
-  assert.equal(LivingWorld.find(new Context(), f.core), undefined);
+  assert.equal(LivingWorld.lookupPlan(f.ctx.isolate('petLife', label), f.core), plan);
+  assert.equal(LivingWorld.lookupPlan(new Context(), f.core), undefined);
   const otherScope = f.ctx.isolate('petCore');
   const other = {...f.core};
   const host = await otherScope.plugin({apply: ctx => ctx.provide('petCore', other)});
-  try { assert.equal(LivingWorld.find(otherScope, other), undefined); }
+  try { assert.equal(LivingWorld.lookupPlan(otherScope, other), undefined); }
   finally { await host.dispose(); }
 
   await f.unload('life');
   await f.load('life');
-  assert.equal(LivingWorld.find(isolated, f.core), undefined);
+  assert.equal(LivingWorld.lookupPlan(isolated, f.core), undefined);
   assert.equal(original.lookup('plan').value, f.life);
   assert.notEqual(original.lookup('plan').lease.generation, old.lease.generation);
 });
@@ -954,9 +959,8 @@ test('R6 Economy 卸载等待跨区设置请求，旧请求不能写配置', asy
 });
 
 test('R6 Economy 挂载中途失败会撤登记并关库，之后可同名重挂', async t => {
-  const {LivingWorld} = await import('../../dist/src/living/index.js');
   const f = await cordisFixture(t, {order: ['body', 'life']});
-  const world = LivingWorld.find(f.ctx, f.core);
+  const world = worldAt(f.ctx, f.core);
   const body = f.body, life = f.life;
   const removeConflictingInitializer = f.core.workspace.registerInitializer('economy', () => {});
   const lock = join(f.repo, '.chatpet/data/economy/economy.lock');

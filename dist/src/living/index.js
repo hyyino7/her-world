@@ -40,10 +40,6 @@ export class LivingWorld {
         return [...domain.worlds].find(world => world.labels.body === labels.body &&
             world.labels.plan === labels.plan && world.labels.economy === labels.economy);
     }
-    static find(ctx, host) {
-        const domain = domains.get(ctx.root)?.get(host);
-        return domain && this.matching(domain, labelsOf(ctx));
-    }
     static lookupPlan(ctx, host) {
         const domain = domains.get(ctx.root)?.get(host);
         return domain && currentArea(domain.slots.plan.get(serviceLabel(ctx, lifeService)), 'plan')?.value;

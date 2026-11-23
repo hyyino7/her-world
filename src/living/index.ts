@@ -74,11 +74,6 @@ export class LivingWorld {
       world.labels.plan === labels.plan && world.labels.economy === labels.economy);
   }
 
-  static find(ctx: Context, host: PetCoreHost) {
-    const domain = domains.get(ctx.root)?.get(host);
-    return domain && this.matching(domain, labelsOf(ctx));
-  }
-
   static lookupPlan(ctx: Context, host: PetCoreHost) {
     const domain = domains.get(ctx.root)?.get(host);
     return domain && currentArea(domain.slots.plan.get(serviceLabel(ctx, lifeService)), 'plan')?.value;

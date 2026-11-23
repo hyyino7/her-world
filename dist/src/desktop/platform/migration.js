@@ -8,7 +8,6 @@ const require = createRequire(import.meta.url), root = dirname(require.resolve('
 const upstream = require(join(root, 'vendor/dsh-pet/platform/runtime.mjs'));
 const object = (value) => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 const digest = (value) => createHash('sha256').update(value).digest('hex');
-const absent = digest('absent');
 const receiptName = 'presentation-migration.json', backupName = 'presentation-before-unification.jsonc';
 const forbidden = new Set(['__proto__', 'prototype', 'constructor']);
 const fieldOf = (path) => path.map(part => encodeURIComponent(part).replaceAll('.', '%2E')).join('.');

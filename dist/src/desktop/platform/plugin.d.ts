@@ -24,13 +24,11 @@ export declare class PetPlatform {
     private setup;
     private lookup;
     private router?;
-    private providers;
     private privateDirectory?;
     private behavior;
     private behaviorKey;
     private animationFeedbackKey;
     private identityKey;
-    private expressionAction?;
     private refreshing?;
     private refreshAgain;
     private behaviorRead?;

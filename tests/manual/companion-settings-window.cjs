@@ -57,7 +57,8 @@ async function check() {
   const targets = [workspace, secondWorkspace];
   const config = { dataDir: join(root, 'core'), companionId: 'settings-fixture', scopeId: 'fixture',
     ownerActorId: 'owner', displayName: '大肥鱼', character: '一条喜欢听你说话的蓝鱼。',
-    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: fs.realpathSync(join(__dirname, '../../.venv/bin/python')) } };
+    // Invoke the venv entry point so Python loads the fixture's installed Memory dependencies.
+    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: join(__dirname, '../../.venv/bin/python') } };
   const host = createCore(config);
   const emotion = new CompanionEmotion(host);
   const searchCalls = [];
@@ -250,7 +251,7 @@ async function check() {
       window.stopNative=()=>disposers.reverse().forEach(dispose=>dispose());
     });
     await waitFor(() => document.querySelector('#fixture [role=alert]')?.textContent.includes('暂时无法读取'));
-    assert.deepEqual(await evaluate(() => window.settingsSlot), { id: 'her-world', label: '大肥鱼' });
+    assert.deepEqual(await evaluate(() => window.settingsSlot), { id: 'her-world', label: 'Her World' });
     await click('刷新设置');
     await waitFor(() => !document.querySelector('#fixture [role=alert]') && !!document.querySelector('#fixture [role=tabpanel] h3'));
     let preferences = await call('preferences', {expectedRevision:(await call('snapshot')).preferences.revision,workspaceId:'fixture',conversation:(await call('snapshot')).preferences.conversation});

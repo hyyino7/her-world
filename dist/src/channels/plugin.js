@@ -4,7 +4,7 @@ import { unknownEffect } from '../contracts/common.js';
 import { CONTRACT_VERSION } from '../contracts/version.js';
 import { digest, Rejection } from '../core/storage.js';
 import { object, requiredText } from '../core/tables/console.js';
-import { sameHomeBinding } from '../living/index.js';
+import { isWorldChangeFor, sameHomeBinding } from '../core/home-binding.js';
 import { readRunningLifeHome, registerLifeOutlet } from '../living/outlets.js';
 import { bridgePrefix, LocalBridge, privateDeviceDirectory } from './bridge.js';
 import { createMessaging } from './messaging.js';
@@ -73,8 +73,7 @@ export class CompanionChannels {
     }
     async refresh(change) {
         const binding = this.scope();
-        if (change && (!binding || change.workspaceId !== binding.workspaceId || change.storageId !== binding.storageId ||
-            change.bootId !== binding.bootId || change.generation !== binding.generation))
+        if (change && !isWorldChangeFor(change, binding))
             return;
         if (this.bound && !this.current(this.bound))
             this.bound.messaging.cancelVoice();

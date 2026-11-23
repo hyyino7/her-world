@@ -90,8 +90,3 @@ export function resolveCompanionSettings(configuration: CompanionConfiguration):
   return Object.fromEntries(Object.entries(UNCONFIGURED_RUNTIME).map(([key, fallback]) =>
     [key, configuration[key as keyof CompanionConfiguration] ?? fallback])) as CompanionSettings;
 }
-
-/** Compatibility entry for native consumers that require complete mechanics. */
-export function parseCompanionSettings(raw: unknown): CompanionSettings {
-  return resolveCompanionSettings(parseCompanionConfiguration(raw));
-}

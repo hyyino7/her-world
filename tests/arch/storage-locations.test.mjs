@@ -53,6 +53,36 @@ test('R5 真实 Economy 建表使用已登记数据库，Core records 建表不�
   }
 });
 
+test('R5 仅放行仍登记在 Core 原位的记录及获批模块',t=>{
+  const storage=JSON.parse(readFileSync(join(repository,'arch/storage.json'),'utf8'));
+  const fixtures={
+    'src/channels/receipts.ts':['channel-reach','channel-received','channel-usage','channel-usage-event','life-outlet-delivery','memory-batch'],
+    'src/desktop/receipts.ts':['desktop-session','channel-reach'],
+  };
+  const work=workspace(t,Object.fromEntries(Object.entries(fixtures).map(([file,kinds])=>[file,
+    kinds.map(kind=>`store.get('${kind}', 'fixture'); store.put('${kind}', 'fixture', {});`).join('\n'),
+  ])));
+  const violations=rows=>rows.filter(row=>row.violation).map(row=>[row.writer,row.target,row.access]);
+  const unapproved=[['channels','memory-batch','读'],['channels','memory-batch','写'],
+    ['desktop','channel-reach','读'],['desktop','channel-reach','写']];
+  const rows=work.scan().writers;
+  assert.equal(rows.length,16);
+  assert.deepEqual(violations(rows),unapproved);
+
+  const entry=storage.entries.find(row=>row.selector?.kind==='channel-reach');
+  const revoked=[['channels','channel-reach','读'],['channels','channel-reach','写'],...unapproved];
+  entry.writers=[];
+  work.write('arch/storage.json',JSON.stringify(storage));
+  assert.deepEqual(violations(work.scan().writers),revoked);
+  entry.writers=['channels'];
+  entry.disposition='不变';
+  work.write('arch/storage.json',JSON.stringify(storage));
+  assert.deepEqual(violations(work.scan().writers),revoked);
+  storage.entries=storage.entries.filter(row=>row!==entry);
+  work.write('arch/storage.json',JSON.stringify(storage));
+  assert.deepEqual(violations(work.scan().writers),revoked);
+});
+
 test('存储登记逐 kind 对上真实 store.put 写入模块，旧情绪只读来源不冒充当前写入',()=>{
   const storage=JSON.parse(readFileSync(join(repository,'arch/storage.json'),'utf8'));
   const rows=scan(repository).writers.filter(r=>r.access==='写'&&/\bput\s*\(/.test(r.expression));

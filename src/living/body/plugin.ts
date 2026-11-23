@@ -166,9 +166,6 @@ export class CompanionBehavior {
   setReconsiderConditions(workspaceId:string,conditions:readonly {metric:string;comparison:string;value:number}[]) {
     return this.enqueue(()=>{this.checked(workspaceId);this.conditions=structuredClone(conditions);});
   }
-  nextWakeAt(workspaceId:string,conditions:readonly {metric:string;comparison:string;value:number}[]=[]) {
-    return this.enqueue(()=>this.checked(workspaceId).room.nextWakeAt(Date.now(),conditions));
-  }
   private synchronize() {
     const status = this.host.workspace.status(), target = status.state === 'ready' ? status.target : null;
     const storageId = target ? this.host.workspace.storageId() : undefined;

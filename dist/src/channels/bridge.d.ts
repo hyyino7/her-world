@@ -16,7 +16,6 @@ export declare function bridgePreferences(raw: unknown): BridgePreferences;
 export declare function privateDeviceDirectory(root: string, name: string): string;
 export declare class LocalBridge {
     private ctx;
-    private directory;
     private origin;
     private home;
     private isHome;

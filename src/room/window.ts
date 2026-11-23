@@ -7,7 +7,7 @@ import {homedir} from 'node:os';
 import type {BehaviorChange} from '../contracts/behavior.js';
 import type {WorldChanged} from '../contracts/living.js';
 import type {HomeBinding} from '../core/workspace.js';
-import {sameHomeBinding} from '../living/index.js';
+import {isWorldChangeFor, sameHomeBinding} from '../core/home-binding.js';
 
 import {isRoomEndpoint, type RoomEndpoint} from '../presentation/room-transport.js';
 interface Host {
@@ -33,9 +33,8 @@ export class RoomWindow {
   changed(change:WorldChanged,version:Pick<BehaviorChange,'bootId'|'revision'>){
     this.reconcile();
     const bound=this.bound;
-    if(!this.child || !bound || bound.workspaceId!==change.workspaceId || bound.storageId!==change.storageId ||
-      bound.bootId!==change.bootId || bound.generation!==change.generation)return;
-    this.send({type:'changed',change:{workspaceId:bound.workspaceId,...version,reason:change.bodyOnly?'transition':'world'}});
+    if(!this.child || !isWorldChangeFor(change,bound))return;
+    this.send({type:'changed',change:{workspaceId:change.workspaceId,...version,reason:change.bodyOnly?'transition':'world'}});
   }
   async open(workspaceId:string){
     this.reconcile();

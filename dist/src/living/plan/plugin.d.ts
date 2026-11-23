@@ -57,12 +57,6 @@ export declare class CompanionLife {
     }) | undefined;
     isHome(id: string): boolean;
     homeSessionId(): string | undefined;
-    /** Presentation reads the original body's two distinct states: walking to bed
-     * can be cancelled, but the sleeping animation starts only after arrival. */
-    restState(workspaceId: string): {
-        sleeping: boolean;
-        pending: boolean;
-    } | undefined;
     private publishRest;
     private directory;
     private synchronize;
@@ -169,45 +163,6 @@ export declare class CompanionLife {
     }>;
     private behavior;
     private forwardToBody;
-    /** Compatibility methods delegate; Behavior remains available after Life unload. */
-    roomAction(workspaceId: string, input: unknown, by?: string): Promise<{
-        home: any;
-        behavior: import("../../contracts/behavior.js").BehaviorActivity & {
-            revision: number;
-            bootId: ReturnType<typeof import("crypto").randomUUID>;
-        };
-        ok: boolean;
-        changed: boolean;
-        event: any;
-        room?: any;
-        fact?: CompanionFact;
-    }>;
-    roomState(workspaceId: string): Promise<any>;
-    garden(workspaceId: string, operation: 'state' | 'act' | 'control', input?: unknown): Promise<({
-        ok: boolean;
-        accepted?: boolean;
-        status?: string;
-        message: string;
-        garden?: any;
-        home?: any;
-    } | {
-        ok: boolean;
-        garden: any;
-    } | {
-        message: string;
-        execution: PlannedExecution;
-        garden: any;
-        home: any;
-        ok: boolean;
-        accepted?: boolean;
-        status?: string;
-    }) & {
-        behavior: import("../../contracts/behavior.js").BehaviorActivity & {
-            revision: number;
-            bootId: ReturnType<typeof import("crypto").randomUUID>;
-        };
-        home?: any;
-    }>;
     settings(workspaceId: string, expected: unknown, next: unknown, validate?: () => void): Promise<{
         preferences: LifePreferences;
     }>;
