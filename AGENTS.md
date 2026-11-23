@@ -2,7 +2,7 @@
 
 Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个伙伴的身份、记忆和生活，贯穿 DSH 原生聊天、桌宠、Room、QQ／微信和语音。使用者只有主人；维护者是 Claude 和 Codex。
 
-开工前先读 [docs/product.md](docs/product.md#阶段) 的当前阶段，再按需查[三层架构](docs/architecture.md#0-一页总览)和[缩小范围的决定](docs/decisions.md#2026-11-18-阶段-1-缩小m3-改为收口并发版)。
+开工前先读[产品当前状态](docs/product.md#当前状态)，再按需查[三层架构](docs/architecture.md#0-一页总览)和[支持基线](docs/decisions.md#阶段-4支持基线上移到已迁移的-050)。
 
 用中文沟通；仓库文档用中文写，代码、命令、路径和分支名用英文。改到还是英文的文档时，顺手把它翻译成中文。
 

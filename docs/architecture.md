@@ -53,10 +53,10 @@
 
 | 现在的目录 | 行数（不含上游生成文件） | 去哪里 | 说明 |
 | --- | ---: | --- | --- |
-| `core/` | 3370 | 第一层 | 2a 清理后，阶段 3 保留 Core 外观校验的 R1 例外，见[第一层剩余违规的去向](product.md#第一层剩余违规的去向)（`docs/decisions.md:280`、`arch/baseline/rules.json:3–36`） |
+| `core/` | 3370 | 第一层 | 2a 清理后，阶段 3 保留 Core 外观校验的 R1 例外，见[规则基线](../arch/baseline/rules.json) |
 | `memory/` | 966 | 第一层 | 记忆的创建和关闭归第一层 |
 | `emotion/` | 698 | 第一层 | 含近期互动账本 |
-| `contracts/` | 268 | 仍共用 `src/contracts/` | 共用物理目录位于第一层，照料表由 Living 拥有，见[阶段 4](product.md#stage-4) |
+| `contracts/` | 268 | 仍共用 `src/contracts/` | 共用物理目录位于第一层，照料表由 Living 拥有，见[产品当前状态](product.md#当前状态) |
 | `living/body/` + `living/plan/` + `living/economy/` | 6430（0.1.8 时三个旧目录合计） | 第二层 | 2a 已合并成 `src/living/` 和一个常驻实例，见 2.3 与第 6 节 |
 | `desktop/` | 21380（大头是生成文件） | 第三层 | 生成文件改生成器，不手改 |
 | `room/` | 989 | 第三层 | 拥有房间窗口、交互接线和图片副本 |
@@ -271,7 +271,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 事实 `CompanionFact` | 第二层 | `domain` 封闭；`type` 是裸 `string` | 补 `domain` 与 `type` 的关联类型和统一解码器；Python 侧的识别清单与它由同一份声明生成，或用契约测试对齐 |
 | 会话来源 `source.kind / scope / admission` | 第一层 | `source.kind` 内建 7 种，可经 DSH 的 `MessageSourceMap` 扩展；`scope` 有三种含义 | 并入来源适配表（2.2、5.8）；`NativeScope`、`MemoryScope`、`scopeId` 分别命名，不再共用「scope」一词 |
 
-第一批（动作、行为、活动、阶段、命令、事实）见 5.6.1。阶段 3 开工时交付了第二批概念表（`6dd3e4c:docs/plans/stage3-presentation.md:299–310`），涉及表情与贴纸、情绪、槽位与素材的现行边界见 [5.7](#57-动作与行为)，各项取舍见[阶段 3 结果](product.md#阶段-3-结果)。
+第一批（动作、行为、活动、阶段、命令、事实）见 5.6.1。阶段 3 开工时交付了第二批概念表（`6dd3e4c:docs/plans/stage3-presentation.md:299–310`），涉及表情与贴纸、情绪、槽位与素材的现行边界见 [5.7](#57-动作与行为)，各项取舍见[长期有效的规则](decisions.md#2026-11-23-阶段-3-拍板中长期有效的规则)。
 
 #### 5.6.1 第一批概念细表
 
@@ -506,7 +506,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 新增工具 | 工具定义旁声明 `sources`（没写的只给主人），需要历史瘦身时再声明 `historyOverview`，登记到工具声明表 `host.native.toolTable`（M2 已落地） | Life 和回顾名单、历史瘦身识别、来源适配的工具限制 |
 | 新增输入来源 | 在模块里写一个来源适配器（准入、分支、`turnKind`、工具策略、记忆观察、情绪更新、历史投影、会话策略行），在入口登记到 `host.native.sourceTable`；新的 `source.kind` 在 DSH 的 `MessageSourceMap` 声明，新的工具来源用 `toolTable.registerSource` 登记（M2 已落地） | 入队和首步准入、工具限制、记忆观察、情绪 footer、历史投影、会话策略一行 |
 | 新增上下文段 | 在模块入口用 `registerWorldPrompt` 登记（缩小后不做段声明，5.9） | 无；顺序、可见性由登记处自己写 |
-| 新增伙伴设置项 | 便携字段的默认值和校验在 Core（`src/core/companion-settings.ts:6–43,54–76`） | 页面控件、保存键和实际消费仍分别接线（`src/console/client.js:1111`、`src/emotion/recent.ts:71–72`）。第 7 类试做完成，阶段 4 确认维持现有接线，见[阶段 4](product.md#stage-4) |
+| 新增伙伴设置项 | 便携字段的默认值和校验在 Core（`src/core/companion-settings.ts:6–43,54–76`） | 页面控件、保存键和实际消费仍分别接线（`src/console/client.js:1111`、`src/emotion/recent.ts:71–72`）。试做结果见[典型修改前后对比](product.md#典型修改前后对比) |
 | 新增 QQ／微信设置项 | `channels/messaging-settings.ts` 声明可编辑字段并维护缺省值及校验 | Console 与生成的桌宠客户端从 Channels 的状态响应读取控件和保存键。Channels 按字段的设备归属落盘 |
 | 新增设置页操作 | 拥有者声明校验和执行并登记到 `host.native.consoleOperations` | Console 用公开端点名映射到登记，入口统一管理准入和撤销 |
 | 新增照料动作 | 第二层的 `BodyAction` 基础表（`contracts/behavior.ts:10`），每个动作在照料、角色、计划、反馈各集合里记序号 | 主人入口、角色工具枚举、计划类型与校验、计划 schema、设置页白名单和按钮（`lifeView.careActions`）。动作的执行和事实标签仍在 Body 里写 |
@@ -606,7 +606,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 ## 9. 重写顺序
 
-第一层分步完成。共享 home 身份由 Core 的 `companion-home` 记录持有，Life 回顾完成时向下调用 Memory，记录库经登记口读取 Life 活动。各步对应的里程碑和完成标准见 [product.md](product.md) 的「阶段」。阶段 1 缩小后（[decisions.md](decisions.md)「阶段 1 缩小」），第一层停在 P2b，P2c 取消，其中属于第二层的部分并入 P3。
+第一层分步完成。共享 home 身份由 Core 的 `companion-home` 记录持有，Life 回顾完成时向下调用 Memory，记录库经登记口读取 Life 活动。各阶段的合并记录见[产品当前状态](product.md#当前状态)。阶段 1 缩小后（[decisions.md](decisions.md)「阶段 1 缩小」），第一层停在 P2b，P2c 取消，其中属于第二层的部分并入 P3。
 
 | 步 | 做什么 |
 | --- | --- |
@@ -617,7 +617,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | P2c | 取消。Life 向下调用 Memory、记录库改读第二层只读接口并入 P3；提示词段表砍掉；共享 home 身份记录的归属已定（第 4 节） |
 | P3 | 合并生活三区、共用登记实例，确定共享 home 和钱包采用证据的归属；沿用三个生活入口 |
 | P4 | 第三层使用共用图片准入、语音表、运维操作表和持久钱包请求；Core 保留[批准的原位例外](#4-状态拥有者表) |
-| P5 | 支持基线上移至已迁移的 0.5.0，收紧公开面与数据准入；收尾状态见[阶段 4](product.md#stage-4) |
+| P5 | 支持基线上移至已迁移的 0.5.0，收紧公开面与数据准入；收尾状态见[产品当前状态](product.md#当前状态) |
 
 每步结束都要：行为清单全绿、门禁通过、能发一个版本、更新「典型修改前后对比」。
 
