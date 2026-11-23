@@ -2,7 +2,7 @@
 // No copied plugin roster and no activation of the user's third-party bundles.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
@@ -41,19 +41,4 @@ export async function mountInstalledStandard(ctx, hostRequire) {
     sha256: createHash('sha256').update(content).digest('hex'), profileLayers: profile.layers.map(layer => layer.packageName),
     compositionWarningCount: warnings.length, declaredPlugins: preset.config.plugins.length, status: 'mounted' }));
   return () => ctx.loader.remove(id);
-}
-
-/** Scope of the authorized live continuation, not a product tool policy. */
-export function guardContinuationReads(root, exec, documents = ['cedar.txt', 'willow.txt']) {
-  if (['pet_memory_recall'].includes(exec.name)) return undefined;
-  if (exec.name === 'glob' && exec.arguments?.pattern === '*.txt'
-      && resolve(root, exec.arguments.path ?? '.') === root) return undefined;
-  if (exec.name === 'read' && documents.some(name =>
-      resolve(root, String(exec.arguments?.file_path)) === join(root, name))) return undefined;
-  return 'This continuation permits existing Memory/matter reads, root *.txt discovery and the two supplied documents';
-}
-
-export function guardExperienceTools(root, exec) {
-  if (['pet_memory_remember', 'pet_memory_correct', 'pet_memory_forget'].includes(exec.name)) return undefined;
-  return guardContinuationReads(root, exec, ['cedar.txt', 'willow.txt', 'quote-brief.txt']);
 }

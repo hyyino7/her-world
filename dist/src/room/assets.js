@@ -41,7 +41,7 @@ export function adaptRoomApp(source) {
     return adaptRoomIdentityScript(adaptRoomRefresh(source.replace(before, () => after).replace(activity, "  const expressionText = state.presentation?.action === 'expression' ? state.presentation.expression?.actionLabel : '';\n  const animationNotice = state.playback?.notice || (charMode !== 'webm' && state.playback && !['idle','free','rest','walk','sleep','nap','wake'].includes(state.playback.kind) ? '当前形象的活动动作待补齐' : '');\n  $('activityText').textContent = (her.activity || '在发呆') + (expressionText ? ' · 表情：' + expressionText : '') + (animationNotice ? ' · ' + animationNotice : '');")));
 }
 /** Adapt shipped template labels, never user text or stable action identifiers. */
-export function adaptRoomIdentityScript(source) {
+function adaptRoomIdentityScript(source) {
     source = source.replace(/('(?:[^'\\\r\n]|\\.)*'|"(?:[^"\\\r\n]|\\.)*"|`(?:[^`\\\r\n]|\\.)*`)/g, literal => {
         if (!literal.includes('小蓝鱼') && !literal.includes('大肥鱼当前的心情'))
             return literal;
@@ -101,7 +101,7 @@ function refreshCompanionRoom(change) {
     return source;
 }
 /** Extend the existing owner RPC transport; no public audio/state HTTP route. */
-export function adaptRoomTransport(source) {
+function adaptRoomTransport(source) {
     const table = /^const endpoints = new Map\(\[[\s\S]*?^\]\);/gm;
     const lookup = '  const endpoint = endpoints.get(new URL(url, location.origin).pathname);';
     const deadline = /\['roomTelevision','roomChat'\]\.includes\(endpoint\)\s*\?\s*310000\s*:\s*20000/g;
@@ -112,7 +112,7 @@ export function adaptRoomTransport(source) {
         .replace(deadline, 'route.timeout');
 }
 /** The saved garden preference never claims a second autonomous planner. */
-export function adaptRoomGarden(source) {
+function adaptRoomGarden(source) {
     const replace = (before, after) => {
         if (source.split(before).length !== 2)
             throw Error('Room garden presentation source changed: ' + before.slice(0, 60));

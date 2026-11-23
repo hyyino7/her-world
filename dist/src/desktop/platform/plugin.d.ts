@@ -1,8 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { type ConsoleOperation } from '../../core/tables/console.js';
-/** Playback reports are renderer-owned; a control token may only query/wait. */
-export declare function controlRouteAllowed(rest: string, method: string): boolean;
 declare module '@deepseek-ai/cordis' {
     interface Context {
         petPlatform: PetPlatform;

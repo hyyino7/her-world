@@ -70,28 +70,6 @@ export type CapabilityStatus = {
     reason: string | null;
     supportedOperations: readonly string[];
 });
-export interface PageRequest {
-    cursor?: string;
-    limit: number;
-}
-export interface Page<T> {
-    items: readonly T[];
-    nextCursor: string | null;
-}
-/** An immutable media reference, independent of any scheduler or resource service. */
-export interface ArtifactRef {
-    artifactId: string;
-    mediaType: string;
-    contentDigest: string;
-}
-export type MessagePart = {
-    kind: 'text';
-    text: string;
-} | {
-    kind: 'asset';
-    asset: ArtifactRef;
-    altText: string;
-};
 /** Core's attributed observation for the existing Memory Bank. */
 export interface EvidenceSource {
     sourceId: string;

@@ -25,7 +25,7 @@ const route = '/chatpet-presentation';
 const json = (obj, status = 200) => ({ kind: 'json', obj, status });
 const controls = new Set(['anim', 'position', 'throw', 'pose', 'lock', 'lock/release', 'broadcast', 'bubble/clear', 'menu/item', 'pose/report', 'menu/click', 'menu/events']);
 /** Playback reports are renderer-owned; a control token may only query/wait. */
-export function controlRouteAllowed(rest, method) {
+function controlRouteAllowed(rest, method) {
     return controls.has(rest) || method === 'GET' && /^playback\/[^/]+$/.test(rest);
 }
 const upstream = load(join(vendor, 'runtime.mjs'));
