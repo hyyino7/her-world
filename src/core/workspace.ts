@@ -189,15 +189,11 @@ export class CoreWorkspace {
     const {companionId, scopeId} = this.runtime.config;
     return {companionId, scopeId, workspaceId, modules:CONSOLE_WALLET_STEP.to};
   }
-  private retainedFiles(directory: string, ignore?: string): boolean {
+  private retainedFiles(directory: string): boolean {
     return readdirSync(directory, {withFileTypes:true}).some(entry => {
-      if (entry.name === ignore) return false;
       if (directory === this.runtime.store.directory && entry.isFile() && BOOTSTRAP_FILES.has(entry.name)) return false;
       return !entry.isDirectory() || this.retainedFiles(join(directory, entry.name));
     });
-  }
-  private emptyLegacyInitialization(directory: string, marker: unknown): boolean {
-    return isDeepStrictEqual(marker, {companionId:this.runtime.config.companionId}) && !this.retainedFiles(directory, INITIALIZING);
   }
   private inspectMigration(target: WorkspaceTarget, storageId: string, initialized: boolean): MigrationBlock | undefined {
     const {companionId} = this.runtime.config;
@@ -242,7 +238,7 @@ export class CoreWorkspace {
     try {
       if (lstatSync(join(directory, INITIALIZING), {throwIfNoEntry:false})) {
         const marker: unknown = JSON.parse(this.read(directory, INITIALIZING));
-        if (isDeepStrictEqual(marker, this.initializationMarker(target.id)) || this.emptyLegacyInitialization(directory, marker)) return;
+        if (isDeepStrictEqual(marker, this.initializationMarker(target.id))) return;
         return {reason:MIGRATION_REASON.storageVersionOutdated};
       }
       if ((initialized && existsSync(directory)) || [...REQUIRED, 'STATE.md', 'self.md', 'diary', 'self.history', 'data'].some(name => {
@@ -416,8 +412,7 @@ export class CoreWorkspace {
     const pending = join(directory, INITIALIZING), marker = this.initializationMarker(target.id);
     if (existsSync(pending)) {
       const previousMarker: unknown = JSON.parse(this.read(directory, INITIALIZING));
-      if (this.emptyLegacyInitialization(directory, previousMarker)) this.atomic(directory, INITIALIZING, JSON.stringify(marker) + '\n');
-      else check(isDeepStrictEqual(previousMarker, marker), 'Initialization scope changed');
+      check(isDeepStrictEqual(previousMarker, marker), 'Initialization scope changed');
     } else this.atomic(directory, INITIALIZING, JSON.stringify(marker) + '\n');
     this.runtime.fileEffect = true;
     if (!manifestExists) {

@@ -95,11 +95,13 @@ test('绑定缺少 .chatpet 时可初始化，原路径暂离时显示不可用�
   }
 });
 
-test('只有旧格式标记的空 Repo 保持待初始化，可以显式完成初始化', async t => {
+test('只有当前初始化标记的 Repo 可以按原绑定续做', async t => {
   const f = await initialize(t);
   rmSync(f.managed, {recursive:true});
   mkdirSync(f.managed);
-  writeFileSync(join(f.managed, '.initialization-pending.json'), JSON.stringify({companionId:f.config.companionId}));
+  writeFileSync(join(f.managed, '.initialization-pending.json'), JSON.stringify({
+    companionId:f.config.companionId, scopeId:f.config.scopeId, workspaceId:'repo', modules:CONSOLE_WALLET_STEP.to,
+  }));
   assert.equal(inspectRepoBinding(f.config).state, 'pending');
   const host = createCore(f.config);
   try {
@@ -109,6 +111,25 @@ test('只有旧格式标记的空 Repo 保持待初始化，可以显式完成�
     assert.equal(migrationHelp, null);
     const reply = await host.services.workspace.initialize(host.operator.request('retry-initialize'), {expectedPreferencesRevision:f.prefs.revision});
     assert.equal(reply.value?.state, 'ready', reply.error?.code);
+  } finally { await host.close(); }
+});
+
+test('只有旧初始化标记的 Repo 拒绝重新初始化并保留标记', async t => {
+  const f = await initialize(t);
+  rmSync(f.managed, {recursive:true});
+  mkdirSync(f.managed);
+  const file = join(f.managed, '.initialization-pending.json');
+  const original = JSON.stringify({companionId:f.config.companionId});
+  writeFileSync(file, original);
+  assert.equal(inspectRepoBinding(f.config).state, 'pending');
+  const host = createCore(f.config);
+  try {
+    await assertRepairHint(host);
+    const reply = await host.services.workspace.initialize(host.operator.request('reject-old-initialization'),
+      {expectedPreferencesRevision:f.prefs.revision});
+    assert.equal(reply.error?.code, 'migration-required');
+    assert.equal(readFileSync(file, 'utf8'), original);
+    assert.equal(existsSync(join(f.managed, 'manifest.json')), false);
   } finally { await host.close(); }
 });
 

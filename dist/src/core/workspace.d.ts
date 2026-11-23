@@ -95,7 +95,6 @@ export declare class CoreWorkspace {
     private read;
     private initializationMarker;
     private retainedFiles;
-    private emptyLegacyInitialization;
     private inspectMigration;
     /** Match the binding and declared inventory accepted by inspectRepoBinding. */
     private offlineBindingReady;
