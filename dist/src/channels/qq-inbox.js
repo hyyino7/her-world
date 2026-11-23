@@ -28,7 +28,6 @@ export function createQQInbox(options) {
             if (!options.active() || !options.allowed(input.identity))
                 return;
             const key = keyFor(input.identity), previous = store.get(kind, key);
-            // Legacy receivedAt-only rows have no recoverable body or admission proof.
             if (previous)
                 return previous.kind === 'qq-input' && valid(previous) ? previous : undefined;
             return save({ ...input, kind: 'qq-input', version: 1, key, storageId, owner: options.owner(input.identity), state: 'received' });

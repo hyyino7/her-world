@@ -50,7 +50,6 @@ export function createQQInbox(options:Options) {
     receive(input:QQInput):QQReceived|undefined {
       if(!options.active() || !options.allowed(input.identity))return;
       const key=keyFor(input.identity), previous=store.get<QQReceived>(kind,key);
-      // Legacy receivedAt-only rows have no recoverable body or admission proof.
       if(previous)return previous.kind==='qq-input' && valid(previous)?previous:undefined;
       return save<QQReceived>({...input,kind:'qq-input',version:1,key,storageId,owner:options.owner(input.identity),state:'received'});
     },

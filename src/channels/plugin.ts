@@ -47,7 +47,7 @@ export class CompanionChannels {
     if (!this.bound) {
       const {workspaceId, path, storageId} = expected;
       const deviceDirectory = privateDeviceDirectory(privateDeviceDirectory(this.profileDir, 'chatpet-channels'), digest(storageId));
-      const dataDirectory=companionChannelDirectory(path,deviceDirectory);
+      const dataDirectory=companionChannelDirectory(path);
       const active = sameScope;
       const isHome = (sessionId: string) => active() && isCompanionHome(this.ctx,this.host,sessionId);
       const ownerHome = async () => {

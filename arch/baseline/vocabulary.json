@@ -381,13 +381,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/group-material.ts\",\"scope\":\"<module>\"}",
@@ -781,13 +781,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/group-material.ts\",\"scope\":\"settings\"}",
@@ -1227,13 +1227,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/group-upstream.d.ts\",\"scope\":\"selectRoleText\"}",
@@ -1547,13 +1547,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/group-upstream.d.ts\",\"scope\":\"roleSectionReport\"}",
@@ -1894,51 +1894,6 @@
         "file": "src/channels/messaging-settings.ts",
         "scope": "messagingPreferences",
         "line": 65
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/channels/messaging-storage.ts",
-      "line": 25,
-      "column": 9,
-      "scope": "messagingStorage",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory\"}",
-      "expression": "[ \"qq\" , \"wechat\" ]",
-      "values": [
-        "qq",
-        "wechat"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory",
-        "line": 22
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 22,
-      "column": 46,
-      "scope": "factory",
-      "target": "{\"file\":\"src/channels/messaging-storage.ts\",\"scope\":\"messagingStorage\"}",
-      "expression": "{ life : \"自主生活\" , reflection : \"日记与反思\" , photos : \"长期相册\" , bridge : \"主动消息\" , channels : \"渠道路由\" , qq : \"QQ\" , wechat : \"微信\" }",
-      "values": [
-        "bridge",
-        "channels",
-        "life",
-        "photos",
-        "qq",
-        "reflection",
-        "wechat"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/channels/messaging-storage.ts",
-        "scope": "messagingStorage",
-        "line": 25
       }
     },
     {
@@ -2391,7 +2346,7 @@
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/qq.ts\",\"scope\":\"decideGroup\"}",
@@ -2425,13 +2380,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/qq.ts\",\"scope\":\"groupResponse\"}",
@@ -2465,13 +2420,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/qq.ts\",\"scope\":\"ask\"}",
@@ -2505,13 +2460,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/qq.ts\",\"scope\":\"<module>\"}",
@@ -2545,13 +2500,13 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 57,
+      "line": 56,
       "column": 31,
       "scope": "createQQInbox/ready",
       "target": "{\"file\":\"src/channels/qq.ts\",\"scope\":\"openQQ/queue\"}",
@@ -2585,7 +2540,7 @@
       "other": {
         "file": "src/channels/qq-inbox.ts",
         "scope": "createQQInbox/ready",
-        "line": 57
+        "line": 56
       }
     },
     {
@@ -12853,7 +12808,7 @@
     {
       "rule": "R8",
       "file": "src/channels/qq-inbox.ts",
-      "line": 112,
+      "line": 111,
       "column": 46,
       "scope": "qqAdmission",
       "target": "type",
