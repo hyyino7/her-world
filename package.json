@@ -5,9 +5,6 @@
   "description": "Her World: a modular DSH-backed companion.",
   "exports": {
     ".": "./dist/src/console/plugin.js",
-    "./core": "./dist/src/core/index.js",
-    "./contracts": "./dist/src/contracts/index.js",
-    "./world": "./dist/src/world/index.js",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",

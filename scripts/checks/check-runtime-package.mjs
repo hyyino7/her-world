@@ -8,6 +8,7 @@ import {registerHooks, isBuiltin} from 'node:module';
 import {pathToFileURL, fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import ts from 'typescript';
+import {checkBundleExports} from './check-release.mjs';
 
 assert.ok(process.argv[2], 'Usage: node scripts/checks/check-runtime-package.mjs ARCHIVE');
 const archive=resolve(process.argv[2]),checkout=resolve('.'),stage=realpathSync(mkdtempSync(join(tmpdir(),'chatpet-package-code-')));
@@ -35,6 +36,9 @@ try {
   }
   tar(['--no-xattrs','-xzf',archive,'-C',stage]);
   const root=join(stage,'package'),files=walk(root),manifest=JSON.parse(readFileSync(join(root,'package.json')));
+  const sourceManifest=JSON.parse(readFileSync(join(checkout,'package.json')));
+  assert.deepEqual(manifest.exports, sourceManifest.exports, 'Packaged exports differ from source');
+  checkBundleExports(root, manifest);
   const runtimeDependencies=new Set([...Object.keys(manifest.dependencies??{}),...Object.keys(manifest.optionalDependencies??{}),...Object.keys(manifest.peerDependencies??{})]);
   let externalImports=0;
   function externalDependency(specifier,from) {

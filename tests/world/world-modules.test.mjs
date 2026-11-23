@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { bridge, channels, health, life, mood, photos, qq, reflection, usage, wechat } from 'her-world/world';
+import { bridge, channels, health, life, mood, photos, qq, reflection, usage, wechat } from '../../dist/src/world/index.js';
 
 function temporaryWorld(t) {
   const dir = mkdtempSync(join(tmpdir(), 'chatpet-world-modules-'));
