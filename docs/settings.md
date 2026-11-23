@@ -49,283 +49,127 @@ Room 2D 和默认桌宠用同一份媒体映射，采样同一活动的阶段与
 
 正常桌宠优先用已配置或缓存的 Electron。主人请求启动身体、设备又没有 Electron 时，原版下载路径使用可选依赖 `@electron/get` 和 `@electron-internal/extract-zip`。紧凑窗、Room 和独立桌宠使用本机已有 Electron；包内不附二进制。外观和解码表现以安装后实机结果为准。
 
-## Expression, recent experience and lasting memory
+<a id="expression-recent-experience-and-lasting-memory"></a>
 
-| Control | Fresh configuration | Effect |
-| --- | ---: | --- |
-| Sticker probability | Unconfigured | Applied once per eligible reply when the fish selects an available sticker. 0 suppresses stickers and 100 accepts every selected sticker. Body expression is independent. |
-| Recent action count / age | Unconfigured | Both limits apply to observed distinctive actions and related feedback. |
-| Recent mood changes / age | Unconfigured | Both limits apply to retained mood changes; the continuing current emotion is separate. |
-| Batch-summary turns | Unconfigured | Summarize after this many completed turns, or after the idle threshold. |
-| Batch-summary idle time | Unconfigured | Summarize pending dialogue after inactivity. |
-| Minimum summary interval | Unconfigured | Limits repeat maintenance; failed work also uses the reference retry backoff. |
-| Recall count | Unconfigured | Bounds provider-selected recall items. |
-| Recall block size | Unconfigured | Clips text at presentation only; `pet_memory_read` retrieves eligible full detail and original dialogue. |
+## 表达、近期经历和长期记忆
 
-The owner saves these values to the bound workspace's `.chatpet/core.json`.
-Omitted and explicit null values remain unconfigured in the editor; native
-consumers resolve only the mechanics they require without persisting them as owner choices. Other workspaces retain their own
-settings. A stale settings draft cannot replace a newer value or a different
-workspace's configuration. A zero count or retention period removes that class
-of recent experience on its next read. Durable preferences remain with Mnemosyne.
-Recent interaction data lives in `.chatpet/data/memory/recent-interactions.sqlite`.
+下列选项保存在当前 Repo 的 `.chatpet/core.json`。缺省和显式 `null` 都显示为未配置。运行时为必要的操作使用默认值，保存不会把默认值冒填为主人的选择。
 
-Automatic batch triggers remain inactive until their cadence is configured
-or an explicitly enabled Life review requests maintenance. Blank identity and
-foundation files never substitute a bundled persona. Current emotion
-persists across expiry of the recent-change list. Its canonical file is
-`.chatpet/data/emotion/state.json`, separate from the recent-change ledger.
-**情绪** edits its text, reason and structured feelings with revision/hash checks.
-Existing text-only states do not receive invented numeric values; existing Room
-0–100 values are retained when present. Current Emotion is an independent state:
-correcting or forgetting a Bank record does not automatically rewrite or hide its
-text/reason. The owner can edit the current state explicitly. A damaged file is reported and retained.
-An update whose final encoded document exceeds the reader's existing size limit
-is refused before replacement; the previous feeling stays readable and editable.
-Emotion does not write a second Room mood file.
+| 设置 | 字段 | 生效方式 |
+| --- | --- | --- |
+| 贴图概率 | `stickerProbabilityPercent` | 0 不展示，100 接受每次选中的可用贴图。身体表达单独计算。 |
+| 近期动作上限 | `recentActionCount`、`recentActionMinutes` | 同时约束显著动作和对应反馈。 |
+| 近期心情上限 | `recentMoodCount`、`recentMoodHours` | 同时约束变化历史；持续心情独立保存。 |
+| 批量整理 | `memorySummaryTurns`、`memorySummaryIdleMinutes`、`memorySummaryMinimumMinutes` | 达到已配置轮数或闲置时长后整理。最短间隔限制重复触发，失败按既有退避策略重试。 |
+| 召回上限 | `memoryRecallCount`、`memoryRecallBlockChars` | 限制条数和展示字符数；`pet_memory_read` 可打开有资格读取的全文和原对话。 |
 
-## Entry And Ownership
+近期类别的数量或时长设为 0 时，下次读会去掉该类近期记录。长期偏好在 Mnemosyne，近期经历在 `.chatpet/data/memory/recent-interactions.sqlite`。自动整理依赖已配置的节奏或主动启用的 Life 回顾请求。各工作区保留自己的配置。
 
-Open **DSH Settings → Her World**. The client uses native settings section/icon
-slots, theme, React and Connection transport. It owns only form drafts. The owning
-services validate and save durable state. Closing the page retains acknowledged writes.
+持续情绪存于 `.chatpet/data/emotion/state.json`。**情绪**按版本和摘要校验保存心情正文、原因及结构化感受。只有文本的存档不会补造数值，已有 Room 七维数值会保留。撤回 Bank 记录不会自动改写当前心情，主人可直接编辑。文件损坏时保留并报告；写入前校验编码后的大小，拒绝时原状态仍可读。guest 与电视回复的控制字段不会更新共享情绪。
 
-| Entry | Responsibility |
+<a id="entry-and-ownership"></a>
+
+## 设置入口与数据归属
+
+DSH 从包的 `./client` 装入浏览器工厂。**Her World** 分区及图标在原生 `settings.section`、`settings.section.icon` 使用同一 ID `her-world`。默认 bundle 用 `chatpet-settings` 装载 Console，并分别装载 Core、Memory、Emotion、Wallet、Body、Desktop、PetPlatform、Life、Room、Channels 和 Voice。
+
+| 入口 | 职责 |
 | --- | --- |
-| `src/console/client.js` | Loaded `./client` browser factory, real reads, per-section drafts/save/status, conflicts and refresh |
-| `dist/src/console/plugin.js` | Package-root carrier and finite exact native owner-only API routes |
-| `dist/src/console/settings.js` | Finite settings operation map, strict input shapes, workspace lookup and safe Chinese failures |
-| `dist/src/core/preferences.js` | Owner-authorized, revisioned, idempotent preferences and quiet-policy writes in the existing Core store |
+| `src/console/client.js` | 设置页生成源，负责读取、局部草稿、保存反馈、冲突与刷新。 |
+| `src/desktop/platform/client.js` | 构建生成的 `./client`，组合原版外观编辑器和设置页。 |
+| `dist/src/console/plugin.js` | npm 包根入口，登记主人专用的原生 Connection 路由。 |
+| `dist/src/console/settings.js` | 有限操作表、入参形状、绑定校验与错误反馈。 |
+| `dist/src/core/preferences.js` | Core 偏好和安静策略的主人授权、版本校验与幂等。 |
 
-DSH loads the browser factory from the package's `./client` export.
-The **大肥鱼** section and its icon both use the stable ID `dsh-Chatpet` in the native `settings.section`
-and `settings.section.icon` slots. The bundle mounts the `chatpet-settings`
-carrier and separately declares `00-Core`, `10-Memory`, `20-Emotion`,
-`25-Behavior`, `30-Desktop`, Pet presentation, Life, Room and channel capabilities. The current Memory switch applies to the next turn in both new and existing
-conversations. Turning it off removes the prior recall block and stops new
-observations; it does not erase the Bank or native originals, or backfill turns
-made while Memory was off.
+浏览器只管理表单草稿，实际数据由各拥有者校验并保存。设置走 `/api/chatpetSettings/` 的原生主人连接。读取 `snapshot`、`worldView`、`archiveFind` 和 `archiveRead`，经 `identity`、`profile`、`quiet`、`preferences`、`companion` 保存对应设置。`initialize` 初始化当前 Repo，`desktopOpen`、`desktopClose` 和 `roomOpen` 操作当前绑定的呈现。基础说明、心情和互动间隔也由各自服务处理。缺少所属服务时，页面显示失败原因。已确认的写入在关页后保留。
 
-The settings page calls owner-authenticated native Connection routes under
-`/api/chatpetSettings/`. It reads `snapshot` and the workspace-scoped
-`worldView`, `archiveFind` and `archiveRead` routes, saves `identity`, `profile`,
-`quiet`, `preferences` and `companion`, initializes the selected Repo with
-`initialize`, and requests `desktopOpen` or `desktopClose` for the bound
-workspace. It also reads/saves the Core foundation and Emotion state, opens Room
-through `roomOpen`, and calls the owning presentation timing
-operation. The handler checks the request shape, binding and revision as
-appropriate. The native connection identifies the owner. The page receives a
-readable error when its backing service is unavailable.
+长期 Memory 开关在新旧会话的下一轮生效。关闭会清理上轮召回块并停止新观察；Bank 和原生日志保留。关闭期间经过的轮次不会自动补入。
 
-## Supported Settings
+<a id="supported-settings"></a>
 
-| Area | Current behavior and effective scope |
+## 可保存的设置
+
+| 设置 | 范围与效果 |
 | --- | --- |
-| Role name and character | Read/write existing Core identity with its expected revision; saved values are used by subsequent native turns and survive restart |
-| Quiet mode | Revisioned policy update; suppresses proactive contact while owner replies remain admitted. Does not start autonomy |
-| Background limits | Save Memory context characters, steps, tools and duration; subsequent autonomous/background turns read the saved limits; ordinary owner turns use native DSH execution |
-| Workspace target | Native Workspace Registry list, live directory check, save/clear selected ID and canonical host metadata; persisted across restart |
-| Modules | Read actual Core-reported capability states; module-owned settings are not fabricated |
-| Recovery | Use the existing offline backup command and complete-workspace procedure; Core has no online snapshot or generic artifact service |
+| 角色名称与性格 | 更新 Core 身份，按已有修订号校验。随后原生请求和重启都用保存结果。 |
+| 安静模式 | 按修订号更新策略，暂停主动联络，主人对话照常。开启安静模式不会启动自主活动。 |
+| 后台限制 | 保存记忆上下文字符数、步数、工具次数和时限。随后 Life 和其他受限后台轮次读取新值，主人主动对话由 DSH 管理。 |
+| 工作区 | 从原生登记列表选择，核对实际目录，保存或清除 ID 与宿主元数据。 |
+| 组件状态 | 显示 Core 当前登记的能力和状态。 |
+| 恢复 | 使用[离线备份和同机恢复](portability.md#offline-file-backup-and-same-machine-recovery)。 |
 
-Memory and desktop values share one revisioned workspace file. **保存记忆设置** applies the memory fields. The desktop save applies its own fields and preserves pending memory edits. Forms keep drafts until a successful save or an explicit refresh. A stale
-revision or binding rejects the save and preserves the draft. Refresh asks
-before discarding pending edits. The browser does not store configuration.
+记忆与桌宠设置共用一个带修订号的工作区文件。**保存记忆设置**只提交记忆字段，桌宠保存会保留待提交的记忆草稿。修订号或绑定过期时，拒绝并保留草稿；刷新前会询问是否丢弃。人设、USER 保存携带快照中的绑定，包括未绑定状态；切换后再回来也要刷新草稿的绑定。QQ、微信和本地桥的保存也只确认所提交的子段，并保留等待期间的后续编辑。
 
-Role and USER-profile saves also carry the editor binding captured by the
-snapshot, including an explicit unbound local state. A workspace switch and
-return does not make an old draft current again. Conflicts preserve the draft;
-refresh its binding before saving. Older clients that omit this scope must
-refresh instead of writing against whichever workspace is now selected.
-QQ, WeChat and local-bridge saves confirm their submitted section while
-preserving other unsaved sections and edits made during a pending save.
+Core 身份和策略各自维护修订号，偏好用 Core SQLite 的 `preferences/current`。没有覆盖的字段采用主机已校验的对话缺省值，重启后继续使用已保存的覆盖。模型路由由 DSH 决定。已留档的旧调度记录不会阻挡设置、换绑或原生会话。
 
-Core identity/policy retain their existing revision streams. Preferences use an
-additive `preferences/current` record in Core's existing SQLite schema. Missing
-preferences inherit the host's validated conversation defaults; saved preferences
-override that seed after restart. Owner checks, revisions and request replay
-protect configuration writes. Retired Core quiescence/activity records do not
-gate current configuration or native conversations. Model routing belongs to DSH.
-Old history-window/cold-recall values are tolerated when reading an older workspace,
-but do not appear as current choices or return in new saves.
+<a id="foundation-and-self-description"></a>
 
-## Foundation and self-description
+## 基础说明与自述
 
-**角色 → 基础说明** edits `.chatpet/COMPANION.md`. Initialization declares this
-file in the managed inventory and creates it empty. Empty content is valid; no
-bundled persona/default silently fills it. The next eligible native request
-receives the saved content, combined with SOUL/USER and only the capabilities
-actually available to that conversation. Native DSH permissions remain authoritative.
+**角色 → 基础说明**编辑 `.chatpet/COMPANION.md`。初始化登记并创建空文件，空内容有效。下一次准入的原生请求会读该内容，并组合 SOUL、USER 和当前会话实际可用的能力。权限由 DSH 原生守卫决定。
 
-自述保存在 `.chatpet/self.md`，历史与日记分别保存在 `.chatpet/self.history/` 和
-`.chatpet/diary/`。
-Core's scoped reader/writer integration permits ordinary
-conversation updates without autonomous Life. It remains distinct from the
-owner-authored persona, the user's profile and Memory facts. Life's daily review
-is another opportunity to inspect it, not a prerequisite. Self-description and diaries remain scoped owner documents; their availability
-does not depend on a running Memory provider. Forgetting a Bank record does not
-erase these documents or the original transcripts. Diary and album data/tools stay with their owning
-capabilities; when that optional provider is unavailable the foundation must not
-claim the capability exists.
+自述、历史与日记分别用 `.chatpet/self.md`、`.chatpet/self.history/`、`.chatpet/diary/`。主人可在普通对话中更新自述。Life 回顾也可在授权范围内访问；Life 或 Memory 停止时主人文档仍可用。撤回 Bank 记录不清除这些文档或原始对话。
 
-## Workspace and recovery
+<a id="workspace-and-recovery"></a>
 
-Binding saves the selected native workspace and initializes `.chatpet/`.
-Default first setup may still use the one external bootstrap Core. Its Repo
-documents can be ready while portable storage remains incomplete. The existing
-stopped setup/migration copies that same database and atomically declares it in
-the Repo manifest; it never creates another companion or a placeholder database.
-The role and user profile become available on eligible native requests in that
-workspace. DSH owns the native session, logs and permission settings. Optional
-Core supplies binding, persona, settings and native Memory hooks. DSH owns
-conversation execution; there is no separate Core workbench or activity runner.
-Old scheduler records remain inert data and do not block rebinding.
+## 工作区与恢复
 
-Complete native logs can travel with the bound Repo. To transfer to a second
-device, follow the offline copy, rebind and conflict checks in the
-[portability guide](portability.md). Workspace file authority is described in
-the initialized Repo manifest and the module-owned directories; installing program
-files does not move companion identity or history to the plugin directory.
+选定原生工作区后初始化 `.chatpet/`。文档准备阶段可能继续使用唯一的本机引导 Core。停写后运行 setup，复制同一个库并原子登记 Repo 存储。存储就绪后，符合条件的原生请求读取身份与用户资料。DSH 持有会话、日志和权限；Core 提供绑定及伙伴资料。搬家、读回和冲突处理见[伙伴数据搬家和恢复](portability.md)。
 
-## Source and verification records
+<a id="source-and-verification-records"></a>
 
-Upstream license and attribution are retained in [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md).
-Detailed development checks and installed acceptance records belong to the source
-repository's runtime/handover records. They are not required for the installed
-program to run.
+## 开发与上游声明
 
-## Daily Life
+[开发和验证](development.md)列出源码验证入口，[第三方声明](../THIRD_PARTY_NOTICES.md)记录上游许可。
 
-The current-life plan card shows the goal, reason,
-current activity, actual progress, remaining intentions, pause reason and next
-consideration time. Eligible owner conversations use `life_plan_read`,
-`life_plan_update` and `life_activity_control` to manage the same persistent plan;
-changing or archiving a conversation does not erase it. Starting Life remains
-an explicit setting. Optional morning/review times can be left empty; the plan
-supplies its next consideration time and body-condition thresholds. Pausing
-Life retains its plan and accepted operation state. The virtual economy retains its owning wallet/inventory/ledger and actual
-execution receipts.
+<a id="daily-life"></a>
 
-Plan steps distinguish travel from sustained activity. `move` goes to an
-existing room/spot and completes on actual arrival, including when already at
-that position. `room` stays at a selected position; `hold` continues at the
-current position. Both sustained kinds accept a duration or end time. Without
-either, they wait for explicit control and must be the final step in a new
-plan. `nextConsiderAt` wakes planning; it never completes an activity. Execution
-receipts expose the completion contract and explain indefinite stays. Existing
-saved queues keep their original meaning and remain available for explicit
-revision or cancellation; no automatic conversion or replay occurs.
+## 自主生活
 
-`life_plan_keep` records a
-considered continuation without replacing current work. It starts one initial
-planning opportunity when enabled Life has no plan and offers one consideration
-after the final finite activity if no next time was chosen. A saved empty plan
-or indefinite activity may remain quiet. The page adds an optional
-automatic correction count for autonomous replies that omit saving a decision:
-blank uses one attempt, zero disables correction. It is portable Life policy,
-not a fixed activity cadence. Exhausted correction is visible as a Life fault
-and preserves actual activity progress.
+在 **Her World → 生活** 开启或暂停自主生活。全新 Repo 从暂停开始。读取状态、照料和本地互动不调用模型。开启后，`40-Life` 用配置的 `agentPreset`（默认 `standard`）和 DSH 当前模型使用专用 home 会话，主人离开时也可能产生模型请求。home 可从当前工作区的原生会话列表打开。
 
-Open **Settings → 大肥鱼 → 生活**. Life is a separate `40-Life`
-component in the existing package. A new Repo starts paused. Opening this
-page, reading status, feeding, watering and local interactions do not request
-a model. Enabling Life starts a dedicated native DSH home session using the
-configured `agentPreset` (default `standard`) and the current native model.
-It can make model requests while the owner is not chatting.
+「当前生活计划」显示目标、原因、活动、实际进度、后续意图、暂停原因和下次考虑时间。符合权限的对话用 `life_plan_read`、`life_plan_update` 与 `life_activity_control` 操作同一份计划。换会话、归档和暂停都保留已接受的计划及操作编号。早晨和回顾时间可留空。界面显示按设备时区计算的时钟。
 
-The page shows the original template's virtual activity and descriptive body
-state, recent events, World alarm, home availability and tool activity. It
-does not represent physical health. Behavior reuses the original movement, dwell, needs, sleep and event-cooldown
-rules, with the bounded host pause policy described below. The template uses the machine's
-local time; the World schedule uses that same timezone, shown on the page.
-New companions have blank optional wake/review times; enabling Life does not
-require filling them.
-Pet starts with an empty body list rather than creating a default body. `plan_next`
-lets the companion choose its next alarm (upstream minimum: one minute).
-The home appears in the bound workspace's ordinary DSH session list.
+- `move` 到现有房间或地点，实际到达后才完成；已经在目标点也可完成。
+- `room` 留在指定位置，`hold` 留在当前位置。两者可设时长或结束时间；都省略时等待显式控制，且只能放在计划末尾。
+- `nextConsiderAt` 唤起计划考虑。执行回执记录实际完成条件。保存的计划按照当前提交规则解析。
+- `life_plan_keep` 保留当前工作并记录已考虑。无计划时提供一次初始机会，有期限的最终活动结束且没设下一次时间时，再提供一次考虑机会。留空计划和无限等待可以继续安静。
+- 「未保存生活决定时自动补救次数」留空使用一次，0 关闭。超过次数显示 Life 的失败状态并保留实际活动进度。
 
-On first actual home creation, World's arrival greeting is recorded for Life's
-existing scheduler, including when foreground Room/chat created the home first.
-Initialization/settings do not invoke a model. Existing home sessions are reused;
-restarting is not another first arrival. A newly created visual body is idle with
-empty interaction history. A new garden has empty plots, no starter resources or
-opening story, and automatic care off. Existing saves remain unchanged; resources
-must actually exist before the original purchase/planting operations can succeed.
+生活状态和原版身体需求、移动、停留、睡眠及冷却共用既有规则。第一次实际创建 home 时，Life 记录一次抵达问候；前台先创建的 home 也会交接，已存在的会话会复用。显式添加的桌宠起初空闲；新菜园为空，自动照料关着。基础照料仍可用。商城购入价及上架状态、已有的食物设置、阅读导入仍可调整；日收益目标、作物产量、回收价采用内置规则，已种批次、余额和库存按既有数据继续。
 
-The switch and state live in `.chatpet/data/life/` in the bound Repo:
-`control.json`, `home.json`, `life.json`, `life/wakes.jsonl` and `activity/`. Complete home-session
-events use Core's existing portable native transcript copies and Mnemosyne
-enrollment. Life has no separate Memory extractor or Bank. It reuses the
-existing turn/idle Memory batching. Pause retains alarm and event records. It stops autonomous model wakeups,
-new spontaneous body goals and automatic garden tasks. Directed feeding, touch,
-sleep/wake, movement and requested garden work still use `25-Behavior`, even if
-Life is unloaded. Accepted manual route/dwell work can finish; stopped automatic
-work cannot manufacture a completion effect. Paused passive needs/crop time is
-not caught up on resume. Enabling Life retains the body and explicit requests;
-reloading the components restores the saved native home and current eligibility. Invalid JSON is reported and preserved rather than silently reset.
+**生活 → 离线身体变化**设置最多补算多少离线消耗，初始为 4 小时，范围为 0–168 整数小时。饥饿、口渴、膀胱消耗的初始上限是 70%，能量初始最低为 35%；两个百分比可调。该规则保持离线前已有的不适，不额外增加疼痛。已开始的睡眠可以按真实时长恢复，到达确认的结束点或身体上限即停止。重复打开不会对同一段离线时间再次补算。房间关闭或隐藏时后台生活继续；显式暂停才冻结被动需求和作物时间。
 
-Quiet mode suppresses `reach_out` desktop bubbles, with an explicit failed
-outlet receipt; Life can keep progressing and recording. A stopped desktop
-also reports delivery failure. Home replies are not automatically repeated as
-ordinary reply bubbles; proactive delivery uses World's `reach_out` once.
-Life pauses automatic Desktop whispers while running and aborts an in-flight
-whisper when starting. Manual whispers and normal conversations remain
-available. Disabling/unloading Life cancels its current autonomous home turn and removes
-its schedules and background admission. It does not unload Behavior or erase the
-foreground native-home identity, retained self-description or conversations. The saved background limits still apply through native Life admission; ordinary owner chat uses DSH limits
-to each turn; no aggregate daily spending cap has been added.
+生活开关、计划状态和活动记录使用架构登记的存储；身体检查点和菜园同目录，钱包采用后由 Economy 持有权威账本。详见源码检出的 `docs/architecture.md` 状态拥有者表。home 复用 Core 原生会话副本和 Mnemosyne 的轮次／闲置整理。暂停停止自主模型唤醒、自动身体目标和照料，保留闹钟和活动记录。主人发起的喂水、投喂、触摸、睡醒、移动及菜园动作仍走 `25-Behavior`。已接受的手工路线或停留可完成，停止了的自动工作不会因暂停而结算。恢复时不追补暂停时间，坏档会报告并保留。
 
+安静模式阻止 `reach_out` 桌宠气泡，给出明确的送达失败回执。桌宠停止时也会反馈发送失败。Life 可以继续生活和记录，home 回复不会被额外当成主动联络。Life 运行时暂停自动碎碎念，开始运行时取消在途碎碎念；手动碎碎念与普通聊天照常。停用或卸载 Life 会取消当前自主轮次并撤掉调度和后台准入，保留身体、共享 home、自述与历史。后台限制按轮次生效；页面预算按 home 报告的用量提示。
 
-## Pet, World and Room
+<a id="pet-world-and-room"></a>
 
-**设置 → 大肥鱼 → 生活** configures the shared ongoing life; the interactive Room itself opens in a separate window. The clock controls use the displayed Life time zone. The budget is a reminder based on usage reported by the home session. The activity view shows the estimate. The evening-review switch puts a completed review on the existing Memory batch queue.
+## 桌宠、World 与 Room
 
-Daily review uses native `read` and `write` for its own self-description and
-diary, including read-only listings of its diary and self-history directories.
-Shell or programming-tool refusal does not revoke these scoped file tools.
-Previously delivered review dates with a missing diary are recovered from the
-existing Life wake records on startup. Unfinished dates and their failure reasons persist in Life's existing state;
-a completed model reply is not a diary write receipt. A missing or empty diary
-retains its task, with at most the configured planning repair count of automatic
-corrections per date, then waits for a later daily review. Native cancellation
-waits for that later opportunity. Disabling evening review retains pending tasks
-without dispatching them. Restarts reconcile the original native session before
-retrying, and a successful write or an already existing nonempty diary prevents
-replaying that date. Existing-file reconciliation preserves the record; it does
-not claim a new verified write. Other dates in the backlog remain separate jobs.
+### 日记、回顾与相册
 
-The native diary guard also accepts a direct owner-chat `write` to a missing
-historical diary when that exact date is already in the persisted review backlog.
-The successful native receipt clears that date without an additional autonomous
-turn. This exception does not permit editing an existing historical file or
-open file tools to an ordinary autonomous turn.
+「晚间回顾后整理生活会话」把完成的回顾送到既有 Memory 批队列。回顾使用 DSH 原生 `read`、`write`，读写作用域内的自述和未封存日记，并可只读列出日记及自述历史。Shell 和编程工具被拒绝时，这些定向文件工具仍可用。
 
-A backfill turn receives the original date's scope. It can create that missing
-diary and records the actual backfill date in its text. Existing past diaries
-cannot be overwritten, including when a file appears between preparation and
-dispatch; corrections belong in today's diary. A day still in progress can be
-appended through the native write workflow. No long-term self change is required
-for a successful diary review. Owner input, rebinding or home disposal ends the
-live permission continuation; pending tasks do not grant file access to ordinary
-autonomous turns.
+启动时，Life 从既有唤醒记录核对缺日记的已投递日期。失败原因和待补日期保存在现有状态里。模型回复完成只结束轮次，文件写入以原生回执为准。日记缺失或为空时保留任务，按设置的补救次数尝试，之后等下一次晚间回顾。取消也等待下一个机会。关闭回顾会留存当前任务；重开后核对原会话和文件，已有非空日记的日期不会重复派发。
 
-Quiet waiting, lying in bed and the next consideration alarm do not put the body
-to sleep. Choosing sleep requires an explicit `body` step with `action: sleep`;
-arrival and actual body receipts establish sleep. The prompt reports whether the
-body is awake, awaiting sleep or asleep. Failure receipts retain their real reason
-for plan repair; labels and reply prose never execute sleep. A completed hold and
-gentle touch do not wake an already sleeping body.
+主人也可在普通聊天内直接写回顾待办中缺失的那一天，原生写入成功后清除该条。补写遵循原日期作用域，并标明实际补写日期。既有过往日记保持原文，更正写进当天，仍在进行的当天日记可追加。完成日记时可保留原自述。主人接管、换绑或 home 停止会结束当前写权限。
 
-- **概览 → 打开房间**, **生活 → 房间与菜园 → 打开房间**, or the pet menu's **进入房间** opens the same independent window. Repeating the command focuses it. Wake, rest, feeding, touch, movement and requested garden actions share Behavior's saved body with Desktop and remain usable while Life is paused. Closing Room releases its renderer/request lifetime; it does not reset the body or start another Agent. The TV asks the operating system to select a shared source and uses the existing native Room conversation for frame commentary. Actual physical source sharing remains a separate owner trial.
-- A visible native garden with a moist, immature crop also reads its current
-  natural projection at a low frequency when no body/care event occurs. Static
-  native gardens remain event-driven. Hidden, minimized, locked and disposed
-  views stop those reads; reopening refreshes the snapshot. These reads do not
-  call a model, choose work, grow a second world or harvest automatically.
-- **角色 → 日记与相册** browses the Core-owned diary/photo archive and eligible original dialogue, independent of autonomous Life. The original photo tools also work in ordinary native chat. New records use `.chatpet/self.md`, `.chatpet/self.history/`, `.chatpet/diary/` and `.chatpet/data/core/photos/`. Changing workspaces closes the previous view.
-- **连接 → 外部联络 → 管理渠道** configures the current companion’s device-local accounts. For QQ, select a loopback OneBot WebSocket, specify the account, and allow individual private conversations and groups. The token field names a device environment variable. For WeChat, provide the account and allowed chats, then connect a compatible adapter using its private discovery file. Status and receipts report connectivity, queue state and provider-reported usage. A verified owner private chat resolves the retained companion home even while autonomous Life is paused or unloaded. Group/private guest chats have independent native histories. Each allowed QQ group has its own public character card, relationship material, phrase review and stickers.
-- Open an allowed QQ group to choose its public role card and how it participates. V1 replies to directed messages. V2 can observe a conversation, wake on the configured triggers and choose whether to send. Its name trigger uses the current Core companion name; later messages follow a rename without reconnecting. The group panel shows unread activity and its observation reports. A verified owner can ask to publish a saved public QQ Space draft in private chat. Enabling the schedule also publishes queued drafts at the selected Beijing times.
-- **本地程序和推送** enables the original World token-authenticated home bridge. The private discovery file contains the current home address and token. Each configured HTTP destination chooses which of `reach`, `reply` and `busy` it accepts. Turning the bridge off, switching the bound Repo or stopping Channels withdraws the old bridge. Pausing or unloading autonomous Life does not disable an explicitly enabled owner bridge; it continues to use the retained native home.
-- **桌宠** controls tray visibility, work-state animation, dream interval, whisper illustrations, confinement, and the original physics, animation and text settings. The original Pet editor on the same page manages deliberately added bodies and their artwork, phone motion, notification behavior and browser placement. Each body follows the bound companion. Installed packs use the companion’s `.chatpet/data/pet-platform/pet/` directory.
-- **桌宠 → 独立桌宠** can issue a private connection file for the current binding or copy a limited animation-control credential for another trusted program. Run `dafeiyu-standalone` to open the fish without DSH chat. Run `dafeiyu-standalone --connection "/absolute/path/to/standalone.json"` for the current native conversation. In a source checkout, run `node src/desktop/standalone.mjs` from the repository directory. The helper uses the device’s DSH Electron or the executable selected via `DSH_CHATBOT_ELECTRON_PATH`.
-- **语音** uses DSH’s enabled recognizer for input. For playback the Pet service uses its configured synthesizer and cache. The bundled default is the original Edge network synthesizer, so manually choosing to read a reply can send that reply to the speech service. Offline voice tests use a local fixture.
+**角色 → 日记与相册**查看 Core 归属的日记、照片和有资格读取的原对话，Life 暂停时也可用。照片附件与数据库在 `.chatpet/data/core/photos/`。普通原生对话也可用符合权限的相册工具。换绑时关闭上一个视图。
+
+### Room 与桌宠入口
+
+- **概览 → 打开房间**、**生活 → 房间与菜园 → 打开房间**、桌宠菜单 **进入房间**打开同一个独立窗口；已打开时聚焦。Room 与桌宠共用身体，唤醒、休息、喂食、触摸、移动和手工种植在 Life 暂停时可用。关闭 Room 只撤销本窗的呈现和请求。
+- 真正睡眠要求显式 `body` 步骤的 `action: sleep`，以及到床后的身体回执。安静等待、躺床或下次考虑闹钟都不会执行睡眠；失败回执保留实际原因。停留完成和轻触不会在睡着后自行唤醒身体。
+- Room 电视通过系统选择画面，用当前原生 Room 会话点评。实际共享画面由主人实机操作。画面仍按已准入来源规则观察，电视回复不写共享情绪。
+- 可见菜园有浇过水、尚未成熟的作物时，缺少活动事件也会低频更新当前投影。静态菜园等事件刷新。隐藏、最小化、锁定或关闭时停该读取，重开取新快照。读取不调用模型或执行采收。
+- **桌宠 → 独立桌宠**可为当前绑定生成私有连接文件，或复制给受信程序的受限动画凭据。`dafeiyu-standalone` 打开独立鱼身，`dafeiyu-standalone --connection "/absolute/path/to/standalone.json"` 接入当前原生会话。源码检出可用 `node src/desktop/standalone.mjs`。运行时使用本机 DSH 的 Electron 或 `DSH_CHATBOT_ELECTRON_PATH` 指定的程序。
+- 原版 Pet 编辑器管理托盘、工作状态动画、梦话间隔、碎碎念图片、物理、装饰和通知等配置。安装的素材包在 `.chatpet/data/pet-platform/pet/`。
+
+### 渠道与语音
+
+- 在 **连接** 管理 QQ、微信和桥接。QQ 使用设备上的 OneBot WebSocket、账号、私聊和群白名单；令牌设置填写设备环境变量名。微信选择账号及准入聊天，通过私有发现文件连接兼容适配器。状态页显示连通、队列、回执及提供者报告的用量。经验证的主人私聊在 Life 暂停或卸载时也可用共享 home；guest 私聊和群聊使用独立原生日志。
+- 各获准 QQ 群有自己的公开角色卡、关系资料、短语审查和贴图。V1 回复定向消息；V2 可按设置观察、唤醒并决定是否发送。名称触发使用当前 Core 名称，改名后后续输入直接生效。主人可在私聊要求发布已保存的公开 QQ 空间草稿，也可按北京时间安排已排队草稿。
+- **本地程序和推送**启用原版 World 的令牌认证 home 桥。私有发现文件提供地址和令牌，HTTP 目标可选择接收 `reach`、`reply`、`busy`。关闭桥接、切换 Repo 或停止 Channels 会撤销旧桥。只暂停或卸载自主 Life 时，已启用的主人桥仍可使用共享 home。
+- 输入使用 DSH 已启用的识别器，播放使用 Voice 已配置的合成器和缓存。缺省合成使用上游 Edge 网络服务，手动播放可能将选中的回复交给合成服务。离线测试使用本地夹具。
