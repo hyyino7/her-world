@@ -16,3 +16,4 @@ export declare function initializeCompanionRecords(root: string): {
     lifeDirectory: string;
     photoDirectory: string;
 };
+export declare const COMPANION_ALBUM_FILES: readonly ["album.sqlite", "album.sqlite-wal", "album.sqlite-shm", "album.sqlite-journal", "index.json"];

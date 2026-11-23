@@ -4865,52 +4865,6 @@
     },
     {
       "rule": "R8",
-      "file": "src/core/record-paths.ts",
-      "line": 32,
-      "column": 22,
-      "scope": "initializeCompanionRecords",
-      "target": "{\"file\":\"src/core/records.ts\",\"scope\":\"CompanionRecordLibrary/album\"}",
-      "expression": "[ \"album.sqlite\" , \"album.sqlite-wal\" , \"album.sqlite-shm\" , \"album.sqlite-journal\" , \"index.json\" ]",
-      "values": [
-        "album.sqlite",
-        "album.sqlite-journal",
-        "album.sqlite-shm",
-        "album.sqlite-wal",
-        "index.json"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/core/records.ts",
-        "scope": "CompanionRecordLibrary/album",
-        "line": 29
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/records.ts",
-      "line": 29,
-      "column": 24,
-      "scope": "CompanionRecordLibrary/album",
-      "target": "{\"file\":\"src/core/record-paths.ts\",\"scope\":\"initializeCompanionRecords\"}",
-      "expression": "[ \"album.sqlite\" , \"album.sqlite-wal\" , \"album.sqlite-shm\" , \"album.sqlite-journal\" , \"index.json\" ]",
-      "values": [
-        "album.sqlite",
-        "album.sqlite-journal",
-        "album.sqlite-shm",
-        "album.sqlite-wal",
-        "index.json"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/core/record-paths.ts",
-        "scope": "initializeCompanionRecords",
-        "line": 32
-      }
-    },
-    {
-      "rule": "R8",
       "file": "src/core/review-dialogue.ts",
       "line": 11,
       "column": 54,
