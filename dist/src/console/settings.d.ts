@@ -5,7 +5,6 @@ import { type SettingsWorkspaceRegistry } from '../core/tables/console.js';
 export type { SettingsWorkspaceRegistry } from '../core/tables/console.js';
 export interface EconomyControls {
     consoleWrite(endpoint: string, input: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
-    consoleRecover(endpoint: string, workspaceId: string, requestId: string, acceptNoEvidence: boolean, signal: AbortSignal, validate: () => void): Promise<unknown>;
 }
 /** Connection's locally available structural PeerScope subset. */
 type SettingsError = {

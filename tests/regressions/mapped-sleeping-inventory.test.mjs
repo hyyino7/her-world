@@ -55,6 +55,7 @@ async function fixture(t) {
   const start=()=>{
     economy=new CompanionEconomy(ctx,host,{body:()=>body,plan:()=>services.get('petLife')});services.set('petEconomy',economy);
     economy.prepare(registered);
+    host.native.consoleOperations.register('economy',economy.consoleOperations());
     const view=new LivingView({economy:()=>economy,plan:()=>services.get('petLife')},undefined,undefined,undefined,
       binding=>ctx.emit('world.changed',binding));
     body=new CompanionBehavior(ctx,host,view);body.activate();services.set('petBehavior',body);

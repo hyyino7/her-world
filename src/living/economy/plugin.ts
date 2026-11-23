@@ -1,4 +1,4 @@
-import { fail, object, requiredText, type ConsoleCall } from '../../core/tables/console.js';
+import { fail, object, requiredText, type ConsoleCall, type ConsoleOperations } from '../../core/tables/console.js';
 import {economyOverview,economyPage} from './tool-context.js';
 import {InFlight, LivingView, mountLivingArea, settleCleanup, withLivingCaller, type LivingPorts, type RecordCommandEffect} from '../index.js';
 import type { Context } from '@deepseek-ai/cordis';
@@ -284,9 +284,11 @@ export class CompanionEconomy {
     throw new Rejection(unknownEffect('OUTCOME_UNKNOWN', 'Check the original wallet request before retrying'));
   }
   async consoleWrite(endpoint: string, input: unknown, id: string, signal: AbortSignal, validate: () => void): Promise<unknown> {
+    validate();
     const request = normalizeWalletRequest(endpoint, input);
     const store = this.bound(request.input.workspaceId);
     let dispatch = false;
+    validate();
     const original = store.withConsoleRequests(rows => {
       const prior = rows.get(id);
       if (prior && prior.fingerprint !== request.fingerprint) reject('CONFLICT', 'Wallet request ID reused with different input');
@@ -309,6 +311,7 @@ export class CompanionEconomy {
   }
   async consoleRecover(endpoint: string, workspaceId: string, id: string, acceptNoEvidence: boolean,
     signal: AbortSignal, validate: () => void) {
+    validate();
     const store = this.openWallet(workspaceId);
     if (endpoint === 'economyPending') return store.consoleRequests.pending();
     const observe = (): {state: WalletState; declined?: boolean} => {
@@ -321,6 +324,7 @@ export class CompanionEconomy {
       return this.walletEvidence(store, id, row.request);
     };
     if (endpoint === 'economyCheck') return {state:observe().state};
+    validate();
     const request = store.withConsoleRequests(rows => {
       if (this.walletInFlight.has(id)) reject('CONFLICT', 'Wallet request is still running');
       const row = rows.get(id);
@@ -342,7 +346,50 @@ export class CompanionEconomy {
     });
     if ('state' in request) return request;
     await this.dispatchWallet(store, request, id, signal, validate, workspaceId);
+    validate();
     return {state:observe().state};
+  }
+
+  consoleOperations(): ConsoleOperations {
+    const registeredScope = async (call: ConsoleCall, id: string) => {
+      call.checkBinding(id,true);
+      const binding = this.host.workspace.status(), registered = call.getWorkspaces()?.get(id);
+      if (!registered || binding.target?.path !== registered.path) fail('STALE_BINDING');
+      const validate = () => {
+        call.validate();
+        const current = this.host.workspace.status();
+        if (call.getWorkspaces()?.get(id) !== registered || current.revision !== binding.revision
+          || current.sourceRevision !== binding.sourceRevision) fail('STALE_BINDING');
+      };
+      const available = await registered.status();
+      validate();
+      if (available !== 'ok') fail('NOT_FOUND');
+      return validate;
+    };
+    const recovery = (endpoint: string, keys: string[]) => async (call: ConsoleCall) => {
+      const {workspaceId,requestId='',acceptNoEvidence=false} = object(call.input,['workspaceId',...keys]);
+      const id = requiredText(workspaceId,200);
+      if (typeof requestId !== 'string' || requestId.length > 160 || typeof acceptNoEvidence !== 'boolean') fail('INVALID_ARGUMENT');
+      const validate = await registeredScope(call,id);
+      validate();
+      const value = await this.consoleRecover(endpoint,id,requestId,acceptNoEvidence,call.signal,validate);
+      validate();
+      return value;
+    };
+    return {operations:{
+      economyPending:recovery('economyPending',[]),
+      economyCheck:recovery('economyCheck',['requestId']),
+      economyRetry:recovery('economyRetry',['requestId']),
+      economyAbandon:recovery('economyAbandon',['requestId','acceptNoEvidence']),
+      economyView:async call => {
+        const id = requiredText(object(call.input,['workspaceId']).workspaceId,200);
+        const validate = await registeredScope(call,id);
+        validate();
+        const value = await this.snapshot(id,validate,{includeWritableKeys:true});
+        validate();
+        return value;
+      },
+    }};
   }
   private finishWallet(rows: EconomyStore['consoleRequests'], id: string, request: WalletRequest,
     evidence: {state: WalletState; declined?: boolean}) {
@@ -456,26 +503,7 @@ export function apply(ctx:Context) {
       status:()=>service.capabilityStatus(),
     }).revoke);
     ctx.provide('petEconomy',service);
-    ctx.effect(() => host.native.consoleOperations.register('economy', {operations: {
-      async economyView(call: ConsoleCall) {
-        const {workspaceId} = object(call.input, ['workspaceId']);
-        const id = requiredText(workspaceId, 200);
-        call.checkBinding(id, true);
-        const registered = call.getWorkspaces()?.get(id), binding = host.workspace.status();
-        if (!registered || binding.target?.path !== registered.path) fail('STALE_BINDING');
-        const validate = () => {
-          call.validate();
-          const current = host.workspace.status();
-          if (call.getWorkspaces()?.get(id) !== registered || current.revision !== binding.revision
-            || current.sourceRevision !== binding.sourceRevision) fail('STALE_BINDING');
-        };
-        if (await registered.status() !== 'ok') fail('NOT_FOUND');
-        validate();
-        const value = await service.snapshot(id, validate, {includeWritableKeys: true});
-        validate();
-        return value;
-      },
-    }}, ctx).revoke);
+    ctx.effect(() => host.native.consoleOperations.register('economy', service.consoleOperations(), ctx).revoke);
     installEconomyAccessGuard(ctx,()=>{
       const directory=service.protectedDirectory();
       return directory ? [directory, economyAdoptionPath(resolve(directory, '../../..'))] : undefined;

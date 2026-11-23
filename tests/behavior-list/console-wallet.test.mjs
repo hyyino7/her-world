@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {mkdirSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {ConsoleRequests, normalizeWalletRequest} from '../../dist/src/living/economy/console-requests.js';
@@ -98,4 +98,48 @@ test('Console 投喂只查不动，Body 部分提交只由显式同号重试续�
   assert.deepEqual((await f.body.snapshot(workspaceId)).needs, pending.needs);
   assert.equal(after.inventory.find(row => row.itemId === meal).quantity, 0);
   assert.equal(after.ledger.filter(row => row.kind === 'use-consume').length, 1);
+});
+
+
+test('Console 钱包写入与四个恢复入口拒绝上一代绑定的请求', async t => {
+  const f = await fixture(t, {console:true, life:false});
+  f.workspace.status = async () => 'ok';
+  const scope = f.host.workspace.homeScope();
+  const {revision,sourceRevision} = f.host.workspace.status();
+  const balance = (await f.economy.snapshot(workspaceId)).balance;
+  const other = join(f.root,'other');
+  mkdirSync(other);
+  const endpoints = [
+    ['economyAction',{action:{kind:'grant',amount:4}}],
+    ['economySettings',{expectedVersion:'1',next:{compostCost:13}}],
+    ['economyPending',{}],
+    ['economyCheck',{requestId:'original'}],
+    ['economyRetry',{requestId:'original'}],
+    ['economyAbandon',{requestId:'original',acceptNoEvidence:true}],
+  ];
+  {
+    using db = new DatabaseSync(walletFile(f));
+    new ConsoleRequests(db, {storageId:scope.storageId, companionId:f.config.companionId})
+      .add('original',normalizeWalletRequest('economyAction',{workspaceId,action:{kind:'grant',amount:3}}));
+  }
+  const started = Promise.withResolvers(), resume = Promise.withResolvers();
+  let waiting = 0;
+  f.workspace.status = () => {
+    if (++waiting === endpoints.length) started.resolve();
+    return resume.promise;
+  };
+  const outdated = endpoints.map(([endpoint,input]) => call(f,endpoint,input));
+  await started.promise;
+  await f.bind(other);
+  await f.bind(f.repo);
+  // Exercise matching persisted revisions while Core supplies the genuine new binding generation.
+  const status = f.host.workspace.status.bind(f.host.workspace);
+  t.mock.method(f.host.workspace,'status',() => ({...status(),revision,sourceRevision}));
+  resume.resolve('ok');
+  assert.notEqual(f.host.workspace.homeScope().generation,scope.generation);
+  const replies = await Promise.all(outdated);
+  assert.deepEqual(replies.map((reply,index) => [endpoints[index][0],reply.error?.code]),
+    endpoints.map(([endpoint]) => [endpoint,'STALE_BINDING']));
+  assert.equal((await f.economy.snapshot(workspaceId)).balance,balance);
+  assert.equal(await state(f,'economyCheck','original'),'no-evidence');
 });

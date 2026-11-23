@@ -1804,6 +1804,15 @@
       ]
     },
     {
+      "id": "3-CONSOLE-07",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "Console 钱包写入与四个恢复入口拒绝上一代绑定的请求",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-VOICE-06",
       "categories": [],
       "level": "L1",

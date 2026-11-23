@@ -1,3 +1,4 @@
+import { type ConsoleOperations } from '../../core/tables/console.js';
 import { LivingView, type LivingPorts, type RecordCommandEffect } from '../index.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost, WorkspaceTarget } from '../../core/index.js';
@@ -123,6 +124,7 @@ export declare class CompanionEconomy {
     consoleRecover(endpoint: string, workspaceId: string, id: string, acceptNoEvidence: boolean, signal: AbortSignal, validate: () => void): Promise<Record<string, import("node:sqlite").SQLOutputValue>[] | {
         readonly state: WalletState;
     }>;
+    consoleOperations(): ConsoleOperations;
     private finishWallet;
     private dispatchWallet;
     ownerAction(workspaceId: string, action: any, requestId: string, signal: AbortSignal, validate?: () => void, trustedActor?: CompanionFactActor, recordEffect?: RecordCommandEffect): Promise<{

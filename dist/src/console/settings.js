@@ -1,7 +1,7 @@
-import { isDeepStrictEqual } from 'node:util';
 import { unknownEffect } from '../contracts/common.js';
 import { BODY_ACTIONS, CARE_ACTIONS } from '../contracts/behavior.js';
 import { unwrap } from '../core/console-operations.js';
+import { sameHomeBinding } from '../core/home-binding.js';
 import { Rejection } from '../core/storage.js';
 import { MIGRATION_REASON } from '../core/storage-migration.js';
 import { fail, object, requiredText } from '../core/tables/console.js';
@@ -14,7 +14,7 @@ import { estimateTokens } from '#dsh-world/console/snapshot';
 const owners = {
     core: ['foundation', 'self', 'desktopAppearance', 'companion', 'identity', 'quiet', 'preferences', 'initialize', 'profile',
         'lifeDates', 'lifeJournal', 'lifeAlbum', 'lifeSearch', 'lifePhoto', 'lifeForgetPhoto'],
-    economy: ['economyView'],
+    economy: ['economyView', 'economyPending', 'economyCheck', 'economyRetry', 'economyAbandon'],
     emotion: ['emotionState', 'emotionUpdate'],
     room: ['roomOpen', ...ROOM_ENDPOINTS],
     desktop: ['desktopOpen', 'desktopClose'],
@@ -26,7 +26,7 @@ const owners = {
 const endpointOwners = new Map(Object.entries(owners).flatMap(([owner, endpoints]) => endpoints.map(endpoint => [endpoint, owner])));
 const walletWrites = new Set(['economyAction', 'economySettings']);
 const walletRecovery = new Set(['economyPending', 'economyCheck', 'economyRetry', 'economyAbandon']);
-export const settingsEndpoints = ['snapshot', 'worldView', 'archiveFind', 'archiveRead', ...walletWrites, ...walletRecovery, ...endpointOwners.keys()];
+export const settingsEndpoints = ['snapshot', 'worldView', 'archiveFind', 'archiveRead', ...walletWrites, ...endpointOwners.keys()];
 const messages = {
     STALE_BINDING: '工作区绑定已改变，请刷新。',
     STALE_REVISION: '设置已被其他操作修改，请刷新后重新编辑。',
@@ -83,15 +83,13 @@ export function settingsHandler(getHost, getWorkspaces, getWorldModules, getEcon
             const table = host.native.consoleOperations;
             const context = () => host.operator.request(`settings:${endpoint}:${body.requestId}`);
             const options = { signal: AbortSignal.any([signal, peer.signal]) };
-            if (walletWrites.has(endpoint) || walletRecovery.has(endpoint)) {
-                const keys = endpoint === 'economyAction' ? ['action'] : endpoint === 'economySettings' ? ['expectedVersion', 'next']
-                    : endpoint === 'economyPending' ? [] : endpoint === 'economyAbandon' ? ['requestId', 'acceptNoEvidence'] : ['requestId'];
-                const input = object(body.input, ['workspaceId', ...keys]);
-                const workspaceId = requiredText(input.workspaceId, 200), binding = host.workspace.status();
-                const registered = getWorkspaces()?.get(workspaceId), economy = getEconomy?.();
+            if (walletWrites.has(endpoint)) {
+                const input = object(body.input, ['workspaceId', ...(endpoint === 'economyAction' ? ['action'] : ['expectedVersion', 'next'])]);
+                const workspaceId = requiredText(input.workspaceId, 200), home = host.workspace.homeScope();
+                const binding = host.workspace.status(), registered = getWorkspaces()?.get(workspaceId), economy = getEconomy?.();
                 if (!economy)
                     fail('UNAVAILABLE');
-                if (binding.state !== 'ready' || binding.target?.id !== workspaceId || !registered || registered.path !== binding.target.path)
+                if (!home || binding.state !== 'ready' || home.workspaceId !== workspaceId || registered?.path !== home.path)
                     fail('STALE_BINDING');
                 const validate = () => {
                     if (peer.principal.kind !== 'owner' || peer.signal.aborted)
@@ -100,23 +98,24 @@ export function settingsHandler(getHost, getWorkspaces, getWorldModules, getEcon
                         fail('CANCELLED');
                     const current = host.workspace.status();
                     if (getHost() !== host || getEconomy?.() !== economy || getWorkspaces()?.get(workspaceId) !== registered
-                        || current.state !== 'ready' || current.target?.id !== workspaceId || current.target.path !== registered.path
+                        || !sameHomeBinding(host.workspace.homeScope(), home) || current.state !== 'ready'
                         || current.revision !== binding.revision || current.sourceRevision !== binding.sourceRevision)
                         fail('STALE_BINDING');
                 };
-                if (await registered.status() !== 'ok')
+                const available = await registered.status();
+                validate();
+                if (available !== 'ok')
                     fail('NOT_FOUND');
-                validate();
-                if (input.acceptNoEvidence !== undefined && typeof input.acceptNoEvidence !== 'boolean')
-                    fail('INVALID_ARGUMENT');
-                const originalId = endpoint === 'economyPending' || walletWrites.has(endpoint) ? '' : input.requestId;
-                if (typeof originalId !== 'string' || originalId.length > 160)
-                    fail('INVALID_ARGUMENT');
-                const value = walletWrites.has(endpoint)
-                    ? await economy.consoleWrite(endpoint, input, body.requestId, options.signal, validate)
-                    : await economy.consoleRecover(endpoint, workspaceId, originalId, input.acceptNoEvidence === true, options.signal, validate);
-                validate();
-                return { ok: true, value };
+                try {
+                    const value = await economy.consoleWrite(endpoint, input, body.requestId, options.signal, validate);
+                    validate();
+                    return { ok: true, value };
+                }
+                catch (error) {
+                    if (options.signal.aborted && !(error instanceof Rejection))
+                        throw new Rejection(unknownEffect('CANCELLED', 'Check the original wallet request after cancellation'));
+                    throw error;
+                }
             }
             if (endpoint === 'snapshot') {
                 object(body.input, []);
@@ -256,7 +255,7 @@ export function settingsHandler(getHost, getWorkspaces, getWorldModules, getEcon
                     return;
                 const current = host.workspace.status();
                 if (current.target?.id !== binding.target?.id || current.target?.path !== binding.target?.path
-                    || current.state !== binding.state || !isDeepStrictEqual(home, host.workspace.homeScope()))
+                    || current.state !== binding.state || !sameHomeBinding(host.workspace.homeScope(), home))
                     fail('STALE_BINDING');
             };
             const checkBinding = (workspaceId, ready = false) => {
