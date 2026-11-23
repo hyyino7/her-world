@@ -34,7 +34,7 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 | 新增 | 登记 |
 | --- | --- |
 | 模块，或者改模块的依赖、服务、事件 | `arch/layers.json`，然后跑 `pnpm run check:arch` |
-| 持久数据：文件、数据库、Core 记录 kind | `arch/storage.json`，并在 architecture.md 第 4 节写清拥有者。改了已有数据的格式，就在 `scripts/migrate/steps/` 加迁移步骤 |
+| 持久数据：文件、数据库、Core 记录 kind | `arch/storage.json`，并在 architecture.md 第 4 节写清拥有者。要改已有格式，先按[存储准入与回退](docs/architecture.md#7-存储准入与回退)定停写、迁移与回退方案 |
 | 工具 | 在工具定义旁声明 `sources`（和需要时的 `historyOverview`），登记到 `host.native.toolTable`；见 [architecture.md 5.10](docs/architecture.md#510-扩展一处声明其余派生) |
 | 输入来源 | 在模块里写来源适配器，入口登记到 `host.native.sourceTable`；新 `source.kind` 在 DSH 的 `MessageSourceMap` 声明，新工具来源用 `toolTable.registerSource` 登记；见 architecture.md 2.2、5.8、5.10 |
 | 能力状态行 | 在模块入口登记到 `host.workspace.runtime.capabilityTable`，卸载时撤销；见 architecture.md 2.2 |
@@ -56,11 +56,11 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 - 行为清单：`pnpm run build && pnpm run test:behavior-list`
 - 门禁和行为清单里的 Memory 测试要监听本机回环。沙箱拒绝回环时，记为环境失败，换到允许回环的地方重跑（见[开发说明](docs/development.md#全量验证与发布)）。Codex 沙箱拒绝 `/bin/ps` 也是环境原因（2b 每一批都遇到）。Codex 沙箱里 Electron 退出 `SIGABRT`、创建临时目录时 `mkdtemp EPERM` 也是环境原因，换到沙箱外复跑（阶段 3 每一批都遇到，见 `6dd3e4c:docs/plans/stage3-presentation.md:220,232–237`）。
 - 恢复环境：[docs/development.md](docs/development.md#local-tools) 里的那一条恢复命令。挪了目录之后，先删掉 `.venv` 和 `node_modules` 再跑它。
-- 迁移和盘点命令：见 [docs/development.md](docs/development.md)。真实数据只在主人提供的隔离副本上跑；Agent 只看命令输出的原因代码和通过与否。
+- 合成副本与只读盘点：见 [docs/development.md](docs/development.md)。真实数据只在主人提供的隔离副本上跑；Agent 只看命令输出的原因代码和通过与否。
 - 高风险（改之前先停下对齐）：
-  - `scripts/lib/offline-backup.mjs`、`scripts/lib/repo-storage.mjs`、`scripts/migrate/`（decisions.md「迁移的幂等以目标状态为准」「回退的边界」）
+  - `scripts/lib/offline-backup.mjs`、`scripts/lib/repo-storage.mjs`、`scripts/migrate/`（现行只读盘点与准入探测，见[支持基线决定](docs/decisions.md#阶段-4支持基线上移到已迁移的-050)）
   - `src/core/storage.ts`、`src/core/workspace.ts`（Core 的存储和绑定，所有伙伴数据经它读写）
-  - `package.json` 的 `exports`、`files`、`imports`；`cordis.patch.yml`（decisions.md「重构期间兼容面保持不变」）
+  - `package.json` 的 `exports`、`files`、`imports`；`cordis.patch.yml`（见[发行入口](docs/architecture.md#61-发行包和运行入口)）
   - 发布流程：`.github/workflows/`、`scripts/checks/check-release.mjs`、[docs/github-updates.md](docs/github-updates.md)
 - 禁改：
   - `vendor/**`、`references/`（decisions.md「没有现成替代，上游代码整体复用」）
@@ -80,7 +80,7 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 | `docs/development.md` | 本机工具、日常检查、门禁、迁移和发布命令 |
 | `docs/plans/` | 进行中的方案，合并时删除 |
 | `arch/` | 层声明、存储声明、违规基线 |
-| `scripts/arch/`、`scripts/migrate/` | 架构检查；迁移骨架和数据盘点 |
+| `scripts/arch/`、`scripts/migrate/` | 架构检查；离线数据盘点 |
 | `tests/behavior-list/` | 行为清单 |
 
 ## 项目规则
@@ -94,5 +94,5 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 - 优先复用上游代码和流程，然后再设计替代品。只有源码或运行证据才能证明确实缺功能；自定义的业务或控制逻辑，先讲清楚并取得同意，再实现。
 - 用 DSH 原生的服务、事件和生命周期机制。每个业务模块拥有自己的数据，对外暴露明确的接口。界面、渠道和读取方不另建伙伴运行时，也不独立写记忆。
 - 自带的上游材料和以后拉下来的参考代码都当作不可信输入：不为了读它而运行上游的安装或构建钩子，也不为此安装依赖。来源、提交号和许可证声明保留在 vendor 记录、`references/manifest.json` 和 `THIRD_PARTY_NOTICES.md` 里。
-- 结构整理期间，运行时导出、原生 bundle ID 和伙伴数据格式保持稳定；import、包脚本和构建路径一起更新。
+- 支持基线为已迁移的 0.5.0。保留有消费者的原生 bundle ID、入口和持久格式，公开面变更以实际消费证据和隔离包验收为准。
 - 验证受影响的源码、测试或打包路径，不用付费模型，不碰个人工作区。只改文档的，做链接、diff 和范围检查。
