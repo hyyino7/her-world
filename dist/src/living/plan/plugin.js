@@ -11,7 +11,7 @@ import { createHomeStore } from './home-store.js';
 import { defaultLifePreferences, parseLifePreferences } from './library.js';
 import { companionRecordPaths } from '../../core/record-paths.js';
 import { installLifeReview, REVIEW_ALARM_FILE } from './review.js';
-import { PersistentLifePlan, expiredDispatchDeadline, parsePlanDraft } from './plan.js';
+import { PersistentLifePlan, canContinuePlan, expiredDispatchDeadline, parsePlanDraft } from './plan.js';
 import { registerPlanTools } from './plan-tools.js';
 import { presentFacts } from '../../core/interaction-presentation.js';
 import { FACT_DOMAIN_NAMES } from '../../contracts/interaction.js';
@@ -453,7 +453,7 @@ export class CompanionLife {
                 try {
                     validate();
                     const saved = pausing.plan.read();
-                    if (saved.plan && ['active', 'waiting'].includes(saved.plan.status)) {
+                    if (saved.plan && canContinuePlan(saved.plan.status)) {
                         await pausing.plan.control(saved.revision, 'pause', 'Autonomous life paused', body?.value, pausing.id, validate);
                         validate();
                         pausing.plan.markAutoResume(true);
@@ -623,7 +623,7 @@ export class CompanionLife {
                     reject('STALE_REVISION', '生活计划或当前步骤已变化，请重新读取');
                 if (!this.enabled)
                     reject('DISABLED', '自主生活已暂停');
-                if (plan.status !== 'active' && plan.status !== 'waiting')
+                if (!canContinuePlan(plan.status))
                     reject('INELIGIBLE', '当前计划不能执行步骤');
                 const body = this.living.lookup('body');
                 if (!body)
@@ -694,7 +694,7 @@ export class CompanionLife {
         const current = bound.plan.read(), plan = current.plan;
         const active = plan?.operationId === operationId && plan.steps[plan.cursor]?.kind === 'read';
         const completed = allowCompleted && plan?.steps.slice(0, plan.cursor).some(step => step.kind === 'read' && operationId === `life:${plan.id}:${step.id}`);
-        if (current.revision !== expectedRevision || !plan || !(active || completed) || !['active', 'waiting'].includes(plan.status)) {
+        if (current.revision !== expectedRevision || !plan || !(active || completed) || !canContinuePlan(plan.status)) {
             const message = 'Reading requires the current plan revision and its active original reading operation';
             if (contract)
                 reject('STALE_REVISION', message);
