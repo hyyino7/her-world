@@ -32,6 +32,8 @@ async function main(){
  await app.whenReady();
  const {PetPlatform}=await import('../../dist/src/desktop/platform/plugin.js');
  const {CompanionPorts}=await import('../../dist/src/core/tables/companion-ports.js');
+ const {Context}=await import('@deepseek-ai/cordis');
+ const scope=new Context();
  const {RecentLedger}=await import('../../dist/src/emotion/recent.js');
  const {DEFAULT_COMPANION_SETTINGS}=await import('../../dist/src/core/companion-settings.js');
  const receipts=[];
@@ -39,11 +41,11 @@ async function main(){
  const chat={id:'session',snapshot:()=>({messages:[],sessionId:'session',workspaceId:'test',generating:false}),run:async()=>chat.snapshot()};
  const handlers=new Set();
  const companionPorts=new CompanionPorts(), roomOpens=[];
- companionPorts.register('openRoomWindow',async workspaceId=>{
+ companionPorts.registerRoomWindow(scope,async workspaceId=>{
    roomOpens.push(workspaceId);
    return {running:true,ready:true,workspaceId};
  });
- ctx={get:()=>undefined,logger:console,connection:{broadcast(){},authenticatedUrl:url=>url},on:(name,fn)=>{
+ ctx={root:scope.root,fiber:scope.fiber,[Context.isolate]:scope[Context.isolate],get:()=>undefined,logger:console,connection:{broadcast(){},authenticatedUrl:url=>url},on:(name,fn)=>{
    if(name==='session/event')handlers.add(fn);return ()=>handlers.delete(fn);
  },petDesktop:{chat,recordPlayback(receipt){receipts.push(receipt);ledger.playback(receipt);}},webServer:{getOrigin:()=>address},
    petCore:{native:{companionPorts},workspace:{

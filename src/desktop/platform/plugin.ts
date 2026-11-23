@@ -613,7 +613,7 @@ export class PetPlatform {
     if(action==='pet')return this.lookup.lockBlocked(who.petId,params);
   }
   private openRoom() {
-    const open=this.ctx.petCore.native.companionPorts.get('openRoomWindow');
+    const open=this.ctx.petCore.native.companionPorts.roomWindowFor(this.ctx);
     if(!open)throw Error('房间模块未启用');
     return open(this.bound!.id);
   }

@@ -17,15 +17,16 @@ interface Ports {
     activities: ActivityReader;
     lifeOwnsAlbum(sessionId: string): boolean;
     watchingTelevision(sessionId: string): boolean;
-    openRoomWindow(workspaceId: string): Promise<{
-        running: boolean;
-        ready: boolean;
-        workspaceId: string | null;
-    }>;
     isRunningLifeHome(sessionId: string): boolean;
     applyHomeArrival(scope: HomeBinding, sessionId: string): boolean;
 }
+type OpenRoomWindow = (workspaceId: string) => Promise<{
+    running: boolean;
+    ready: boolean;
+    workspaceId: string | null;
+}>;
 export declare class CompanionPorts {
+    private readonly roomWindows;
     private scope?;
     private readonly slots;
     bind(ctx: Context, ownerScope: OwnerScope): () => void;
@@ -34,6 +35,10 @@ export declare class CompanionPorts {
         ctx: Context;
         ownerScope: OwnerScope;
     } | undefined;
+    registerRoomWindow(scope: Context, open: OpenRoomWindow): {
+        revoke: () => Promise<void>;
+    };
+    roomWindowFor(ctx: Context): OpenRoomWindow | undefined;
     register<K extends keyof Ports>(name: K, port: Ports[K]): import("../../contracts/tables.js").TableRegistration;
     get<K extends keyof Ports>(name: K): Ports[K] | undefined;
 }
