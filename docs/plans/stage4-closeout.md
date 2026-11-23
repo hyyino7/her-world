@@ -246,7 +246,7 @@ Cordis 的旧名字有两种情况。以下是每个名字现在的消费者，�
 
 **`contracts/` 拆分的收益判断。** 把 `BODY_ACTIONS` 移到第二层，能让照料题的物理归层更贴近业务拥有者，但 `FACT_TYPES.body` 又从该表派生，Core、呈现和计划继续共用事实类型。事实领域还受 Python 识别和上游 `FactRef` 约束，换目录省不掉这些改动。建议保持当前目录，写清业务拥有者与物理归层。下一次有真实照料或事实需求时，再以消费链和差异判断是否值得拆。依据 `src/contracts/behavior.ts:10–46`、`src/contracts/interaction.ts:1–24`、`src/memory/provider.py:76–91`、`docs/architecture.md:57,519–520`、`docs/product.md:109`。
 
-**词表当前值与推荐目标。** `pnpm run check:arch -- --report` 已实际运行，退出 0。规则 9 条全为 R1，R2–R4 为 0，规则和 R8 均新增 0、消失 0。R8 当前 586 条，`pnpm run metrics -- --json` 拆出 556 条重复或子集关系、30 个裸字符串字段。`kind` 282 点／48 文件，`action` 105 点／14 文件，合并为 387 点／52 文件。按原口径有 33 条模块间依赖，手写超 1500 行文件为 0。`docs/product.md:454` 的 590 是阶段 3 中的记录，P5 起点采用当前报告。命令实现及口径见 `package.json:125–126`、`scripts/arch/check.mjs:11–57`、`scripts/arch/metrics.mjs:78–111`。
+**方案起点与验收上限。** `pnpm run check:arch -- --report` 已实际运行，退出 0。规则 9 条全为 R1，R2–R4 为 0，规则和 R8 均新增 0、消失 0。R8 当前 586 条，`pnpm run metrics -- --json` 拆出 556 条重复或子集关系、30 个裸字符串字段。`kind` 282 点／48 文件，`action` 105 点／14 文件，合并为 387 点／52 文件。按原口径有 33 条模块间依赖，手写超 1500 行文件为 0。`docs/product.md:454` 的 590 是阶段 3 中的记录，P5 起点采用当前报告。命令实现及口径见 `package.json:125–126`、`scripts/arch/check.mjs:11–57`、`scripts/arch/metrics.mjs:78–111`。
 
 推荐用 **R8 ≤586、裸字段 ≤30、规则 ≤9 且新增为 0** 作本期验收上限，`kind ≤282`、`action ≤105`。按概念逐个核对：照料、角色房间、计划身体动作各从 `BODY_ACTIONS` 派生，七种计划 kind、阅读状态、九种 feeling、Room 七维均各一份，身体呈现分类器一套，第二层 `roomClip`／`desktopClip` 为零处。只因真正移除重复而减少的基线，随对应提交用工具收紧。依据 `src/contracts/behavior.ts:10–69,100–101`、`src/contracts/emotion.ts:2–6`、`src/living/body/presentation.ts:11–29`、`src/presentation/playback.ts:4–17`、`docs/product.md:162–179`、`docs/development.md:47–50`。
 
@@ -272,9 +272,9 @@ Cordis 的旧名字有两种情况。以下是每个名字现在的消费者，�
 
 | 需要主人拍板的点 | 推荐 | 决定 |
 | --- | --- | --- |
-| 1. 支持基线和发布方式 | 下一版从已迁移的 0.5.0 升级；按本方案点名的高风险范围删除；只发一个 `0.6.0` 正式版，隔离激活和换回 0.5.0 演练通过后再升日常机器 || 按推荐 |
-| 2. guest／Room 电视回复能否改共享情绪（已知问题 1） | 两者都不能写；主人私聊、主人 QQ／微信、Life／回顾沿用现有权限 || 按推荐 |
-| 3. 只读核对用的隔离副本 | 主人在第一波期间提供一份停写的 0.5.0 隔离副本；Agent 只看脚本输出的字段名、计数和通过与否 || 按推荐 |
+| 1. 支持基线和发布方式 | 下一版从已迁移的 0.5.0 升级；按本方案点名的高风险范围删除；只发一个 `0.6.0` 正式版，隔离激活和换回 0.5.0 演练通过后再升日常机器 | 按推荐 |
+| 2. guest／Room 电视回复能否改共享情绪（已知问题 1） | 两者都不能写；主人私聊、主人 QQ／微信、Life／回顾沿用现有权限 | 按推荐 |
+| 3. 只读核对用的隔离副本 | 主人在第一波期间提供一份停写的 0.5.0 隔离副本；Agent 只看脚本输出的字段名、计数和通过与否 | 按推荐 |
 
 ## 验收
 
@@ -287,7 +287,7 @@ Cordis 的旧名字有两种情况。以下是每个名字现在的消费者，�
 | 回顾转发 | `node --test tests/life/life-review-runtime.test.mjs`。随后在可用的隔离 DSH 环境跑 `pnpm run test:native-life`。保持原日期日记、自述、历史回读断言。`tests/life/life-review-runtime.test.mjs:1`、`scripts/lib/check-life-review.mjs:88–91,133–135`、`scripts/checks/check-native-life.mjs:1–27`。 |
 | 群资料目录 | `node --test dist/tests/infrastructure/group-material.test.js tests/regressions/mapped-group-name-wake.test.mjs tests/behavior-list/channels.test.mjs`。账号和群隔离、重启收件、旧事件反例照常。`tests/infrastructure/group-material.test.ts:10,120`、`tests/regressions/mapped-group-name-wake.test.mjs:48–55`、`tests/behavior-list/channels.test.mjs:15,118`。 |
 | 情绪别名及保留路由 | `node --test tests/desktop/pet-platform.test.mjs dist/tests/regressions/mapped-playback.test.js tests/room/room-transport.test.mjs tests/regressions/stage3-voice-upstream.test.mjs tests/behavior-list/presentation-voice.test.mjs`。`tests/desktop/pet-platform.test.mjs:266–282`、`tests/regressions/mapped-playback.test.ts:145–220`、`tests/room/room-transport.test.mjs:93–140`、`tests/regressions/stage3-voice-upstream.test.mjs:7–16`、`tests/behavior-list/presentation-voice.test.mjs:16–87`。 |
-| 词表和旧安装 | `pnpm run check:arch -- --report`、`pnpm run metrics -- --json`、`node --test tests/behavior-list/concepts-{care-settings,plan,facts}.test.mjs tests/memory/fact-attribution-contract.test.mjs tests/infrastructure/release-flow.test.mjs tests/migrate/compatibility.test.mjs`。保持原行为、基线新增 0、无候选之外的产物删除。`docs/development.md:38–50,179`、`package.json:95,123,125–126`、`tests/behavior-list/concepts-care-settings.test.mjs:48`、`tests/infrastructure/release-flow.test.mjs:10–30`。 |
+| 词表和旧安装 | `pnpm run check:arch -- --report`、`pnpm run metrics -- --json`、`node --test tests/behavior-list/concepts-{care-settings,plan,facts}.test.mjs tests/memory/fact-attribution-contract.test.mjs tests/core/core-install-config.test.mjs tests/infrastructure/repo-storage.test.mjs`。保持原行为、基线新增 0、无候选之外的产物删除。`docs/development.md:38–50,179`、`package.json:95,123,125–126`、`tests/behavior-list/concepts-care-settings.test.mjs:48`、`tests/core/core-install-config.test.mjs`。 |
 | 文档 | `git diff --check`，复核本批 `git diff --stat`，逐个打开改动过的相对链接与 Markdown 锚点。历史方案引用指向可取回的 Git 版本，如 `6dd3e4c:docs/plans/stage3-presentation.md:145,155,178`。`docs/development.md:35,169–179`、`AGENTS.md:81,98`。 |
 
 ### 全量门禁与真实入口
@@ -300,7 +300,7 @@ Cordis 的旧名字有两种情况。以下是每个名字现在的消费者，�
 2. 合成一次原生日志落盘失败，确认事实仍待确认。恢复落盘后才确认。
 3. 在另一会话召回该事实。关闭并重建夹具，确认仍可召回。
 
-该用例走产品插件入口，使用合成资料和脚本宿主。生产 DSH 设置页和更新按钮在手动验收中实走。依据 `tests/behavior-list/index.json:1422–1429`、`tests/behavior-list/concepts-flow.test.mjs:6–32`、`src/console/plugin.ts:23–37`。
+该用例走产品插件入口，使用合成资料和脚本宿主。生产 DSH 设置页和更新按钮在正式包隔离验收中实走。依据 `tests/behavior-list/index.json:1422–1429`、`tests/behavior-list/concepts-flow.test.mjs:6–32`、`src/console/plugin.ts:23–37`。
 
 其余批次：先 `pnpm run build`，再跑盘点表各行点名的测试；迁移测试退役后，`tests/behavior-list/index.json` 同步删条目，`pnpm run test:behavior-list` 仍要求每个 L1／L2 恰好一次。
 
@@ -321,10 +321,99 @@ Cordis 的旧名字有两种情况。以下是每个名字现在的消费者，�
 
 ### G8 体检及关闭条件
 
-逐条记录管理规则的保护目标、对应案例、当前证据和保留或调整决定。R1 的九条按位置分别复核：Core 外观，Core 初始化两条，Desktop 的迁移、平台加载、独立 CLI，Memory 两条动态加载，Room 拍照运行时加载。R5 逐条检查五类 Channels 记录和 `desktop-session` 的业务拥有者、Core 容器和恢复证据。其他规则核对真实违规反例、撤销和外围组合用例是否仍有效。无案可支持的调整留作主人决定。依据 `arch/baseline/rules.json:3–97`、`arch/baseline/writers.json:1–3`、`arch/storage.json:14–20`、`docs/architecture.md:132–166`、`docs/product.md:187–195,352–356`、`docs/decisions.md:278–282`。
+逐条记录管理规则的保护目标、对应案例、当前证据和保留或调整决定。R1 按当前基线的实际位置逐条复核，并核对退役条目。R5 逐条检查五类 Channels 记录和 `desktop-session` 的业务拥有者、Core 容器和恢复证据。其他规则核对真实违规反例、撤销和外围组合用例是否仍有效。无案可支持的调整留作主人决定。依据 `arch/baseline/rules.json:3–97`、`arch/baseline/writers.json:1–3`、`arch/storage.json:14–20`、`docs/architecture.md:132–166`、`docs/product.md:187–195,352–356`、`docs/decisions.md:278–282`。
 
 体检还要核对方案引用和相对链接、测试有没有跳过或削弱原断言、生成文件是否来自声明源、无关改动是否保留，以及 `codex/*` 工作分支和实验分支的去向。Claude 合并验收通过的实施分支，处理完成方案。删除分支单独按仓库约定请示。P5 以九项处置有证据、门禁全绿、正式包隔离激活完成和主人确认关闭为准。依据 `AGENTS.md:54–70,75–98`、`docs/product.md:70–73,463–477`。
 
 ## 执行结果
+
+- 实现基点为 `22835b0..1153f2b`，共 46 个提交（42 个普通提交、4 个合并提交）。第一波各独立分支以 `22835b0` 为起点：`codex/p5-entry-cleanup` 为 `3405743..9484778`（含首笔，9 笔），`codex/p5-memory-policy` 为 `59cc109..5730d79`（含首笔，4 笔），`codex/p5-offline-retirement` 为 `eafafb9..97d290b`（含首笔，14 笔），`codex/p5-package-setup` 为 `5dbd0e6..163d6d4`（含首笔，4 笔）。合并边分别为 `7e80c4a`、`8202394`、`dd150b2`、`65e873f`。
+- 第二波为 `65e873f..1153f2b`（11 笔）。第三波基于 `1153f2b`，交付 7 份顺序补丁：架构及规则登记、离线运维、安装与发布、两份设置翻译、产品度量、执行记录与体检。第三波只改 Markdown 和架构描述。
+- 逐项对照上述盘点表的结果见下文。主人副本显示拟删除数据项均 absent；外观有历史回执、0 冲突，原导入器为空操作；主人未配置 Channels。
+- 源码检查：七份补丁均通过 `pnpm run build`，对应 `node --test` 通过 35／15／17／12／27／1／11 项。策略、投喂和跨语言契约合跑 20 项通过。`pnpm run test:behavior-list` 在 `1153f2b` 的实现上通过 172/172，含独立快测通过的 `2B1-12`。
+- `pnpm run check:arch`、报告模式及词表 JSON 通过（R1 为 8、R8 为 576，两类新增均为 0）。发布元数据和带归档参数的 `check:package` 通过。构建目录与本地归档中八个退役语音深路径、六个退役文件及三个旧 npm 键均零命中。本地归档沿用源码版本号，供包检查。
+- 链接脚本逐个核对 11 份改动 Markdown，共 141 个相对链接（含 78 个锚点），无缺失。补丁按顺序在临时索引执行 `git apply --cached`，结果与工作区相同。文件/行数和 `git diff --check` 均通过。
+- Claude 返回的沙箱外记录：设置整窗、Room 语音窗、Room 刷新窗、原生 Room 拍照、`pnpm run test:native-services` 和 Memory 进程检查通过；第一波合并后行为清单 172/172。
+- 九项状态：①旧适配完成本地核对和归档检查，宿主保留项待第 9 项验；②文档、翻译、描述及链接通过；③度量达到本批上限；④5b 延期并已写重开条件；⑤设置声明停止扩展，3 文件／2 层未达标；⑥保留共用 contracts、收旧 npm 键并按原口径记录第 8 题；⑦0.6.0 草稿完成；⑧设置窗沙箱外通过；⑨G8 与 `2B1-12` 完成，待冻结源码全量门禁、正式包隔离激活和换回 0.5.0、主人验收。详见[当前阶段](../product.md#stage-4)。
+
+### 逐项核对结论
+
+| 方案项目 | 实现判定与证据 |
+| --- | --- |
+| Life 回顾、Channels 群资料、Body 情绪 | **已删转发／别名**。回顾用 `readCompanionWriting` 及 Core 作用域，群资料统一传绑定 Repo 的 `dataDirectory`，Body 与 Desktop 用 `COMPANION_FEELINGS`。Channels 仍消费设备 `deviceDirectory`，Body 仍输出 `behaviorPresentation`（`0550c24`、`bf4bb60`、`0f33d61`）。 |
+| Desktop 语音深路径与服务 | **已删**八条深路径和直取 `petVoice` 的对象。Room、桌宠、Channels 用 Core 的 VoiceTable，`70-Voice` 和隔离键继续使用。ESM／CJS 共用登记、撤销和取消由 `tests/regressions/stage3-voice-upstream.test.mjs` 和 `tests/behavior-list/presentation-voice.test.mjs` 覆盖（`be7622e`、`4533bbc`）。 |
+| 设置页与 Room | **已删** `petLife.library()`、`desktopAppearance` RPC 和桌宠 `chat/memory` 孤儿入口。Console 继续经 `lifeDates`、`lifeJournal`、`lifeAlbum`、`lifeSearch`、`lifePhoto`、`lifeForgetPhoto` 读写 Core 记录库；钱包动作、设置、待办／查证／重试／放弃由 Economy 处理。Room 的媒体 URL、播放回包、Room 历史和 Memory 档案入口继续由当前界面消费（`8891a35`、`80bbb90`、`src/core/console-operations.ts`、`src/console/settings.ts`、`src/presentation/room-transport.ts`）。 |
+| 旧 Life 事件 | **已删**旧事件残留，保留当前／过期绑定的 `world.changed` 断言，并用未登记事件校验扫描器（`9484778`，`tests/behavior-list/channels.test.mjs`、`tests/arch/known-violations.test.mjs`）。 |
+| Cordis 服务与身份 | **保留现用项**。Core／World 负责绑定与准入，Transcripts 负责 Life 会话恢复，Memory 供 Core 管生命周期，Emotion 供 Body、Desktop、Console、guest 查询和呈现。Behavior、Life、Economy 供照料／状态／钱包；Room、Desktop、PetPlatform 负责开窗与呈现；Channels 由原生检查消费并为运维和生活出口提供隔离标签。默认 bundle、预设和 Console 标识由 `cordis.patch.yml` 装载，服务登记见 [layers.json](../../arch/layers.json)。 |
+| 安装工具和默认路径 | **已删**旧商店切换、`--replace-codex-pet`、`--archive` 与旧包搬配置。**已改名**离线修复 `repair-core-config`，新装 Core 用 `her-world/core`、备份用 `backups/her-world`；实际已绑定绝对路径沿用。现用 profile 用安装回执、包、Core 和实际绑定交叉验证；保留打包及显式自定义 Memory 选择（`5dbd0e6`、`4286abf`、`f2e6243`）。备份格式标识 `codex-pet.offline-data-backup` 由备份创建和恢复继续消费。 |
+| npm 公开面与归档 | **已删** `./core`、`./contracts`、`./world`。**保留** 包根、`./package.json`、`./client`、编号模块和 `./channel-guest`，分别供 Console、包根定位、原生浏览器、默认 bundle 和 guest 预设。 `./cordis.patch.yml`、`./locale/*.json`、`./00-Core/locale/*.json` 当前都在；独立 `src/console/client.js` 也仍随包。这四项的实际宿主消费待隔离包核实，文档按现有归档写。四个 imports 和三个 bin 仍有当前入口（`163d6d4`，`package.json`、`cordis.patch.yml`）。 |
+| 工作区清单及初始化 | **已删** v1／v2、`STATE.md` 读法和空旧初始化标记接管。旧实物和非空存量保护保留；v3 准入、当前标记安全续做、缺库及外来绑定拒绝继续有效（`a2b8acf`、`ed65577`）。 |
+| 日记、自述与相册 | **已删**旧位置探测，当前路径由 Core 记录库确定。旧 Life 路径保留登记为只留档（`b2a4663`，`src/core/record-paths.ts`、[storage.json](../../arch/storage.json)）。 |
+| 桌宠外观和情绪 | **已删**旧外观导入、冲突处理、旧 RPC 与界面，以及旧 Core 情绪行导入。PetPlatform 读写 JSONC 主文件和正式外观编辑器；Emotion 读写现有 `state.json`，历史 Core 行只留档（`9cb1186`、`ea93dec`）。合成探针确认当前文件可读，0.5.0 曾接受的 `importedLegacy` 和 `current.dependencies` 各会被基线候选拒绝。主人只读核对的删除项均 absent，本批登记这条读边界。 |
+| Body、计划、事实与菜园 | **已删**钱包额外探测旧菜园位置；Body 现存 `data/life/home.json` 是有效检查点，继续按现行检查点选择，钱包首次交接由同一目录选址。**已改名** `actUnadoptedGarden`；未采用继续用 Body JSON，已采用缺库拒绝。持久计划按提交规则校验，历史事实读宽写严按核对保留（`d448957`、`7f6c157`、`e118d3d`）。 |
+| 渠道策略与去重 | **已删**旧策略拆分、启动写回和旧资料扫描，改为直接读取设备连接与 Repo 策略。**保留** QQ 原键去重及当前回执、微信配置和 Repo 路径守卫。旧收件不重放，留有键就继续去重。主人未配置 Channels，合成覆盖与实机项分别记录（`9eb7eba`，`src/channels/qq-inbox.ts`）。 |
+| 离线迁移及钱包请求 | **已删** CLI、运行器、0001–0004 执行步骤、两条钱包导入／清源／回插路线与接线。仍用当前盘点、保护既有账本、保留持久待办的查证与原号重试；`fresh` 独立证明和历史完成日志仍被 Core／钱包读取（`7b6f846`、`adcf8df`、`f096287`、`f3b4201`、`7f6c157`）。 |
+| Memory 传输与授权 | **已改名** provider wire `bankId`；磁盘 `pet_scope.workspaceId` 和 Mnemosyne `workspace_id` 沿用。已有 Bank 选择与绑定隔离保留。**已改** guest／电视共享情绪授权、**已删** `EXPIRED_USE` 和旧付费脚本；现用语音、表情流和 Memory 仍由对应入口验证（`59cc109`、`8acb7fa`、`18af12f`、`5730d79`）。 |
+| 度量、结构取舍与问题 13 | **保留**共用 contracts 与各拥有者；按原标准记录 5b 延期及第 7、8 题。设置整窗的真实 Cordis、合成 Repo Core 路径、运行时回执与现行按钮均接齐，`storageStatus()` 在 `main`／`v0.5.0`／`HEAD` 一致（`3405743`、`1153f2b`）。问题 6 待正式包观察，12 保留主人已接受的上游在途边界。 |
+
+### 只读证据要求保留的路径
+
+| 项目 | 主人隔离副本结论 | 当前消费者与保留理由 |
+| --- | --- | --- |
+| `maxHistoryMessages`、`memoryColdHours` | 各命中 1 | Core 读取既有对话和便携配置时校验并剥离，当前设置没有这两个选项（`src/core/options.ts`、`src/core/companion-settings.ts`）。 |
+| `legacy-import` | 1 条 | 钱包历史流水继续回读和显示；首次采用的交接也使用该流水 kind（`src/living/economy/types.ts`、`src/living/economy/store.ts`）。 |
+| `native-memory-action/view` | 共 12 行 | **只留档**，运行时没有读写。当前盘点通过登记识别，旧行随原数据保留（`c1eb430`）。 |
+| `legacyWalletDigest` | 7 个未登记候选，证据不足 | Wallet 以原号查证同一旧请求时比对兼容指纹，保留历史冲突与重复执行防线（`src/living/economy/console-requests.ts`、`src/living/economy/plugin.ts`）。 |
+| 历史事实读宽写严 | 证据不足 | Core 历史和 Life 回读接收未登记类型，新的事实必须通过所在领域的类型检查，和 Python 双向契约对齐（`src/contracts/interaction.ts`、`tests/memory/fact-attribution-contract.test.mjs`）。 |
+| Memory 启动补投影 | 证据不足 | provider 启动修复已有合格 episode 的来源投影及撤回语义，继续排除投递信封（`src/memory/provider.py:67–145`、`tests/memory/memory_provider_test.py`）。 |
+| 原生提示词退休历史段名 | 证据不足 | 原生会话重开后，在打开的请求中清理已退休段名；保留原日志和当前段生命周期（`src/core/native/prompt.ts`、`src/core/native/agent.ts`）。 |
+
+## G8 体检
+
+| 规则 | 保护目标和当前证据 | 处置 |
+| --- | --- | --- |
+| R1 | 阻挡逆向和非预期同层 import。已知违规夹具检查 TS／JS／MJS／CJS、动态 import、`createRequire` 及别名。当前 8 个位置、2 条逆向边，逐条见下。 | 保留棘轮与当前八条明确例外；已退役外观导入链按工具收紧。 |
+| R2 | Cordis 服务依赖在声明和允许方向内；夹具覆盖别名、解构、计算名、inject 和未知目标（`tests/arch/known-violations.test.mjs`）。当前 0 违规。 | 保留，Voice 的当前隔离键走表。 |
+| R3 | 只订阅和发布已登记的事件，保证方向；架构夹具测试未知事件，Channels 使用当前绑定和过期绑定的 `world.changed` 断言。当前 0 违规。 | 保留真实行为和虚构反例，旧事件实例已退役。 |
+| R4 | 第三方模块经登记写入回调，禁止直接给他人对象赋值；夹具含直接、别名、解构赋值。当前 0 违规。 | 保留现有阻断。 |
+| R5 | 路径、容器、记录 kind 与拥有者可查。报告及 `tests/arch/storage-locations.test.mjs` 区分不同物理位置和逻辑拥有者，原位例外见下。现有 Emotion 近期表写入和 Memory 批处理的 Core 记录访问仍有报告项。 | 保留报告边界。近期表的物理容器归 Memory 而业务拥有者是 Emotion，批处理借 CoreStore 处理当前会话批次。文件原子写第二参数和未登记 kind 有静态识别局限，通用句柄延期。本批依照授权只动描述。 |
+| R6 | 装卸、换绑及取消会撤销订阅和请求，晚结果无效。VoiceTable、Room／桌宠语音、Compact 录音及进程关闭的现用断言见 `presentation-voice`、`stage3-voice-upstream`、`families` 和 Memory 进程检查。桌宠已交给上游的关闭是主人认可的边界。 | 保留撤销回归和现有上游边界。 |
+| R7 | 外围全关、逐关、反序、重载及 A→B→A 时主链路仍可用；写前取消没有效果，写后断回复可按原号核对（`tests/behavior-list/presentation-r7.test.mjs`、`entries-lifecycle.test.mjs`）。 | 保留组合检查，将已删除的外观 RPC 重复登记断言移到现用 `foundation`。 |
+| R8 | 阻止复制同一业务词表和公开裸字段。对象／布尔键与棘轮反例见 `tests/arch/object-vocabulary.test.mjs`、`ratchet.test.mjs`。报告 576 条，裸字段 30，新增 0；概念份数见[产品度量](../product.md#词表重复基线与目标)。 | 保留现行阈值和人读口径，无新增白名单。 |
+
+### R1 八个基线位置
+
+| 位置 | 保护目标 | 当前证据与理由 |
+| --- | --- | --- |
+| `src/core/companion-settings.ts:2` → Desktop 外观解析 | Core 独立校验当前便携外观 | Core 仍接受 `desktopAppearance` 字段，经 Desktop 的现用解析器校验。保留既有逆向依赖，避免重复外观语义；已退役的是导入器及默认值 RPC。 |
+| `src/core/initialization.ts:5` → Life 库 | 初始化和就绪使用相同的正式控制文件契约 | Core 建 `control.json`，读时复用 `defaultLifePreferences` 和 `parseLifePreferences`。保留；改成独立上层初始化会改变可选入口缺席时的文件契约。 |
+| `src/core/initialization.ts:12` → PetPlatform 运行时 | Core 就绪检查在包内准确读 JSONC | 从 `her-world/package.json` 定位包根再取固定上游运行时，复用 `readJsonc`。保留动态加载；归档仍有资源与定位键。 |
+| `src/desktop/platform/plugin.ts:40` → PetPlatform 运行时 | 用同包上游呈现实现 | 从同一包根加载固定 `vendor/dsh-pet/platform/runtime.mjs`。保留；静态扫描不能推断 `join` 得到的目标，归档覆盖包内依赖。 |
+| `src/desktop/standalone.mjs:8` → Core 编译设置 | npm bin 与主程序共享运行时默认设置 | 源码 bin 读 `dist/src/core/companion-settings.js`，归档检查确认路径存在。保留物理路径，不复刻默认值。 |
+| `src/memory/client.ts:54` → Mnemosyne 进程宿主 | Memory 的启停与包一起部署 | 从包根加载固定上游 `memory-process.js`，提供者启动、取消和重启仍走该宿主。保留，原生服务及进程有集成记录。 |
+| `src/memory/client.ts:55` → Mnemosyne 客户端 | 进程和客户端使用同一包版本 | 加载同包 `memory-client.js`，使用现有 HTTP 请求和 scope 校验；归档与 Bank 跨会话检查覆盖。保留；扫描不能解析运行时绝对路径。 |
+| `src/room/shot-browser.cjs:18` → Room 编译资源 | 拍照与真实 Room 用同一素材和资源入口 | Electron CJS 入口加载同包 `dist/src/room/assets.js`。保留；归档能定位编译产物，Claude 沙箱外原生 Room 拍照通过。 |
+
+第二波删除外观迁移入口的动态加载例外，当前基线由 9 条减至 8 条，见 `9cb1186`。R1 的展示行号以现行报告为准。
+
+### R5 的 Core 原位例外
+
+以下业务归属和写入者由 [storage.json](../../arch/storage.json) 声明，物理容器均为 Core `records`。离线恢复用 `scripts/lib/offline-backup.mjs:309,351–366` 保留当前 Channels 五类记录，`tests/infrastructure/offline-backup.test.mjs:149–170,198–203` 核对保留和冲突拒绝。桌宠映射随选中绑定恢复。
+
+| 记录 | 保护目标与当前写入证据 | 处置 |
+| --- | --- | --- |
+| `channel-received` | Channels 的输入去重和重启核查，`src/channels/qq-inbox.ts`、`src/channels/messaging.ts:165–175`。 | 原位保留，恢复复用当前收件回执。 |
+| `channel-reach` | Channels 发送 QQ 主动消息前记为待核对，确认后记为已送达，`src/channels/messaging.ts:218–225`。 | 原位保留，旧备份不会让已发送或未核实的联系再次执行。 |
+| `life-outlet-delivery` | Channels 记录实际 Life 出口送达，`src/channels/bridge.ts:82–89`。 | 原位保留，恢复复用当前送达记录避免重送。 |
+| `channel-usage` | Channels 保存用量聚合，`src/channels/usage.ts:12,34`。 | 原位保留当前聚合，避免恢复导致额度倒退。 |
+| `channel-usage-event` | Channels 按来源事件固定用量查证，`src/channels/usage.ts:28–29`。 | 原位保留当前明细，聚合和去重依据一致。 |
+| `desktop-session` | Desktop 的当前绑定与原生会话连续性，`src/desktop/index.ts:46–47`。 | 原位保留，随绑定的原生日志和 Core 备份回到同一快照。 |
+
+### 测试、生成物与分支
+
+- 测试复核对照 `main..1153f2b`。删除集中在旧安装切换、旧外观导入、旧布局与迁移执行。当前生命周期断言迁到新入口，包含 0.5.0 钱包证明、缺库拒绝、回执按原号重试与只结算一次、VoiceTable 撤销、记录库读回和 Console 路由重复登记。行为索引增加钱包两条，未删行为 ID；差异未引入跳过或 todo。合成服务、包加载和主人验收各保留独立证据。
+- `src/desktop/platform/client.js` 由登记的生成器、Console 源和上游输入重建（`arch/layers.json`、`scripts/build/build-pet-platform.mjs`）。语音转发由 `scripts/build/build-desktop-animation.mjs` 停止生成。干净构建后生成物与 `1153f2b` 一致；本批补丁没有生成文件差异。
+- 第一波四个分支已纳入候选，第二波 `codex/p5-data-retirement` 与本批同从 `1153f2b` 交接。本批 `codex/p5-acceptance-docs` 交顺序补丁，由 Claude 应用、检查和合并。建议确认新版进入主干、无需修复回溯后再收这六个工作分支；分支、worktree 的清理由主人决定。
+- `codex/m1-baseline-{1-garden,2-room,3-channel}`、`codex/m2-retest-{4-tool,5-source,5-source-v2}`、`codex/m4-measure-1-garden`、`codex/2b-measure-8-{care,fact}` 共九个实验分支继续提供可复算证据。建议先保留；如需清理，先确保测量提交可从长期引用取回，由主人决定。
 
 ## 审查结论
