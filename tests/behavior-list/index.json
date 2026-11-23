@@ -1840,6 +1840,15 @@
       "families": []
     },
     {
+      "id": "3-ROOM-GARDEN-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-garden-tool.test.mjs",
+      "name": "native garden care returns the same playback as the Room window after acceptance",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-CONSOLE-07",
       "categories": [],
       "level": "L2",

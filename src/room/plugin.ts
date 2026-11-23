@@ -174,7 +174,7 @@ export class Room {
         const state=await withLivingCaller(validate,()=>input.type==='state' ? behavior.garden(id,'state') :
           behavior.garden(id,'control',{...operation,requestId:digest([exec.agent!.id,exec.callId])}));
         validate();
-        return JSON.stringify(input.type==='state' && (view??(exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id)?'overview':'full'))==='overview'?gardenOverview(state):state);
+        return JSON.stringify(input.type==='state' && (view??(exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id)?'overview':'full'))==='overview'?gardenOverview(state):roomPlaybackReply(state));
       }});
     const photo = defineTool({name:'room_photo',description:'拍下自己当前房间的真实画面。overview 是含自己的近景，eyes 是自己的第一视角。look 可向前或看向室内。返回会话内可查看的照片。',parameters:{
       view:{type:'string',enum:['overview','eyes']},look:{type:'string',enum:['forward','room']}},
