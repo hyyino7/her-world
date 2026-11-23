@@ -2,7 +2,7 @@
 
 这里写三层重构的目标结构和现状基线。阶段安排和完成标准见 [product.md](product.md)，拍板过的取舍见 [decisions.md](decisions.md)。
 
-- 2.1 的行数以 Her World 0.1.8（提交 `0a45ada`）为基线；其余「现状」说法对应 0.2.0。
+- 2.1 的行数以 Her World 0.1.8（提交 `0a45ada`）为基线。阶段 3 的收尾状态以各段列出的源码和执行记录为准。
 - 代码路径默认相对 `src/`；`scripts/`、`tests/`、`vendor/` 下的文件写全路径。
 - 目录：阶段 1 缩小后（[decisions.md](decisions.md)「阶段 1 缩小」），第一层、第三层保留现有目录（`src/core/`、`src/room/` 等）；第二层在 2a 合并进 `src/living/`。下面总览里的 `kernel / surface` 只是层的代号，不是目录。
 
@@ -51,14 +51,14 @@
 
 | 现在的目录 | 行数（不含上游生成文件） | 去哪里 | 说明 |
 | --- | ---: | --- | --- |
-| `core/` | 3370 | 第一层 | 目录不改；剩余的向上读取和 import 按 [product.md](product.md)「第一层剩余违规的去向」，归 2a 的 18 条已清，余下的在阶段 3 清，另有 4 条长期例外 |
+| `core/` | 3370 | 第一层 | 2a 清理后，阶段 3 保留 Core 外观校验的 R1 例外，见[第一层剩余违规的去向](product.md#第一层剩余违规的去向)（`docs/decisions.md:280`、`arch/baseline/rules.json:3–36`） |
 | `memory/` | 966 | 第一层 | 记忆的创建和关闭归第一层 |
 | `emotion/` | 698 | 第一层 | 含近期互动账本 |
-| `contracts/` | 268 | 拆成三份，各层一份 | 接口跟着拥有者走 |
+| `contracts/` | 268 | 仍共用 `src/contracts/` | 按拥有者拆层留到阶段 4 评估，见[阶段 4 验收条目](product.md#阶段-4收尾p5当前待开工) |
 | `living/body/` + `living/plan/` + `living/economy/` | 6430（0.1.8 时三个旧目录合计） | 第二层 | 2a 已合并成 `src/living/` 和一个常驻实例，见 2.3 与第 6 节 |
 | `desktop/` | 21380（大头是生成文件） | 第三层 | 生成文件改生成器，不手改 |
 | `room/` | 989 | 第三层 | 拥有房间窗口、交互接线和图片副本 |
-| `channels/` | 1818 | 第三层 | 不再往 Core 数据库的 `records` 表写自己的记录 |
+| `channels/` | 1818 | 第三层 | Core 中的原位例外见[状态拥有者表](#4-状态拥有者表) |
 | `voice/` | 71 | 第三层 | 通过第一层声明的「语音接口」使用，见 5.4 |
 | `console/` | 1674 | 第三层 | 通过「运维操作表」操作其他模块，见 5.5 |
 | `world/` | 74 | 按调用者分到三层 | 它转发 `vendor/dsh-world`，还转发本地的记忆批处理；`petWorld.modules` 的公开形状必须保持不变 |
@@ -117,7 +117,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 1. **只往下依赖，同层不互相引用。** 需要别的同层模块的能力时，经第一层的接口或登记表。
 2. **只存自己的数据，不往第一层、第二层的存储里写。**
 
-Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射按[状态拥有者表](#4-状态拥有者表)留在 Core。
+共用呈现代码登记在第三层（`arch/layers.json:104–115`），数据的原位例外见[状态拥有者表](#4-状态拥有者表)。
 
 ---
 
@@ -133,19 +133,19 @@ Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射
 | **R2** | 运行时服务读取 | `ctx.get('petX')`、`ctx.petX`、`scope.petX`、`inject: [...]`；还要识别别名、解构、计算名（例如把服务名存进变量再读）；遇到无法静态判定的写法直接判失败，要求改成显式写法 | 扫描 + 每个模块声明允许读取的服务；声明是子集且方向合规 | M1 |
 | **R3** | 事件 | `ctx.on / ctx.emit('pet/…')`，也包括 DSH 原生事件的订阅；事件只能向上流（订阅者所在层不低于发布者）；事件名在发布层的 contracts 里声明 | 扫描 | M1 |
 | **R4** | 直接给别人的对象赋值 | `host.native.xxx =`，也包括通过别名、解构后的赋值 | 扫描，并配一个「已知违规」样例集验证脚本真的抓得到 | M1 |
-| **R5** | 谁在写哪份数据 | 见下 | 见下 | M1 起只报告；存储句柄随阶段 3 的数据搬迁方案再定 |
+| **R5** | 谁在写哪份数据 | 见下 | 见下 | M1 起只报告。存储句柄延期，见下方边界 |
 | **R6** | 关闭后不留尾巴 | 定时器、订阅、在途请求，以及在途 I/O 和子进程 | 见第 8 节 | 从阶段 2a 起，每个新写的模块各带一条 |
 | **R7** | 外围可关闭 | 见下 | 组合测试 | 阶段 2 覆盖生活世界的卸载与暂停；阶段 3 覆盖全部外围模块 |
-| **R8** | 词汇重复与裸字符串 | 同一组字符串取值（例如六种照料动作）出现在多个文件；公开接口（各层 contracts 和对外服务）里的 `kind / action / status / type` 字段是裸 `string`，而不是声明出来的类型 | 扫描；旧重复留在基线里放行并只报告，随各阶段统一词表逐步清理；新增重复当场阻断 | M1 |
+| **R8** | 词汇重复与裸字符串 | 同一组字符串取值出现在多个文件，阶段 3 纳入有类型或用途证据的对象表和布尔值表的键。另检查公开接口的 `kind / action / status / type` 裸 `string` 字段 | 扫描，旧重复按基线放行，新增重复阻断（`scripts/arch/check.mjs:38–49`、`tests/arch/object-vocabulary.test.mjs:8–33`） | M1，阶段 3 扩面 |
 
 **棘轮**：R1–R4 的基线在 [arch/baseline/rules.json](../arch/baseline/rules.json)，R8 在 [arch/baseline/vocabulary.json](../arch/baseline/vocabulary.json)；R5 的 [arch/baseline/writers.json](../arch/baseline/writers.json) 只作报告，不参与棘轮。已建立的检查出现新增违规，或旧条目消失而未同步收紧基线，都会失败；更新基线只能删条目，清理旧违规时同提交收紧。检查与报告命令见 [开发说明](development.md#architecture-behavior)。尚未建立的检查不计为已生效。
 
 **R5 的做法：**
 
 - 状态拥有者表（第 4 节）登记每份持久数据的路径或表名、拥有者、**唯一写入协议**。
-- （目标，未实现，随阶段 3 的数据搬迁方案再定）第一层提供**按拥有者划分的存储句柄**：句柄只暴露拥有者自己的表和行，别的模块拿不到。拼 `.chatpet/data/…` 路径的代码只允许在第一层的存储模块里。
+- 按拥有者限制表和行的通用存储句柄，以及 `records.kind` 公共类型化，均延期至阶段 3 之后，具体阶段待核实（`docs/decisions.md:268`）。
 - Core 的 SQLite 只放 Core 拥有的表、记录 kind 和[拥有者表](#4-状态拥有者表)批准的原位例外。拥有者边界覆盖**记录 kind 和写入端口**。
-- **局限**：脚本只能查到「哪个模块创建了哪个文件、哪张表、写了哪个记录 kind」，查不到「对已有文件的某一行的越权更新」。后者靠「句柄只暴露自己的数据」从设计上堵，再用一个运行时写入追踪测试在一次性数据目录里核对实际产生的文件和表。
+- **局限**。R5 能报告文件、表和记录 kind 的可识别写入点。对已有文件某一行的越权更新仍超出静态扫描边界，见下方已知局限（`scripts/arch/lib/storage.mjs:28,60`）。
 
 **R7 要覆盖：**
 
@@ -154,7 +154,7 @@ Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射
 - 工作区 A→B→A 换绑。
 - 写入已完成但响应被取消。
 
-另外，**绑定校验要带实例代次**（一个每次绑定新生成的 ID），不能只比较工作区名称和路径。现有 `memory/client.ts` 已经这样防范「同名绑定重新连接后旧请求返回」，把它升级成公共助手。
+绑定校验使用 Core 的 `sameHomeBinding`，同时核对工作区、路径、存储 ID、启动标识和绑定代次（`src/core/home-binding.ts:3–6`）。异步边界的用法与回归见[绑定代次的 G3 复盘](product.md#绑定代次的-g3-复盘)。
 
 **每条检查都有真实案例**：R1 到 R8 在 Her World 的提交历史里都有对应案例（例如 R6：关闭后晚到的录音、语音排队取消丢失、关闭失败导致清理中断）。新增检查也要写明对应的案例，对应不上的不加。
 
@@ -269,11 +269,11 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 事实 `CompanionFact` | 第二层 | `domain` 封闭；`type` 是裸 `string` | 补 `domain` 与 `type` 的关联类型和统一解码器；Python 侧的识别清单与它由同一份声明生成，或用契约测试对齐 |
 | 会话来源 `source.kind / scope / admission` | 第一层 | `source.kind` 内建 7 种，可经 DSH 的 `MessageSourceMap` 扩展；`scope` 有三种含义 | 并入来源适配表（2.2、5.8）；`NativeScope`、`MemoryScope`、`scopeId` 分别命名，不再共用「scope」一词 |
 
-每个概念的完整内容（所有定义处和转换点、同名不同义、拥有者）在用到它的阶段之前补进本节：第一批（动作、行为、活动、阶段、命令、事实）见 5.6.1；表情与贴纸、情绪、槽位与素材在阶段 3 开始前补。交付时间见 [product.md](product.md) 的「按需交付的表格」。
+第一批（动作、行为、活动、阶段、命令、事实）见 5.6.1。阶段 3 开工时交付了第二批概念表（`6dd3e4c:docs/plans/stage3-presentation.md:299–310`），涉及表情与贴纸、情绪、槽位与素材的现行边界见 [5.7](#57-动作与行为)，各项取舍见[阶段 3 结果](product.md#阶段-3-结果)。
 
 #### 5.6.1 第一批概念细表
 
-第一批（动作、行为、活动、阶段、命令、事实）在阶段 2b 已收成各自一份声明，行号按 2b 收尾时的代码。声明大多写成「值为对象的表 + 派生数组和守卫」：表是唯一定义处，派生出的类型让漏改在编译时失败。R8 扫描器只认数组字面量和值全是字符串的对象，看不见值为对象或布尔的表，所以这些表和仍留着的副本（界面标签表、呈现表）之间的重叠不在 R8 基线里；份数以 [product.md](product.md)「词表重复基线」的人工核对为准。
+第一批（动作、行为、活动、阶段、命令、事实）在阶段 2b 已收成各自一份声明，行号按 2b 收尾时的代码。声明大多由取值表派生数组、类型和守卫。阶段 3 扩面后的词表扫描范围见 [R8](#3-依赖规则和自动检查)，实际份数见[词表重复基线与目标](product.md#词表重复基线与目标)。
 
 ##### 动作 `action`
 
@@ -293,7 +293,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | `living/body/room.ts:89-90,105-115`、`vendor/feiyu-room-template/home-state.js:489,1704-1722` | 上游 JS 状态，本地 `state:any`。含路线、停留、睡眠、身体需要和 `kind`。 | 上游 `homeView` 将持久状态投影为当前画面，位置按当前时间求值。Body 公布的 `home` 保留 `any`，另提供原精度 `needs`（`BehaviorSnapshot.needs`，以 `BodyMetric` 为键）。 | `her.kind` 描述此刻身体状态，`PlannedActivity.kind` 描述要执行的操作类别。 |
 | `BehaviorActivity`（`contracts/behavior.ts`）及吃饭准入 `feedAdmission`（`living/body/activity.ts`） | `activityId`、开放 `kind`、`BodyPhase`、`busy`、`interruptibility.feed`，附呈现和阅读提示。 | Body 的 `publicBehavior(her)` 给快照和公开回执组装同一份投影。发起吃饭由 Body 在串行队列中用同一规则重新判断。 | 睡眠、移动与忙碌拒绝新投喂。正在吃饭时允许重复播放。空闲且符合原插入条件时允许开始。呈现分类器另负责选择画面。 |
 
-**拥有者**第二层。**统一方式**：第三层读 `behavior.busy`，不再解释原始 `her.kind` 判断忙碌（`desktop/platform/plugin.ts:682`）；上游 `any` 留在 Body 适配器里，公开快照仍带 `home:any`，第三层其余读取归阶段 3。
+**拥有者是第二层。** 桌宠投喂按 Body 的目标动作准入，体现在上表的 `behavior.interruptibility.feed` 及串行判断。既有 `home` 的播放形状由呈现适配补齐（`tests/behavior-list/presentation-r7.test.mjs:291–314,336–486`、`src/presentation/playback.ts:151–153`）。
 
 ##### 活动 `activity`
 
@@ -353,7 +353,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 **第三层拥有**：
 
-- **素材分配**：槽位 → 素材 → `roomClip / desktopClip`，以及组合与采样、播放回执。Room 和 Desktop 各有自己的映射表。`ActivityClip`、`ActivityPlayback` 现在放在第二层目录，改放第三层，**第二层不再出现 `roomClip / desktopClip`**。
+- **素材分配**包含槽位到素材和 `roomClip / desktopClip` 的映射、组合、采样及播放回执。`ActivityClip`、`ActivityPlayback` 在第三层共用代码中（`src/presentation/playback.ts:4–17,34–36,151–158`、`src/presentation/animation-map.ts:3–6`）。
 - **表情素材目录**：由桌宠平台登记，ID 与 label 的转换留在平台。
 - **兼容行为留在适配边界**：Desktop 选了睡觉、起床、吃饭的素材就触发真实的 `sleep / wake / feed`（`desktop/platform/plugin.ts:681、686`），这是已有行为，明确写在适配层，不当成呈现端的业务逻辑。
 
@@ -513,7 +513,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 新增工具 | 工具定义旁声明 `sources`（没写的只给主人），需要历史瘦身时再声明 `historyOverview`，登记到工具声明表 `host.native.toolTable`（M2 已落地） | Life 和回顾名单、历史瘦身识别、来源适配的工具限制 |
 | 新增输入来源 | 在模块里写一个来源适配器（准入、分支、`turnKind`、工具策略、记忆观察、情绪更新、历史投影、会话策略行），在入口登记到 `host.native.sourceTable`；新的 `source.kind` 在 DSH 的 `MessageSourceMap` 声明，新的工具来源用 `toolTable.registerSource` 登记（M2 已落地） | 入队和首步准入、工具限制、记忆观察、情绪 footer、历史投影、会话策略一行 |
 | 新增上下文段 | 在模块入口用 `registerWorldPrompt` 登记（缩小后不做段声明，5.9） | 无；顺序、可见性由登记处自己写 |
-| 新增设置项 | 一份字段声明（阶段 3，按收益再评估） | 页面控件、保存键集合、校验、实际消费的接线 |
+| 新增伙伴设置项 | 便携字段的默认值和校验在 Core（`src/core/companion-settings.ts:6–43,54–76`） | 页面控件、保存键和实际消费仍分别接线（`src/console/client.js:1111`、`src/emotion/recent.ts:71–72`）。阶段 3 按第 7 类试做结果止步，后续按收益评估，见[阶段 4](product.md#阶段-4收尾p5当前待开工) |
 | 新增 QQ／微信设置项 | `channels/messaging-settings.ts` 声明可编辑字段并维护缺省值及校验 | Console 与生成的桌宠客户端从 Channels 的状态响应读取控件和保存键。Channels 按字段的设备归属落盘 |
 | 新增设置页操作 | 拥有者声明校验和执行并登记到 `host.native.consoleOperations` | Console 用公开端点名映射到登记，入口统一管理准入和撤销 |
 | 新增照料动作 | 第二层的 `BodyAction` 基础表（`contracts/behavior.ts:10`），每个动作在照料、角色、计划、反馈各集合里记序号 | 主人入口、角色工具枚举、计划类型与校验、计划 schema、设置页白名单和按钮（`lifeView.careActions`）。动作的执行和事实标签仍在 Body 里写 |
@@ -592,7 +592,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 ### 7.3 经济待确认请求的迁移顺序
 
-每个授权来源保留原值及摘要。相同绑定、原号和规范指纹可合并登记，仍逐源核对和清除。旧包备份与同包续做备份分别锚定同一私有导出。钱包登记与导入摘要同事务提交，清源和回插按逐源意图续做。停写、换包与回退步骤见[开发文档](development.md#console-wallet-migration)。
+0.4.0 到 0.5.0 有浏览器导出和主人声明无待办两条路线。声明路线的适用边界见[迁移决定](decisions.md#2026-11-23-040050-钱包迁移用主人声明无待办放行)，停写、导入、换包与回退顺序见[Console 钱包迁移](development.md#console-wallet-migration)。
 
 ### 7.4 第一次迁移的定位
 

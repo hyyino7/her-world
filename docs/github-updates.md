@@ -27,23 +27,14 @@ other existing exclusions.
 
 ## Publication
 
-In GitHub **Actions → Publish Her World → Run workflow**, select `main` and
-enter a new exact version. This is the only publication entry; pushing a tag
-alone does not publish. Source PRs run the same verification command, while a
-release runs the complete checks itself rather than relying on a prior CI run.
+在 GitHub **Actions → Publish Her World → Run workflow** 选择 `main`，填入新的完整版本号。发布入口见 `.github/workflows/release.yml:1–11`，发布门禁见[开发说明](development.md#全量验证与发布)。
 
 For clean, committed source, dispatch the workflow directly. If the working
 tree contains unrelated changes, isolate only the intended patch against the
 current remote `main` before committing it. Do not publish the whole dirty tree,
 reset it or discard somebody else's work to prepare a release.
 
-The workflow sets version/source metadata, runs `pnpm run verify` (one build,
-tests and one checked archive), freezes the commit/tag, and publishes that
-archive to npm. Before promoting `main` or creating the GitHub Release, it
-waits for npm metadata **and the ordinary installation URL** to return bytes
-matching the checked archive's SHA-512. Old cached 404s, rate limits and transient
-network failures retry for at most 20 minutes. Integrity/version conflicts fail
-immediately. Download readiness no longer needs repeated manual queries.
+工作流写入版本和来源元数据，经门禁后冻结提交与标签，把检过的归档发布到 npm。在推进 `main` 或创建 GitHub Release 前，核对 npm 元数据里的 SHA-512 与普通安装地址下载的归档都匹配。缓存中的 404、限流和短时网络故障最多重试 20 分钟，完整性或版本冲突立即失败（`.github/workflows/release.yml:35–109`、`scripts/lib/npm-publication.mjs:10–58`）。
 
 npm uses GitHub trusted publishing bound to `hyyino7/her-world` and `release.yml`.
 No npm token is stored in the repository or Actions secrets. Prereleases use
@@ -52,6 +43,3 @@ overwritten. **Re-run failed jobs** resumes the same frozen source/version after
 a processing or download timeout; choose a new version for different source.
 The frozen tag retains recovery history without another release branch per
 version. Publication never installs the local plugin or edits companion data.
-
-See [Development](development.md) for local tools, focused checks and the shared
-complete verification command.

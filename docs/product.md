@@ -19,13 +19,13 @@ Her World 是跑在 DSH 里的伙伴插件，同一个伙伴的身份、记忆�
 
 ## 解决什么问题
 
-功能很多，但模块边界乱：
+这次重构前，模块边界有三处典型问题。
 
 - Core 反向引用上层模块（桌宠外观、Life 偏好、情绪文件、记忆目录）。
 - Life、Behavior、Economy 互相缠绕，实际是同一件事却被切开。
 - Room 直接拿 Desktop 的模块，控制台什么都认识。
 
-结果是改一处牵一片，靠不断修补维持，看不懂全貌。所以当前在做一次**整体重构**：同一仓库里，数据全部保留，重新划成三层（伙伴本体、生活世界、呈现与连接），上层只能通过各层 contracts 访问下层，由自动检查守住。M2 复测后按 B 缩小：第一层停在登记口改造，只重写第二层的合并，第三层原地治理（见 [decisions.md](decisions.md)「阶段 1 缩小」）。
+改一处牵一片，促成了这次**整体重构**，范围见[阶段 1 缩小决定](decisions.md#2026-11-18-阶段-1-缩小m3-改为收口并发版)，职责和依赖边界见[三层架构](architecture.md#0-一页总览)。
 
 **一句话 MVP**：立起三层边界和自动依赖检查，第一层改用登记口（来源适配、能力状态、工具声明），跑通「备份 → 迁移 → 可回滚」；从 0.1.8 升级到新版后，聊天和记忆照常可用，从旧测试里拆出的行为清单逐条通过。
 
@@ -55,7 +55,7 @@ Her World 是跑在 DSH 里的伙伴插件，同一个伙伴的身份、记忆�
 ## 待验证的假设
 
 - 三层切分在代码里成立：合并后，Room、Desktop 能只靠 contracts 读生活世界的状态。
-- `tests/` 下有 143 个自动测试入口文件（57 个 `*.test.ts`、86 个 `*.test.mjs`，不重复计编译产物）。旧测试待重新分类，B 批的 L1/L2/L3 分级是新的分类；逐条改用公开边界后，原行为断言能否保留仍要验证。
+- 阶段 3 收尾时 `tests/` 有 186 个自动测试入口（59 个 `*.test.ts`、127 个 `*.test.mjs`，编译产物只计一次）。入口按 `scripts/checks/verify.mjs:13–17` 的收集规则盘点，详见体检第 2 节。逐条改用公开边界时，仍须核对原行为断言是否保留。
 - 不改包名和 bundle ID，已安装的环境能无缝升级到新版；关闭外围模块不影响聊天和记忆（目前只有源码上的依据，需要在隔离的已安装环境里用真实数据副本演练）。
 - 全部真实数据（含浏览器里的经济待确认请求）能完整迁移并回滚（需要停写后的真实副本清单和演练）。
 - 重写后维护成本真的降低（用「典型修改前后对比」衡量）。
@@ -80,7 +80,7 @@ Her World 是跑在 DSH 里的伙伴插件，同一个伙伴的身份、记忆�
 - **L2 公开面行为**：经公开服务、原生事件和磁盘边界驱动，不构造内部类、不替换私有方法、不读取私有状态。
 - **L3 回归参考**：保留在全量门禁，不算清单完成项，也不由清单运行器执行。
 
-索引现有 107 项：L1 46 项、L2 58 项、L3 3 项；清单实际执行前两级的 104 项，覆盖 15 类特殊情况、5 个故障家族和 5.8 会话策略表的每一格。每类补足 L1 的计划阶段在索引的 `l1Stage` 中；M1 的完成线是每类至少一条 L1 或 L2、每个故障家族一条 L1。
+阶段 3 收尾时索引有 173 项，分为 L1 64 项、L2 106 项、L3 3 项，清单执行前两级的 170 项（`tests/behavior-list/index.json:2–8`、`scripts/checks/run-behavior-list.mjs:39–43`）。条目的特殊情况、故障家族和会话策略覆盖也登记在索引里。每类补足 L1 的计划阶段见索引的 `l1Stage`，M1 的完成线是每类至少一条 L1 或 L2、每个故障家族一条 L1。
 
 调研列出的 15 类特殊情况，各有对应的旧测试：计划续行、同请求重试不重复生效、效果已落盘后结算失败再重启（`tests/life/life-domain-integration.test.ts`，混合文件，保留行为断言、换掉故障注入的做法）、睡眠中投喂的终态、种地时钟不倒退、离线消耗额度、日记按原日期恢复、历史日记保护、输入持久化先于确认、送达与记忆召回分开、阅读必须有真实文本、QQ 收件恢复、换目录时在途请求不写旧目录、隐藏后取消显示定时器、缺库不得空白替代。
 
@@ -120,12 +120,12 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | 5 输入来源 | 后台来源需适配器、`src/core/native/conversation.ts:24-26` 的准入端口、`src/core/native/agent.ts:56` 的工具策略；聊天平台至少涉及适配器（现有例 `src/channels/qq.ts:38`）、`src/channels/messaging-settings.ts:4`、`src/channels/messaging-storage.ts:6`、`src/channels/messaging.ts:57` 和 `src/console/client.js:344`。身份校验还依赖上游 `speakerIdentity`（`src/channels/sessions.ts:6`），因此 3/5 不能当所有来源的精确改动数。 |
 | 6 上下文 | 已挂载模块可直接调用 `src/core/native/prompt.ts:91,179` 的登记函数，现有例为 `src/living/plan/plugin.ts:63`；读取器可同文件或独立文件。动态段退休在 `src/core/native/prompt.ts:25`，guest 可见性由登记回调自行决定（如 `src/emotion/plugin.ts:218` 的作用域条件），不是统一预算或可见性声明。 |
 | 7 设置 | `src/console/client.js:1049,1103` 的伙伴设置控件、`src/core/companion-settings.ts:4,56` 的字段声明及解析、消费端（如 `src/emotion/recent.ts:71-72`）构成 3 个文件；现有透传在 `src/console/settings.ts:339`。新操作还要改 `src/console/plugin.ts:28` 的路由清单和 `src/console/settings.ts:79` 一类处理分支。 |
-| 8 照料动作 | 按同时接入 Life、Room、Console 的现有入口并新增播放映射计：不进入计划时，至少涉及 `src/living/body/plugin.ts:18`、`src/living/body/room.ts:83,971`、`src/living/body/playback.ts:175,188`、`src/living/plan/plugin.ts:36`、`src/room/plugin.ts:14`、`src/console/settings.ts:225`、`src/console/client.js:656` 共 7 文件，2 层 / 3 模块（第二层 `living`，第三层 `room/console`）。同一动作再进入计划时，还要改 `src/contracts/behavior.ts:58`、`src/living/plan/plan.ts:93`、`src/living/plan/plan-tools.ts:89`，并扩展已计入的 `src/living/body/room.ts:591` 和 `src/living/body/playback.ts:43-48`，共至少 10 文件，3 层 / 4 模块（另含第一层 `contracts`）。现有 `pet` 在照料词表中，未进入计划动作联合；复用现有上游执行和素材，新增上游动作或素材另计。 |
+| 8 照料动作 | M1 的读码下限按当时的 Life、Room、Console 入口和播放映射计算，不进入计划至少 7 文件，进入计划至少 10 文件。阶段 3 后素材映射与播放在第三层（`src/presentation/playback.ts:34–50,95–110,130–153`、`arch/layers.json:104–115`）。实际改动数以表中的独立试做和阶段 4 复测为准。 |
 | 8 事实领域 | 统一按文件计：领域提供者（现有例 `src/living/economy/plugin.ts:145`）加 `src/contracts/interaction.ts:13`、`src/core/native/conversation.ts:107`、`src/core/companion-foundation.ts:179,228`、`src/core/interaction-presentation.ts:15`、`src/living/plan/facts.ts:9`、`src/living/plan/plugin.ts:360,365`、`src/memory/provider.py:76`，至少 8 文件；存储布局、UI 或新公开接口增加的文件另计。 |
 
 **M2 复测**：起点 `d865bff`（M2 各批合并后的 `main`）。在独立分支实做，只度量、不合并，分支保留：`codex/m2-retest-4-tool` 的 `991c6fb`、`5d1ef47`、`9cfaeb7` 分别是 4a、4b、4c；`codex/m2-retest-5-source` 的 `2e7ab9e` 是第一次 5a（3 个文件、两层，第一层 `contracts` 的两份词表是封闭的）；补上可扩展词表后，从 `754a0a5`（代码与合并后的 `main` 相同）重测，`codex/m2-retest-5-source-v2` 的 `9be0496` 就是上表的 5a。主列只算手写 `src/`，测试和 `dist/src` 另列。
 
-「明显下降」的门槛：第 4 到第 8 类改动的文件数减半，并且只动一层；第 1 到第 3 类不能变多。M2 完成后先复测第 4、第 5 类，没达到门槛就在 M3 开始前转为缩小（见 [decisions.md](decisions.md)）。第 4、5 类的判法：第 4 类按 4b、4c 判减半和只动一层，4a 基线已是 1 个文件，只要求不增加；第 5 类按 5a 判，5b 照样计数并如实记录，只要求不改第一层。**M2 复测结果：第 4 类达标，第 5 类未达标，M3 开始前转为缩小。** 缩小后第 5 类的目标和判定不改，不再为它改第一层，阶段 4 照实记录；第 6 类不设目标；第 7 类留到阶段 3 方案时再评估；其余几类的目标不变。
+「明显下降」的门槛：第 4 到第 8 类改动的文件数减半，并且只动一层；第 1 到第 3 类不能变多。M2 完成后先复测第 4、第 5 类，没达到门槛就在 M3 开始前转为缩小（见 [decisions.md](decisions.md)）。第 4、5 类的判法：第 4 类按 4b、4c 判减半和只动一层，4a 基线已是 1 个文件，只要求不增加；第 5 类按 5a 判，5b 照样计数并如实记录，只要求不改第一层。**M2 复测结果：第 4 类达标，第 5 类未达标，M3 开始前转为缩小。** 阶段 4 按原判法记录第 5 类并保持第一层，第 6 类不设目标，第 7 类按阶段 3 的试做结果记未达标（`6dd3e4c:docs/plans/stage3-presentation.md:178–179`）。
 
 ### G5 手工度量
 
@@ -142,13 +142,15 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | 6. 修复批次占比 | **36 / 70 = 51.4%（估计）**；可辨认批次为修复 36、功能 13、发版 11、其他 10 | 未重算（M2 返工都在合并前，属验收发现的问题，不是上线后的修复） | 从保留历史的 86 个提交逐个分类；6 个合并不重复计。按 G3 的不变量及修复轮次归批并去重，不以修复提交数作分子；大包导入内部未保留的返工无法还原，70 只是可辨认批次，比例不是完整历史的精确频率 |
 | 7. 典型修改基线 | 前 3 题基线已完成：菜园、Room 各 3 文件 / 1 层 / 1 模块；QQ 11 文件 / 1 层 / 3 模块；后五题见上表 | 第 4 类 1 文件 / 1 层（达标）；第 5 类 5a 2 文件 / 1 层（未达标）；见上表 | 源码、测试、构建产物分开；实际修改与读码下限分开 |
 
-**2a 收尾（`04bff94`）**：R1–R4 合计 **37 条目标**（第一层剩 5 条，第二层 0 条）；R8 基线 **1031 条**；kind/action 字符串判断 **392 点 / 47 文件，kind 287、action 105**，超过 2a 设计约束（283 / 104），偏差带进 2b；手写超过 1500 行的文件 **0 个**（`src/living/body/animation-map.ts` 是生成文件）；模块间依赖和修复批次占比未重算。取数命令同上。
+**2a 收尾（`04bff94`）**：R1–R4 合计 **37 条目标**（第一层剩 5 条，第二层 0 条）；R8 基线 **1031 条**；kind/action 字符串判断 **392 点 / 47 文件，kind 287、action 105**，超过 2a 设计约束（283 / 104），偏差带进 2b；手写超过 1500 行的文件 **0 个**（动画索引为生成文件，现路径 `src/presentation/animation-map.ts`，见 `arch/layers.json:113–115`）；模块间依赖和修复批次占比未重算。取数命令同上。
 
 **2b 收尾（`d5961d3`，`pnpm run metrics`）**：R1–R4 合计 **37 条目标**（R1 22 / 22 / 7，R2 14 / 14 / 7，R3 1 / 1 / 0，R4 0），和 2a 收尾相同；R8 基线 **637 条**（重复和子集关系 604、裸 `string` 字段 33）；kind/action 字符串判断 **372 点 / 50 文件，kind 270、action 102**；手写超过 1500 行的文件 **0 个**；模块间依赖 **40 条**（按同一口径复算，M2 时 60 条，2a 搬家合并三个生活模块后 46 条，`aed7f27`、`6a76e50` 去掉 6 条后 40 条，2b 没有变化）；修复批次占比未重算。R8 看不见值为对象的表，词表份数以「词表重复基线」为准。
 
-Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模块边）；`src/core/companion-foundation.ts:179` 一处条件读取对应两个目标。Console 行保留在当前违规基线里，没有改成放行规则。
+**阶段 3 收尾（`42072a1`）。** Console 运维接线的旧违规已清，R2 从 14 条降为 0 条，规则基线从 37 条降到 9 条，剩余均为 R1（`arch/baseline/rules.json:3–97`、`6dd3e4c:docs/plans/stage3-presentation.md:173–179,234`）。R8 扩面及门禁结果见[阶段 3](#阶段-3第三层原地治理p4已完成)。
 
 **修复批次如何数：** 一个不变量的一轮修复记一批（F）；一个提交里的不同不变量或有证据的再次返工分别记，附随测试、生成基线、结果文档和合并不重复记。功能（N）、发版（P）、其他（O）同样按交付批次去重。分类依据是提交说明、源码/测试差异和保存的执行结果，拿不准的已标估计；没有记录的轮次不补猜。
+
+**阶段 3 修复批次占比估计为 14 / 23（60.9%）。** 分母包括 7 个实施批、2 次发布和 14 个可辨认修复轮次（体检第 7 节）。实施中 6 轮是 Compact 取消、Room 写前取消、绑定代次首轮、桌宠投喂、Console 路由撤销／重复登记和钱包旧页竞写及停写。审查返工 7 轮是绑定代次、回包与实际效果、钱包离线同轮证据、身体呈现、计划读取失败仍停自治、Room 开窗隔离和 Compact 语音取消（`6dd3e4c:docs/plans/stage3-presentation.md:205–232`）。发布后钱包声明路线解决生产迁移阻断，再计 1 轮（`ebf53f1`）。合并历史里未保留的轮次待核实。
 
 ### 「要不要重写」的判断尺度
 
@@ -174,7 +176,7 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 | 把身体状态分类成呈现的分类器 | 2 套，对混合情绪结果不同 | **阶段 3 Room 后 1 套**，见[表现意图](architecture.md#57-动作与行为) |
 | 第二层里出现 `roomClip / desktopClip` | 有（`ActivityClip`） | **阶段 3 Room 后 0 处** |
 
-**2b 之后的口径**：2b 把各词表收成「值为对象的表 + 派生数组和守卫」，R8 扫描器只认数组字面量和值全是字符串的对象，看不见值为对象或布尔的表（`BODY_ACTIONS`、`PLAN_KINDS`、计划经济和菜园操作表、`READING_STATES`、`FACT_DOMAINS`）。删掉的副本是真实减少，但这些表和仍留着的副本（界面标签表、呈现表）之间的重叠不在 R8 基线里。所以上表的份数按概念逐行人工核对（定义处见 [architecture.md 5.6.1](architecture.md#561-第一批概念细表)），是 2b 的权威度量；R8 基线和 `pnpm run metrics` 只作辅助。要不要让扫描器认识这种表，留给阶段末 G8 复盘。
+**词表份数按概念逐行核对**，定义处见 [architecture.md 5.6.1](architecture.md#561-第一批概念细表)。扫描范围见 [R8 检查](architecture.md#3-依赖规则和自动检查)，阶段 3 扩面结果见[完成标准与结果](#阶段-3第三层原地治理p4已完成)。
 
 ### 防止越做越乱的机制
 
@@ -211,14 +213,22 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 | --- | --- |
 | 日记与回顾链路 | 4 批 |
 | 种地时钟 | 3 批。第 3 批修的是「暂停或恢复那一刻 Body、Economy 不在场，暂停时间被算成生长」（2A1A-12、2A1A-13，断言 2/12；`G3-GARDEN-01`–`17`），验收返工 1 轮（区间文件无效时不能挡住身体操作）。G3 复盘结论：三批的共同根因是「哪段时间算启用」没有被记录，只靠当前开关加菜园 `updatedAt` 在边界那一刻折算，换一种装卸组合或处理顺序就会多算或少算；现在暂停区间记在 Life 的 `control.json`，每次推进菜园都按区间扣，不依赖谁在场、谁先处理（[architecture.md 第 4 节](architecture.md#4-状态拥有者表)、6.2）。再失守即第 4 批，修之前先复盘 |
-| 计划推进与完成契约 | 2 轮；2a 3E 验收返工 1 轮：执行计划步骤的新命令把派工失败、转入重新考虑报成成功，改成按推进后的计划状态报 `unknown/reconcile`、`none/never`、`none/refresh`（`tests/living/living-lifecycle.test.mjs`） |
+| 计划推进与完成契约 | 原有 2 轮，另有 2a 3E 验收返工 1 轮，按推进后的计划状态回报结果。阶段 3 审查再返工 1 轮（`56d9ede`），修复显式暂停时计划读取失败导致 Body 自治未关停的问题，并保留原读取错误与原生轮次取消。合计可辨认 4 轮（`tests/living/living-lifecycle.test.mjs:1090–1109`） |
 | 关闭后晚到的录音与取消 | 多个入口。阶段 3 审查返工增加 QQ 合成撤销后零文字送达、Room 提供方准入时拒绝旧请求和 Compact 停止朗读／会话切换／隐藏的同号取消（`3-VOICE-05`、`3-ROOM-VOICE-01`；真实窗口 `tests/desktop/compact-voice-window.cjs`） |
 | 需要迁移的判定和离线迁移器同口径（运行时锁住的数据一定能离线解开，不该锁的不锁） | 修复 1 批，没有发布前失守。2a 第 4 批验收返工 1 轮（09e55e5）：运行时会锁住离线迁移器接不了的形状（选了 B 没初始化、`--resume-repo` 搬了没迁移的 Repo、删了 `.chatpet/`、0.2.0 的旧格式初始化标记），改成和 `inspectRepoBinding` 同口径判定，接不了的报 `binding-not-migratable`；新装存档的镜像一滞后，`0002` 就误报冲突并锁死，改成清单已过这一步时以 Core 为准。同一轮还修了本批引入的「拒写导出被当成功删掉」（`docs/portability.md` 的导出不丢）。测试 `tests/migrate/binding.test.mjs`、`tests/migrate/home-flow.test.mjs` |
 | 缺库拒绝、不让旧钱包复活（钱包问题只隔离钱包） | 修复 1 批，没有发布前失守。2a 第 5 批验收返工 1 轮（480c23a）：钱包证据文件内容坏了会让整个工作区不可用，改成工作区清单只看文件在不在、内容校验留给钱包；首次初始化留下空壳库时指引走不通，补上「移存库文件再重试」；迁移删掉 Core 旧键后钱包目录和 `data/living/` 同时丢失会重建钱包，加迁移日志作第五种采用证据（主人拍板）。测试 `2A5-01`–`07`、`tests/infrastructure/first-install.test.mjs` |
-| 绑定代次（旧任务不能借用当前绑定回包、通知或写入） | 阶段 3 Room 首切 `world.changed` 已做代次防护，第三层审查及返工仍在其它入口和初始化等待点复现同一不变量失守。本轮统一使用入口代次与 `sameHomeBinding`。**需要按 G3 提前复盘，第 3 批相关修复前必须完成**。共同根因是使用可复用的工作区标识、路径或修订，或只在回包时校验。复盘要查同类异步入口，并以换绑返回原工作区后无旧写入、旧通知和旧回包、当前请求可正常完成为验收。回归见行为清单 `3-CHANNELS-04`、`3-ROOM-CHAT-01`–`03`、`3-ROOM-VOICE-01`、`3-CONSOLE-07` |
+| 绑定代次 | 阶段 3 共 2 轮，见下方 [G3 复盘](#绑定代次的-g3-复盘) |
 | 回包与实际效果一致（钱包与渠道配置） | 阶段 3 审查返工 1 轮。钱包保留原号与终态供查证，证据一致时可重放。渠道配置已写入后换绑，提示刷新核对实际效果。回归见 `3-CONSOLE-08`–`10`、`tests/regressions/mapped-sleeping-inventory.test.mjs` |
-| 钱包离线操作从核验到执行持有同轮证据和停写条件 | 阶段 3 审查返工 1 轮。覆盖冻结等待期间更换导出，以及配置移除后仍运行的保留 Memory Bank。回归见 `tests/migrate/browser-wallet.test.mjs` |
+| 钱包离线操作从核验到执行持有同轮证据和停写条件 | 阶段 3 可辨认 2 轮。审查前一轮（`79abe18`、`fea2373`）核对旧页原值、冻结和逐笔条件写入，并在离线入口持迁移锁、复核停写。审查返工一轮（`b3bcf97`、`5bf5cab`）补租约取得后复读同轮导出摘要，以及配置移除后仍运行的保留 Memory Bank（`6dd3e4c:docs/plans/stage3-presentation.md:224–225`） |
 | 身体呈现保持过渡刷新及原号播放语义 | 阶段 3 审查返工 1 轮。到期过渡送达、原生菜园保留播放形状、忙时拒绝新投喂、呈现移除后仍可核对原号。回归见 `3-ROOM-GARDEN-01`、`3-DESKTOP-FEED-09`、`3-DESKTOP-FEED-10` |
+
+#### 绑定代次的 G3 复盘
+
+- **不变量。** 异步任务只在准入时捕获的绑定代次内继续派发、写入、通知与回包。A→B→A 后，旧 A 和新 A 即使工作区、路径、存储 ID、修订都相同，旧 A 的任务也不能继续。已提交的效果按原号核对。已经派发给上游的单笔桌宠关闭有已知边界，见[已知问题 12](#已知问题)（`src/core/home-binding.ts:3–6`、`6dd3e4c:docs/plans/stage3-presentation.md:205–211,226`）。
+- **第一轮。** `1e425cf` 给生活世界通知及区内工作带上原代次，`1cb7390`、`e91ec7c` 守住 Room 换绑与写前取消，`0394ec3` 让 Body 计时器沿用原绑定。`ed6fb4f`、`d29438f` 把同一思路接到 Channels 和 Desktop 刷新。这轮主要覆盖状态刷新和 Room 入口。排队中的渠道请求与送达、Room 原生恢复及语音提供方准入、钱包等待登记、桌宠逐笔关闭和 Core 初始化还各有自己的异步边界（`tests/behavior-list/presentation-r7.test.mjs:186–234`、`6dd3e4c:docs/plans/stage3-presentation.md:205–211`）。
+- **第二轮。** 审查发现入口或回包校验之间仍可换绑。旧调用经过队列、外部查询、提供方准入或 SQLite 等待，可能重新取到新 A，或在拒绝回包前已经产生效果。`406ed1b` 把比较提到 Core。`6fb06e3` 把渠道原代次贯穿请求、适配器和送达，`b08195a` 把钱包校验推进到登记等待与持久写前，`f08e5f1` 补 Room 原生取消、恢复落盘和语音提供方准入，`f418eec` 在逐笔关闭前后复核，`6ad9e8f` 补 Core 自述落盘与初始化等待结束后的复核（`6dd3e4c:docs/plans/stage3-presentation.md:205–211,247–254`）。共用比较解决字段口径，各入口仍需在能产生效果的地方实际调用它。
+- **目前的防线。** `sameHomeBinding` 比较 `workspaceId`、`path`、`storageId`、`bootId` 和 `generation`（`src/core/home-binding.ts:3–6`）。行为清单覆盖旧渠道通知、Room 会话恢复及取消、语音提供方零调用、旧钱包写入和恢复入口拒绝（`tests/behavior-list/index.json:1787–1860`）；桌宠与 Core 的回归及由红转绿记录见 `6dd3e4c:docs/plans/stage3-presentation.md:210–211,234`。
+- **同类改动的检查点。** 在入口且首次等待前捕获绑定和生命周期，沿调用链传给下游。逐一标出等待、排队、提供方准入、实际写入、逐笔派发、通知及回包的位置，在恢复执行与产生副作用前复核。验收要卡住其中一个真实等待点，做 A→B→A 并保持可复用标识相同，核对旧请求无新增写入、送达或成功回包，新请求仍能完成；已有提交用原号查证。再次失守时沿这条调用链复盘后再做第 3 批修复。
 
 ---
 
@@ -245,7 +255,7 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 | 3 | P4 | 第三层「呈现与连接」原地治理：登记口和共用小包，不重写模块 | [七批合并后一次发版](decisions.md#2026-11-23-阶段-3-合成一次发版)。 |
 | 4 | P5 | 收尾：删已不用的旧适配、文档对齐、体检 | 是 |
 
-2a、2b 的完成标准已经主人确认；阶段 3、4 的是草案，各阶段开始前按大改写方案时再定。
+阶段 3 已收尾，拍板口径见[阶段 3 决定](decisions.md#2026-11-23-阶段-3-拍板中长期有效的规则)。阶段 4 是当前阶段，待开工，完成标准待阶段 4 方案定稿。
 
 ### 阶段 1（MVP）地基 + 第一层（已完成）
 
@@ -338,11 +348,11 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 | `src/core/plugin.ts` import `living/plan/album-tools`，读 `petRoom`、`petLife` 做相册门控 | 3 | 2a 已清：相册工具搬进 `src/core/` 由 Core 继续挂载，门控改为第二层和 Room 登记的两个判定（拍板点 9）；Life 没加载、三入口全卸载都不丢相册 |
 | `src/core/native/memory.ts` import `living/plan/review-dialogue` | 1 | 2a：只搬家，该文件只依赖第一层和 vendor |
 | `src/memory/batch.ts` 订阅 `pet/life.review`、读 `petLife` | 2 | 2a：回顾完成时 Life 向下调用 Memory，调度语义不变 |
-| `src/core/companion-settings.ts` import `desktop/appearance` | 1 | 阶段 3：设置字段声明 |
+| `src/core/companion-settings.ts` import `desktop/appearance` | 1 | 阶段 3 批准保留为长期例外（`docs/decisions.md:280`、`arch/baseline/rules.json:5–14`） |
 | `src/core/initialization.ts` import `living/plan/library`，按安装根加载 `vendor/dsh-pet` | 2 | 长期例外：Core 在显式初始化时一次建好并校验全部容器，不改成模块登记 |
 | `src/memory/client.ts` 动态 import `vendor/mnemosyne` | 2 | 长期例外：按构建产物位置加载上游引擎，包内运行由 `check:package` 验证 |
 
-2a 结束时第一层目标只剩 5 条，阶段 3 做完设置字段声明后剩 4 条长期例外。长期例外留在基线里，不改成放行规则，每个阶段末按 G8 复核。共享 home 记录的旧例外属于 R5，不在这 23 条里，已在 2a 第 4 批清掉。
+2a 结束时第一层剩 5 条，阶段 3 保留上表末三行的 5 条作为长期例外（`arch/baseline/rules.json:3–36,68–86`）。长期例外留在基线里，每个阶段末按 G8 复核。共享 home 记录的旧例外属于 R5，已在 2a 第 4 批清掉。
 
 #### 阶段 1 整体完成标准（MVP）
 
@@ -367,7 +377,7 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 
 ### 之后
 
-缩小（B）之后：第一层停在 M2 的登记口，不再新建初始化表、提示词表，也不把现有目录搬进 `kernel/`；第二层照原计划合并，这是唯一保留的重写；第三层原地治理，不重写模块。检查、棘轮、行为清单、迁移骨架、G1–G9 全部保留，G8 每个阶段末照旧复盘。
+后续阶段沿用[阶段 1 缩小决定](decisions.md#2026-11-18-阶段-1-缩小m3-改为收口并发版)和[三层架构](architecture.md#0-一页总览)。
 
 #### 阶段 2：第二层「生活世界」（P3）（已完成：2a 发布 0.3.0，2b 发布 0.4.0）
 
@@ -421,36 +431,45 @@ Core 向上读取是 R2 中的 22 个目标、21 个调用点（7 条有向模�
 
 停止条件：同一条行为清单两轮修不好：止损；同一个不变量第二次失守：按 G3 提前复盘；某一批为了收拢词表必须改变对外行为，停下来重新对齐。
 
-#### 阶段 3：第三层原地治理（P4）（当前：进行中，实施已合并，待 RC、主人验收和 G8）
+#### 阶段 3：第三层原地治理（P4）（已完成）
 
-第三层不重写模块，用登记口和共用小包清违规。七批（安全网、Voice、Room、Channels、Desktop、Console、Console 数据）依次实施，合并后一次发版（[decisions.md](decisions.md)「阶段 3 合成一次发版」）。开始前交付第二批概念表，并像第一层一样给第三层每条基线违规定好去向（能清的清，清不了的写明长期例外）。
+七批（安全网、Voice、Room、Channels、Desktop、Console、Console 数据）合并后一次发版，见[发版决定](decisions.md#2026-11-23-阶段-3-合成一次发版)。执行结果和审查返工、第二批概念表及违规去向见 `6dd3e4c:docs/plans/stage3-presentation.md:118–237,299–310,385–392`。
 
-完成标准（草案）：
+##### 阶段 3 结果
 
-- 语音接口、运维操作表、图片共用小包落地，按去向表清掉对应违规（控制台的运维接线、读 `petVoice`、Room 引用 Desktop 的图片组件等）。
-- 设置字段声明和设置 RPC 声明（含已知问题 3、错误码单一定义、`core/companion-settings.ts` 的那条违规、典型修改第 7 类和 5b）：阶段 3 方案时按收益再评估一次。
-- 浏览器里的经济待确认请求按「先导出、再导入核对、后清除」迁入持久存储（随控制台），在副本上演练通过。
-- Channels 五类记录和 `desktop-session` 以原位例外留在 Core，见[状态拥有者表](architecture.md#4-状态拥有者表)。
-- R7 全通过：外围模块全部关闭、逐个关闭、不同启动顺序、重载、卸载与暂停的区别、工作区 A→B→A 换绑、写入完成但响应被取消。
-- 典型修改 2、3 实测达标。
-- Room 传输契约一份；`lifeDates` 一类端点名保留为兼容适配。
-- 槽位与素材分离、Desktop 的命令与通知协议、`WorkStage`、桌面设置键映射、Channels 状态命名：保留为草案，阶段 3 方案时按收益逐项定。
-- 情绪与呈现（2b 明确延到这里）：九种 feeling 的集合、Room 七维情绪集合各收成 1 份；两套呈现分类器合成 1 套（已知问题 4）；`ActivityClip`、`ActivityPlayback` 搬出第二层，第二层不再出现 `roomClip / desktopClip`。阶段 3 方案时为这四项分别写验收线。
-- 架构检查认识「值为对象的表」（阶段 2 收尾 G8 复盘）：2b 的词表都写成值为对象或布尔的表，R8 看不见，再写一份表形式的副本也拦不住。第一批安全网里让扫描器把这类表的键当作词表；由此一次性新增的基线条目，需要主人届时再批准一次。
-- 生活三区的内部通知经登记实例直调，呈现层经 `world.changed` 刷新，时序见 [architecture.md](architecture.md)「2.3 第二层」。
-- 身体状态按目标动作给出准入。Desktop 吃饭入口用 Body 串行判定：可开始时投喂，已呈现时只播放，忙碌或读失败时拒绝。已提交的投喂保留原编号，断开后凭原号核对。
-- 整份行为清单全绿。
+已发布预发布版 `0.5.0-rc.1`（`4eb6fa8`）和正式版 `0.5.0`（`f723ba1`），版本见两标签的 `package.json:3`。主人已验收正式版，日常机器已升级，**本机钱包已按「主人声明无待办」路线迁移完成**（主人确认，路线见 [development.md](development.md#console-wallet-migration) 和 `docs/decisions.md:284–288`）。
 
-**阶段 3 实施结果**：七批层叠实施后两层审查，22 条必须修统一在最后一批返工，合并时 `verify` 1777 项、行为清单 170 条全过，真实 Electron 的 Room 语音、Room 刷新、桌宠平台和 Compact 语音窗口检查通过。规则基线 37 → 9（剩余为第一层 4 条和 [decisions.md](decisions.md)「阶段 3 第三层 R1 长期例外」5 条），R8 扩面后 715 → 590，新增为零。典型修改 2、3 达标，7 未达标（见「典型修改前后对比」），5b 延到阶段 4 聊天平台接入复测。审查返工新增故障家族四个，绑定代次需按 G3 复盘。方案 `docs/plans/stage3-presentation.md` 已在合并时删除，各批执行结果、审查结论和返工记录在 git 历史里（最后版本见 `6dd3e4c35`）。还没做：生产 DSH 设置窗、实机 QQ／微信、隔离安装包与 RC、Console 数据在主人隔离副本上演练（[操作清单](development.md#console-wallet-migration)）、主人验收和 G8。
+**完成标准核对（体检第 6 节）**
+
+- [x] 语音接口、运维操作表及图片共用包已接入，对应的旧直接依赖已清理（`src/core/tables/voice.ts:15,33`、`src/console/plugin.ts:25`、`src/presentation/images.ts:25`、`6dd3e4c:docs/plans/stage3-presentation.md:131,142,176`）。
+- [ ] **部分完成，扩展止步。** 运维 RPC 按拥有者登记，结构化错误透传 `effect/retry`，`reject()` 复用拒绝码类型并保留原子集。典型修改 7 试做记录为 3 个手写文件、2 层，未达 1 文件／1 层，停止扩展通用字段声明。Core 外观引用保留为例外，5b 延至阶段 4 聊天平台接入时复测（`src/contracts/common.ts:19–36`、`src/core/storage.ts:5–11`、`src/console/settings.ts:79–88,110`、`docs/decisions.md:268,280`、`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
+- [ ] **合成演练通过，本机声明迁移完成。** 浏览器「导出 → 导入核对 → 清除」仅有合成副本的升级、断点续做、清源和回退证据。正式包读声明证明、激活及回退也有合成证据。实际有待办的生产浏览器导出和清源因生产适配缺口止步，实机验收待核实（`tests/migrate/wallet-rollback-040.mjs:55,181,380`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:46–51`、`docs/decisions.md:286–288`）。
+- [x] Channels 与桌宠的原位例外已登记，见[状态拥有者表](architecture.md#4-状态拥有者表)（`arch/storage.json:14–20`）。
+- [x] R7 组合检查历史记录通过，覆盖外围全关、逐关、反序装载、重载、卸载与暂停、A→B→A 换绑、写前取消和写后断回复（`tests/behavior-list/presentation-r7.test.mjs:46,78,156,186,207,234`、`tests/behavior-list/entries-lifecycle.test.mjs:551,637,943`）。
+- [x] 典型修改 2、3 按试做记录达标。Room 口渴项 3 文件／1 层，QQ 额度 9 文件／1 层。典型修改 2、3、7 的原始补丁或提交位置待核实（`6dd3e4c:docs/plans/stage3-presentation.md:145,155,291`）。
+- [x] Room 的端点派生自一份传输契约，保留 `lifeDates` 兼容端点（`src/presentation/room-transport.ts:9–36`、`src/console/settings.ts:37,40`、`tests/room/room-transport.test.mjs:93–140`）。
+- [ ] **按拍板完成局部收拢，其余延期。** Body 保留槽位准入，素材投影归呈现。桌宠本轮只收语音、Room 开窗和吃饭接点，便携设置默认值与校验已收拢，Channels 已合并连接返回类型。完整桌宠命令与通知协议、`WorkStage`、设备键重排、Channels 其余状态命名及素材目录合并延后，排期待核实（`src/living/body/animation-slots.ts:1–20`、`src/presentation/animation-map.ts:3–6`、`src/core/companion-settings.ts:6–43,54–76`、`ed6fb4f`、`6dd3e4c:docs/plans/stage3-presentation.md:29–33,305–310`）。
+- [x] 情绪与呈现四项完成。九种 feeling 和 Room 七维各有一份声明，两套分类器共用 `classifyActivity`，`ActivityClip`、`ActivityPlayback` 及 `roomClip / desktopClip` 已搬到呈现层（`src/contracts/emotion.ts:2–6`、`src/living/body/presentation.ts:11–29`、`src/presentation/playback.ts:4–17,34–36`、`19fcdae`）。
+- [x] R8 已识别对象表和布尔值表的键（`7a9baa5`），主人核准一次性补录 78 条（`a073826`）。扩面后基线 715 → 590，之后新增为零（`arch/baseline/vocabulary.json:2–4`、`tests/arch/object-vocabulary.test.mjs:8–33`、`tests/arch/approve-r8-baseline.test.mjs:36–61`）。
+- [x] 生活三区经登记实例直调，呈现层订阅 `world.changed`，三个旧事件已退役（`src/living/index.ts:166–188,352–379`、`tests/living/living-lifecycle.test.mjs:1038`、`dacfd25`）。时序见[第二层职责](architecture.md#23-第二层生活世界管什么)。
+- [x] 桌宠投喂由 Body 按目标动作串行准入，可开始时投喂，已呈现时只播放，忙碌或读失败时拒绝，断开后可按原号核对已提交效果（`tests/behavior-list/presentation-r7.test.mjs:336–486`）。
+- [x] 合并前全量门禁的 Node 部分 1777/1777、行为清单 170/170，真实 Electron 的 Room 语音、Room 刷新、桌宠平台和 Compact 语音窗口均已通过；钱包声明补丁后行为清单仍为 170/170（`6dd3e4c:docs/plans/stage3-presentation.md:234–237`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:50`）。
+
+**待核实的收尾证据。** 生产 DSH 设置窗、实机 QQ／微信、主人用更新按钮在隔离环境分别激活 RC 和正式包的记录，以及真实副本回退的独立记录，仍待核实（`6dd3e4c:docs/plans/stage3-presentation.md:237,295–296`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:50–51`、体检第 1、2、6 节）。体检第 8 节已列出规则与长期例外的逐项证据，阶段 3 G8 结论待核实。绑定代次见 [G3 复盘](#绑定代次的-g3-复盘)。
 
 停止条件：某个第三层模块（尤其 Desktop 的生成文件链路）无法在不改行为的前提下治理：停下来，把它的违规记为长期例外并说明理由；真实数据搬迁演练失败两轮：不进入下一个模块。
 
-#### 阶段 4：收尾（P5）
+#### 阶段 4：收尾（P5）（当前：待开工）
 
-完成标准（草案）：
+**完成标准待阶段 4 方案定稿。** 拟验收条目如下。
 
-- 删除已不用的旧适配；以已安装环境的配置实际不再引用为前提才删旧入口和旧服务名，否则保留并写明理由（兜底要先说明、主人同意才留）。
-- [architecture.md](architecture.md) 改写成重构完成后的结构；方案文件在合并时删除。
-- 前后对比总表照实记录：第 4 类达标、第 5 类未达标、第 6 类不设目标，其余按各自目标判；词表重复数达到目标，基线里的旧重复清理到目标数。
-- `contracts/` 按层拆分（architecture.md 2.1 的目标）：2b 没做，新常量照 2a 的做法放在 `contracts`；阶段 4 按收益再定，拆了之后复测典型修改第 8 类的层数。
-- 一次完整的阶段体检（skill-govern-stage）：文档、测试、代码、分支和规则；按 G8 复盘各条检查和长期例外，删除或放宽没起作用的。
+- [ ] 逐条记录旧适配、入口和服务名在已安装配置及公开调用处的引用证据。可删项移除后验证升级和正常入口，仍需兼容的项记录理由及验收用例，由主人确认。
+- [ ] 按实际模块、层间接口和长期例外核对 [architecture.md](architecture.md)，更新为收尾后的结构。合并时删除已完成方案，检查相对链接和锚点。
+- [ ] 更新前后对比总表，每题附计数起点和可复核差异，列手写源码、测试、产物和涉及层数，并按原目标判定。第 4 类已达标、第 5 类按 5a 判未达标、第 6 类不设目标，见[典型修改前后对比](#典型修改前后对比)。词表按声明份数实查，再用 `pnpm run check:arch -- --report` 对比基线，目标数待方案定稿。
+- [ ] 聊天平台接入时独立实做 5b，核对准入、设置和持久化的完整路径并记录文件数，按原标准检查第一层是否有改动（`docs/decisions.md:268`）。
+- [ ] 对典型修改 7 记录收益评估和是否再做的决定。若再做，用设置保存、重启和实际生效的流程验证，并核对是否达 1 个手写文件／1 层（`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
+- [ ] 按收益确认 `contracts/` 的逐层拆分范围。若拆分，按原场景独立复测第 8 类的照料动作和事实领域，分别记录手写文件数、物理层和漏改时的检查结果（[架构 2.1](architecture.md#21-现在--以后)、[典型修改前后对比](#典型修改前后对比)）。
+- [ ] 下次发版时，在发布说明补上「主人声明无待办」路线的适用条件及[操作入口](development.md#console-wallet-migration)，保留有待办时的导出路线。发布前核对说明与离线工具实际参数一致（`docs/decisions.md:286–288`、`docs/release/notes.md:15–28`）。
+- [ ] 跑全量门禁和行为清单，保存通过记录，至少验证一条真实入口的完整流程。逐项体检文档、测试、代码、分支和规则，按 G8 对每条检查和长期例外记录保留或调整理由及证据。
+
+把 [README.md](../README.md)、[github-updates.md](github-updates.md) 和 [settings.md](settings.md) 全文译成中文列为候选，主人本次未勾选。如纳入阶段 4，验收时核对命令、配置键及链接。

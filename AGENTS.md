@@ -2,7 +2,7 @@
 
 Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个伙伴的身份、记忆和生活，贯穿 DSH 原生聊天、桌宠、Room、QQ／微信和语音。使用者只有主人；维护者是 Claude 和 Codex。
 
-开工前先读 [docs/product.md](docs/product.md) 的当前阶段。Her World 正在按三层结构整体重构，阶段 1 已按 B 缩小（第一层停在登记口，只重写第二层的合并，第三层原地治理）：结构见 [docs/architecture.md](docs/architecture.md)，已拍板的取舍见 [docs/decisions.md](docs/decisions.md)。
+开工前先读 [docs/product.md](docs/product.md#阶段) 的当前阶段，再按需查[三层架构](docs/architecture.md#0-一页总览)和[缩小范围的决定](docs/decisions.md#2026-11-18-阶段-1-缩小m3-改为收口并发版)。
 
 用中文沟通；仓库文档用中文写，代码、命令、路径和分支名用英文。改到还是英文的文档时，顺手把它翻译成中文。
 
@@ -52,9 +52,9 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 没注明出处的约定来自 dev-kit 的项目模板（`~/Developer/dev-kit/`）；项目自己的规则在条目末尾注明出处（G7）。
 
 - 快测：`pnpm run build`，然后 `node --test <受影响的测试文件>`。构建只要几秒；改了 `arch/` 或模块之间的依赖，还要跑 `pnpm run check:arch`。
-- 门禁：`pnpm run verify`，合并前跑一次。它会自动收集 `tests/**/*.test.mjs` 和 `dist/tests/**/*.test.js`，并包含 `check:arch`。
+- 合并前跑一次[全量门禁](docs/development.md#全量验证与发布)。
 - 行为清单：`pnpm run build && pnpm run test:behavior-list`
-- 门禁和行为清单里的 Memory 测试要监听本机回环；在不允许回环的沙箱里会失败，这是环境问题，要换到允许回环的地方重跑，不能记成通过或跳过（见 [docs/development.md](docs/development.md#architecture-behavior)）Codex 沙箱拒绝调用 `/bin/ps` 也是同一类环境原因（2b 每一批都遇到）。
+- 门禁和行为清单里的 Memory 测试要监听本机回环。沙箱拒绝回环时，记为环境失败，换到允许回环的地方重跑（见[开发说明](docs/development.md#全量验证与发布)）。Codex 沙箱拒绝 `/bin/ps` 也是环境原因（2b 每一批都遇到）。Codex 沙箱里 Electron 退出 `SIGABRT`、创建临时目录时 `mkdtemp EPERM` 也是环境原因，换到沙箱外复跑（阶段 3 每一批都遇到，见 `6dd3e4c:docs/plans/stage3-presentation.md:220,232–237`）。
 - 恢复环境：[docs/development.md](docs/development.md#local-tools) 里的那一条恢复命令。挪了目录之后，先删掉 `.venv` 和 `node_modules` 再跑它。
 - 迁移和盘点命令：见 [docs/development.md](docs/development.md)。真实数据只在主人提供的隔离副本上跑；Agent 只看命令输出的原因代码和通过与否。
 - 高风险（改之前先停下对齐）：
@@ -84,6 +84,8 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 | `tests/behavior-list/` | 行为清单 |
 
 ## 项目规则
+
+本节未单独注明出处的规则来自 dev-kit 项目模板。
 
 - 这个工作区只保留现有源码和运维文档。主人没有要求的话，不重建历史方案、交接存档、包副本或审查报告集。
 - 确认过的需求、实现、验证和主人验收是四件不同的事，各自如实汇报。

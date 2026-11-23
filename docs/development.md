@@ -184,9 +184,9 @@ git diff --stat bfe069f..<分支>
 pnpm run verify
 ```
 
-这是共享的 PR/发布检查：环境、类型、架构棘轮、一次构建，所有编译后的 TypeScript 和 JavaScript 测试入口各一次，Python Memory 测试、发布校验，以及一次归档和包闭包/完整性检查。种地、钱包、库存、去重、Memory、连续性、备份恢复与存储归属的回归仍在其中；测试使用可丢弃数据，不调用付费模型。Memory 进程测试需要本机回环；沙箱拒绝监听应记录为环境失败，不是召回失败，不能记成通过或跳过。
+这是 PR 与发布共用的检查。先查环境、类型和架构棘轮并构建一次，再递归收集 `dist/tests/**/*.test.js`、`tests/**/*.test.mjs`，各入口执行一次，随后跑 Python Memory 测试、校验发布元数据，并生成和检查一份归档（`scripts/checks/verify.mjs:13–25`）。测试使用可丢弃数据且不调用付费模型。Memory 进程测试需要本机回环，沙箱拒绝监听时记为环境失败并在允许回环的环境复跑（`src/memory/main.py:17`、`tests/memory/memory-process.test.mjs:72–83`）。
 
-发布工作流会自行执行它。日常只做相关快测；已提交且干净的源码无需另做发布副本再重复全量验证。发布入口及脏工作区的隔离方法见 [发布与更新说明](github-updates.md)。
+PR CI 和发布工作流各自执行全量检查（`.github/workflows/ci.yml:13–16`、`.github/workflows/release.yml:49–53`）。日常只做相关快测。发布入口及脏工作区的隔离方法见[发布与更新说明](github-updates.md#publication)。
 
 ## 可选原生检查
 
@@ -196,11 +196,17 @@ pnpm run verify
 - `test:native-services`：跨会话 Bank 召回及 provider 重启。
 - `test:native-life`：限定作用域的回顾读写、越界拒绝、纠正/撤回、原生历史恢复及压缩连续性。
 - `test:room-refresh`：可选的 macOS Room 合成器与窗口检查。
-- 没有包脚本、只能手动运行的四条窗口检查，先 `pnpm run build`；Electron 用 DSH 自带的 `~/.dsh/electron/Electron.app/Contents/MacOS/Electron`：
+- 以下窗口检查需手动运行。先 `pnpm run build`，Electron 用 DSH 自带的 `~/.dsh/electron/Electron.app/Contents/MacOS/Electron`。
   - `tests/manual/room-canvas.cjs`：用 Electron 直接运行，隔离的 Chromium 合成回归，不连正在运行的 Room。
   - `tests/manual/companion-settings-window.cjs`：用 Electron 直接运行，需要已安装的 DSH（`DSH_APP` 改安装路径），设置页处理器用临时 Repo。
   - `node scripts/checks/check-standalone-window.mjs`：独立桌宠窗口探针（`tests/desktop/standalone-window-probe.cjs`），`DSH_CHATBOT_ELECTRON_PATH` 可改 Electron 路径。
   - `scripts/checks/check-room-interactions.cjs`：用 Electron 直接运行，在临时 Room 上走一遍 3D 视图和原生消息端口，不用个人资料、电视截图或平台账号。
+  - `tests/desktop/compact-voice-window.cjs` 用合成麦克风和宿主夹具检查停止朗读、切换会话、隐藏 Compact 窗口时是否取消同一请求（`6dd3e4c:docs/plans/stage3-presentation.md:232,237`）。
+
+    ```sh
+    env -u ELECTRON_RUN_AS_NODE "${DSH_CHATBOT_ELECTRON_PATH:-${DSH_HOME:-$HOME/.dsh}/electron/Electron.app/Contents/MacOS/Electron}" tests/desktop/compact-voice-window.cjs
+    ```
+
 - 回退到 0.2.0 的演练 `tests/migrate/home-rollback.mjs` 不在门禁里，要先准备一份装好依赖并构建过的 v0.2.0 检出，再运行 `HER_WORLD_020_ROOT=/absolute/v0.2.0 node --test tests/migrate/home-rollback.mjs`。它核对回退后聊天、召回和共享 home 可用，2a 发版前跑过。
 
 这些检查不安装或更新 DSH。已安装环境里的主人验收，与源码、包和脚本宿主验证分开。
