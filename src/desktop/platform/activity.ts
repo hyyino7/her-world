@@ -17,7 +17,7 @@ export const lifeActivityClips = Object.freeze({
   garden_sell:'生活-整理交易',garden_buySeed:'生活-整理交易',garden_buyCompost:'生活-整理交易',
 });
 export const physicalClips=new Set([...eatingClips,...sleepingClips,...Object.values(lifeActivityClips),'轻快摇摆舞','睡觉-起来','打瞌睡被惊醒','晨间刷牙']);
-export function activityPresentation(state:any, expression?:string) {
+export function activityPresentation(state:any) {
   const playback:ActivityPlayback|undefined=state?.playback ?? resolveActivityPlayback(state,animationSlotAllowed,classifyActivity);
   if(!playback)return {exclusive:false,action:undefined,notice:undefined,gap:false};
   const selected=sampleActivityPlayback(playback,state.now ?? Date.now());
@@ -27,9 +27,9 @@ export function activityPresentation(state:any, expression?:string) {
     playback,notice:playback.notice};
 }
 /** A renderer-only projection. Never return this from the configuration editor's read endpoint. */
-export function projectActivityConfig(config:any,state:any,expression?:string) {
+export function projectActivityConfig(config:any,state:any) {
   if(!state)return config;
-  const projected=structuredClone(config), presentation=activityPresentation(state,expression);
+  const projected=structuredClone(config), presentation=activityPresentation(state);
   for(const [root,entry] of Object.entries(projected) as [string,any][]) {
     if(!entry.animations)continue;
     const animations=entry.animations;

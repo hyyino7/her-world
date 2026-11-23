@@ -82,13 +82,11 @@ export class PetPlatform {
     setup;
     lookup;
     router;
-    providers;
     privateDirectory;
     behavior;
     behaviorKey = '';
     animationFeedbackKey = '';
     identityKey = '';
-    expressionAction;
     refreshing;
     refreshAgain = false;
     behaviorRead;
@@ -127,7 +125,6 @@ export class PetPlatform {
         this.behaviorKey = '';
         this.animationFeedbackKey = '';
         this.identityKey = '';
-        this.expressionAction = undefined;
         this.playbackKinds.clear();
         this.playbackReported.clear();
         this.feedPlaybacks.clear();
@@ -137,7 +134,6 @@ export class PetPlatform {
         this.ownerToken = '';
         this.toolToken = '';
         this.mediaToken = '';
-        this.providers = undefined;
     }
     sync() {
         const target = this.selected();
@@ -179,7 +175,7 @@ export class PetPlatform {
                         case 'shutdownApp': return ctx.get('shutdownApp', false);
                     }
                 },
-                provide: (_n, value) => { this.providers = value; },
+                provide: () => { }, // Upstream setup advertises an API that Her World does not expose.
                 effect: (setup) => { const stop = setup(); if (stop)
                     this.cleanup.push(stop); },
                 on: (event, receive) => {
@@ -275,7 +271,7 @@ export class PetPlatform {
                 assetRootFor: (ext) => join(vendor, 'assets', ext === '.mov' ? 'mov' : 'webm'),
                 userRootFor: (ext) => join(this.directory, 'main-animation', ext === '.mov' ? 'mov' : 'webm'),
                 requestRestart: desktops.requestRestart, canQuit: () => false,
-                publishWhisper: async (petId, image) => {
+                publishWhisper: async (_petId, image) => {
                     const result = await this.ctx.petDesktop.features?.whisper(image);
                     if (!result?.ok)
                         throw Error(result?.message || '碎碎念暂不可用');
@@ -427,10 +423,8 @@ export class PetPlatform {
     presentExpression(event) {
         if (!this.bound || event.workspaceId !== this.bound.id)
             return;
-        this.expressionAction = event.action;
         const busy = Boolean(this.behavior?.her);
         const action = catalog.actions.find(asset => asset.id === event.action && !physicalClips.has(asset.label));
-        this.expressionAction = action?.label;
         const sticker = catalog.stickers.find(asset => asset.id === event.sticker);
         for (const pet of this.pets()) {
             const own = upstream.readAllConfig(this.setup.configPaths).main.pets.some((p) => p.id === pet.id);
@@ -498,7 +492,6 @@ export class PetPlatform {
             const key = JSON.stringify([next?.her, next?.behavior, next?.emotion?.label, next?.emotion?.updatedAt, next?.emotion?.feelings, next?.presentation, Boolean(emotion)]);
             if (key === this.behaviorKey)
                 return;
-            this.expressionAction = catalog.actions.find(asset => asset.id === next?.presentation?.expression?.action)?.label;
             this.behaviorKey = key;
             this.setup.state.writeSection('nativeBody/behavior', next ?? null);
             const feedback = activityPresentation(next).playback?.feedback;
@@ -549,7 +542,7 @@ export class PetPlatform {
         }
     }
     activityAsset() {
-        return activityPresentation(this.behavior, this.expressionAction).action;
+        return activityPresentation(this.behavior).action;
     }
     playback(petId, name, kind) {
         const record = this.setup.playback.create(petId, name);
@@ -579,7 +572,7 @@ export class PetPlatform {
         }
     }
     projectConfig(config) {
-        return this.projectIdentity(projectActivityConfig(config, this.behavior, this.expressionAction));
+        return this.projectIdentity(projectActivityConfig(config, this.behavior));
     }
     projectIdentity(config) {
         const projected = structuredClone(config), identity = this.ctx.petCore.workspace.runtime.identity();
@@ -649,7 +642,7 @@ export class PetPlatform {
         return { path: route, pets: this.pets().map(({ id, name, display, position, assetRoot }) => ({ id, name, display, position, assetRoot })),
             running: this.bodyStatus().running, timing: main.eventsRefreshSec,
             migration: this.migration,
-            activity: this.behavior?.behavior, representation: { ...activityPresentation(this.behavior, this.expressionAction),
+            activity: this.behavior?.behavior, representation: { ...activityPresentation(this.behavior),
                 packGaps: this.behavior?.her ? this.pets().filter(p => !main.pets.some((own) => own.id === p.id)).map(p => p.id) : [] }, packsDirectory: join(this.directory, 'pet') };
     }
     async nativeChat(pet, method, raw, signal) {

@@ -34,7 +34,6 @@ export function privateDeviceDirectory(root, name) {
 }
 export class LocalBridge {
     ctx;
-    directory;
     origin;
     home;
     isHome;
@@ -49,7 +48,6 @@ export class LocalBridge {
     discovery;
     constructor(ctx, directory, origin, home, isHome, quiet, name, store, storageId, active) {
         this.ctx = ctx;
-        this.directory = directory;
         this.origin = origin;
         this.home = home;
         this.isHome = isHome;

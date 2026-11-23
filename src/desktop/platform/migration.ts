@@ -31,7 +31,6 @@ const upstream=require(join(root,'vendor/dsh-pet/platform/runtime.mjs')) as {
 };
 const object=(value:unknown):value is Json=>Boolean(value && typeof value==='object' && !Array.isArray(value));
 const digest=(value:string|Buffer)=>createHash('sha256').update(value).digest('hex');
-const absent=digest('absent');
 const receiptName='presentation-migration.json',backupName='presentation-before-unification.jsonc';
 const forbidden=new Set(['__proto__','prototype','constructor']);
 const fieldOf=(path:string[])=>path.map(part=>encodeURIComponent(part).replaceAll('.','%2E')).join('.');

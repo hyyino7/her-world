@@ -7,7 +7,6 @@ import {tmpdir} from 'node:os';
 import {dirname, join, relative, sep} from 'node:path';
 import {setTimeout as wait} from 'node:timers/promises';
 import {isDeepStrictEqual} from 'node:util';
-import type {NativeSession} from '../conversation.js';
 import type {} from '../plugin.js';
 import {desktopHomePlayback,activityPresentation,eatingClips,physicalClips,sleepingClips,projectActivityConfig} from './activity.js';
 import {migratePresentation,resolvePresentationMigration,type PresentationMigrationReceipt} from './migration.js';
@@ -88,13 +87,11 @@ export class PetPlatform {
   private setup: any;
   private lookup: any;
   private router?: (url:string, method:string, body?:string, signal?:AbortSignal)=>Promise<any>;
-  private providers: any;
   private privateDirectory?: string;
   private behavior: any;
   private behaviorKey = '';
   private animationFeedbackKey = '';
   private identityKey = '';
-  private expressionAction?: string;
   private refreshing?:Promise<void>;
   private refreshAgain=false;
   private behaviorRead?: {bound:{id:string;path:string};scope:AbortController;observation?:{bootId:string;revision:number}};
@@ -118,10 +115,10 @@ export class PetPlatform {
     this.setup?.playback.cancelAll();
     this.setup?.state.cancelAll();
     this.bound=undefined; this.homeBinding=undefined; this.router=undefined; this.lookup=undefined; this.setup=undefined;
-    this.behavior=undefined;this.behaviorKey='';this.animationFeedbackKey='';this.identityKey='';this.expressionAction=undefined;
+    this.behavior=undefined;this.behaviorKey='';this.animationFeedbackKey='';this.identityKey='';
     this.playbackKinds.clear();this.playbackReported.clear();this.feedPlaybacks.clear();
     this.migration=undefined;this.restartPresentation=undefined;this.presentationStatus=undefined;
-    this.ownerToken=''; this.toolToken=''; this.mediaToken=''; this.providers=undefined;
+    this.ownerToken=''; this.toolToken=''; this.mediaToken='';
   }
   sync() {
     const target=this.selected();
@@ -158,7 +155,7 @@ export class PetPlatform {
             case 'shutdownApp': return ctx.get('shutdownApp',false);
           }
         },
-        provide: (_n:string,value:any)=>{this.providers=value;},
+        provide: () => {}, // Upstream setup advertises an API that Her World does not expose.
         effect: (setup:()=>Clean|void)=>{ const stop=setup(); if(stop)this.cleanup.push(stop); },
         on: (event:'session/event'|'agent/error', receive:(session:any, data:any)=>void) => {
           const forward = (item:any,data?:any) => {
@@ -230,7 +227,7 @@ export class PetPlatform {
         assetRootFor:(ext:string)=>join(vendor,'assets',ext==='.mov'?'mov':'webm'),
         userRootFor:(ext:string)=>join(this.directory,'main-animation',ext==='.mov'?'mov':'webm'),
         requestRestart:desktops.requestRestart, canQuit:()=>false,
-        publishWhisper:async(petId:string, image?:string)=>{
+        publishWhisper:async(_petId:string, image?:string)=>{
           const result=await this.ctx.petDesktop.features?.whisper(image);
           if(!result?.ok)throw Error(result?.message || '碎碎念暂不可用');
           return result;
@@ -353,10 +350,8 @@ export class PetPlatform {
   }
   private presentExpression(event:any) {
     if(!this.bound || event.workspaceId!==this.bound.id)return;
-    this.expressionAction=event.action;
     const busy=Boolean(this.behavior?.her);
     const action=catalog.actions.find(asset=>asset.id===event.action && !physicalClips.has(asset.label));
-      this.expressionAction=action?.label;
     const sticker=catalog.stickers.find(asset=>asset.id===event.sticker);
     for(const pet of this.pets()) {
       const own=upstream.readAllConfig(this.setup.configPaths).main.pets.some((p:any)=>p.id===pet.id);
@@ -409,7 +404,6 @@ export class PetPlatform {
       const emotion=(this.ctx as any).get('petEmotion',false);
       const key=JSON.stringify([next?.her,next?.behavior,next?.emotion?.label,next?.emotion?.updatedAt,next?.emotion?.feelings,next?.presentation,Boolean(emotion)]);
       if(key===this.behaviorKey)return;
-      this.expressionAction=catalog.actions.find(asset=>asset.id===next?.presentation?.expression?.action)?.label;
       this.behaviorKey=key;
       this.setup.state.writeSection('nativeBody/behavior',next ?? null);
       const feedback=activityPresentation(next).playback?.feedback;
@@ -455,7 +449,7 @@ export class PetPlatform {
     }
   }
   private activityAsset(): string | undefined {
-    return activityPresentation(this.behavior,this.expressionAction).action;
+    return activityPresentation(this.behavior).action;
   }
   private playback(petId:string,name:string,kind:PlaybackReceipt['kind']) {
     const record=this.setup.playback.create(petId,name);
@@ -481,7 +475,7 @@ export class PetPlatform {
     }
   }
   private projectConfig(config:any) {
-    return this.projectIdentity(projectActivityConfig(config,this.behavior,this.expressionAction));
+    return this.projectIdentity(projectActivityConfig(config,this.behavior));
   }
   private projectIdentity(config:any) {
     const projected=structuredClone(config), identity=this.ctx.petCore.workspace.runtime.identity();
@@ -540,7 +534,7 @@ export class PetPlatform {
     return {path:route,pets:this.pets().map(({id,name,display,position,assetRoot})=>({id,name,display,position,assetRoot})),
       running:this.bodyStatus().running,timing:main.eventsRefreshSec,
       migration:this.migration,
-      activity:this.behavior?.behavior,representation:{...activityPresentation(this.behavior,this.expressionAction),
+      activity:this.behavior?.behavior,representation:{...activityPresentation(this.behavior),
         packGaps:this.behavior?.her ? this.pets().filter(p=>!main.pets.some((own:any)=>own.id===p.id)).map(p=>p.id) : []},packsDirectory:join(this.directory,'pet')};
   }
   private async nativeChat(pet: string, method: string, raw: string|undefined, signal:AbortSignal) {

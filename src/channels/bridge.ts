@@ -40,7 +40,7 @@ export class LocalBridge {
   private instance?: ReturnType<typeof createBridge>;
   private readonly settingsFile: string;
   readonly discovery: string;
-  constructor(private ctx: Context, private directory: string, private origin: () => string,
+  constructor(private ctx: Context, directory: string, private origin: () => string,
     private home: () => Promise<Agent>, private isHome: (id: string) => boolean,
     private quiet: () => boolean, private name: () => string, private store:CoreStore, private storageId:string, private active: () => boolean) {
     this.settingsFile = join(directory, 'local-bridge.json');

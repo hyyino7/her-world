@@ -9,26 +9,26 @@ const state=(kind='idle',phase='working')=>({now:1000,her:{kind,activity:'真实
 for(const [kind,clip,gap,slotId] of [['idle','待机呼吸休闲',true,'rest.anger'],['walk','原地漂浮踏步',true,'move.normal'],['eat','吃白饭',false,'food.rice'],['sleep','睡觉-循环',false,'sleep.full'],['react_shy','点击回应-害羞惊讶',false,undefined]]) {
   test(`${kind} locks every animation source to the actual activity`,()=>{
     const s=state(kind);s.her.walking=kind==='walk';s.her.asleep=kind==='sleep';
-    const before=config(),actual=projectActivityConfig(before,s,'写代码');
+    const before=config(),actual=projectActivityConfig(before,s);
     assert.deepEqual(actual.main.animations.idle,[clip]);assert.deepEqual(actual.main.animations.turn,[clip]);assert.deepEqual(actual.main.animations.clicks,[clip]);
     assert.deepEqual(actual.main.animations.moves.actions,[]);assert.deepEqual(actual.main.animations.categories,[]);assert.equal(actual.main.pets[0].workStatusEnabled,false);
     assert.deepEqual(before,config(),'Projection must not replace saved editor configuration');
-    const portrayal=activityPresentation(s,'写代码');
+    const portrayal=activityPresentation(s);
     assert.equal(portrayal.gap,gap,'Proxy/missing detail remains explicit even when its main clip is usable');
     assert.equal(portrayal.playback.slotId,slotId);
     if(gap)assert.ok(portrayal.notice);
   });
 }
 for(const kind of ['garden_unknown','unknown_custom_activity'])test(`${kind} exposes missing actual media instead of claiming visual completion`,()=>{
-  const actual=activityPresentation(state(kind),'写代码');assert.equal(actual.exclusive,true);assert.equal(actual.gap,true);assert.match(actual.notice,/缺少对应活动动画/);assert.equal(actual.activityId,'accepted-operation');assert.equal(actual.phase,'working');
+  const actual=activityPresentation(state(kind));assert.equal(actual.exclusive,true);assert.equal(actual.gap,true);assert.match(actual.notice,/缺少对应活动动画/);assert.equal(actual.activityId,'accepted-operation');assert.equal(actual.phase,'working');
 });
 for(const [kind,clip] of [['drink','生活-捧杯喝水'],['garden_till','生活-松土'],['garden_plant','生活-播种'],['garden_water','生活-浇水'],['garden_fertilize','生活-施肥'],['garden_harvest','生活-采收'],['garden_sell','生活-整理交易'],['garden_buySeed','生活-整理交易'],['garden_buyCompost','生活-整理交易'],['garden_visit','待机呼吸休闲']])test(`${kind} selects its actual life media instead of a reply or random action`,()=>{
-  const actual=activityPresentation(state(kind),'写代码');assert.equal(actual.action,clip);
+  const actual=activityPresentation(state(kind));assert.equal(actual.action,clip);
   const transaction=['garden_sell','garden_buySeed','garden_buyCompost'].includes(kind);
   assert.equal(actual.gap,transaction,'Shared trade media leaves dedicated goods/payment handover uncovered');
   if(transaction)assert.ok(actual.playback.uncovered.length>0);
   if(kind==='garden_visit')assert.ok(actual.playback.segments.some(part=>part.desktopClip==='东张西望'),'Unknown onset skips old entry, but the actual inspection segment remains registered');
-  const projected=projectActivityConfig(config(),state(kind),'写代码');assert.deepEqual(projected.main.animations.idle,[clip]);
+  const projected=projectActivityConfig(config(),state(kind));assert.deepEqual(projected.main.animations.idle,[clip]);
   if(kind!=='garden_visit')assert.equal(physicalClips.has(clip),true,'Real work media cannot be selected as an unrelated reply expression');
 });
 test('reading presentation requires a structured accepted read and a real text offer',()=>{
