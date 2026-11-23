@@ -90,11 +90,12 @@ export function readWalletRollback(context, file, exported) {
 }
 
 /** Re-check the matching installed package before the existing offline restore. */
-export function verifyWalletRollback({installation,walletExport,walletRollback}) {
+export function verifyWalletRollback({installation,walletExport,walletRollback,exportDigest}) {
   const context = loadInstallation(installation);
   assertOffline(context);
   assertWalletArtifactExternal(context,walletExport);
   const exported = readWalletExport(walletExport,walletBinding(context.plan));
+  requireMigration(exportDigest === undefined || exported.digest === exportDigest,'wallet-source-conflict');
   const anchor = readWalletRollback(context,walletRollback,exported);
   const saved = checked('wallet-rollback-invalid',() => verifyOfflineBackup(anchor.backup,context.plan));
   requireMigration(saved.codeFingerprint === anchor.codeFingerprint,'wallet-rollback-invalid');

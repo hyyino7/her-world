@@ -98,6 +98,7 @@ export async function reconcileWalletSources({file,journal,binding,sources,acqui
   const wallet = readWalletExport(file,binding);
   const authorized = matchSources(sources,wallet,binding);
   return withFrozenSources(acquire,{binding,round:wallet.round,sources:authorized},async lease => {
+    requireMigration(readWalletExport(file,binding).digest === wallet.digest,'wallet-source-conflict');
     requireMigration(typeof verify === 'function' && await verify({wallet,mode}) === true,
       mode === 'clear' ? 'wallet-import-invalid' : 'wallet-rollback-invalid');
     const intent = readIntent(journal,wallet,mode);

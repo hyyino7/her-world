@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs, {existsSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:fs';
+import fs, {existsSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {syncBuiltinESMExports} from 'node:module';
@@ -160,6 +160,26 @@ if (process.argv[1] === script && process.argv[2] === '--crash') {
     await assert.rejects(f.capture({acquire}),{code:'wallet-source-conflict'});
     assert.equal(existsSync(f.file),false);
     assert.equal(f.read(f.sources[0]),second);
+  });
+
+  for (const phase of ['clear','restore']) test(`${phase} 拒绝冻结租约获取期间换成另一轮的导出`, async t => {
+    const f = fixture(t);
+    const wallet = await f.capture();
+    const replacement = join(f.root,'another-export.json');
+    const next = await f.capture({file:replacement,round:randomUUID()});
+    assert.notEqual(wallet.digest,next.digest);
+    const acquired = [];
+    const acquire = ({round}) => {
+      acquired.push(round);
+      renameSync(replacement,f.file);
+      return {assertFrozen:() => true, read:source => phase === 'clear' ? f.read(source) : null,
+        compareAndSet:() => assert.fail('核验另一轮导出后尝试写浏览器来源')};
+    };
+    // As in the production runner, the verifier observes the artifact by path.
+    const verify = () => readWalletExport(f.file,fixedBinding).digest === next.digest;
+    await assert.rejects(f.reconcile(phase,{acquire,verify}),{code:'wallet-source-conflict'});
+    assert.deepEqual(acquired,[wallet.round]);
+    assert.equal(existsSync(join(f.root,phase+'.json')),false);
   });
 
   test('操作意图落盘后冻结失效，续做不能把外部删键当成本轮完成', async t => {

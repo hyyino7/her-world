@@ -89,23 +89,24 @@ function checkAdmission(context, journal, selected, contract, { resume, backup }
   return version;
 }
 
-function recheckWalletInputs(context, header, saved) {
+function recheckWalletInputs(context, header, saved, exportDigest) {
   const wallet = header.walletImport;
   const inputs = readWalletMigrationInputs(context,wallet.exportFile,wallet.rollbackFile);
+  requireMigration(exportDigest === undefined || inputs.exported.digest === exportDigest,'wallet-source-conflict');
   const proof = walletImportProof(context,inputs.exported,header.economyAdopted);
   requireMigration(wallet.codeFingerprint === saved.codeFingerprint
     && wallet.rollbackDigest === inputs.rollback.digest && isDeepStrictEqual(wallet.proof,proof),'wallet-import-invalid');
   context.walletImport = {...inputs,proof};
 }
 
-export function verifyWalletImport({installation,walletExport,walletRollback}) {
+export function verifyWalletImport({installation,walletExport,walletRollback,exportDigest}) {
   const context = loadInstallation(installation);
   assertOffline(context);
   const {last,truncated} = validateJournal(context);
   const header = last?.header, wallet = header?.walletImport, contract = contractFor(steps);
   requireMigration(wallet && !truncated && settled(last) && isDeepStrictEqual(header.steps,contract)
     && wallet.exportFile === walletExport && wallet.rollbackFile === walletRollback,'wallet-import-invalid');
-  recheckWalletInputs(context,header,verifySaved(context,header));
+  recheckWalletInputs(context,header,verifySaved(context,header),exportDigest);
   assertPreviousTargets(context,steps,steps.length,manifestVersion(context,contract),header);
   assertOffline(context);
   return true;
@@ -150,7 +151,7 @@ export async function runWalletBrowserOperation({installation,mode,walletExport,
     }
     assertWalletArtifactExternal(context,journal);
     const verify = mode === 'clear' ? verifyWalletImport : verifyWalletRestore;
-    const result = await reconcileWalletSources({...input,journal,mode,verify:() => verify({installation,walletExport,walletRollback})});
+    const result = await reconcileWalletSources({...input,journal,mode,verify:({wallet}) => verify({installation,walletExport,walletRollback,exportDigest:wallet.digest})});
     return {sourceCount:result.sourceCount,complete:result.complete};
   } finally { release(); }
 }
