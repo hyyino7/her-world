@@ -1,19 +1,16 @@
-import { existsSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createPhotoStore } from '#dsh-world/life/photos';
 
-/** One selected location per resource. Existing Life records remain authoritative
- * until an explicit migration moves them; a blank new file never hides them. */
 export function companionRecordPaths(root: string) {
-  const managed = join(root, '.chatpet');
-  const lifeDirectory = join(managed, 'data', 'life');
-  for (const path of [managed, join(managed, 'data'), lifeDirectory, join(managed, 'data', 'core')]) {
+  const directory = join(root, '.chatpet');
+  const data = join(directory, 'data');
+  const lifeDirectory = join(data, 'life');
+  const photoDirectory = join(data, 'core');
+  for (const path of [directory, data, lifeDirectory, photoDirectory]) {
     const stat = lstatSync(path, {throwIfNoEntry:false});
     if (stat && (!stat.isDirectory() || stat.isSymbolicLink())) throw Error('Companion record directory is invalid');
   }
-  const legacyWriting = ['self.md', 'self.history', 'diary'].some(name => existsSync(join(lifeDirectory, name)));
-  const directory = legacyWriting ? lifeDirectory : managed;
-  const photoDirectory = existsSync(join(lifeDirectory, 'photos')) ? lifeDirectory : join(managed, 'data', 'core');
   return { directory, selfFile:join(directory, 'self.md'), diaryDir:join(directory, 'diary'),
     historyDir:join(directory, 'self.history'), lifeDirectory, photoDirectory };
 }

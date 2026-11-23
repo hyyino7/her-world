@@ -5212,7 +5212,7 @@
     {
       "rule": "R8",
       "file": "src/core/record-paths.ts",
-      "line": 35,
+      "line": 32,
       "column": 22,
       "scope": "initializeCompanionRecords",
       "target": "{\"file\":\"src/core/records.ts\",\"scope\":\"CompanionRecordLibrary/album\"}",
@@ -5252,7 +5252,7 @@
       "other": {
         "file": "src/core/record-paths.ts",
         "scope": "initializeCompanionRecords",
-        "line": 35
+        "line": 32
       }
     },
     {

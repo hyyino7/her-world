@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import type {PetCoreHost} from '../../src/core/index.js';
@@ -12,7 +12,11 @@ import {CompanionVoice} from '../../src/voice/plugin.js';
 test('the current Core album and dated journal survive reopening, and deleted photos stay deleted', t => {
   const root = mkdtempSync(join(tmpdir(),'fish-library-'));
   t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const retired=join(root,'.chatpet/data/life/photos');
+  mkdirSync(retired,{recursive:true});
+  writeFileSync(join(retired,'album.sqlite'),'Historical fixture');
   const paths=initializeCompanionRecords(root);
+  assert.equal(paths.photoDirectory,join(root,'.chatpet/data/core'));
   writeFileSync(join(paths.diaryDir,'2026-11-11.md'),'garden');
   const settings = {wake:'08:15',review:'20:35',dailyBudget:0.75,compactAfterReview:true};
   assert.deepEqual(parseLifePreferences(settings),{...settings,planningRepairAttempts:null});
@@ -26,6 +30,7 @@ test('the current Core album and dated journal survive reopening, and deleted ph
   assert.deepEqual([...library.album().image(photo.id)!.data],[1,2,3]);
   library.album().forget(photo.id); library.close();
   library = new CompanionRecordLibrary(root,'Asia/Ho_Chi_Minh'); assert.equal(library.album().list().total,0); library.close();
+  assert.equal(readFileSync(join(retired,'album.sqlite'),'utf8'),'Historical fixture');
 });
 
 test('shared Pet speech resolves the selected native recognizer and reuses the scoped audio cache', async t=>{

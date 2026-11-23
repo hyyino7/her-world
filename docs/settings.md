@@ -289,10 +289,8 @@ bundled persona/default silently fills it. The next eligible native request
 receives the saved content, combined with SOUL/USER and only the capabilities
 actually available to that conversation. Native DSH permissions remain authoritative.
 
-New self-description records use `.chatpet/self.md`, with `.chatpet/self.history/`
-and `.chatpet/diary/` alongside it. An existing Life-directory self/history/diary
-set remains the single canonical source selected by the existing record-path
-resolver until explicitly migrated; a second competing copy is not created.
+自述保存在 `.chatpet/self.md`，历史与日记分别保存在 `.chatpet/self.history/` 和
+`.chatpet/diary/`。
 Core's scoped reader/writer integration permits ordinary
 conversation updates without autonomous Life. It remains distinct from the
 owner-authored persona, the user's profile and Memory facts. Life's daily review
@@ -387,9 +385,7 @@ opening story, and automatic care off. Existing saves remain unchanged; resource
 must actually exist before the original purchase/planting operations can succeed.
 
 The switch and state live in `.chatpet/data/life/` in the bound Repo:
-`control.json`, `home.json`, `life.json`, `life/wakes.jsonl`, `activity/`,
-legacy `diary/` and companion-authored `self.md` where already selected. New
-writing uses the canonical paths described above. Complete home-session
+`control.json`, `home.json`, `life.json`, `life/wakes.jsonl` and `activity/`. Complete home-session
 events use Core's existing portable native transcript copies and Mnemosyne
 enrollment. Life has no separate Memory extractor or Bank. It reuses the
 existing turn/idle Memory batching. Pause retains alarm and event records. It stops autonomous model wakeups,
@@ -458,7 +454,7 @@ gentle touch do not wake an already sleeping body.
   native gardens remain event-driven. Hidden, minimized, locked and disposed
   views stop those reads; reopening refreshes the snapshot. These reads do not
   call a model, choose work, grow a second world or harvest automatically.
-- **角色 → 日记与相册** browses the Core-owned diary/photo archive and eligible original dialogue, independent of autonomous Life. The original photo tools also work in ordinary native chat. New records use `.chatpet/self.md`, `.chatpet/self.history/`, `.chatpet/diary/` and `.chatpet/data/core/photos/`. Existing Life-directory records remain their single canonical source until explicitly migrated. Changing workspaces closes the previous view.
+- **角色 → 日记与相册** browses the Core-owned diary/photo archive and eligible original dialogue, independent of autonomous Life. The original photo tools also work in ordinary native chat. New records use `.chatpet/self.md`, `.chatpet/self.history/`, `.chatpet/diary/` and `.chatpet/data/core/photos/`. Changing workspaces closes the previous view.
 - **连接 → 外部联络 → 管理渠道** configures the current companion’s device-local accounts. For QQ, select a loopback OneBot WebSocket, specify the account, and allow individual private conversations and groups. The token field names a device environment variable. For WeChat, provide the account and allowed chats, then connect a compatible adapter using its private discovery file. Status and receipts report connectivity, queue state and provider-reported usage. A verified owner private chat resolves the retained companion home even while autonomous Life is paused or unloaded. Group/private guest chats have independent native histories. Each allowed QQ group has its own public character card, relationship material, phrase review and stickers.
 - Open an allowed QQ group to choose its public role card and how it participates. V1 replies to directed messages. V2 can observe a conversation, wake on the configured triggers and choose whether to send. Its name trigger uses the current Core companion name; later messages follow a rename without reconnecting. The group panel shows unread activity and its observation reports. A verified owner can ask to publish a saved public QQ Space draft in private chat. Enabling the schedule also publishes queued drafts at the selected Beijing times.
 - **本地程序和推送** enables the original World token-authenticated home bridge. The private discovery file contains the current home address and token. Each configured HTTP destination chooses which of `reach`, `reply` and `busy` it accepts. Turning the bridge off, switching the bound Repo or stopping Channels withdraws the old bridge. Pausing or unloading autonomous Life does not disable an explicitly enabled owner bridge; it continues to use the retained native home.
