@@ -1436,7 +1436,7 @@ export class CompanionRoom {
                 safeFile(this.gardenFile);
             const revision = port ? this.loadGardenState(now).economyRevision : undefined;
             const clock = this.gardenClock();
-            const result = port ? port.actGarden(action, now, clock) : this.actLegacyGarden(action, now, clock);
+            const result = port ? port.actGarden(action, now, clock) : this.actUnadoptedGarden(action, now, clock);
             // The authoritative action is committed once. A refusal must not retire
             // accepted Body work. An old Economy receipt has no new revision; a new
             // commit interrupts against the latest checkpoint.
@@ -1452,7 +1452,7 @@ export class CompanionRoom {
             return { ok: false, status: garden.status, message: garden.message, garden };
         }
     }
-    actLegacyGarden(action, now, clock) {
+    actUnadoptedGarden(action, now, clock) {
         if (clock.pauses === undefined)
             return actGarden(this.gardenFile, action, now);
         const state = advanceGardenClock(loadGarden(this.gardenFile, now), now, clock, advanceGarden);

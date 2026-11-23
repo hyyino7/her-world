@@ -36,7 +36,6 @@ export type WalletEvidence = {
 } & ({state:'committed'} | {state:'partial'} | {state:'no-evidence'} | {state:'conflict'});
 export type WalletState = WalletEvidence['state'] | 'abandoned';
 type Binding = {storageId: string; companionId: string};
-type ImportedRequest = WalletRequest & {requestId: string};
 
 function requestIdValid(id: string) {
   text(id, 'wallet request ID', 160);
@@ -101,7 +100,6 @@ export function legacyWalletDigest(requestId: string, {input}: WalletRequest) {
   return 'payload' in original ? digest(original) : undefined;
 }
 
-const proofKey = 'console.wallet-import';
 export function installConsoleRequests(db: DatabaseSync) {
   db.exec(`CREATE TABLE IF NOT EXISTS console_wallet_requests (
     id TEXT PRIMARY KEY, storage_id TEXT NOT NULL, companion_id TEXT NOT NULL,
@@ -109,11 +107,6 @@ export function installConsoleRequests(db: DatabaseSync) {
     state TEXT NOT NULL CHECK(state IN ('pending','committed','declined','abandoned')),
     CHECK((state='pending')=(input IS NOT NULL)));
     CREATE INDEX IF NOT EXISTS console_wallet_pending_food ON console_wallet_requests(food_operation_id) WHERE state='pending';`);
-}
-
-export function readConsoleImportProof(db: DatabaseSync): unknown {
-  const row = db.prepare('SELECT value FROM meta WHERE key=?').get(proofKey);
-  return row ? JSON.parse(String(row.value)) : undefined;
 }
 
 export class ConsoleRequests {
@@ -157,16 +150,4 @@ export class ConsoleRequests {
       .run(state, id, fingerprint, this.binding.storageId, this.binding.companionId);
     if (update.changes !== 1) reject('CONFLICT', 'Wallet request changed during reconciliation');
   }
-}
-
-/** The offline step owns the transaction containing schema, rows and proof. */
-export function importConsoleRequests(db: DatabaseSync, binding: Binding, requests: ImportedRequest[], proof: unknown) {
-  installConsoleRequests(db);
-  const rows = new ConsoleRequests(db, binding);
-  for (const request of requests) {
-    const normalized = normalizeWalletRequest(request.endpoint, request.input);
-    check(normalized.fingerprint === request.fingerprint, 'Wallet import fingerprint changed');
-    rows.add(request.requestId, normalized);
-  }
-  db.prepare('INSERT INTO meta VALUES (?,?)').run(proofKey, canonical(proof));
 }

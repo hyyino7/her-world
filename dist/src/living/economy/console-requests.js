@@ -79,7 +79,6 @@ export function legacyWalletDigest(requestId, { input }) {
     const original = walletActionReceipt(requestId, input.action);
     return 'payload' in original ? digest(original) : undefined;
 }
-const proofKey = 'console.wallet-import';
 export function installConsoleRequests(db) {
     db.exec(`CREATE TABLE IF NOT EXISTS console_wallet_requests (
     id TEXT PRIMARY KEY, storage_id TEXT NOT NULL, companion_id TEXT NOT NULL,
@@ -87,10 +86,6 @@ export function installConsoleRequests(db) {
     state TEXT NOT NULL CHECK(state IN ('pending','committed','declined','abandoned')),
     CHECK((state='pending')=(input IS NOT NULL)));
     CREATE INDEX IF NOT EXISTS console_wallet_pending_food ON console_wallet_requests(food_operation_id) WHERE state='pending';`);
-}
-export function readConsoleImportProof(db) {
-    const row = db.prepare('SELECT value FROM meta WHERE key=?').get(proofKey);
-    return row ? JSON.parse(String(row.value)) : undefined;
 }
 export class ConsoleRequests {
     db;
@@ -132,16 +127,5 @@ export class ConsoleRequests {
         if (update.changes !== 1)
             reject('CONFLICT', 'Wallet request changed during reconciliation');
     }
-}
-/** The offline step owns the transaction containing schema, rows and proof. */
-export function importConsoleRequests(db, binding, requests, proof) {
-    installConsoleRequests(db);
-    const rows = new ConsoleRequests(db, binding);
-    for (const request of requests) {
-        const normalized = normalizeWalletRequest(request.endpoint, request.input);
-        check(normalized.fingerprint === request.fingerprint, 'Wallet import fingerprint changed');
-        rows.add(request.requestId, normalized);
-    }
-    db.prepare('INSERT INTO meta VALUES (?,?)').run(proofKey, canonical(proof));
 }
 //# sourceMappingURL=console-requests.js.map

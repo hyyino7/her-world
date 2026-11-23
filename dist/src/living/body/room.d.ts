@@ -226,5 +226,5 @@ export declare class CompanionRoom {
         accepted?: boolean;
         status?: string;
     };
-    private actLegacyGarden;
+    private actUnadoptedGarden;
 }
