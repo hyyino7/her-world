@@ -111,7 +111,12 @@ test('R6-01: actual storage identity replacement revokes a draft with the same w
   try {
     const expectedScope=await scope(host),profile=value(await host.services.workspace.readProfile(host.operator.request(id()),{})),before=f.bytes();
     host.workspace.runtime.store.setMeta('workspace.storage-id','changed-storage');
-    const result=await host.services.workspace.saveProfile(host.operator.request(id()),{expectedScope,expectedRevision:profile.revision,text:'old storage'});
-    assert.equal(result.ok,false);if(!result.ok)assert.equal(result.error.code,'STALE_BINDING');assert.deepEqual(f.bytes(),before);
+    const write=(editor:typeof expectedScope)=>host.services.workspace.saveProfile(host.operator.request(id()),
+      {expectedScope:editor,expectedRevision:profile.revision,text:'old storage'});
+    const stale=await write(expectedScope);
+    assert.equal(stale.ok,false);if(!stale.ok)assert.equal(stale.error.code,'STALE_BINDING');
+    const current=await write(await scope(host));
+    assert.equal(current.ok,false);if(!current.ok)assert.equal(current.error.code,'migration-required');
+    assert.deepEqual(f.bytes(),before);
   }finally{await host.close();}
 });

@@ -109,7 +109,7 @@ export class CoreWorkspace {
         const binding = this.binding(); check(binding !== null, 'Initialize the workspace first');
         this.replace(binding, 'USER.md', input.text);
         const value = { revision: current.revision + 1, text: input.text }; runtime.store.put('profile', 'current', value); return value;
-      }),
+      }, input => this.assertEditScope(input.expectedScope)),
       readFoundation: runtime.call('workspace.readFoundation', false, () => this.foundation()),
       saveFoundation: runtime.call('workspace.saveFoundation', true, input => {
         const current = this.foundation(), binding = this.binding();

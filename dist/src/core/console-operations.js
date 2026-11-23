@@ -1,5 +1,6 @@
+import { sameHomeBinding } from './home-binding.js';
 import { desktopAppearanceDefaults } from './companion-settings.js';
-import { Rejection } from './storage.js';
+import { reject, Rejection } from './storage.js';
 import { fail, object, requiredText } from './tables/console.js';
 export function unwrap(result) {
     if (!result.ok)
@@ -46,7 +47,7 @@ export function coreConsoleOperations(host) {
                 const input = object(call.input, writing ? ['workspaceId', 'expectedRevision', 'text'] : ['workspaceId']);
                 const id = requiredText(input.workspaceId, 200);
                 call.checkBinding(id);
-                return writing ? host.records.saveSelf(id, requiredText(input.expectedRevision, 256), input.text)
+                return writing ? host.records.saveSelf(id, requiredText(input.expectedRevision, 256), input.text, call.validate)
                     : host.records.readSelf(id);
             },
             async companion(call) {
@@ -60,12 +61,33 @@ export function coreConsoleOperations(host) {
             async initialize(call) {
                 const input = object(call.input, ['expectedPreferencesRevision']);
                 const request = context('initialize', call), options = { signal: call.signal };
+                const home = host.workspace.homeScope(), editor = host.workspace.editScope();
+                const validate = () => {
+                    call.validate();
+                    if (!sameHomeBinding(host.workspace.homeScope(), home))
+                        fail('STALE_BINDING');
+                    host.workspace.assertEditScope(editor);
+                };
                 const prefs = unwrap(await preferences.read(request, {}, options));
+                validate();
                 const target = prefs.workspace && call.getWorkspaces()?.get(prefs.workspace.id);
-                if (!target || target.path !== prefs.workspace?.path || await target.status() !== 'ok')
+                if (!target || target.path !== prefs.workspace?.path)
                     fail('NOT_FOUND');
-                call.validate();
-                return unwrap(await workspace.initialize(request, { expectedPreferencesRevision: input.expectedPreferencesRevision }, options));
+                const status = await target.status();
+                validate();
+                if (status !== 'ok')
+                    fail('NOT_FOUND');
+                const initializeOptions = { ...options, validateInitialization: () => {
+                        try {
+                            call.validate();
+                        }
+                        catch {
+                            reject('STALE_BINDING', 'Core provider changed during initialization');
+                        }
+                        if (call.getWorkspaces()?.get(target.id) !== target)
+                            reject('STALE_BINDING', 'Workspace registration changed during initialization');
+                    } };
+                return unwrap(await workspace.initialize(request, { expectedPreferencesRevision: input.expectedPreferencesRevision }, initializeOptions));
             },
             async profile(call) {
                 const input = object(call.input, ['expectedScope', 'expectedRevision', 'text']);

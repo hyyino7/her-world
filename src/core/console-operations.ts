@@ -1,10 +1,12 @@
 import type { CoreService, WorkspaceEditScope } from '../contracts/core.js';
 import type { Result } from '../contracts/common.js';
+import { sameHomeBinding } from './home-binding.js';
 import { desktopAppearanceDefaults, type CompanionConfiguration } from './companion-settings.js';
 import type { PetCoreHost } from './index.js';
 import type { ConversationOptions } from './options.js';
 import type { WorkspaceTarget } from './preferences.js';
-import { Rejection } from './storage.js';
+import type { CoreCallOptions } from './runtime.js';
+import { reject, Rejection } from './storage.js';
 import { fail, object, requiredText, type ConsoleCall, type ConsoleOperation } from './tables/console.js';
 
 export function unwrap<T>(result: Result<T>): T {
@@ -56,7 +58,7 @@ export function coreConsoleOperations(host: PetCoreHost) {
       const input = object(call.input, writing ? ['workspaceId', 'expectedRevision', 'text'] : ['workspaceId']);
       const id = requiredText(input.workspaceId, 200);
       call.checkBinding(id);
-      return writing ? host.records.saveSelf(id, requiredText(input.expectedRevision, 256), input.text as string)
+      return writing ? host.records.saveSelf(id, requiredText(input.expectedRevision, 256), input.text as string, call.validate)
         : host.records.readSelf(id);
     },
     async companion(call: ConsoleCall) {
@@ -70,11 +72,26 @@ export function coreConsoleOperations(host: PetCoreHost) {
     async initialize(call: ConsoleCall) {
       const input = object(call.input, ['expectedPreferencesRevision']);
       const request = context('initialize', call), options = {signal: call.signal};
+      const home = host.workspace.homeScope(), editor = host.workspace.editScope();
+      const validate = () => {
+        call.validate();
+        if (!sameHomeBinding(host.workspace.homeScope(), home)) fail('STALE_BINDING');
+        host.workspace.assertEditScope(editor);
+      };
       const prefs = unwrap(await preferences.read(request, {}, options));
+      validate();
       const target = prefs.workspace && call.getWorkspaces()?.get(prefs.workspace.id);
-      if (!target || target.path !== prefs.workspace?.path || await target.status() !== 'ok') fail('NOT_FOUND');
-      call.validate();
-      return unwrap(await workspace.initialize(request, {expectedPreferencesRevision: input.expectedPreferencesRevision as number}, options));
+      if (!target || target.path !== prefs.workspace?.path) fail('NOT_FOUND');
+      const status = await target.status();
+      validate();
+      if (status !== 'ok') fail('NOT_FOUND');
+      const initializeOptions: CoreCallOptions = {...options, validateInitialization: () => {
+        try { call.validate(); }
+        catch { reject('STALE_BINDING', 'Core provider changed during initialization'); }
+        if (call.getWorkspaces()?.get(target.id) !== target)
+          reject('STALE_BINDING', 'Workspace registration changed during initialization');
+      }};
+      return unwrap(await workspace.initialize(request, {expectedPreferencesRevision: input.expectedPreferencesRevision as number}, initializeOptions));
     },
     async profile(call: ConsoleCall) {
       const input = object(call.input, ['expectedScope', 'expectedRevision', 'text']);

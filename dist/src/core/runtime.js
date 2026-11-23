@@ -1,5 +1,6 @@
 import { CONTRACT_VERSION } from '../contracts/version.js';
 import { unknownEffect } from '../contracts/common.js';
+import { sameHomeBinding } from './home-binding.js';
 import { CoreAuthority } from './authority.js';
 import { conversationOptions } from './options.js';
 import { canonical, check, CoreStore, id, reject, Rejection, revision, text, timestamp } from './storage.js';
@@ -62,7 +63,7 @@ export class CoreRuntime {
                     this.files?.write('identity', next);
                     this.store.put('identity', 'current', next);
                     return next;
-                }),
+                }, input => this.files?.assertEditScope(input.expectedScope)),
                 getPolicy: this.call('getPolicy', false, () => this.policy()),
                 listCapabilities: this.call('listCapabilities', false, () => this.capabilities()),
             };
@@ -93,24 +94,40 @@ export class CoreRuntime {
         return conversationOptions(this.store.get('preferences', 'current')?.conversation ?? this.defaultConversation);
     }
     /** Configuration API authority, compare-and-set and request deduplication. */
-    call(name, write, fn) {
+    call(name, write, fn, preflight) {
         return async (context, input, options) => {
             this.fileEffect = false;
             try {
-                if (this.stopped)
-                    reject('DISABLED', 'Core has stopped');
+                const validate = () => {
+                    if (this.stopped)
+                        reject('DISABLED', 'Core has stopped');
+                    if (options?.signal?.aborted)
+                        throw new Rejection({ code: 'CANCELLED', message: 'Call cancelled before admission', effect: 'none', retry: 'never' });
+                    if (options?.deadline) {
+                        timestamp(options.deadline);
+                        if (Date.parse(options.deadline) <= Date.now())
+                            throw new Rejection({ code: 'TIMED_OUT', message: 'Call deadline expired', effect: 'none', retry: 'never' });
+                    }
+                };
+                validate();
                 const principal = this.authority.owner(context, name, this.config.ownerActorId);
-                if (options?.signal?.aborted)
-                    throw new Rejection({ code: 'CANCELLED', message: 'Call cancelled before admission', effect: 'none', retry: 'never' });
-                if (options?.deadline) {
-                    timestamp(options.deadline);
-                    if (Date.parse(options.deadline) <= Date.now())
-                        throw new Rejection({ code: 'TIMED_OUT', message: 'Call deadline expired', effect: 'none', retry: 'never' });
-                }
+                preflight?.(input);
                 if (write)
                     this.workspace?.assertMigrationReady();
-                if (name === 'workspace.initialize')
+                if (name === 'workspace.initialize') {
+                    const home = this.workspace?.homeScope(), editor = this.workspace?.editScope();
+                    const recovering = !this.store.persisted();
                     await this.store.ensurePersisted();
+                    this.fileEffect = false;
+                    validate();
+                    // Recovery may make the same pending workspace ready. Its editor
+                    // revision still has to match, and any previously ready scope must match too.
+                    if ((home || !recovering) && !sameHomeBinding(this.workspace?.homeScope(), home))
+                        reject('STALE_BINDING', 'Workspace binding changed during initialization');
+                    if (editor)
+                        this.workspace?.assertEditScope(editor);
+                    options?.validateInitialization?.();
+                }
                 this.files?.synchronize(name);
                 this.fileEffect = false;
                 canonical(input);
