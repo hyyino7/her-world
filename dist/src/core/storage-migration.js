@@ -6,6 +6,7 @@ export const MIGRATION_REASON = {
     journalInvalid: 'journal-invalid', journalStepMismatch: 'journal-step-mismatch', bindingChanged: 'binding-changed',
     bindingNotMigratable: 'binding-not-migratable',
 };
+// Frozen on-disk contracts for checking 0.5.0 storage and its historical journals.
 export const INITIAL_STORAGE_VERSIONS = Object.freeze({
     behavior: 1, channels: 1, core: 1, desktop: 1, economy: 1, emotion: 1, life: 1, memory: 1, room: 1, voice: 1,
 });
@@ -29,7 +30,7 @@ function versionMap(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value)
         && Object.keys(value).length > 0 && Object.values(value).every(version => Number.isSafeInteger(version) && version > 0);
 }
-export function validateMigrationContract(contract) {
+function validateMigrationContract(contract) {
     assert.ok(Array.isArray(contract) && contract.length > 0);
     const ids = new Set(), targets = [];
     let previous = null;
@@ -46,7 +47,7 @@ export function validateMigrationContract(contract) {
 const stepEvents = new Set(['start', 'skip', 'done', 'failed']);
 const otherEvents = new Set(['lock-takeover', 'journal-repaired']);
 const digest = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
-export function isWalletImportProof(value, storageId) {
+function isWalletImportProof(value, storageId) {
     if (!value || typeof value !== 'object')
         return false;
     const proof = value;
@@ -66,7 +67,7 @@ function validWalletImportJournal(row, storageId) {
 export class MigrationBindingChanged extends Error {
 }
 export const settled = (segment) => segment.header.steps.every(step => isStepSettled(segment.states.get(step.id)));
-export const isStepSettled = (event) => event === 'done' || event === 'skip';
+const isStepSettled = (event) => event === 'done' || event === 'skip';
 export function parseMigrationJournal(text) {
     const lines = text.split('\n');
     // Only a non-newline-terminated final record may be a torn append.
@@ -75,7 +76,7 @@ export function parseMigrationJournal(text) {
 }
 export function decodeMigrationJournal(journal, storageId) {
     const ids = new Set();
-    let last, settledStepCount = 0;
+    let last;
     for (const value of journal.rows) {
         assert.ok(value && typeof value === 'object' && !Array.isArray(value));
         const row = value;
@@ -98,7 +99,6 @@ export function decodeMigrationJournal(journal, storageId) {
                 if (last) {
                     const prior = last.header.steps;
                     assert.ok(settled(last) && steps.length > prior.length && isDeepStrictEqual(steps.slice(0, prior.length), prior));
-                    settledStepCount = prior.length;
                 }
                 header = { ...row, id, backup, steps, binding, backupHash };
             }
@@ -114,8 +114,6 @@ export function decodeMigrationJournal(journal, storageId) {
         else
             assert.ok(otherEvents.has(row.event));
     }
-    if (last && settled(last))
-        settledStepCount = last.header.steps.length;
-    return { last, settledStepCount, truncated: journal.truncated };
+    return { last, truncated: journal.truncated };
 }
 //# sourceMappingURL=storage-migration.js.map

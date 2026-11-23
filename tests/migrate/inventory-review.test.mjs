@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renameSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, readFileSync, renameSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inventory } from '../../scripts/migrate/inventory.mjs';
 import { offlineFixture } from './offline-helpers.mjs';
-import { cli, planFor, read } from './helpers.mjs';
+import { inventoryCli, planFor, read, refusedInventory } from './helpers.mjs';
 
 test('inventory metadata: public roots omit workspace and storage identifiers',async t => {
-  const f = await offlineFixture(t), result = cli(f,['--installation',f.installation],{inventory:true});
+  const f = await offlineFixture(t), result = inventoryCli(['--installation',f.installation]);
   assert.equal(result.status,0);
   for (const secret of [f.target.id,f.storageId,f.config.companionId,f.out]) assert.ok(!result.stdout.includes(secret));
   const report = JSON.parse(result.stdout);
@@ -63,5 +63,23 @@ test('inventory metadata: concrete containers require a file at either registere
     rmSync(file,{recursive:true}); writeFileSync(file,'{}');
     assert.equal(inventory(f.installation).coverage.find(row => row.id === 'body').state,'present');
     rmSync(file); mkdirSync(file);
+  }
+});
+
+test('inventory 拒绝无效回执和链接并保留源文件',async t => {
+  const f = await offlineFixture(t,false);
+  const args = ['--installation',f.installation];
+  const receipt = readFileSync(f.installation);
+  refusedInventory(f,[],'usage');
+  writeFileSync(f.installation,'{');
+  refusedInventory(f,args,'receipt-invalid');
+  writeFileSync(f.installation,receipt);
+  const original = join(f.managed,'SOUL.md'), bytes = readFileSync(original);
+  for (const [makeLink,code] of [[symlinkSync,'symlink-or-hardlink'],[linkSync,'binding-changed']]) {
+    const link = join(f.data,'inventory-link');
+    makeLink(original,link);
+    try {refusedInventory(f,args,code);}
+    finally {rmSync(link);}
+    assert.deepEqual(readFileSync(original),bytes);
   }
 });

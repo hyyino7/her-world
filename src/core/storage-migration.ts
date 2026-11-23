@@ -10,6 +10,7 @@ export const MIGRATION_REASON = {
 } as const;
 export type MigrationReason = typeof MIGRATION_REASON[keyof typeof MIGRATION_REASON];
 
+// Frozen on-disk contracts for checking 0.5.0 storage and its historical journals.
 export const INITIAL_STORAGE_VERSIONS = Object.freeze({
   behavior:1, channels:1, core:1, desktop:1, economy:1, emotion:1, life:1, memory:1, room:1, voice:1,
 });
@@ -58,7 +59,7 @@ function versionMap(value: unknown): value is StorageVersions {
     && Object.keys(value).length > 0 && Object.values(value).every(version => Number.isSafeInteger(version) && version > 0);
 }
 
-export function validateMigrationContract(contract: unknown): asserts contract is MigrationStepContract[] {
+function validateMigrationContract(contract: unknown): asserts contract is MigrationStepContract[] {
   assert.ok(Array.isArray(contract) && contract.length > 0);
   const ids = new Set<string>(), targets: StorageVersions[] = [];
   let previous: StorageVersions | null = null;
@@ -77,7 +78,7 @@ const stepEvents = new Set(['start', 'skip', 'done', 'failed']);
 const otherEvents = new Set(['lock-takeover', 'journal-repaired']);
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
-export function isWalletImportProof(value: unknown, storageId: string): value is WalletImportProof {
+function isWalletImportProof(value: unknown, storageId: string): value is WalletImportProof {
   if (!value || typeof value !== 'object') return false;
   const proof = value as WalletImportProof;
   return proof.format === 1 && proof.mode === 'import' && proof.binding?.storageId === storageId
@@ -116,7 +117,7 @@ interface JournalSegment { header: JournalHeader; states: Map<string, string> }
 
 export class MigrationBindingChanged extends Error {}
 export const settled = (segment: JournalSegment) => segment.header.steps.every(step => isStepSettled(segment.states.get(step.id)));
-export const isStepSettled = (event: string | undefined) => event === 'done' || event === 'skip';
+const isStepSettled = (event: string | undefined) => event === 'done' || event === 'skip';
 
 export function parseMigrationJournal(text: string) {
   const lines = text.split('\n');
@@ -127,7 +128,7 @@ export function parseMigrationJournal(text: string) {
 
 export function decodeMigrationJournal(journal: ReturnType<typeof parseMigrationJournal>, storageId: string) {
   const ids = new Set<string>();
-  let last: JournalSegment | undefined, settledStepCount = 0;
+  let last: JournalSegment | undefined;
   for (const value of journal.rows) {
     assert.ok(value && typeof value === 'object' && !Array.isArray(value));
     const row = value as Partial<JournalHeader> & {event?: string; schema?: number; manifestHash?: string; migrationId?: string; step?: string};
@@ -148,7 +149,6 @@ export function decodeMigrationJournal(journal: ReturnType<typeof parseMigration
         if (last) {
           const prior = last.header.steps;
           assert.ok(settled(last) && steps.length > prior.length && isDeepStrictEqual(steps.slice(0, prior.length), prior));
-          settledStepCount = prior.length;
         }
         header = {...row, id, backup, steps, binding, backupHash};
       }
@@ -162,6 +162,5 @@ export function decodeMigrationJournal(journal: ReturnType<typeof parseMigration
       last.states.set(row.step, row.event);
     } else assert.ok(otherEvents.has(row.event));
   }
-  if (last && settled(last)) settledStepCount = last.header.steps.length;
-  return {last, settledStepCount, truncated:journal.truncated};
+  return {last, truncated:journal.truncated};
 }

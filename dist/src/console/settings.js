@@ -129,18 +129,16 @@ export function settingsHandler(getHost, getWorkspaces, getWorldModules, getEcon
                 if (migrating)
                     switch (workspace.migrationReason) {
                         case MIGRATION_REASON.bindingNotMigratable:
-                            migrationHelp = '在版本页换回 0.2.0，把工作区选择和初始化理顺后再升级。';
+                            migrationHelp = '退出 DSH，先核对工作区选择和绑定，再参考 v0.5.0 tag 的工具说明。';
                             break;
                         case MIGRATION_REASON.migrationIncomplete:
-                            migrationHelp = workspace.olderMigrationJournal
-                                ? '退出 DSH，换回原版本的包和源码续做，或按回退流程恢复。'
-                                : '退出 DSH，使用与已安装版本一致的源码和原备份，通过 --resume 续做。完成后重启 DSH。';
+                            migrationHelp = '退出 DSH，保留原日志和备份，使用 v0.5.0 tag 的工具检查未完成的迁移。';
                             break;
                         case MIGRATION_REASON.storageVersionOutdated:
-                            migrationHelp = '退出 DSH，从与已安装版本一致的源码运行迁移命令。迁移成功后重启 DSH。';
+                            migrationHelp = '退出 DSH，使用 v0.5.0 tag 的工具把存储迁移到 0.5.0。完成后再启动 DSH。';
                             break;
                         default:
-                            migrationHelp = '退出 DSH，用与已安装版本一致的源码检查存储清单、迁移日志和绑定。核对备份后按离线诊断处理。';
+                            migrationHelp = '退出 DSH，用 v0.5.0 tag 的工具检查存储清单、迁移日志和绑定。核对原备份后再处理。';
                     }
                 const profile = unwrap(await host.services.workspace.readProfile(context(), {}, options));
                 const capabilities = unwrap(await host.services.core.listCapabilities(context(), {}, options));

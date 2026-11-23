@@ -52,6 +52,75 @@ test('原号查证区分已提交、同号异内容和无证据，显式放弃�
   assert.equal(after.ledger.filter(row => row.requestId === 'committed-save').length, 1);
 });
 
+test('重启后持久待办按原号查证且只在显式重试时到账一次', async t => {
+  const f = await fixture(t,{console:true,life:false});
+  f.workspace.status = async () => 'ok';
+  const original = 'original-credit', input = {workspaceId,action:{kind:'grant',amount:2}};
+  const before = await f.economy.snapshot(workspaceId);
+  {
+    using db = new DatabaseSync(walletFile(f));
+    new ConsoleRequests(db,{storageId:before.storageId,companionId:before.companionId})
+      .add(original,normalizeWalletRequest('economyAction',input));
+  }
+  await f.restart();
+  const page = renderEconomyPanel(async (endpoint,input,_signal,id) => value(await f.settings(endpoint,input,id)));
+  page.render();
+  t.after(page.mount());
+  await setImmediate();
+  const [pending] = panelNodes(page.render(),node => node.type === 'div' && node.props?.key === original);
+  assert.ok(pending,'重开钱包从现有钱包库加载原号');
+  const [check] = panelNodes(pending,node => node.type === 'button' && node.children[0] === '按原号查证');
+  await check.props.onClick();
+  assert.equal(await state(f,'economyCheck',original),'no-evidence');
+  assert.equal((await f.economy.snapshot(workspaceId)).balance,before.balance);
+  const [retry] = panelNodes(page.render(),node => node.type === 'button' && node.children[0] === '重试原操作');
+  await retry.props.onClick();
+  assert.equal(await state(f,'economyRetry',original),'committed');
+  assert.deepEqual(value(await call(f,'economyPending')),[]);
+  const after = await f.economy.snapshot(workspaceId);
+  assert.equal(after.balance,before.balance+2);
+  assert.equal(after.ledger.filter(row=>row.requestId===original).length,1);
+});
+
+test('Console 钱包忽略浏览器残留旧待办并正常处理新请求', async t => {
+  const f = await fixture(t,{console:true,life:false});
+  f.workspace.status = async () => 'ok';
+  const key = 'chatpet:economy:pending:' + workspaceId;
+  const raw = JSON.stringify({endpoint:'economyAction',requestId:'residual-old-request',
+    input:{workspaceId,action:{kind:'grant',amount:87}}});
+  const residual = new Map([[key,raw]]), touches = [], calls = [];
+  const storage = {
+    get(key) { touches.push('read'); return residual.get(key); },
+    set(key,value) { touches.push('write'); residual.set(key,value); },
+    delete(key) { touches.push('delete'); return residual.delete(key); },
+  };
+  const before = await f.economy.snapshot(workspaceId);
+  const page = renderEconomyPanel(async (endpoint,input,_signal,id) => {
+    calls.push({endpoint,id});
+    return value(await f.settings(endpoint,input,id));
+  },workspaceId,{storage});
+  page.render();
+  t.after(page.mount());
+  await setImmediate();
+  const [amount] = panelNodes(page.render(),node => node.type === 'field' && node.props.label === '金额');
+  amount.props.onChange('1');
+  const nodes = page.render();
+  assert.equal(panelNodes(nodes,node => node.props?.role === 'alert' || node.children.includes('待确认钱包操作')).length,0);
+  const [grant] = panelNodes(nodes,node => node.type === 'button' && node.children[0] === '给零花钱');
+  assert.equal(grant.props.disabled,false);
+  await grant.props.onClick();
+  assert.equal(panelNodes(page.render(),node => node.props?.role === 'alert').length,0);
+  const writes = calls.filter(call => call.endpoint === 'economyAction');
+  assert.equal(writes.length,1);
+  assert.ok(calls.every(call => call.endpoint !== 'economyRetry' && call.id !== 'residual-old-request'));
+  assert.deepEqual(value(await call(f,'economyPending')),[]);
+  const after = await f.economy.snapshot(workspaceId);
+  assert.equal(after.balance,before.balance+1);
+  assert.equal(after.ledger.filter(row=>row.requestId===writes[0].id).length,1);
+  assert.deepEqual(touches,[]);
+  assert.equal(residual.get(key),raw);
+});
+
 test('Console 投喂只查不动，Body 部分提交只由显式同号重试续完', async t => {
   const f = await fixture(t, {console:true, life:false});
   f.workspace.status = async () => 'ok';

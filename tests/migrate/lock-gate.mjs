@@ -1,33 +1,17 @@
-// Test-only barrier before the real database-backed interprocess lock.
-import fs from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
-const exec = DatabaseSync.prototype.exec, gate = process.env.MIGRATE_TEST_LOCK_GATE;
-if (gate && process.env.MIGRATE_TEST_LOCK_ROLE === '1') waitFor(gate + '.first-preflight');
-function waitFor(file) {
-  const deadline = Date.now() + 10000, sleep = new Int32Array(new SharedArrayBuffer(4));
-  while (!fs.existsSync(file)) {
-    if (Date.now() > deadline) throw Error('Test lock barrier timeout');
-    Atomics.wait(sleep,0,0,10);
-  }
-}
+// Test-only barrier after the restore acquires the real interprocess lock.
+import {existsSync} from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
+
+const exec = DatabaseSync.prototype.exec, gate = process.env.MIGRATE_TEST_RESTORE_GATE;
 DatabaseSync.prototype.exec = function(sql) {
-  const restore = process.env.MIGRATE_TEST_RESTORE_GATE;
-  if (restore && sql === 'BEGIN IMMEDIATE') {
-    const result = exec.call(this,sql);
+  const result = exec.call(this,sql);
+  if (sql === 'BEGIN IMMEDIATE') {
     process.send({held:true});
-    waitFor(restore);
-    return result;
+    const deadline = Date.now() + 10000, sleep = new Int32Array(new SharedArrayBuffer(4));
+    while (!existsSync(gate)) {
+      if (Date.now() > deadline) throw Error('Test lock barrier timeout');
+      Atomics.wait(sleep,0,0,10);
+    }
   }
-  if (!gate || sql !== 'BEGIN IMMEDIATE') return exec.call(this,sql);
-  if (process.env.MIGRATE_TEST_LOCK_ROLE === '0') fs.writeFileSync(gate + '.first-preflight','ready');
-  process.send({beforeLock:true});
-  waitFor(gate);
-  try {
-    const result = exec.call(this,sql);
-    waitFor(gate + '.loser');
-    return result;
-  } catch (error) {
-    if ((error.errcode & 0xff) === 5) fs.writeFileSync(gate + '.loser','refused');
-    throw error;
-  }
+  return result;
 };

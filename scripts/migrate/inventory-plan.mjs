@@ -1,13 +1,12 @@
 // Reuse backupPlan on a private metadata mirror, without touching source databases.
 import assert from 'node:assert/strict';
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 import { backupPlan } from '../lib/offline-backup.mjs';
 import { assertStopped, copyDatabase, inspectRepoBinding } from '../lib/repo-storage.mjs';
-import { inspectTree, json, regular } from './io.mjs';
-import { readInstallation } from './context.mjs';
+import { inspectTree, json, readInstallation, regular } from './io.mjs';
 import { checked } from './errors.mjs';
 
 const within = (root, path) => path === root || path.startsWith(root + sep);

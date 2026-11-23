@@ -283,6 +283,6 @@
 
 ## 2026-11-23 0.4.0→0.5.0 钱包迁移用「主人声明无待办」放行
 
-- 决定：本机设置页只在 DSH 桌面应用（`dsh-app://app/`）打开、0.4.0 钱包区看不到待办时，离线迁移在停写核验通过后接受 `--owner-attests-no-pending`，把声明、绑定和轮次写进回退锚、迁移日志和导入证明，`0004` 零条导入；不读 Electron 存储，不清源、不回插。0.5.0 不提示残留旧键。步骤见 [development.md](development.md#console-wallet-migration)。
+- 决定：本机设置页只在 DSH 桌面应用（`dsh-app://app/`）打开、0.4.0 钱包区看不到待办时，离线迁移在停写核验通过后接受 `--owner-attests-no-pending`，把声明、绑定和轮次写进回退锚、迁移日志和导入证明，`0004` 零条导入；不读 Electron 存储，不清源、不回插。0.5.0 不提示残留旧键。步骤见 [v0.5.0 历史操作说明](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration)。
 - 为什么：仓库里没有能证实浏览器来源独占的生产适配，原有路线必然停在 `wallet-freeze-unverified`；0.5.0 从后端取待办，残留旧键不会触发重试或拦住新写入，主人亲见无待办时声明的风险可接受。
 - 放弃的选项：离线直读浏览器或 Electron 存储、新包同源页导入、开发者工具手动导出。出现真实待办或外部浏览器来源时另行拍板。

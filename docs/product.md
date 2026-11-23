@@ -215,7 +215,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | 种地时钟 | 3 批。第 3 批修的是「暂停或恢复那一刻 Body、Economy 不在场，暂停时间被算成生长」（2A1A-12、2A1A-13，断言 2/12；`G3-GARDEN-01`–`17`），验收返工 1 轮（区间文件无效时不能挡住身体操作）。G3 复盘结论：三批的共同根因是「哪段时间算启用」没有被记录，只靠当前开关加菜园 `updatedAt` 在边界那一刻折算，换一种装卸组合或处理顺序就会多算或少算；现在暂停区间记在 Life 的 `control.json`，每次推进菜园都按区间扣，不依赖谁在场、谁先处理（[architecture.md 第 4 节](architecture.md#4-状态拥有者表)、6.2）。再失守即第 4 批，修之前先复盘 |
 | 计划推进与完成契约 | 原有 2 轮，另有 2a 3E 验收返工 1 轮，按推进后的计划状态回报结果。阶段 3 审查再返工 1 轮（`56d9ede`），修复显式暂停时计划读取失败导致 Body 自治未关停的问题，并保留原读取错误与原生轮次取消。合计可辨认 4 轮（`tests/living/living-lifecycle.test.mjs:1090–1109`） |
 | 关闭后晚到的录音与取消 | 多个入口。阶段 3 审查返工增加 QQ 合成撤销后零文字送达、Room 提供方准入时拒绝旧请求和 Compact 停止朗读／会话切换／隐藏的同号取消（`3-VOICE-05`、`3-ROOM-VOICE-01`；真实窗口 `tests/desktop/compact-voice-window.cjs`） |
-| 需要迁移的判定和离线迁移器同口径（运行时锁住的数据一定能离线解开，不该锁的不锁） | 修复 1 批，没有发布前失守。2a 第 4 批验收返工 1 轮（09e55e5）：运行时会锁住离线迁移器接不了的形状（选了 B 没初始化、`--resume-repo` 搬了没迁移的 Repo、删了 `.chatpet/`、0.2.0 的旧格式初始化标记），改成和 `inspectRepoBinding` 同口径判定，接不了的报 `binding-not-migratable`；新装存档的镜像一滞后，`0002` 就误报冲突并锁死，改成清单已过这一步时以 Core 为准。同一轮还修了本批引入的「拒写导出被当成功删掉」（`docs/portability.md` 的导出不丢）。测试 `tests/migrate/binding.test.mjs`、`tests/migrate/home-flow.test.mjs` |
+| 需要迁移的判定和离线迁移器同口径（运行时锁住的数据一定能离线解开，不该锁的不锁） | 修复 1 批，没有发布前失守。2a 第 4 批验收返工 1 轮（09e55e5）：运行时会锁住离线迁移器接不了的形状（选了 B 没初始化、`--resume-repo` 搬了没迁移的 Repo、删了 `.chatpet/`、0.2.0 的旧格式初始化标记），改成和 `inspectRepoBinding` 同口径判定，接不了的报 `binding-not-migratable`；新装存档的镜像一滞后，`0002` 就误报冲突并锁死，改成清单已过这一步时以 Core 为准。同一轮还修了本批引入的「拒写导出被当成功删掉」（`docs/portability.md` 的导出不丢）。测试 `tests/migrate/binding.test.mjs`、`v0.5.0:tests/migrate/home-flow.test.mjs` |
 | 缺库拒绝、不让旧钱包复活（钱包问题只隔离钱包） | 修复 1 批，没有发布前失守。2a 第 5 批验收返工 1 轮（480c23a）：钱包证据文件内容坏了会让整个工作区不可用，改成工作区清单只看文件在不在、内容校验留给钱包；首次初始化留下空壳库时指引走不通，补上「移存库文件再重试」；迁移删掉 Core 旧键后钱包目录和 `data/living/` 同时丢失会重建钱包，加迁移日志作第五种采用证据（主人拍板）。测试 `2A5-01`–`07`、`tests/infrastructure/first-install.test.mjs` |
 | 绑定代次 | 阶段 3 共 2 轮，见下方 [G3 复盘](#绑定代次的-g3-复盘) |
 | 回包与实际效果一致（钱包与渠道配置） | 阶段 3 审查返工 1 轮。钱包保留原号与终态供查证，证据一致时可重放。渠道配置已写入后换绑，提示刷新核对实际效果。回归见 `3-CONSOLE-08`–`10`、`tests/regressions/mapped-sleeping-inventory.test.mjs` |
@@ -243,7 +243,6 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | 3. 错误码辅助函数不收 `EXPIRED_USE` | `src/core/storage.ts:11` 的 `reject()` 复用 `ContractError` 的拒绝码类型，但排除 `EXPIRED_USE` | 该拒绝只能经 `ContractError` 直接构造；设置回复的 `effect/retry` 已在阶段 3 Console 批透传（`src/console/settings.ts:85–86`） | 读代码确认 | 按阶段 3 拍板 2 保留 `reject()` 原有适用子集 |
 | 12. 关闭多只桌宠途中换绑，已派给上游的那一次关闭仍写原路径 | `src/desktop/platform/plugin.ts` 的 `hide()` 逐只调用上游 `/pet-display`；上游写盘在 `vendor/dsh-pet/`（禁改） | 后续几只会因换绑停下；已经交给上游的那一只仍在原工作区隐藏并写盘，只影响该桌宠的显示状态 | 已复现（阶段 3 审查返工第 5 条的回归） | 主人接受，不修 |
 | 6. 新装环境里桌宠外观编辑器没加载 | 已安装的 0.1.8 桌宠外观编辑器；源码位置在本仓库还没定位 | 新设备上界面固定提示 `EDITOR_NOT_LOADED`，没有添加形象的入口；桌宠服务本身可用 | 已在 Mac mini 新装 DSH + 0.1.8 上观察到（M1 D 批）。当时的 Codex 怀疑是可选命令依赖挡住了编辑器加载，并写了候选补丁，但补丁没有装上，修复效果没验证；默认独立桌宠的 Electron 路径缺失也是同时观察到的环境缺口，是不是原因还没确定 | 已观察到，原因未确认，待主人安排 |
-| 9. 迁移兼容测试的 legacy 变体在 CI 偶发失败 | `tests/migrate/compatibility.test.mjs` 的 `legacy` 变体；失败的断言在 `scripts/fixtures/synthetic-companion.mjs:104`（刚写入的合成记忆召回不到） | 发布门禁偶发失败，重跑能过；0.2.0 正式版的发布运行一次通过 | 0.2.0-rc.1 的发布运行第 1 次尝试失败、第 3 次通过；本机单跑 15 次、加负载并行 30 次都没复现，召回前加 0–3 秒延迟也通过 | 原因未查，主人判断是 GitHub 侧问题。2a 期间又见两次同类偶发，都在 Codex 沙箱的整套并行运行里、复跑即过：第 4 批行为清单 B10「B 必须真实召回 A 已确认送达的事实」首跑失败；第 5 批返工 Memory 盘点用例首跑返回 422。2a 收尾在沙箱外把这两条各单跑 8 次，全部通过，没复现。现有证据不足以判定是同一个不变量（「已确认写入的记忆一定能召回」）第二次失守；再出现时先保留首个失败的入口、操作名、状态码和合成日志，确认是同一不变量就按 G3 提前复盘 |
 | 10. 付费 Memory 实测脚本还依赖旧回执的 `archive` 字段 | `scripts/checks/check-native-memory-live.mjs:176` 读 `installedReceipt.archive` 并对它算哈希 | 改为经 DSH 安装 npm 包之后，新回执里没有 `archive`，这个检查会在算哈希时失败；日常运行不受影响，只影响这条手动付费检查 | 读代码确认，没有运行（会调用付费模型） | 待定。以后还要用这个检查，需要另定按 npm 包核对的方式（例如回执里的 `packageVersion`） |
 | 13. 设置窗口手动检查的夹具宿主没接语音表 | `tests/manual/companion-settings-window.cjs:106` 自建宿主调用 `PetPlatform.handle`，走到 `VoiceTable.lookup` 的服务隔离时报错（`src/core/tables/voice.ts`、`src/core/tables/registry.ts`） | 只影响这条手动检查；产品设置保存、建库和回读已由同一夹具的无窗口路径验证 | 阶段 3 收尾沙箱外复跑：第一轮修掉夹具解开 `.venv` 符号链接导致 Memory 用错 Python（`OUTCOME_UNKNOWN`），第二轮仍卡在语音表 | 按「修两轮没好就停」停下，归阶段 4 |
 
@@ -330,12 +329,12 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | A. 发版准备（Codex） | `docs/release/notes.md` 写成 0.2.0 的中文更新说明：主要场景不变、M2 已拍板的行为变化、`PetCoreHost` 的接口变化及替代写法、直接升级、迁移和回退的做法；`v0.1.8..main` 的兼容面逐项核对；`pnpm run verify`（含 `check:package`）和行为清单全绿 |
 | B. 文档收口（Claude） | [architecture.md](architecture.md) 第 0、2.2、5.1、5.9、5.10、7.4、9、10 节和 `AGENTS.md` 的入口说明改成缩小后的样子，不再承诺已砍的部分 |
 | C. 预发布与打包验证（主人） | 推送 `main` 后发 `0.2.0-rc.1`；隔离的已安装 DSH 里从 npm 装的 0.1.8 用更新按钮升级并激活，插件名、Bundle ID、入口、服务名、配置字段正常；三条原生检查（`test:native-services`、`test:native-room`、`test:native-channel-homes`）用临时数据通过；盘点已安装环境里有没有别的代码用到 `PetCoreHost` 被删的字段 |
-| D. 真实副本演练（主人，独立设备） | 用 RC：不迁移直接升级可用；迁移后升级可用；先换回 0.1.8 再恢复备份，旧版聊天和召回正常，升级后新增的聊天看不到，送达和额度回执保留，已撤回的记忆仍不可见，伙伴身份和便携存储 ID 不变。崩溃续做用合成副本上的 `tests/migrate/crash.test.mjs` 加 M1 的真实副本记录作证据，边界写明 |
+| D. 真实副本演练（主人，独立设备） | 用 RC：不迁移直接升级可用；迁移后升级可用；先换回 0.1.8 再恢复备份，旧版聊天和召回正常，升级后新增的聊天看不到，送达和额度回执保留，已撤回的记忆仍不可见，伙伴身份和便携存储 ID 不变。崩溃续做用合成副本上的 `v0.2.0:tests/migrate/crash.test.mjs` 加 M1 的真实副本记录作证据，边界写明 |
 | E. 正式发版（主人） | 在 RC 冻结后的 `main` 上发 `0.2.0`，源码差异只有版本元数据；隔离环境装一次正式包确认能激活，再升级日常机器；0.1.8 的安装包和回退步骤留好 |
 
 **主人的验收动作**：日常机器装 0.2.0 正常用，聊天、记忆、桌宠、Room、QQ 都正常。回退只在 D 的隔离副本上验证，不在日常机器上做；日常升级不附带跑元数据迁移（已知问题 5）。
 
-**M3 结果**：发布 0.2.0（预发布 `0.2.0-rc.1` 冻结于 `852030a`，正式版 `aa6e0d2`，两者的安装包只差版本元数据）。A 批经两层审查和一轮返工后合并，合并结果上 `verify` 1417 项、行为清单 52 条全过。C 批三条原生检查通过，已安装环境里没有别的代码用到被删字段，隔离环境从 npm 版 0.1.8 用更新按钮升到 RC 并激活。D 批在独立设备的真实副本上完成准备、直接升级、迁移和回退；崩溃续做的证据是合成副本上的 `tests/migrate/crash.test.mjs` 加 M1 的真实副本续做记录。主人确认日常机器 0.2.0 正常运行。过程中发现用 `dafeiyu-setup` 装的伙伴换成 npm 包会丢 Core 配置（已知问题 8，C 批隔离机和 Mac mini 各遇到一次，根治方向记进 `ideas/inbox.md`）；RC 发布运行第一次尝试有 1 项测试失败，主人确认是 GitHub 侧问题，重跑通过。
+**M3 结果**：发布 0.2.0（预发布 `0.2.0-rc.1` 冻结于 `852030a`，正式版 `aa6e0d2`，两者的安装包只差版本元数据）。A 批经两层审查和一轮返工后合并，合并结果上 `verify` 1417 项、行为清单 52 条全过。C 批三条原生检查通过，已安装环境里没有别的代码用到被删字段，隔离环境从 npm 版 0.1.8 用更新按钮升到 RC 并激活。D 批在独立设备的真实副本上完成准备、直接升级、迁移和回退；崩溃续做的证据是合成副本上的 `v0.2.0:tests/migrate/crash.test.mjs` 加 M1 的真实副本续做记录。主人确认日常机器 0.2.0 正常运行。过程中发现用 `dafeiyu-setup` 装的伙伴换成 npm 包会丢 Core 配置（已知问题 8，C 批隔离机和 Mac mini 各遇到一次，根治方向记进 `ideas/inbox.md`）；RC 发布运行第一次尝试有 1 项测试失败，主人确认是 GitHub 侧问题，重跑通过。
 
 **停止条件**：打包验证或真实副本演练失败两轮，停下来整理事实交给独立会话分析，不发正式版；发现必须改第一层代码才能发版，停下来升级对齐。候选包内容要改时发 `rc.2`，不覆盖已发的版本号。
 
@@ -438,13 +437,13 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 
 ##### 阶段 3 结果
 
-已发布预发布版 `0.5.0-rc.1`（`4eb6fa8`）和正式版 `0.5.0`（`f723ba1`），版本见两标签的 `package.json:3`。主人已验收正式版，日常机器已升级，**本机钱包已按「主人声明无待办」路线迁移完成**（主人确认，路线见 [development.md](development.md#console-wallet-migration) 和 `docs/decisions.md:284–288`）。
+已发布预发布版 `0.5.0-rc.1`（`4eb6fa8`）和正式版 `0.5.0`（`f723ba1`），版本见两标签的 `package.json:3`。主人已验收正式版，日常机器已升级，**本机钱包已按「主人声明无待办」路线迁移完成**（主人确认，路线见 [v0.5.0 历史操作说明](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration) 和 `docs/decisions.md:284–288`）。
 
 **完成标准核对（体检第 6 节）**
 
 - [x] 语音接口、运维操作表及图片共用包已接入，对应的旧直接依赖已清理（`src/core/tables/voice.ts:15,33`、`src/console/plugin.ts:25`、`src/presentation/images.ts:25`、`6dd3e4c:docs/plans/stage3-presentation.md:131,142,176`）。
 - [ ] **部分完成，扩展止步。** 运维 RPC 按拥有者登记，结构化错误透传 `effect/retry`，`reject()` 复用拒绝码类型并保留原子集。典型修改 7 试做记录为 3 个手写文件、2 层，未达 1 文件／1 层，停止扩展通用字段声明。Core 外观引用保留为例外，5b 延至阶段 4 聊天平台接入时复测（`src/contracts/common.ts:19–36`、`src/core/storage.ts:5–11`、`src/console/settings.ts:79–88,110`、`docs/decisions.md:268,280`、`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
-- [ ] **合成演练通过，本机声明迁移完成。** 浏览器「导出 → 导入核对 → 清除」仅有合成副本的升级、断点续做、清源和回退证据。正式包读声明证明、激活及回退也有合成证据。实际有待办的生产浏览器导出和清源因生产适配缺口止步，实机验收待核实（`tests/migrate/wallet-rollback-040.mjs:55,181,380`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:46–51`、`docs/decisions.md:286–288`）。
+- [ ] **合成演练通过，本机声明迁移完成。** 浏览器「导出 → 导入核对 → 清除」仅有合成副本的升级、断点续做、清源和回退证据。正式包读声明证明、激活及回退也有合成证据。实际有待办的生产浏览器导出和清源因生产适配缺口止步，实机验收待核实（`v0.5.0:tests/migrate/wallet-rollback-040.mjs:55,181,380`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:46–51`、`docs/decisions.md:286–288`）。
 - [x] Channels 与桌宠的原位例外已登记，见[状态拥有者表](architecture.md#4-状态拥有者表)（`arch/storage.json:14–20`）。
 - [x] R7 组合检查历史记录通过，覆盖外围全关、逐关、反序装载、重载、卸载与暂停、A→B→A 换绑、写前取消和写后断回复（`tests/behavior-list/presentation-r7.test.mjs:46,78,156,186,207,234`、`tests/behavior-list/entries-lifecycle.test.mjs:551,637,943`）。
 - [x] 典型修改 2、3 按试做记录达标。Room 口渴项 3 文件／1 层，QQ 额度 9 文件／1 层。典型修改 2、3、7 的原始补丁或提交位置待核实（`6dd3e4c:docs/plans/stage3-presentation.md:145,155,291`）。
@@ -470,7 +469,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 - [ ] 聊天平台接入时独立实做 5b，核对准入、设置和持久化的完整路径并记录文件数，按原标准检查第一层是否有改动（`docs/decisions.md:268`）。
 - [ ] 对典型修改 7 记录收益评估和是否再做的决定。若再做，用设置保存、重启和实际生效的流程验证，并核对是否达 1 个手写文件／1 层（`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
 - [ ] 按收益确认 `contracts/` 的逐层拆分范围。若拆分，按原场景独立复测第 8 类的照料动作和事实领域，分别记录手写文件数、物理层和漏改时的检查结果（[架构 2.1](architecture.md#21-现在--以后)、[典型修改前后对比](#典型修改前后对比)）。
-- [ ] 下次发版时，在发布说明补上「主人声明无待办」路线的适用条件及[操作入口](development.md#console-wallet-migration)，保留有待办时的导出路线。发布前核对说明与离线工具实际参数一致（`docs/decisions.md:286–288`、`docs/release/notes.md:15–28`）。
+- [ ] 下次发版时，发布说明写清从已迁移的 0.5.0 升级和换回 0.5.0。旧钱包迁移保留在 [v0.5.0 历史操作说明](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration)。
 - [ ] 修好设置窗口手动检查的夹具宿主（已知问题 13），在沙箱外跑通。
 - [ ] 跑全量门禁和行为清单，保存通过记录，至少验证一条真实入口的完整流程。逐项体检文档、测试、代码、分支和规则，按 G8 对每条检查和长期例外记录保留或调整理由及证据。
 

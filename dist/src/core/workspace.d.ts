@@ -14,7 +14,6 @@ export interface WorkspaceStatus {
     error: string | null;
     sourceRevision: string | null;
     migrationReason?: MigrationReason;
-    olderMigrationJournal?: true;
 }
 type NativeSessionScope = {
     id: string;
