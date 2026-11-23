@@ -4,6 +4,10 @@ import { createLifeStore, LIFE_STATE_MAX_BYTES } from '#dsh-world/life/lifeStore
 import { PLAN_KINDS, isPlanKind, isPlanBodyAction, isPlanEconomyOperation, isPlanGardenOperation, isBodyMetric, PlannedAdmissionWaitError } from '../../contracts/behavior.js';
 import { requirePresentationSlot } from '../body/animation-slots.js';
 import { gardenReceiptText } from '../body/garden-receipt.js';
+export function canContinuePlan(status) {
+    return status === 'active' || status === 'waiting';
+}
+export const PLAN_COMPARISONS = ['gte', 'lte'];
 export const expiredDispatchDeadline = 'The activity absolute deadline elapsed before Body admission; revise the original plan explicitly';
 const object = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 function check(value, message) { if (!value)
@@ -99,7 +103,7 @@ function parsePlan(raw) {
         instant(raw.nextConsiderAt);
     check(raw.reconsiderWhen === undefined || Array.isArray(raw.reconsiderWhen), 'Invalid reconsideration conditions');
     const reconsiderWhen = (raw.reconsiderWhen ?? []).map((value) => {
-        check(object(value) && isBodyMetric(String(value.metric)) && ['gte', 'lte'].includes(String(value.comparison))
+        check(object(value) && isBodyMetric(String(value.metric)) && PLAN_COMPARISONS.includes(String(value.comparison))
             && typeof value.value === 'number' && Number.isFinite(value.value) && value.value >= 0 && value.value <= 1, 'Invalid body-state condition');
         return value;
     });
@@ -175,7 +179,7 @@ export class PersistentLifePlan {
             }
             state.currentPlan = next;
             if (schedule) {
-                if (next && ['active', 'waiting'].includes(next.status) && next.nextConsiderAt)
+                if (next && canContinuePlan(next.status) && next.nextConsiderAt)
                     state.alarm = { at: next.nextConsiderAt, note: next.replanReason || next.reason, setAt: new Date().toISOString(), source: 'plan' };
                 else
                     delete state.alarm;
@@ -269,7 +273,7 @@ export class PersistentLifePlan {
             });
             return;
         }
-        if (!['active', 'waiting'].includes(plan.status) || plan.nextConsiderAt)
+        if (!canContinuePlan(plan.status) || plan.nextConsiderAt)
             return;
         this.change(revision, current => { check(current, 'No current plan'); current.nextConsiderAt = at; current.replanReason = reason; return current; }, true, false);
     }
@@ -281,7 +285,7 @@ export class PersistentLifePlan {
             check(Date.parse(nextConsiderAt) > Date.now(), 'Next consideration must be in the future');
         }
         this.change(expectedRevision, current => {
-            check(current && ['active', 'waiting'].includes(current.status), 'Only an active or waiting plan can be kept; use the explicit pause/resume controls');
+            check(current && canContinuePlan(current.status), 'Only an active or waiting plan can be kept; use the explicit pause/resume controls');
             check(!object(current.execution) || current.execution.status !== 'failed', 'A failed activity needs a revised plan, not a claim that it can continue');
             check(current.status !== 'waiting' || current.cursor === current.steps.length, 'An unfinished activity is waiting for recovery; inspect the failure and revise the plan before continuing');
             current.reason = reason;
@@ -344,7 +348,7 @@ export class PersistentLifePlan {
     /** Only explicit events create a wake. Repeated ticks cannot create a polling loop. */
     reconsider(reason, condition, recordEffect) {
         const { revision, plan } = this.read();
-        if (!plan || !['active', 'waiting'].includes(plan.status) || plan.replanReason || condition !== undefined && plan.triggeredConditions.includes(condition))
+        if (!plan || !canContinuePlan(plan.status) || plan.replanReason || condition !== undefined && plan.triggeredConditions.includes(condition))
             return false;
         this.change(revision, current => {
             check(current, 'No current plan');
@@ -361,7 +365,7 @@ export class PersistentLifePlan {
         validate();
         let current = this.read();
         let plan = current.plan;
-        if (!plan || !['active', 'waiting'].includes(plan.status))
+        if (!plan || !canContinuePlan(plan.status))
             return false;
         // A body operation can commit before its caller receives the result.
         // Reconcile that stable receipt even if a later observer error left Life

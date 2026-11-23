@@ -2562,13 +2562,13 @@
       "other": {
         "file": "src/core/workspace.ts",
         "scope": "<module>",
-        "line": 50
+        "line": 49
       }
     },
     {
       "rule": "R8",
       "file": "src/core/workspace.ts",
-      "line": 50,
+      "line": 49,
       "column": 10,
       "scope": "<module>",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory\"}",
@@ -3120,13 +3120,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/EconomyPanel/send\"}",
@@ -3209,13 +3209,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/decode",
-        "line": 175
+        "line": 180
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 175,
+      "line": 180,
       "column": 13,
       "scope": "PersistentLifePlan/decode",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
@@ -3229,135 +3229,6 @@
       ],
       "shape": "array",
       "relation": "重复",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/LifePage",
-        "line": 695
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 695,
-      "column": 26,
-      "scope": "factory/LifePage",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/change/this . store . update:callback0\"}",
-      "expression": "{ active : \"进行中\" , paused : \"已暂停\" , waiting : \"等待中\" , completed : \"已完成\" , cancelled : \"已取消\" }",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/change/this . store . update:callback0",
-        "line": 212
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 212,
-      "column": 21,
-      "scope": "PersistentLifePlan/change/this . store . update:callback0",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/LifePage",
-        "line": 695
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 695,
-      "column": 26,
-      "scope": "factory/LifePage",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/retryAt\"}",
-      "expression": "{ active : \"进行中\" , paused : \"已暂停\" , waiting : \"等待中\" , completed : \"已完成\" , cancelled : \"已取消\" }",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/retryAt",
-        "line": 288
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 288,
-      "column": 9,
-      "scope": "PersistentLifePlan/retryAt",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/LifePage",
-        "line": 695
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 695,
-      "column": 26,
-      "scope": "factory/LifePage",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/keep/this . change:callback1\"}",
-      "expression": "{ active : \"进行中\" , paused : \"已暂停\" , waiting : \"等待中\" , completed : \"已完成\" , cancelled : \"已取消\" }",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/keep/this . change:callback1",
-        "line": 299
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 299,
-      "column": 24,
-      "scope": "PersistentLifePlan/keep/this . change:callback1",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
       "other": {
         "file": "src/console/client.js",
         "scope": "factory/LifePage",
@@ -3384,13 +3255,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
@@ -3398,178 +3269,6 @@
       "values": [
         "cancelled",
         "completed"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/LifePage",
-        "line": 695
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 695,
-      "column": 26,
-      "scope": "factory/LifePage",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/reconsider\"}",
-      "expression": "{ active : \"进行中\" , paused : \"已暂停\" , waiting : \"等待中\" , completed : \"已完成\" , cancelled : \"已取消\" }",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/reconsider",
-        "line": 346
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 346,
-      "column": 19,
-      "scope": "PersistentLifePlan/reconsider",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/LifePage",
-        "line": 695
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 695,
-      "column": 26,
-      "scope": "factory/LifePage",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/advance\"}",
-      "expression": "{ active : \"进行中\" , paused : \"已暂停\" , waiting : \"等待中\" , completed : \"已完成\" , cancelled : \"已取消\" }",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/advance",
-        "line": 358
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 358,
-      "column": 19,
-      "scope": "PersistentLifePlan/advance",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/LifePage",
-        "line": 695
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 695,
-      "column": 26,
-      "scope": "factory/LifePage",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "{ active : \"进行中\" , paused : \"已暂停\" , waiting : \"等待中\" , completed : \"已完成\" , cancelled : \"已取消\" }",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/console/client.js",
-        "scope": "factory/LifePage",
-        "line": 695
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/console/client.js",
-      "line": 695,
-      "column": 26,
-      "scope": "factory/LifePage",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "{ active : \"进行中\" , paused : \"已暂停\" , waiting : \"等待中\" , completed : \"已完成\" , cancelled : \"已取消\" }",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "labels",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/console/client.js\",\"scope\":\"factory/LifePage\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
       ],
       "shape": "array",
       "relation": "子集",
@@ -4209,13 +3908,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -4253,13 +3952,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/advance/this . change:callback1",
-        "line": 444
+        "line": 449
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 444,
+      "line": 449,
       "column": 31,
       "scope": "PersistentLifePlan/advance/this . change:callback1",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -4297,13 +3996,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/advance/this . change:callback1",
-        "line": 470
+        "line": 475
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 470,
+      "line": 475,
       "column": 19,
       "scope": "PersistentLifePlan/advance/this . change:callback1",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -4380,13 +4079,13 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/publish",
-        "line": 249
+        "line": 248
       }
     },
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 249,
+      "line": 248,
       "column": 26,
       "scope": "CompanionBehavior/publish",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -5099,13 +4798,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/core/native/result.ts\",\"scope\":\"<module>\"}",
@@ -5162,52 +4861,6 @@
         "file": "src/core/native/transcripts.ts",
         "scope": "open",
         "line": 17
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/record-paths.ts",
-      "line": 32,
-      "column": 22,
-      "scope": "initializeCompanionRecords",
-      "target": "{\"file\":\"src/core/records.ts\",\"scope\":\"CompanionRecordLibrary/album\"}",
-      "expression": "[ \"album.sqlite\" , \"album.sqlite-wal\" , \"album.sqlite-shm\" , \"album.sqlite-journal\" , \"index.json\" ]",
-      "values": [
-        "album.sqlite",
-        "album.sqlite-journal",
-        "album.sqlite-shm",
-        "album.sqlite-wal",
-        "index.json"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/core/records.ts",
-        "scope": "CompanionRecordLibrary/album",
-        "line": 29
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/core/records.ts",
-      "line": 29,
-      "column": 24,
-      "scope": "CompanionRecordLibrary/album",
-      "target": "{\"file\":\"src/core/record-paths.ts\",\"scope\":\"initializeCompanionRecords\"}",
-      "expression": "[ \"album.sqlite\" , \"album.sqlite-wal\" , \"album.sqlite-shm\" , \"album.sqlite-journal\" , \"index.json\" ]",
-      "values": [
-        "album.sqlite",
-        "album.sqlite-journal",
-        "album.sqlite-shm",
-        "album.sqlite-wal",
-        "index.json"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/core/record-paths.ts",
-        "scope": "initializeCompanionRecords",
-        "line": 32
       }
     },
     {
@@ -7164,7 +6817,7 @@
     {
       "rule": "R8",
       "file": "src/living/body/plugin.ts",
-      "line": 413,
+      "line": 412,
       "column": 42,
       "scope": "CompanionBehavior/garden",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -7200,7 +6853,7 @@
       "other": {
         "file": "src/living/body/plugin.ts",
         "scope": "CompanionBehavior/garden",
-        "line": 413
+        "line": 412
       }
     },
     {
@@ -7305,13 +6958,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"<module>\"}",
@@ -7346,13 +6999,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/advance/this . change:callback1",
-        "line": 470
+        "line": 475
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 470,
+      "line": 475,
       "column": 19,
       "scope": "PersistentLifePlan/advance/this . change:callback1",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
@@ -7471,13 +7124,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/parkExecution\"}",
@@ -7558,13 +7211,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/advance/this . change:callback1",
-        "line": 470
+        "line": 475
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 470,
+      "line": 475,
       "column": 19,
       "scope": "PersistentLifePlan/advance/this . change:callback1",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/planAdmissionWait\"}",
@@ -7600,13 +7253,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/advance/this . change:callback1",
-        "line": 470
+        "line": 475
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 470,
+      "line": 475,
       "column": 19,
       "scope": "PersistentLifePlan/advance/this . change:callback1",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
@@ -7684,13 +7337,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
@@ -7771,13 +7424,13 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "registerPlanTools",
-        "line": 154
+        "line": 155
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 154,
+      "line": 155,
       "column": 82,
       "scope": "registerPlanTools",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -7813,13 +7466,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 311
+        "line": 316
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 311,
+      "line": 316,
       "column": 49,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -7980,13 +7633,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/advance/this . change:callback1",
-        "line": 470
+        "line": 475
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 470,
+      "line": 475,
       "column": 19,
       "scope": "PersistentLifePlan/advance/this . change:callback1",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/garden\"}",
@@ -8119,13 +7772,13 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "registerPlanTools",
-        "line": 132
+        "line": 133
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 132,
+      "line": 133,
       "column": 181,
       "scope": "registerPlanTools",
       "target": "{\"file\":\"src/living/economy/plugin.ts\",\"scope\":\"apply\"}",
@@ -8240,13 +7893,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 315
+        "line": 320
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 315,
+      "line": 320,
       "column": 12,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/economy/store.ts\",\"scope\":\"<module>\"}",
@@ -8346,7 +7999,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 132,
+      "line": 133,
       "column": 181,
       "scope": "registerPlanTools",
       "target": "{\"file\":\"src/room/tool-context.ts\",\"scope\":\"<module>\"}",
@@ -8380,93 +8033,13 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "registerPlanTools",
-        "line": 132
+        "line": 133
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 140,
-      "column": 167,
-      "scope": "registerPlanTools",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"gte\" , \"lte\" ]",
-      "values": [
-        "gte",
-        "lte"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "<module>",
-        "line": 28
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 28,
-      "column": 15,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
-      "expression": "\"gte\" | \"lte\"",
-      "values": [
-        "gte",
-        "lte"
-      ],
-      "shape": "union",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan-tools.ts",
-        "scope": "registerPlanTools",
-        "line": 140
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan-tools.ts",
-      "line": 140,
-      "column": 167,
-      "scope": "registerPlanTools",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"parsePlan/( ( raw . reconsiderWhen ?? [  ] ) as unknown [ ] ) . map:callback0\"}",
-      "expression": "[ \"gte\" , \"lte\" ]",
-      "values": [
-        "gte",
-        "lte"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "parsePlan/( ( raw . reconsiderWhen ?? [  ] ) as unknown [ ] ) . map:callback0",
-        "line": 149
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 149,
-      "column": 66,
-      "scope": "parsePlan/( ( raw . reconsiderWhen ?? [  ] ) as unknown [ ] ) . map:callback0",
-      "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
-      "expression": "[ \"gte\" , \"lte\" ]",
-      "values": [
-        "gte",
-        "lte"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan-tools.ts",
-        "scope": "registerPlanTools",
-        "line": 140
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan-tools.ts",
-      "line": 154,
+      "line": 155,
       "column": 82,
       "scope": "registerPlanTools",
       "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/control\"}",
@@ -8481,13 +8054,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 311
+        "line": 316
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 311,
+      "line": 316,
       "column": 49,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/plan/plan-tools.ts\",\"scope\":\"registerPlanTools\"}",
@@ -8502,13 +8075,13 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "registerPlanTools",
-        "line": 154
+        "line": 155
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 154,
+      "line": 155,
       "column": 82,
       "scope": "registerPlanTools",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
@@ -8544,13 +8117,13 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "registerPlanTools",
-        "line": 154
+        "line": 155
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 154,
+      "line": 155,
       "column": 82,
       "scope": "registerPlanTools",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
@@ -8586,13 +8159,13 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "registerPlanTools",
-        "line": 154
+        "line": 155
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 154,
+      "line": 155,
       "column": 82,
       "scope": "registerPlanTools",
       "target": "{\"file\":\"src/room/plugin.ts\",\"scope\":\"Room/request\"}",
@@ -8628,425 +8201,13 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "registerPlanTools",
-        "line": 154
+        "line": 155
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 10,
-      "column": 26,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "\"active\" | \"paused\" | \"waiting\" | \"completed\" | \"cancelled\"",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "<module>",
-        "line": 10
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 10,
-      "column": 26,
-      "scope": "<module>",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "\"active\" | \"paused\" | \"waiting\" | \"completed\" | \"cancelled\"",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "union",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"<module>\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "<module>",
-        "line": 10
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 175,
-      "column": 13,
-      "scope": "PersistentLifePlan/decode",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "[ \"active\" , \"paused\" , \"waiting\" , \"completed\" , \"cancelled\" ]",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/decode\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/decode",
-        "line": 175
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 175,
-      "column": 13,
-      "scope": "PersistentLifePlan/decode",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "[ \"active\" , \"paused\" , \"waiting\" , \"completed\" , \"cancelled\" ]",
-      "values": [
-        "active",
-        "cancelled",
-        "completed",
-        "paused",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/decode\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "子集",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/decode",
-        "line": 175
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 212,
-      "column": 21,
-      "scope": "PersistentLifePlan/change/this . store . update:callback0",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/change/this . store . update:callback0\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/change/this . store . update:callback0",
-        "line": 212
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 212,
-      "column": 21,
-      "scope": "PersistentLifePlan/change/this . store . update:callback0",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/change/this . store . update:callback0\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/change/this . store . update:callback0",
-        "line": 212
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 288,
-      "column": 9,
-      "scope": "PersistentLifePlan/retryAt",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/retryAt\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/retryAt",
-        "line": 288
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 288,
-      "column": 9,
-      "scope": "PersistentLifePlan/retryAt",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/retryAt\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/retryAt",
-        "line": 288
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 299,
-      "column": 24,
-      "scope": "PersistentLifePlan/keep/this . change:callback1",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/keep/this . change:callback1\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/keep/this . change:callback1",
-        "line": 299
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 299,
-      "column": 24,
-      "scope": "PersistentLifePlan/keep/this . change:callback1",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/keep/this . change:callback1\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/keep/this . change:callback1",
-        "line": 299
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 311,
+      "line": 316,
       "column": 49,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
@@ -9082,13 +8243,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 311
+        "line": 316
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 311,
+      "line": 316,
       "column": 49,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/controlPlan\"}",
@@ -9124,13 +8285,13 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 311
+        "line": 316
       }
     },
     {
       "rule": "R8",
       "file": "src/living/plan/plan.ts",
-      "line": 311,
+      "line": 316,
       "column": 49,
       "scope": "PersistentLifePlan/control",
       "target": "{\"file\":\"src/room/plugin.ts\",\"scope\":\"Room/request\"}",
@@ -9166,167 +8327,7 @@
       "other": {
         "file": "src/living/plan/plan.ts",
         "scope": "PersistentLifePlan/control",
-        "line": 311
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 346,
-      "column": 19,
-      "scope": "PersistentLifePlan/reconsider",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/reconsider\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/reconsider",
-        "line": 346
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 346,
-      "column": 19,
-      "scope": "PersistentLifePlan/reconsider",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/reconsider\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/reconsider",
-        "line": 346
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 358,
-      "column": 19,
-      "scope": "PersistentLifePlan/advance",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/stopRuntime\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/stopRuntime",
-        "line": 401
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 401,
-      "column": 28,
-      "scope": "CompanionLife/stopRuntime",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/advance\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/advance",
-        "line": 358
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plan.ts",
-      "line": 358,
-      "column": 19,
-      "scope": "PersistentLifePlan/advance",
-      "target": "{\"file\":\"src/living/plan/plugin.ts\",\"scope\":\"CompanionLife/checkReadingPlan\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plugin.ts",
-        "scope": "CompanionLife/checkReadingPlan",
-        "line": 599
-      }
-    },
-    {
-      "rule": "R8",
-      "file": "src/living/plan/plugin.ts",
-      "line": 599,
-      "column": 83,
-      "scope": "CompanionLife/checkReadingPlan",
-      "target": "{\"file\":\"src/living/plan/plan.ts\",\"scope\":\"PersistentLifePlan/advance\"}",
-      "expression": "[ \"active\" , \"waiting\" ]",
-      "values": [
-        "active",
-        "waiting"
-      ],
-      "shape": "array",
-      "relation": "重复",
-      "other": {
-        "file": "src/living/plan/plan.ts",
-        "scope": "PersistentLifePlan/advance",
-        "line": 358
+        "line": 316
       }
     },
     {
@@ -10442,7 +9443,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -10461,7 +9462,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
@@ -10576,7 +9577,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -10595,7 +9596,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
@@ -10711,7 +9712,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -10730,7 +9731,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/gardenUnavailable\"}",
@@ -10844,7 +9845,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -10863,7 +9864,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/publicExecution\"}",
@@ -10976,7 +9977,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -10995,7 +9996,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/dispatchExecution\"}",
@@ -11262,7 +10263,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -11281,7 +10282,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/animationContext\"}",
@@ -11552,7 +10553,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -11571,7 +10572,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/preserveAcceptedSleepWait\"}",
@@ -11684,7 +10685,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -11703,7 +10704,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
@@ -11816,7 +10817,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -11835,7 +10836,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/living/body/room.ts\",\"scope\":\"CompanionRoom/tickAvailable\"}",
@@ -12659,7 +11660,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -12678,7 +11679,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/contracts/behavior.ts\",\"scope\":\"<module>\"}",
@@ -12734,7 +11735,7 @@
       "other": {
         "file": "src/living/plan/plan-tools.ts",
         "scope": "<module>",
-        "line": 66,
+        "line": 67,
         "column": 26,
         "shape": "object table",
         "table": "planStepBranches",
@@ -12753,7 +11754,7 @@
     {
       "rule": "R8",
       "file": "src/living/plan/plan-tools.ts",
-      "line": 66,
+      "line": 67,
       "column": 26,
       "scope": "<module>",
       "target": "{\"file\":\"src/contracts/interaction.ts\",\"scope\":\"<module>\"}",

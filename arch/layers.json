@@ -16,7 +16,7 @@
       "root": "src/memory/",
       "services": ["petMemory"],
       "dependencies": ["core","memory","emotion","contracts","world"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion"],
+      "reads": ["petCore","petMemory"],
       "publishes": [],
       "subscribes": ["session/event"],
       "generated": []
@@ -26,7 +26,7 @@
       "root": "src/emotion/",
       "services": ["petEmotion"],
       "dependencies": ["core","memory","emotion","contracts","world"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion"],
+      "reads": ["petCore","petWorld","petEmotion"],
       "publishes": ["pet/emotion.changed","pet/emotion.expression"],
       "subscribes": ["agent/disposed","session/event"],
       "generated": []
@@ -37,7 +37,7 @@
       "root": "src/contracts/",
       "services": [],
       "dependencies": ["core","memory","emotion","contracts","world"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion"],
+      "reads": [],
       "publishes": [],
       "subscribes": [],
       "generated": []
@@ -47,7 +47,7 @@
       "root": "src/world/",
       "services": [],
       "dependencies": ["core","memory","emotion","contracts","world"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion"],
+      "reads": [],
       "publishes": [],
       "subscribes": [],
       "generated": []
@@ -58,7 +58,7 @@
       "root": "src/living/",
       "services": ["petBehavior","petLife","petEconomy"],
       "dependencies": ["core","memory","emotion","contracts","world","living"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion"],
+      "reads": ["petCore","petWorld","petTranscripts","petEmotion"],
       "publishes": ["world.changed"],
       "subscribes": ["agent/disposed","agent/pre-step","internal/status","pet/core.changed","pet/emotion.changed","pet/emotion.expression","session/event","tools/pre-execute","tools/result"],
       "generated": [
@@ -70,7 +70,7 @@
       "root": "src/desktop/",
       "services": ["petDesktop","petPlatform"],
       "dependencies": ["core","memory","emotion","contracts","world","living","desktop","presentation"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petDesktop","petPlatform"],
+      "reads": ["petCore","petTranscripts","petEmotion","petBehavior","petLife","petDesktop","petPlatform"],
       "publishes": [],
       "subscribes": ["agent/assistant-stream","agent/error","pet/core.changed","pet/emotion.expression","session/event","world.changed"],
       "generated": [
@@ -98,7 +98,7 @@
       "root": "src/room/",
       "services": ["petRoom"],
       "dependencies": ["core","memory","emotion","contracts","world","living","room","presentation"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petRoom"],
+      "reads": ["petCore","petWorld","petTranscripts","petBehavior","petRoom"],
       "publishes": [],
       "subscribes": ["pet/core.changed","world.changed"],
       "generated": []
@@ -121,7 +121,7 @@
       "root": "src/channels/",
       "services": ["petChannels"],
       "dependencies": ["core","memory","emotion","contracts","world","living","channels"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petEconomy","petChannels"],
+      "reads": ["petCore","petTranscripts","petEmotion","petChannels"],
       "publishes": [],
       "subscribes": ["agent/pre-step","pet/core.changed","session/event","world.changed"],
       "generated": []
@@ -132,7 +132,7 @@
       "root": "src/voice/",
       "services": [],
       "dependencies": ["core","memory","emotion","contracts","world","living","voice"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy"],
+      "reads": ["petCore"],
       "publishes": [],
       "subscribes": ["pet/core.changed"],
       "generated": []
