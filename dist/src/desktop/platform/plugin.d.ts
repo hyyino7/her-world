@@ -1,6 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { type PresentationMigrationReceipt } from './migration.js';
 import { type ConsoleOperation } from '../../core/tables/console.js';
 /** Playback reports are renderer-owned; a control token may only query/wait. */
 export declare function controlRouteAllowed(rest: string, method: string): boolean;
@@ -35,7 +34,6 @@ export declare class PetPlatform {
     private playbackKinds;
     private playbackReported;
     private feedPlaybacks;
-    private migration?;
     private restartPresentation?;
     private presentationStatus?;
     constructor(ctx: Context);
@@ -134,7 +132,6 @@ export declare class PetPlatform {
         pets: never[];
         running: boolean;
         timing?: undefined;
-        migration?: undefined;
         activity?: undefined;
         representation?: undefined;
         packsDirectory?: undefined;
@@ -149,7 +146,6 @@ export declare class PetPlatform {
         }[];
         running: boolean;
         timing: any;
-        migration: PresentationMigrationReceipt | undefined;
         activity: any;
         representation: {
             packGaps: any[];
@@ -178,61 +174,11 @@ export declare class PetPlatform {
         };
         packsDirectory: string;
     }>;
-    resolveMigration(workspaceId: string, field: string, choice: 'legacy' | 'current', expectedConfigHash: string): {
-        path: string;
-        pets: never[];
-        running: boolean;
-        timing?: undefined;
-        migration?: undefined;
-        activity?: undefined;
-        representation?: undefined;
-        packsDirectory?: undefined;
-    } | {
-        path: string;
-        pets: {
-            id: any;
-            name: any;
-            display: any;
-            position: any;
-            assetRoot: any;
-        }[];
-        running: boolean;
-        timing: any;
-        migration: PresentationMigrationReceipt | undefined;
-        activity: any;
-        representation: {
-            packGaps: any[];
-            exclusive: boolean;
-            action: undefined;
-            notice: undefined;
-            gap: boolean;
-            activityId?: undefined;
-            phase?: undefined;
-            progress?: undefined;
-            playback?: undefined;
-        } | {
-            packGaps: any[];
-            exclusive: boolean;
-            action: string;
-            gap: boolean;
-            activityId: string | null;
-            phase: string;
-            progress: {
-                now: any;
-                etaMs: any;
-                gardenWork: any;
-            };
-            playback: import("../../presentation/playback.js").ActivityPlayback;
-            notice: string | undefined;
-        };
-        packsDirectory: string;
-    };
     show(): Promise<{
         path: string;
         pets: never[];
         running: boolean;
         timing?: undefined;
-        migration?: undefined;
         activity?: undefined;
         representation?: undefined;
         packsDirectory?: undefined;
@@ -247,7 +193,6 @@ export declare class PetPlatform {
         }[];
         running: boolean;
         timing: any;
-        migration: PresentationMigrationReceipt | undefined;
         activity: any;
         representation: {
             packGaps: any[];
@@ -305,7 +250,6 @@ export declare class PetPlatform {
         pets: never[];
         running: boolean;
         timing?: undefined;
-        migration?: undefined;
         activity?: undefined;
         representation?: undefined;
         packsDirectory?: undefined;
@@ -320,7 +264,6 @@ export declare class PetPlatform {
         }[];
         running: boolean;
         timing: any;
-        migration: PresentationMigrationReceipt | undefined;
         activity: any;
         representation: {
             packGaps: any[];
@@ -361,14 +304,13 @@ export declare class PetPlatform {
     handle(url: URL, method: string, raw: string | undefined, signal: AbortSignal, actorKind?: 'owner' | 'companion'): Promise<any>;
     http(req: IncomingMessage, res: ServerResponse): Promise<any>;
 }
-export declare function platformConsoleOperations(platform: Pick<PetPlatform, 'ownerAccess' | 'controlAccess' | 'standaloneAccess' | 'saveTiming' | 'resolveMigration' | 'status'>): {
+export declare function platformConsoleOperations(platform: Pick<PetPlatform, 'ownerAccess' | 'controlAccess' | 'standaloneAccess' | 'saveTiming' | 'status'>): {
     operations: Record<string, ConsoleOperation>;
     status: () => {
         path: string;
         pets: never[];
         running: boolean;
         timing?: undefined;
-        migration?: undefined;
         activity?: undefined;
         representation?: undefined;
         packsDirectory?: undefined;
@@ -383,7 +325,6 @@ export declare function platformConsoleOperations(platform: Pick<PetPlatform, 'o
         }[];
         running: boolean;
         timing: any;
-        migration: PresentationMigrationReceipt | undefined;
         activity: any;
         representation: {
             packGaps: any[];

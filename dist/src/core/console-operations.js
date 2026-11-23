@@ -1,5 +1,4 @@
 import { sameHomeBinding } from './home-binding.js';
-import { desktopAppearanceDefaults } from './companion-settings.js';
 import { reject, Rejection } from './storage.js';
 import { fail, object, requiredText } from './tables/console.js';
 export function unwrap(result) {
@@ -28,10 +27,6 @@ export function coreConsoleOperations(host) {
         }]));
     return { operations: {
             ...library,
-            desktopAppearance(call) {
-                object(call.input, []);
-                return desktopAppearanceDefaults();
-            },
             async foundation(call) {
                 const writing = Boolean(call.input && typeof call.input === 'object' && Object.hasOwn(call.input, 'text'));
                 const input = object(call.input, writing ? ['workspaceId', 'expectedRevision', 'text'] : ['workspaceId']);

@@ -4,7 +4,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {createVoiceService} from '../../dist/src/desktop/upstream/host/voice/speak.js';
+import {createVoiceService} from '../../dist/src/voice/upstream/host/voice/speak.js';
 
 for(const [rate,allowed] of [['-50%',true],['-51%',false],['-100%',false],['+100%',true],['+101%',false],['+999%',false],['+0%',true],['--1%',false]]) {
   test(`R4: native voice rate ${rate} ${allowed?'preserves':'rejects'} the signed range before synthesis`,async t=>{

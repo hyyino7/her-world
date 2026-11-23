@@ -21,7 +21,7 @@ def main():
     args = parser.parse_args()
     scope = json.loads(os.environ["CHATPET_MEMORY_SCOPE"])
     ctx = build_context(data_dir=args.data_dir, token=args.token, host=args.host, port=args.port)
-    port = MemoryPort(ctx.service, companion_id=scope["companionId"], scope_id=scope["scopeId"], workspace_id=scope["workspaceId"])
+    port = MemoryPort(ctx.service, companion_id=scope["companionId"], scope_id=scope["scopeId"], workspace_id=scope["bankId"])
     operations = {name: getattr(port, name) for name in ("observe", "archive", "summary", "propose", "correct", "withdraw", "recover", "recall", "read", "context", "validate", "materialize")}
 
     @ctx.app.post("/pet/v1/{operation}")
@@ -33,6 +33,7 @@ def main():
             raise HTTPException(404, "unknown operation")
         try:
             body = await request.json()
+            body["scope"] = port.scope_for_request(body["scope"])
             return operations[operation](**body)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc

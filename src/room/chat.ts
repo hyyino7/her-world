@@ -95,7 +95,7 @@ export class RoomChat {
               sourceKind: 'system', attribution: {channel: 'dsh', sessionId}}),
             reply: ({sessionId}) => ({channel: 'dsh', sessionId}),
           },
-          emotionUpdate: {footer: true, tool: false},
+          emotionUpdate: {footer: false, tool: false},
           policyRow: {
             row: 8, branch: '私聊与电视', trustedActor: '私聊沿用第 1 行；电视仅准当前画面，归于伙伴',
             selectionKey: '当前绑定的最新未归档 Room 会话', historyScope: '私聊与电视共享会话', preset: 'DSH 默认预设',
@@ -103,7 +103,7 @@ export class RoomChat {
             tools: {description: '私聊沿用第 1 行并开放 Room 工具；电视拒绝工具', behaviorIds: ['M2A-01', 'M2A-02', 'M2A-03']},
             memoryObservation: {description: '私聊沿用第 1 行；电视观察画面和完成的回复', behaviorIds: ['M2A-06']},
             emotionUpdate: {
-              footer: {description: '私聊和电视都接受回复 footer', behaviorIds: ['M2A-01', 'M2A-07']},
+              footer: {description: '私聊沿用第 1 行；电视剥离 footer，禁止写共享情绪', behaviorIds: ['M2A-01', 'M2A-07']},
               tool: {description: '私聊沿用第 1 行；电视拒绝工具', behaviorIds: ['M2A-01', 'M2A-02']},
             },
           },

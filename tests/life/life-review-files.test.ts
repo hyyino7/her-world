@@ -52,9 +52,10 @@ test('review rejects traversal, symlinks, hard links, guests and stale workspace
   f.rebind();assert.throws(()=>assertLifeReviewFile(f.host,f.access,'read',join(f.life,'activity/2026-11-12.jsonl'),today));
 });
 
-test('review preserves the established legacy writing owner instead of authorizing a second self file',t=>{
-  const f=fixture(t);renameSync(join(f.records,'self.md'),join(f.life,'self.md'));
-  const access={...f.access,writing:{...f.access.writing!,directory:f.life}};
-  assert.doesNotThrow(()=>assertLifeReviewFile(f.host,access,'write',join(f.life,'self.md'),today));
-  assert.throws(()=>assertLifeReviewFile(f.host,access,'write',join(f.records,'self.md'),today));
+test('review authorizes the current self file while historical Life files stay out of reach',t=>{
+  const f=fixture(t), retired=join(f.life,'self.md');
+  writeFileSync(retired,'Historical fixture');
+  assert.doesNotThrow(()=>assertLifeReviewFile(f.host,f.access,'write',join(f.records,'self.md'),today));
+  for(const tool of ['read','write'])
+    assert.throws(()=>assertLifeReviewFile(f.host,f.access,tool,retired,today));
 });

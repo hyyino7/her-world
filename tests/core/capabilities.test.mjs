@@ -69,7 +69,7 @@ function expected({bound, desktopOpen, qq, hear, missing}) {
     petDesktop: {'desktop.presentation': null, 'desktop.body': null},
     petRoom: {'desktop.room': null},
     petChannels: {'channel.qq': null},
-    petVoice: {'voice.speech': null},
+    voice: {'voice.speech': null},
     console: {'console.operations': null},
     petEmotion: {'emotion.expression': null},
   };
@@ -143,12 +143,13 @@ async function pluginFixture(t) {
   const host = root.get('petCore');
   const plugins = {
     console: consolePlugin, petMemory: memoryPlugin, petLife: lifePlugin, petDesktop: desktopPlugin, petRoom: roomPlugin,
-    petChannels: channelsPlugin, petVoice: voicePlugin, petEmotion: emotionPlugin,
+    petChannels: channelsPlugin, voice: voicePlugin, petEmotion: emotionPlugin,
   };
   const loaded = new Map();
+  const component = service => service === 'voice' ? host.native.voiceTable.lookup(root) : root.get(service);
   async function load(service) {
     loaded.set(service, await install(plugins[service]));
-    const module = service === 'console' ? undefined : root.get(service);
+    const module = service === 'console' ? undefined : component(service);
     if (service !== 'console') assert.ok(module, service + ' 已加载');
     if (service === 'petEmotion') module.registerCatalog('fixture', {
       actions: [{name: 'wave', description: 'Fixture action'}], stickers: [],
@@ -164,7 +165,7 @@ async function pluginFixture(t) {
       await fiber.dispose();
       fibers.splice(fibers.indexOf(fiber), 1);
       loaded.delete(service);
-      if (service !== 'console') assert.equal(root.get(service), undefined, service + ' 已卸载');
+      if (service !== 'console') assert.equal(component(service), undefined, service + ' 已卸载');
     },
     async bind() {
       const {revision, conversation} = value(await host.services.preferences.read(request(), {}));

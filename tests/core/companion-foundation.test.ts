@@ -28,15 +28,13 @@ async function fixture() {
   return {root,repo,host,workspace,registry,services,ctx,agent,close:async()=>{host.native.memory=undefined;await host.close();rmSync(root,{recursive:true,force:true});}};
 }
 
-test('an older Repo reads the optional foundation without changing its manifest, and owner edits are revisioned',async()=>{
+test('a current Repo reads the blank foundation without changing its manifest, and owner edits are revisioned',async()=>{
   const f=await fixture();
   try {
     const file=join(f.repo,'.chatpet/COMPANION.md');
-    const current=JSON.parse(readFileSync(join(f.repo,'.chatpet/manifest.json'),'utf8'));
-    const manifest=JSON.stringify({...current,schemaVersion:2,files:['README.md','manifest.json','SOUL.md','USER.md','core.json']});
-    writeFileSync(join(f.repo,'.chatpet/manifest.json'),manifest);rmSync(file);
+    const manifest=readFileSync(join(f.repo,'.chatpet/manifest.json'),'utf8');
     const original=ok(await f.host.services.workspace.readFoundation(f.host.operator.request('foundation.read'),{}));
-    assert.equal(original.source,'empty');assert.equal(original.text,'');assert.equal(existsSync(file),false);
+    assert.equal(original.source,'empty');assert.equal(original.text,'');assert.equal(readFileSync(file,'utf8'),'');
     const saved=ok(await f.host.services.workspace.saveFoundation(f.host.operator.request('foundation.save'),{workspaceId:'repo',expectedRevision:original.revision,text:'# Owner foundation\nKeep my speaking style.'}));
     assert.equal(saved.source,'owner');assert.equal(f.host.workspace.foundation().text,saved.text);
     writeFileSync(file,'# Edited outside the settings\n');

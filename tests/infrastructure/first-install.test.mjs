@@ -8,6 +8,7 @@ import { Context } from '@deepseek-ai/cordis';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import Tools from '@deepseek-ai/dsh-tools';
 import { createCore } from '../../dist/src/core/index.js';
+import { CONSOLE_WALLET_STEP } from '../../dist/src/core/storage-migration.js';
 import * as economyPlugin from '../../dist/src/living/economy/plugin.js';
 import { EconomyStore } from '../../dist/src/living/economy/store.js';
 import { DatabaseSync } from 'node:sqlite';
@@ -24,7 +25,7 @@ function fixture(t) {
   const {attemptReceipt} = setup.checked([]);
   const {config} = JSON.parse(readFileSync(attemptReceipt));
   assert.deepEqual(setup.calls(), [], 'Setup planning starts no package process, Electron, or model');
-  assert.equal(config.dataDir, join(root, 'codex-pet/core'));
+  assert.equal(config.dataDir, join(root, 'her-world/core'));
   host = createCore(config);
   let sequence = 0;
   const request = () => host.operator.request('first-install-' + ++sequence);
@@ -92,6 +93,19 @@ test('failed module initialization retries against the same external Core withou
   assert.equal(existsSync(join(f.repo, '.chatpet/.initialization-pending.json')), false);
   await f.reopen();
   assert.equal(value(await f.host.services.workspace.inspect(f.request(), {})).state, 'ready');
+});
+
+test('a Repo containing only STATE.md is refused as a first installation', async t => {
+  const f = fixture(t), prefs = await f.bind();
+  const managed = join(f.repo, '.chatpet'), file = join(managed, 'STATE.md');
+  const original = '# Retained workspace state\n';
+  mkdirSync(managed);
+  writeFileSync(file, original);
+  assert.equal(inspectRepoBinding(f.config).state, 'pending');
+  const result = await f.initialize(prefs.revision);
+  assert.equal(result.error?.code, 'migration-required');
+  assert.deepEqual(readdirSync(managed), ['STATE.md']);
+  assert.equal(readFileSync(file, 'utf8'), original);
 });
 
 function installWallet(f, beforePrepare = () => {}) {
@@ -293,7 +307,9 @@ test('bootstrap completes stopped relocation, retries a failed manifest write, a
   assert.equal(relocateRepoStorage(prepareRepoStorage(f.repo, portable)).length, 0, 'Completed migration is safely repeatable');
   renameSync(join(target, 'core.sqlite'), retained);
   for (const pending of [false, true]) {
-    if (pending) writeFileSync(join(f.repo, '.chatpet/.initialization-pending.json'), JSON.stringify({ companionId: f.config.companionId }));
+    if (pending) writeFileSync(join(f.repo, '.chatpet/.initialization-pending.json'), JSON.stringify({
+      companionId: f.config.companionId, scopeId: f.config.scopeId, workspaceId: 'repo', modules: CONSOLE_WALLET_STEP.to,
+    }));
     assert.throws(() => createCore(portable), /migrate its existing Core|recover its data/);
     assert.equal(existsSync(join(target, 'core.sqlite')), false, 'A missing initialized DB must never be regenerated');
   }

@@ -76,7 +76,7 @@ export function inspectEconomyAdoption(path: string, identity: EconomyIdentity, 
 export function bodyCheckpointDirectory(path: string) {
   const managed = join(path, '.chatpet'), data = join(managed, 'data'), life = join(data, 'life');
   for (const part of [managed, data, life]) directory(part);
-  if (economyFile(join(life, 'home.json')) || economyFile(join(life, 'garden.json'))) return life;
+  if (economyFile(join(life, 'home.json'))) return life;
   const behavior = join(data, 'behavior');
   directory(behavior);
   return behavior;

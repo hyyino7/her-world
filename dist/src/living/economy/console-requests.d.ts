@@ -135,14 +135,10 @@ type Binding = {
     storageId: string;
     companionId: string;
 };
-type ImportedRequest = WalletRequest & {
-    requestId: string;
-};
 export declare function normalizeWalletRequest(endpoint: string, raw: unknown): WalletRequest;
 export declare const consoleFoodOperationId: (requestId: string) => string;
 export declare function legacyWalletDigest(requestId: string, { input }: WalletRequest): string | undefined;
 export declare function installConsoleRequests(db: DatabaseSync): void;
-export declare function readConsoleImportProof(db: DatabaseSync): unknown;
 export declare class ConsoleRequests {
     private readonly db;
     private readonly binding;
@@ -158,6 +154,4 @@ export declare class ConsoleRequests {
     add(id: string, request: WalletRequest): void;
     finish(id: string, fingerprint: string, state: 'committed' | 'declined' | 'abandoned'): void;
 }
-/** The offline step owns the transaction containing schema, rows and proof. */
-export declare function importConsoleRequests(db: DatabaseSync, binding: Binding, requests: ImportedRequest[], proof: unknown): void;
 export {};

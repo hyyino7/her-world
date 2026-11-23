@@ -10,7 +10,8 @@ import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {Desktop} from '../../dist/src/desktop/index.js';
 import {adaptRoomApp,roomAsset} from '../../dist/src/room/assets.js';
-import {behaviorPresentation,companionFeelings,feelingLabels} from '../../dist/src/living/body/presentation.js';
+import {behaviorPresentation,feelingLabels} from '../../dist/src/living/body/presentation.js';
+import {COMPANION_FEELINGS} from '../../dist/src/contracts/emotion.js';
 
 export function fixture(root,getOrigin=()=> 'http://127.0.0.1',services={}) {
   let target={id:'a',path:root}, turns=[], requests=0;
@@ -69,6 +70,8 @@ test('bound platform runs original config, media, controls, animation and native
   assert.equal((await request('state')).obj.pets.second.anim.data.name,'螃蟹走路');
   assert.equal((await request('chat?pet=second','POST',{text:'和同一个伙伴聊天'})).obj.text,'native reply');
   assert.equal((await request('chat?pet=main')).obj.messages.at(-1).content,'native reply');
+  assert.equal((await request('chat/memory')).status,404);
+  assert.equal((await request('chat/memory','DELETE')).status,404);
   assert.equal(requests(),1);
   const {file}=platform.standaloneAccess('a');
   assert.equal(statSync(file).mode&0o777,0o600);
@@ -77,6 +80,43 @@ test('bound platform runs original config, media, controls, animation and native
   assert.equal(existsSync(file),false);
   assert.notEqual(platform.ownerAccess('b').token,access.token);
  }finally{platform.close();rmSync(root,{recursive:true,force:true});}
+});
+
+test('current appearance config supports an empty editor, a size-232 pet and primary pet settings', async t => {
+  const root=mkdtempSync(join(tmpdir(),'chatpet-platform-config-')), {platform}=fixture(root);
+  t.after(()=>{platform.close();rmSync(root,{recursive:true,force:true});});
+  const directory=join(root,'.chatpet/data/pet-platform'), current=join(directory,'main-config.jsonc');
+  mkdirSync(directory,{recursive:true});
+  const retired=join(directory,'main-config.json'), old='{"pets":[{"id":"old","size":462}]}';
+  writeFileSync(retired,old);
+
+  platform.ownerAccess('a');
+  const endpoint=new URL('http://localhost/chatpet-presentation/config'), signal=new AbortController().signal;
+  const read=async()=>(await platform.handle(endpoint,'GET',undefined,signal)).obj.main;
+  const {pets,bodyTemplate}=await read();
+  assert.deepEqual(pets,[]);
+  const main={...bodyTemplate,id:'main',size:232,display:'none',fixedEnabled:false};
+  const second={...main,id:'second',size:144};
+  assert.equal((await platform.handle(endpoint,'PUT',JSON.stringify({pets:[second,main]}),signal)).status,200);
+  assert.deepEqual((await read()).pets.map(({id,size})=>[id,size]),[['second',144],['main',232]]);
+  await platform.savePreference('desktopFixed',true);
+  assert.deepEqual((await read()).pets.map(({id,fixedEnabled})=>[id,fixedEnabled]),[['second',false],['main',true]]);
+
+  const config=JSON.parse(readFileSync(current,'utf8'));
+  writeFileSync(current,'// Hand-edited JSONC\n'+JSON.stringify({...config,custom:'https://example.test/a//b'}));
+  const timing=platform.status().timing, next={...timing,whisper:timing.whisper+1};
+  await platform.saveTiming('a',timing,next);
+  const persisted=JSON.parse(readFileSync(current,'utf8'));
+  assert.deepEqual(persisted.eventsRefreshSec,next);
+  assert.deepEqual(persisted.pets,config.pets);
+  assert.equal(persisted.custom,'https://example.test/a//b');
+  assert.equal(readFileSync(retired,'utf8'),old);
+
+  platform.close();
+  const broken='{"pets": /* unfinished';
+  writeFileSync(current,broken);
+  assert.throws(()=>platform.ownerAccess('a'),/外观配置无法解析/);
+  assert.equal(readFileSync(current,'utf8'),broken);
 });
 
 test('settings read creates no body; one host preserves raw configuration while activity overrides only the render view',async()=>{
@@ -263,7 +303,7 @@ test('all nine feelings preserve actual activity and Room displays text without 
  const render=new Function('state','$','companionLabel',chipSource);
  const renderChip=state=>render(state,()=>chip,()=> '大肥鱼');
  const chip={textContent:'',title:'',classList:{toggle(){}}};
- for(const feeling of companionFeelings){
+ for(const feeling of COMPANION_FEELINGS){
   renderChip({emotion:{feelings:[feeling]}});
   assert.equal(chip.textContent,'心情 · '+feelingLabels[feeling]);
   assert.equal(behaviorPresentation({her:{kind:'eat',activity:'正在吃饭'},emotion:{feelings:[feeling]}}).action,'eat');

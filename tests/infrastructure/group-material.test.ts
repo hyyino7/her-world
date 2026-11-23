@@ -10,7 +10,7 @@ import {createQzoneLedger} from '../../src/channels/group-qzone.js';
 test('Room group features retain source attribution and stay inside one native group and device account', async () => {
   const dir = mkdtempSync(join(tmpdir(),'chatpet-group-fixture-'));
   const network:string[] = [], sends:string[] = [], forwards:string[] = [];
-  const options = {deviceDirectory:dir, active:()=>true, allowed:(id:SpeakerIdentity)=>id.channel==='qq' && ['10','20'].includes(id.conversationId),
+  const options = {dataDirectory:dir, active:()=>true, allowed:(id:SpeakerIdentity)=>id.channel==='qq' && ['10','20'].includes(id.conversationId),
     search:async(query:string)=>{network.push(query);return {sources:[{url:'https://example.org/lexicon',title:'Public word'}]};}};
   let groups = createGroupGameplay(options);
   const first:SpeakerIdentity = {channel:'qq',accountId:'42',speakerId:'qq:7',speakerName:'A',conversationId:'10',conversationType:'group',platformMessageId:'first'};
@@ -118,8 +118,8 @@ test('Qzone checks the original quota, confirmed public draft and durable unknow
 });
 
 test('v2 uses per-group unread receipts, wake triggers, bounded feedback and one explicit quoted message', async () => {
-  const deviceDirectory=mkdtempSync(join(tmpdir(),'chatpet-group-v2-'));
-  const create=()=>createGroupGameplay({deviceDirectory,active:()=>true,allowed:()=>true});
+  const dataDirectory=mkdtempSync(join(tmpdir(),'chatpet-group-v2-'));
+  const create=()=>createGroupGameplay({dataDirectory,active:()=>true,allowed:()=>true});
   let groups=create();
   const ids=(conversationId:string, platformMessageId:string, speakerId='qq:7'):SpeakerIdentity=>({
     channel:'qq',accountId:'42',speakerId,speakerName:'群友',conversationId,conversationType:'group',platformMessageId,
@@ -189,5 +189,5 @@ test('v2 uses per-group unread receipts, wake triggers, bounded feedback and one
     assert.equal(groups.response(capped,'内部说明','v2'),'');
     await assert.rejects(groups.action(capped,'qq_get_unread',{},{}));
     assert.equal(groups.response(capped,'普通回复','v1'),'普通回复');
-  } finally {groups.stop();rmSync(deviceDirectory,{recursive:true,force:true});}
+  } finally {groups.stop();rmSync(dataDirectory,{recursive:true,force:true});}
 });

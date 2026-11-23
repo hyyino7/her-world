@@ -1,7 +1,7 @@
 import type { CoreService, WorkspaceEditScope } from '../contracts/core.js';
 import type { Result } from '../contracts/common.js';
 import { sameHomeBinding } from './home-binding.js';
-import { desktopAppearanceDefaults, type CompanionConfiguration } from './companion-settings.js';
+import type { CompanionConfiguration } from './companion-settings.js';
 import type { PetCoreHost } from './index.js';
 import type { ConversationOptions } from './options.js';
 import type { WorkspaceTarget } from './preferences.js';
@@ -39,10 +39,6 @@ export function coreConsoleOperations(host: PetCoreHost) {
 
   return {operations: {
     ...library,
-    desktopAppearance(call: ConsoleCall) {
-      object(call.input, []);
-      return desktopAppearanceDefaults();
-    },
     async foundation(call: ConsoleCall) {
       const writing = Boolean(call.input && typeof call.input === 'object' && Object.hasOwn(call.input, 'text'));
       const input = object(call.input, writing ? ['workspaceId', 'expectedRevision', 'text'] : ['workspaceId']);

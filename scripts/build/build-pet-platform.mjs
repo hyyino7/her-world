@@ -31,6 +31,33 @@ function replaceOnce(source, match, value) {
   if (source.split(match).length !== 2) throw Error('Pet platform entry changed: '+match);
   return source.replace(match, () => value);
 }
+function removeBetween(source, start, end) {
+  if (source.split(start).length !== 2 || source.split(end).length !== 2) throw Error('Pet platform section changed: '+start);
+  const from = source.indexOf(start), to = source.indexOf(end, from);
+  if (to < from) throw Error('Pet platform section order changed: '+start);
+  return source.slice(0, from) + source.slice(to);
+}
+function removeOrphanHistory(source) {
+  source = removeBetween(source, 'async function fetchOrphans() {', '\n//#endregion\n//#region src/client/chat/actions.ts');
+  source = removeBetween(source, '\t/** 清掉已删宠物残留的历史。 */', '\t/** 确认条点「确定」后按待办类型分发；先清 pending，避免重复触发。 */');
+  source = removeBetween(source, 'function orphansNode(h, t, state) {', '/** 卷帘块与按钮共用的 id');
+  source = removeBetween(source, '.pet-chat-orphans {', '.pet-chat-confirm {');
+  for (const line of [
+    '\t\telse if (kind === "clear-orphans") clearOrphans$1();',
+    '\t\t\t\t\torphans,',
+    '\t\tclearOrphans: clearOrphans$1,',
+    '\torphans: [],',
+    '\t\t\torphansNode(h, rt.t, state),',
+  ]) source = replaceOnce(source, '\n'+line+'\n', '\n');
+  source = replaceOnce(source, '\t\t\t\t\t\tpetId: first,\n\t\t\t\t\t\torphans', '\t\t\t\t\t\tpetId: first');
+  source = replaceOnce(source, '\t"clear-all": "confirmClearAll",\n\t"clear-orphans": "confirmClearOrphans"', '\t"clear-all": "confirmClearAll"');
+  const load = 'const [config, orphans] = await Promise.all([fetchChatConfig(), fetchOrphans().catch(() => [])]);';
+  for (const indent of ['\t\t\t\t', '\t\t\t\t\t'])
+    source = replaceOnce(source, '\n'+indent+load, '\n'+indent+'const config = await fetchChatConfig();');
+  source = replaceOnce(source, '重读配置、孤儿提示与当前宠物的历史', '重读配置与当前宠物的历史');
+  source = replaceOnce(source, ' : state.pending === "clear-orphans" ? t("confirmCountOrphans", { n: state.orphans.length })', '');
+  return source.replace(/^\t(?:orphansSummary|orphansClear|confirmClearOrphans|confirmCountOrphans): [^\n]*\n/gm, '');
+}
 // Owner feedback retains its actual episode deadline through the original say
 // transport. Ordinary upstream say leaves keep their existing duration rules.
 function adaptSayExpiry(source) {
@@ -229,6 +256,7 @@ host = replaceOnce(host, '\t\tif (persona) pet.whisperPrompt = persona;',
 writeFileSync(join(vendor,'runtime.mjs'), host);
 
 let client = removeBaifanMinigame(adaptSayExpiry(adaptPetHearLifecycle(read(join(vendor,'upstream/client.js'))))).trim();
+client = removeOrphanHistory(client);
 // Shared Body owns sleep and ended-cue state; the original machine remains for
 // unmanaged packs only. Menus/keyboard and taps read the same actual descriptor.
 client=replaceOnce(client,'\t\tconst sleeping = () => sleep$1().sleeping();',

@@ -10,20 +10,10 @@ function strings(value, name) {
         throw Error('Invalid emotion ' + name);
     return [...new Set(value)];
 }
-export function readDependencies(value) {
-    if (!object(value))
-        throw Error('Invalid emotion dependencies');
-    const list = (items) => {
-        if (!Array.isArray(items) || items.length > 4096 || items.some(row => !object(row) || typeof row.id !== 'string' || !row.id || typeof row.revision !== 'string' || !row.revision))
-            throw Error('Invalid emotion dependency versions');
-        return items.map(row => ({ id: row.id, revision: row.revision }));
-    };
-    return { sources: list(value.sources), memories: list(value.memories) };
-}
 export function readEmotionState(value) {
     if (!object(value) || typeof value.mood !== 'string' || !value.mood.trim() || value.mood.length > 160 || typeof value.reason !== 'string' || value.reason.length > 4000 || typeof value.at !== 'number' || !Number.isFinite(value.at) || value.at < 0)
         throw Error('Invalid maintained emotion state');
-    if (Object.keys(value).some(key => !['mood', 'reason', 'at', 'memories', 'feelings', 'roomMood', 'dependencies'].includes(key)))
+    if (Object.keys(value).some(key => !['mood', 'reason', 'at', 'memories', 'feelings', 'roomMood'].includes(key)))
         throw Error('Unknown emotion content; retained for review');
     const state = { mood: value.mood, reason: value.reason, at: value.at, memories: strings(value.memories, 'memory references') };
     if (value.roomMood !== undefined) {
@@ -34,17 +24,12 @@ export function readEmotionState(value) {
     }
     if (value.feelings !== undefined)
         state.feelings = strings(value.feelings, 'feelings');
-    if (value.dependencies !== undefined)
-        state.dependencies = readDependencies(value.dependencies);
     return state;
 }
-/** One canonical file; old Core rows are only a one-time import source. */
 export class EmotionFile {
     scope;
-    legacy;
-    constructor(scope, legacy) {
+    constructor(scope) {
         this.scope = scope;
-        this.legacy = legacy;
     }
     /** Prepare the existing canonical store without inventing a first feeling. */
     initialize() {
@@ -76,18 +61,8 @@ export class EmotionFile {
     empty() { return { schema: 1, companionId: this.scope.companionId, scopeId: this.scope.scopeId, storageId: this.scope.storageId, revision: 0, current: null }; }
     load() {
         const file = this.location();
-        if (!file || !existsSync(file)) {
-            const previous = this.legacy();
-            const document = this.empty();
-            if (previous) {
-                document.current = readEmotionState(previous);
-                document.revision = 1;
-                document.importedLegacy = true;
-                this.write(document, { revision: 0, contentHash: hash('absent') });
-                return this.load();
-            }
-            return { document, contentHash: hash('absent') };
-        }
+        if (!file || !existsSync(file))
+            return { document: this.empty(), contentHash: hash('absent') };
         const stat = lstatSync(file);
         if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > MAX_DOCUMENT_BYTES)
             throw Error('Invalid emotion file; the original has been retained');
@@ -100,9 +75,9 @@ export class EmotionFile {
             closeSync(fd);
         }
         const raw = JSON.parse(text);
-        if (!object(raw) || raw.schema !== 1 || raw.companionId !== this.scope.companionId || raw.scopeId !== this.scope.scopeId || raw.storageId !== this.scope.storageId || !Number.isSafeInteger(raw.revision) || Number(raw.revision) < 1 || Object.keys(raw).some(key => !['schema', 'companionId', 'scopeId', 'storageId', 'revision', 'current', 'importedLegacy'].includes(key)))
+        if (!object(raw) || raw.schema !== 1 || raw.companionId !== this.scope.companionId || raw.scopeId !== this.scope.scopeId || raw.storageId !== this.scope.storageId || !Number.isSafeInteger(raw.revision) || Number(raw.revision) < 1 || Object.keys(raw).some(key => !['schema', 'companionId', 'scopeId', 'storageId', 'revision', 'current'].includes(key)))
             throw Error('Emotion identity, revision or schema mismatch; the original has been retained');
-        const document = { schema: 1, companionId: this.scope.companionId, scopeId: this.scope.scopeId, storageId: this.scope.storageId, revision: Number(raw.revision), current: raw.current === null ? null : readEmotionState(raw.current), ...(raw.importedLegacy === true ? { importedLegacy: true } : {}) };
+        const document = { schema: 1, companionId: this.scope.companionId, scopeId: this.scope.scopeId, storageId: this.scope.storageId, revision: Number(raw.revision), current: raw.current === null ? null : readEmotionState(raw.current) };
         return { document, contentHash: hash(text) };
     }
     snapshot(value) {
@@ -144,7 +119,7 @@ export class EmotionFile {
         const previous = this.load();
         if (previous.document.revision !== input.expectedRevision || previous.contentHash !== input.expectedHash)
             throw Error('Emotion changed; refresh before saving');
-        const state = readEmotionState({ mood: input.mood, reason: input.reason ?? '', at, memories: input.memories ?? [], ...(input.feelings ? { feelings: input.feelings } : {}), ...(input.roomMood ? { roomMood: input.roomMood } : {}), ...(input.dependencies ? { dependencies: input.dependencies } : {}) });
+        const state = readEmotionState({ mood: input.mood, reason: input.reason ?? '', at, memories: input.memories ?? [], ...(input.feelings ? { feelings: input.feelings } : {}), ...(input.roomMood ? { roomMood: input.roomMood } : {}) });
         const document = { ...previous.document, revision: previous.document.revision + 1, current: state };
         this.write(document, { revision: input.expectedRevision, contentHash: input.expectedHash });
         return this.snapshot(this.load());

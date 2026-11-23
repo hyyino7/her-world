@@ -14494,38 +14494,6 @@ async function deleteRounds(petId, ts) {
 async function clearHistory(petId) {
 	return deleteChat(petId, []);
 }
-async function fetchOrphans() {
-	const res = await fetch(ROUTE_PATH + "/chat/memory", { cache: "no-store" });
-	if (!res.ok) throw new Error("chat/memory HTTP " + res.status);
-	const body = await res.json();
-	const raw = Array.isArray(body.orphans) ? body.orphans : [];
-	const out = [];
-	for (const item of raw) {
-		if (!item || typeof item !== "object") continue;
-		const one = item;
-		if (typeof one.petId !== "string") continue;
-		out.push({
-			entry: typeof one.entry === "string" ? one.entry : "",
-			petId: one.petId,
-			messages: typeof one.messages === "number" ? one.messages : 0,
-			lastTs: typeof one.lastTs === "number" ? one.lastTs : 0
-		});
-	}
-	return out;
-}
-async function clearOrphans() {
-	const res = await fetch(ROUTE_PATH + "/chat/memory", { method: "DELETE" });
-	const body = await res.json().catch(() => null);
-	if (body?.ok === true) return {
-		ok: true,
-		pets: Number(body.pets ?? 0),
-		messages: Number(body.messages ?? 0)
-	};
-	return {
-		ok: false,
-		message: typeof body?.message === "string" ? body.message : "HTTP " + res.status
-	};
-}
 
 //#endregion
 //#region src/client/chat/actions.ts
@@ -14609,31 +14577,12 @@ function createSendActions(ports) {
 }
 function createShellActions(deps) {
 	const { ports, history, listRef, pageRounds } = deps;
-	/** 清掉已删宠物残留的历史。 */
-	const clearOrphans$1 = () => {
-		(async () => {
-			try {
-				const result = await clearOrphans();
-				if (!result.ok) {
-					ports.fail(result.message);
-					return;
-				}
-				ports.patch({
-					orphans: [],
-					error: ""
-				});
-			} catch (error) {
-				ports.fail(error);
-			}
-		})();
-	};
 	/** 确认条点「确定」后按待办类型分发；先清 pending，避免重复触发。 */
 	const confirmAsk = () => {
 		const kind = ports.read().pending;
 		ports.patch({ pending: null });
 		if (kind === "delete-selected") history.deleteSelected();
 		else if (kind === "clear-all") history.clearAll();
-		else if (kind === "clear-orphans") clearOrphans$1();
 	};
 	/** 多放一批更早的轮；按高度差补偿滚动位置，视线不跳。 */
 	const showOlder = () => {
@@ -14645,19 +14594,18 @@ function createShellActions(deps) {
 			el$1.scrollTop = el$1.scrollHeight - before;
 		});
 	};
-	/** 重读配置、孤儿提示与当前宠物的历史：改完对话配置不必刷新整个页面。
+	/** 重读配置与当前宠物的历史：改完对话配置不必刷新整个页面。
 	*  当前宠物可能已被删（配置是重新拉的）→ 回落到第一只，否则面板会停在一只不存在的宠物上。 */
 	const refresh = () => {
 		(async () => {
 			try {
-				const [config, orphans] = await Promise.all([fetchChatConfig(), fetchOrphans().catch(() => [])]);
+				const config = await fetchChatConfig();
 				const { petId } = ports.read();
 				const nextPetId$1 = config.pets.some((one) => one.id === petId) ? petId : config.pets[0]?.id ?? "";
 				ports.patch({
 					pets: config.pets,
 					roundsByEntry: config.roundsByEntry,
 					personas: config.personaByPet,
-					orphans,
 					petId: nextPetId$1,
 					avatarVersion: Date.now(),
 					error: ""
@@ -14669,7 +14617,6 @@ function createShellActions(deps) {
 		})();
 	};
 	return {
-		clearOrphans: clearOrphans$1,
 		ask: (kind) => ports.patch({ pending: kind }),
 		cancelAsk: () => ports.patch({ pending: null }),
 		confirmAsk,
@@ -14723,14 +14670,13 @@ function createChatEffects(rt) {
 		useEffect(() => {
 			(async () => {
 				try {
-					const [config, orphans] = await Promise.all([fetchChatConfig(), fetchOrphans().catch(() => [])]);
+					const config = await fetchChatConfig();
 					const first = config.pets[0]?.id ?? "";
 					patch({
 						pets: config.pets,
 						roundsByEntry: config.roundsByEntry,
 						personas: config.personaByPet,
-						petId: first,
-						orphans
+						petId: first
 					});
 					await reload(first);
 				} catch (error) {
@@ -14784,7 +14730,6 @@ const INITIAL = {
 	error: "",
 	selected: [],
 	selecting: false,
-	orphans: [],
 	pending: null,
 	visibleRounds: PAGE_ROUNDS,
 	previewUrl: void 0,
@@ -14951,26 +14896,6 @@ function createPetChatState(rt) {
 
 //#endregion
 //#region src/client/chat/view-node.ts
-function orphansNode(h, t, state) {
-	if (state.orphans.length === 0) return null;
-	const messages = state.orphans.reduce((sum, one) => sum + one.messages, 0);
-	return h("div", {
-		className: "pet-chat-orphans",
-		children: [
-			h("span", { children: t("orphansSummary", {
-				pets: state.orphans.length,
-				messages
-			}) }),
-			h("span", { className: "pet-chat-composer-spacer" }),
-			h("button", {
-				type: "button",
-				className: "pet-chat-tool",
-				onClick: () => state.ask("clear-orphans"),
-				children: t("orphansClear")
-			})
-		]
-	});
-}
 /** 卷帘块与按钮共用的 id：`aria-controls` 要指向它。 */
 const PERSONA_PANEL_ID = "pet-chat-persona";
 /** 「人设」按钮：点一下展开 / 收起工具栏下方那块卷帘。 */
@@ -15043,13 +14968,12 @@ function toolsNode(h, t, state) {
 /** 待确认操作的文案键：每条都说清「删什么、不可恢复」。 */
 const CONFIRM_TEXT = {
 	"delete-selected": "confirmDeleteSelected",
-	"clear-all": "confirmClearAll",
-	"clear-orphans": "confirmClearOrphans"
+	"clear-all": "confirmClearAll"
 };
 function confirmNode(rt, state) {
 	if (state.pending === null) return null;
 	const { h, ui, t } = rt;
-	const count = state.pending === "delete-selected" ? t("confirmCountRounds", { n: state.selected.length }) : state.pending === "clear-orphans" ? t("confirmCountOrphans", { n: state.orphans.length }) : "";
+	const count = state.pending === "delete-selected" ? t("confirmCountRounds", { n: state.selected.length }) : "";
 	const description = t(CONFIRM_TEXT[state.pending]) + count + t("confirmIrreversible");
 	if (ui === void 0) return h("div", {
 		className: "pet-chat-confirm",
@@ -15621,7 +15545,6 @@ function buildPanel(rt, state) {
 		},
 		children: [
 			tabsNode(h, state),
-			orphansNode(h, rt.t, state),
 			toolsNode(h, rt.t, state),
 			personaNode(h, state),
 			listNode(rt, state),
@@ -15729,18 +15652,6 @@ const PANEL_CSS = `
   /* 人设正文自己带换行与缩进：保留排版，长单词与 URL 也要能断开 */
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.pet-chat-orphans {
-  display: flex;
-  align-items: center;
-  gap: ${px(SIZE.gap)};
-  flex: 0 0 auto;
-  padding: ${px(SIZE.gapTight)} ${px(SIZE.tabPadX)};
-  border-radius: var(--dsw-radius-md);
-  background: var(--dsw-alias-bg-multi-select);
-  color: var(--dsw-alias-label-secondary);
-  font: var(--dsw-font-xxs-12);
 }
 
 .pet-chat-confirm {
@@ -16330,8 +16241,6 @@ const de = {
 	olderEnd: "Du hast den Anfang erreicht",
 	olderEndCapped: "Du hast den Anfang erreicht (maximal {n} Runden)",
 	memoryLine: "Die letzten {n} Runden sind im Gedächtnis des Maskottchens",
-	orphansSummary: "{pets} gelöschte(s) Maskottchen haben Verlauf ({messages} Nachrichten)",
-	orphansClear: "Bereinigen",
 	toolsPersona: "Persona",
 	toolsSelect: "Auswählen",
 	toolsCancelSelect: "Auswahl aufheben",
@@ -16343,9 +16252,7 @@ const de = {
 	toolsClearAll: "Verlauf löschen",
 	confirmDeleteSelected: "Ausgewählte Runden löschen?",
 	confirmClearAll: "Gesamten Unterhaltungsverlauf dieses Maskottchens löschen?",
-	confirmClearOrphans: "Verlauf gelöschter Maskottchen bereinigen?",
 	confirmCountRounds: "({n} Runden)",
-	confirmCountOrphans: "({n} Maskottchen)",
 	confirmIrreversible: "Das lässt sich nicht rückgängig machen.",
 	confirmTitle: "Unterhaltungsverlauf löschen",
 	confirmDelete: "Löschen",
@@ -16385,8 +16292,6 @@ const en = {
 	olderEnd: "You have reached the beginning",
 	olderEndCapped: "You have reached the beginning (up to {n} rounds)",
 	memoryLine: "The last {n} rounds are in the pet memory",
-	orphansSummary: "{pets} deleted pet(s) have history ({messages} messages)",
-	orphansClear: "Clean up",
 	toolsPersona: "Persona",
 	toolsSelect: "Select",
 	toolsCancelSelect: "Cancel selection",
@@ -16398,9 +16303,7 @@ const en = {
 	toolsClearAll: "Clear history",
 	confirmDeleteSelected: "Delete the selected rounds?",
 	confirmClearAll: "Clear all conversation history for this pet?",
-	confirmClearOrphans: "Clean up the history of deleted pets?",
 	confirmCountRounds: "({n} rounds)",
-	confirmCountOrphans: "({n} pets)",
 	confirmIrreversible: "This cannot be undone.",
 	confirmTitle: "Delete conversation history",
 	confirmDelete: "Delete",
@@ -16440,8 +16343,6 @@ const es = {
 	olderEnd: "Has llegado al principio",
 	olderEndCapped: "Has llegado al principio (máximo {n} rondas)",
 	memoryLine: "Las últimas {n} rondas están en la memoria de la mascota",
-	orphansSummary: "{pets} mascota(s) eliminada(s) tienen historial ({messages} mensajes)",
-	orphansClear: "Limpiar",
 	toolsPersona: "Personalidad",
 	toolsSelect: "Seleccionar",
 	toolsCancelSelect: "Cancelar selección",
@@ -16453,9 +16354,7 @@ const es = {
 	toolsClearAll: "Borrar historial",
 	confirmDeleteSelected: "¿Eliminar las rondas seleccionadas?",
 	confirmClearAll: "¿Borrar todo el historial de conversación de esta mascota?",
-	confirmClearOrphans: "¿Limpiar el historial de mascotas eliminadas?",
 	confirmCountRounds: "({n} rondas)",
-	confirmCountOrphans: "({n} mascotas)",
 	confirmIrreversible: "No se puede deshacer.",
 	confirmTitle: "Eliminar historial de conversación",
 	confirmDelete: "Eliminar",
@@ -16495,8 +16394,6 @@ const fr = {
 	olderEnd: "Vous avez atteint le début",
 	olderEndCapped: "Vous avez atteint le début ({n} tours maximum)",
 	memoryLine: "Les {n} derniers tours sont dans la mémoire de la mascotte",
-	orphansSummary: "{pets} mascotte(s) supprimée(s) ont un historique ({messages} messages)",
-	orphansClear: "Nettoyer",
 	toolsPersona: "Personnalité",
 	toolsSelect: "Sélectionner",
 	toolsCancelSelect: "Annuler la sélection",
@@ -16508,9 +16405,7 @@ const fr = {
 	toolsClearAll: "Effacer l'historique",
 	confirmDeleteSelected: "Supprimer les tours sélectionnés ?",
 	confirmClearAll: "Effacer tout l'historique de conversation de cette mascotte ?",
-	confirmClearOrphans: "Nettoyer l'historique des mascottes supprimées ?",
 	confirmCountRounds: "({n} tours)",
-	confirmCountOrphans: "({n} mascottes)",
 	confirmIrreversible: "Action irréversible.",
 	confirmTitle: "Supprimer l'historique de conversation",
 	confirmDelete: "Supprimer",
@@ -16550,8 +16445,6 @@ const ja = {
 	olderEnd: "最初まで表示しました",
 	olderEndCapped: "最初まで表示しました（最大 {n} ラウンド）",
 	memoryLine: "以下の {n} ラウンドはペットの記憶に含まれます",
-	orphansSummary: "削除済みペットの履歴が {pets} 件（{messages} メッセージ）あります",
-	orphansClear: "クリーンアップ",
 	toolsPersona: "ペルソナ",
 	toolsSelect: "選択",
 	toolsCancelSelect: "選択を解除",
@@ -16563,9 +16456,7 @@ const ja = {
 	toolsClearAll: "履歴を消去",
 	confirmDeleteSelected: "選択したラウンドを削除しますか？",
 	confirmClearAll: "このペットの全会話履歴を消去しますか？",
-	confirmClearOrphans: "削除済みペットの残った履歴をクリーンアップしますか？",
 	confirmCountRounds: "（{n} ラウンド）",
-	confirmCountOrphans: "（{n} 件）",
 	confirmIrreversible: "削除すると元に戻せません。",
 	confirmTitle: "会話履歴を削除",
 	confirmDelete: "削除",
@@ -16605,8 +16496,6 @@ const pt = {
 	olderEnd: "Você chegou ao início",
 	olderEndCapped: "Você chegou ao início (máximo {n} rodadas)",
 	memoryLine: "As últimas {n} rodadas entram na memória do bichinho",
-	orphansSummary: "{pets} bichinho(s) removido(s) têm histórico ({messages} mensagens)",
-	orphansClear: "Limpar",
 	toolsPersona: "Personalidade",
 	toolsSelect: "Selecionar",
 	toolsCancelSelect: "Cancelar seleção",
@@ -16618,9 +16507,7 @@ const pt = {
 	toolsClearAll: "Limpar histórico",
 	confirmDeleteSelected: "Excluir as rodadas selecionadas?",
 	confirmClearAll: "Limpar todo o histórico de conversa deste bichinho?",
-	confirmClearOrphans: "Limpar o histórico dos bichinhos removidos?",
 	confirmCountRounds: "({n} rodadas)",
-	confirmCountOrphans: "({n} bichinhos)",
 	confirmIrreversible: "Não é possível desfazer.",
 	confirmTitle: "Excluir histórico de conversa",
 	confirmDelete: "Excluir",
@@ -16660,8 +16547,6 @@ const ru = {
 	olderEnd: "Это самое начало",
 	olderEndCapped: "Это самое начало (не более {n} раундов)",
 	memoryLine: "Последние {n} раундов попадают в память питомца",
-	orphansSummary: "У {pets} удалённых питомцев есть история ({messages} сообщений)",
-	orphansClear: "Очистить",
 	toolsPersona: "Персона",
 	toolsSelect: "Выбрать",
 	toolsCancelSelect: "Отменить выбор",
@@ -16673,9 +16558,7 @@ const ru = {
 	toolsClearAll: "Очистить историю",
 	confirmDeleteSelected: "Удалить выбранные раунды?",
 	confirmClearAll: "Очистить всю историю разговоров с этим питомцем?",
-	confirmClearOrphans: "Очистить историю удалённых питомцев?",
 	confirmCountRounds: "({n} раундов)",
-	confirmCountOrphans: "({n} питомцев)",
 	confirmIrreversible: "Это нельзя отменить.",
 	confirmTitle: "Удалить историю разговоров",
 	confirmDelete: "Удалить",
@@ -16715,8 +16598,6 @@ const zh = {
 	olderEnd: "已经到底了",
 	olderEndCapped: "已经到底了（最多加载 {n} 轮）",
 	memoryLine: "以下 {n} 轮进入桌宠的记忆",
-	orphansSummary: "有 {pets} 只已删除宠物的历史（{messages} 条）",
-	orphansClear: "清理",
 	toolsPersona: "人设",
 	toolsSelect: "选择",
 	toolsCancelSelect: "取消选择",
@@ -16728,9 +16609,7 @@ const zh = {
 	toolsClearAll: "清空历史",
 	confirmDeleteSelected: "删除选中的这几轮对话？",
 	confirmClearAll: "清空这只宠物的全部对话历史？",
-	confirmClearOrphans: "清理已删除宠物的残留历史？",
 	confirmCountRounds: "（{n} 轮）",
-	confirmCountOrphans: "（{n} 只）",
 	confirmIrreversible: "删了找不回来。",
 	confirmTitle: "删除对话历史",
 	confirmDelete: "删除",
@@ -17074,9 +16953,7 @@ registerCompanion({
       .chatpet-settings .cp-desktop-panel {display:flex;flex-direction:column;}
       .chatpet-settings .cp-desktop-panel > * {order:2;}
       .chatpet-settings .cp-desktop-panel > .cp-card:first-child {order:0;}
-      .chatpet-settings .cp-desktop-panel > .cp-migration-panel {order:0;}
       .chatpet-settings .cp-desktop-panel > .cp-appearance {order:1;margin-bottom:14px;}
-      .chatpet-settings .cp-migration + .cp-migration {border-top:1px solid color-mix(in srgb,currentColor 14%,transparent);padding-top:8px;}
       .chatpet-settings .cp-big {font:600 22px/1.3 var(--cp-serif);margin:4px 0 8px;}
       .chatpet-settings .cp-emotion {border-left:2px solid var(--cp-gold);padding-left:12px;}
       .chatpet-settings .cp-badge { display: inline-flex; flex: 0 0 auto; border: 1px solid color-mix(in srgb,currentColor 20%,transparent); border-radius: 20px; padding: 3px 9px; font-size: 11px; line-height: 1.5; }
@@ -17773,24 +17650,6 @@ registerCompanion({
       },[getEditor]);
       return Editor?h(Editor):h(Card,{title:'外观与动作'},h('p',{className:'cp-muted'},'原版桌宠外观编辑器尚未加载。启用桌宠模块后会在这里显示。'));
     }
-    function PresentationMigration({workspaceId,migration,request,onResolved}) {
-      const [busy,setBusy]=useState(''),[error,setError]=useState('');
-      const lifetime=useRef(null);
-      React.useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[workspaceId]);
-      async function choose(field,choice) {
-        const signal=lifetime.current.signal;setBusy(field);setError('');
-        try {await request('presentationMigration',{workspaceId,field,choice,expectedConfigHash:migration.configHash},signal);if(!signal.aborted)await onResolved();}
-        catch(e){if(!signal.aborted)setError(e.message);}
-        finally{if(!signal.aborted)setBusy('');}
-      }
-      if(!migration?.conflicts?.length)return null;
-      const show=value=>typeof value==='string'?value:JSON.stringify(value);
-      return h(Card,{title:'外观设置需要选择',note:'两份已保存的设置存在差异。选择每项要保留的值，不会增加桌宠。'},
-        ...migration.conflicts.map(row=>h('div',{key:row.field,className:'cp-migration'},h('h4',null,row.field),
-          h('p',null,'原大肥鱼设置：'+show(row.legacy)),h('p',null,'原版桌宠设置：'+show(row.current)),
-          h('div',{className:'cp-inline-actions'},...['legacy','current'].map(choice=>h('button',{key:choice,type:'button',className:'cp-save',disabled:Boolean(busy),onClick:()=>choose(row.field,choice)},choice==='legacy'?'使用原大肥鱼设置':'保留原版桌宠设置'))))),
-        error&&h('p',{role:'alert'},error));
-    }
     function PresentationTiming({workspaceId,initial,value,onChange,request}) {
       const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
       const lifetime=useRef(null);
@@ -18179,7 +18038,6 @@ registerCompanion({
         if (active === 'desktop') {
           return h(React.Fragment, null,
             h(Card, { title: '桌面陪伴', status: desktopState, note: '点击角色会收到回应。右键打开菜单，Cmd 或 Ctrl 加点击打开聊天。' }, desktopButton()),
-            h('div',{className:'cp-migration-panel'},h(PresentationMigration,{key:'migration-'+boundId,workspaceId:boundId,migration:snapshot.presentation?.migration,request,onResolved:async()=>{const value=await request('snapshot',{},lifetime.current.signal);if(!lifetime.current.signal.aborted)setSnapshot(value);}})),
             snapshot.companion ? h(React.Fragment, null,
               h(Card,{title:'对话表现'},fields(switchField('desktopReplyBubble','回复显示在桌宠气泡'),numberField('desktopBubbleSeconds','文字气泡显示时长（秒）',300,1),numberField('stickerProbabilityPercent','想发贴图时的出现概率（%）',100))),
               h(PresentationTiming,{key:'timing-'+boundId,workspaceId:boundId,initial:snapshot.presentation?.timing,value:document.timing,onChange:editDocument('timing'),request}),
@@ -18260,7 +18118,7 @@ registerCompanion({
       if (snapshot?.workspace.state === 'migration-required') {
         const reason = snapshot.workspace.migrationReason;
         return h('div', { className:'chatpet-settings' }, h('style', null, css),
-          h(Card, {title:'需要迁移', status:'migration-required'},
+          h(Card, {title:'伙伴资料暂不可用', status:'migration-required'},
             h('p', null, 'DSH 普通聊天仍可使用。'), h('p', null, h('code', null, reason)), h('p', null, snapshot.migrationHelp),
             error && h('p', {role:'alert'}, error),
             h('button', {type:'button', disabled:loading, onClick:refresh}, '刷新设置')));

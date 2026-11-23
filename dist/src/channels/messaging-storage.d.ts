@@ -1,7 +1,5 @@
 import { type MessagingSettings } from './messaging-settings.js';
-/** Device connection/account bindings and portable routing policy never share
- * a persisted file. Legacy policy migrates only from this stable scope's file.
- */
+/** Device connections and portable routing policy are saved separately. */
 export declare function messagingStorage(deviceDirectory: string, dataDirectory: string): {
     current: {
         qq: {

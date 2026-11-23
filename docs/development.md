@@ -65,105 +65,21 @@ node scripts/checks/run-behavior-list.mjs
 L1 是插件入口的完整流程，L2 是公开面行为，L3 是保留在全量门禁的回归参考。清单入口只跑 L1/L2，要求每条身份恰好执行一次并通过，零匹配、跳过、取消或 todo 都算失败。它使用合成数据和假模型；其中真实 Memory provider 需要本机回环，沙箱拒绝监听应记录为环境失败，不改成通过或跳过。
 
 <a id="migration-inventory"></a>
-## 合成副本、迁移与盘点
 
-这些也是源码检出命令，需要已经构建。输入是完成安装的 `installation.json` 回执。开发使用生成器产出的合成副本；真实副本由主人提供且只在另行授权的隔离检查点使用。已登记四步：`0001-storage-manifest` 写存储清单；`0002-home-identity` 把 `life.json` 的 home 会话 ID 复制到 Core 的 `companion-home` 记录（只复制，`life.json` 原字节保留；两边 ID 不同时报 `home-identity-conflict`），清单换成 `core:2`、`living:2`；`0003-economy-marker` 把 Core `meta` 里属于当前绑定的那一条 `economy.initialized:<storageId>` 搬进钱包库，并写独立证据 `.chatpet/data/living/economy-adoption.json`，两者都落盘后删掉 Core 旧键，清单换成 `core:3`、`living:3`。`0003` 只打开已存在、身份和 schema 都对的钱包库，不建库、不导入旧菜园；含 `0003` 的日志段头记 `economyAdopted`，用来区分「从未采用」和「源已删、目标缺失」。它的原因码：`economy-database-missing`（已采用而钱包库缺失）、`economy-database-invalid`（钱包库无效或 schema 不完整）、`economy-marker-multiple`（Core 有多条标记）、`economy-marker-invalid`（标记无效）、`economy-marker-binding-mismatch`（标记、钱包库或独立证据属于另一个绑定）；失败时 Core 旧键保留。盘点在 Core 库那一项报 `economyInitialized: {rows, matchesCurrentBinding}`。迁移后钱包目录和独立证据同时丢失时，离线 `status` 报 `binding-changed`，续做和开新一轮都拒绝。 `0004-console-wallet` 把经停写排空导出的浏览器钱包请求按原号登记，清单换成 `core:3/living:4`。导入不派发请求。已采用的库同时提交待办和导入证明，未采用且零条时原子写独立证明。新装写无旧来源证明。浏览器切换和双备份的操作顺序见 [Console 钱包迁移](#console-wallet-migration)。
+## 合成副本与盘点
 
-存储清单落后于代码时，运行时进入「需要迁移」：对外状态和拒写码都是 `migration-required`，DSH 普通聊天照常，伙伴的设置、身份、策略、生活世界和记忆写入全部拒绝，设置页显示细因和操作提示。细因有 `storage-version-outdated`、`manifest-mismatch`、`migration-incomplete`、`journal-invalid`、`journal-step-mismatch`、`binding-changed`，以及 `binding-not-migratable`：绑定的形状离线迁移器接不了（例如选中的工作区和已初始化的绑定不一致），这时要在版本页换回 0.2.0，把工作区选择和初始化理顺后再升级。一旦判定需要迁移，本进程就锁定，迁移完成后要重启 DSH。新装由主人显式初始化时直接写最新清单，不需要迁移。
-
-用一个不存在或为空的输出目录生成 current 布局；legacy 布局把变体参数改为 `legacy`，并换一个空目录，两者互斥：
+先构建，再选一个不存在或为空的输出目录生成已迁移基线布局。盘点只读已完成安装回执，核对存储绑定、文件、表、行数、已知记录及登记差异。SQLite 在临时副本里读取，副本含源数据库和 WAL。执行期间保持合成副本的写入者停止。
 
 ```sh
-node scripts/fixtures/synthetic-companion.mjs --out /tmp/her-world-synthetic --variant current
-```
-
-盘点只输出路径、大小、表名、行数、已知记录数量和登记差异。浏览器存储显示为待主人检查。盘点和迁移预检在关闭写入者后读取 SQLite 私有副本，复制数据库和 WAL，由 SQLite 在副本上重建 SHM：
-
-```sh
+node scripts/fixtures/synthetic-companion.mjs --out /tmp/her-world-synthetic
 node scripts/migrate/inventory.mjs --installation /tmp/her-world-synthetic/installation.json
 ```
 
-查看待做步骤或当前状态：
+主人提供停写的 0.5.0 隔离副本时，只提交获准的字段名、计数和通过状态。未登记记录只报种类数量。需要按类别核对时，只按获准的前缀汇总。原始输出留在本机。
 
-```sh
-node scripts/migrate/companion-migrate.mjs plan --installation /tmp/her-world-synthetic/installation.json
-node scripts/migrate/companion-migrate.mjs status --installation /tmp/her-world-synthetic/installation.json
-```
+准入失败时，设置页显示「需要迁移」及固定拒写原因。核对选中的 Repo、v3 工作区清单和 0.5.0 存储完成凭证；确需旧版本升级时，查阅 [v0.5.0 对应工具和步骤](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#migration-inventory)。盘点入口只读取状态。
 
-执行前退出全部 DSH 并确认所有写入者停下。正式探测无法确认停写时会拒绝；不拿日常 DSH 作为合成演练环境。备份目录必须是源目录之外的新目录：
-
-```sh
-node scripts/migrate/companion-migrate.mjs run --installation /tmp/her-world-synthetic/installation.json --backup /tmp/her-world-migration-backup
-```
-
-每轮先建并校验一份同包续做备份，再把本轮步骤、源和目标版本、绑定和备份校验值追加到同一日志。上一轮全部完成且目标仍在时，增加已登记的新步骤后可用新备份目录开下一轮。旧版 0.2.0 单段日志按当时唯一的步骤解释。
-
-中断后先看 `status`。备份已经建好而本轮日志头还未写入时，保留原目录，改用新的备份目录重新开始。日志头已写入时，用步骤和版本契约一致的源码续做最后一轮，会继续使用该轮备份：
-
-```sh
-node scripts/migrate/companion-migrate.mjs run --installation /tmp/her-world-synthetic/installation.json --resume
-```
-
-失败只输出固定原因代码和说明，退出码非 0。已经提交的步骤通过目标检查后只补齐清单和日志。`status` 的 `segment` 表示最后一轮有没有收尾：`none` 没有日志，`settled` 已收尾，`unfinished` 要用 `--resume` 续做（即使各步骤都显示 `complete`）。已收尾的轮次再 `--resume` 不会重跑步骤，也不追加步骤记录。以前各轮完成的目标后来缺失时，`status` 显示 `inconsistent`，续做和开新一轮都报 `migration-inconsistent`，应核对该轮备份。
-
-日志头记录 `storageId` 和仓库路径摘要。已收尾的轮次只核对 `storageId`，所以按 [portability.md](portability.md) 把 Repo 搬到新路径后，`status` 和下一轮迁移照常可用；未收尾的轮次只能在原路径、用原备份续做。
-
-迁移和恢复按仓库路径互斥。互斥文件在仓库外：`/tmp/her-world-offline-<uid>/<仓库路径的 sha256>.sqlite`，目录权限 0700、只属于当前用户，进程退出或被杀时 SQLite 自动释放，不留陈旧锁。迁移 `run`、本检出的备份 `restore`、钱包封锚、声明预检及浏览器离线操作使用这把锁。已安装旧包里的 `companion-backup.mjs` 不持有，所以回退恢复要用本检出的命令。仓库内的 `.chatpet/data/migration.lock` 照旧：恢复带回的已退出进程旧锁会被下一轮接管并记入日志；若 PID 被复用而报 `lock-held`，先确认迁移和恢复都已结束，再按提示处理旧锁。
-
-要回退安装版本，在旧包下退出 DSH，用 `companion-backup.mjs create` 预先做回退备份，再启动 DSH 从版本页换包。回退时先从版本页换回旧包，再退出 DSH，用本检出的命令恢复旧包对应的回退备份。同包续做备份也可在安装指纹相同的情况下恢复。恢复器先备份当前状态，并保留已送达、已消耗额度及 Life 花费：
-
-```sh
-node scripts/companion-backup.mjs restore --installation /tmp/her-world-synthetic/installation.json --backup /tmp/her-world-rollback-backup --before /tmp/her-world-before-restore
-```
-
-<a id="upgrade-0-3-0"></a>
-### 从 0.2.0 升级到 0.3.0
-
-新版本遇到未迁移的数据会先进入「需要迁移」，所以要先在旧版本下做回退备份、换包后再离线迁移。`$RECEIPT` 是安装回执，命令都在与要装版本同标签的源码检出里跑，而且已经构建：
-
-1. **在 0.2.0 下做回退备份。** 完全退出 DSH，运行 `node scripts/companion-backup.mjs create --installation "$RECEIPT" --output "$ROLLBACK"`，再用 `verify --installation "$RECEIPT" --backup "$ROLLBACK"` 核对。旧 setup 装的机器先按已知问题 8 跑一次 `migrate-core-config --apply`。
-2. **换包。** 启动 DSH，在版本页换到 0.3.0。看到设置页「需要迁移」、只有普通聊天可用，是预期。显示 `binding-not-migratable` 时换回 0.2.0，按提示理顺工作区选择和初始化再来。
-3. **离线迁移。** 完全退出 DSH 和所有写入者，依次跑 `plan`、`run --backup "$RESUME_BACKUP"`、`status`（命令见上）。该版的三步都 `complete` 且 `segment` 为 `settled` 才算完成；`unfinished` 用 `--resume` 续做。
-4. **启动核对。** 启动 DSH，确认工作区就绪，聊天、记忆召回、home 和钱包都正常。
-5. **回退（需要时）。** 版本页换回 0.2.0，退出 DSH，用本检出的 `companion-backup.mjs restore` 恢复第 1 步的回退备份（命令见上）。
-
-**换了设备的钱包**：Repo 搬到新设备、新路径后，0.2.0 的 Core 里那条 `economy.initialized` 标记还记着旧路径，`0003` 会报 `economy-marker-binding-mismatch` 停下。换包前先用 0.2.0 在新设备上绑定新路径并打开一次钱包，旧版本打开钱包时会把标记改成新路径，再做第 1 步。
-
-原有恢复 CLI 的输出不属于迁移/盘点的固定原因与隐私输出契约；真实数据检查点不能把其原始输出交给 Agent。开发演练只用合成副本。
-
-真实副本检查点（阶段 2 的 2a 做过一次；改数据格式的阶段都要再做，2b 没改格式所以没做）在独立设备上跑：源机退出 DSH 后，打包伙伴 Repo、安装包和源码 bundle，用隔空投送或移动硬盘传过去，不经云端；新设备按 [portability.md](portability.md)「搬到另一台设备」安装绑定，再盘点、迁移、回退、续做。设备 profile 里的语音、附件不随 Repo 走，新设备上为空属于预期。盘点只给出未登记 kind 的个数；要查是哪几种，只按冒号前的前缀聚合计数，不输出完整 kind 和字段值。恢复命令的输出重定向到本机日志，只取退出码和 `restored` 字段。
-
-<a id="console-wallet-migration"></a>
-### Console 钱包迁移
-
-#### 主人声明无待办（0.4.0 → 0.5.0）
-
-在隔离副本演练。用包含声明工具、已构建的 0.5.0 对应源码检出执行离线命令。`RECEIPT`、`ROLLBACK`、`RESUME_BACKUP` 和 `ANCHOR` 都用真实绝对路径，锚放在权限 `0700` 的私有材料目录。
-
-1. 仅在一直使用 DSH 桌面设置页、从未用外部浏览器时采用。在 0.4.0 当前绑定确认钱包正常加载、无待确认、读取错误或在途操作，然后停止新写入、停 Life、退出 DSH。工具会拒绝私有材料目录里的 `wallet-export.json` 或 `wallet-sources.json`，由主人核对其他位置；发现待办或浏览器来源材料就走下方导出路线。
-2. 仍装 0.4.0 时，用 `node scripts/companion-backup.mjs create --installation "$RECEIPT" --output "$ROLLBACK"` 建旧备份，再用同一脚本 `verify --installation "$RECEIPT" --backup "$ROLLBACK"` 核对。运行 `node scripts/migrate/companion-migrate.mjs seal-wallet-rollback --installation "$RECEIPT" --backup "$ROLLBACK" --output "$ANCHOR" --owner-attests-no-pending`。
-3. 保持业务停写，换到 0.5.0 后再次退出 DSH。用 `node scripts/migrate/companion-migrate.mjs` 依次执行 `plan`、`run`、`status`，均带 `--installation "$RECEIPT" --wallet-rollback "$ANCHOR" --owner-attests-no-pending`。仅 `run` 另加 `--backup "$RESUME_BACKUP"`。中断后用同一工具 `run --installation "$RECEIPT" --resume`。
-4. 核对 `0004-console-wallet` 为 `complete`、`segment=settled`、`walletImport.requestCount=0`。再在隔离验收环境打开 0.5.0，核对钱包、余额、库存和 Body。两份备份及锚保留到主人关闭回退窗口。
-5. 需要回退时换回 0.4.0 并退出 DSH，以迁移工具 `verify-wallet-rollback --installation "$RECEIPT" --wallet-rollback "$ANCHOR"` 验锚，再用本检出的备份 `restore --installation "$RECEIPT" --backup "$ROLLBACK" --before "$BEFORE_RESTORE"` 恢复并核对钱包和 Body；旧页若显示待办，先核对流水再决定是否按原号处理。
-
-#### 浏览器导出路线
-
-隔离副本从备份到旧键清除一直保持停写。先隔离所有授权 profile／origin 的旧页面和写入口，核实 Economy 与 Body 在途已排空。若无法核实，停在导出之前。浏览器导出、清源和回插函数在 `scripts/migrate/browser-wallet.mjs`，要求调用方持有可复核的来源冻结租约。现有合成适配只用于测试。生产浏览器需要能核验冻结和排空的适配入口。
-
-和回退备份一起封存私有导出。旧包下先完成备份 `create/verify`，再用 `companion-migrate.mjs seal-wallet-rollback --installation "$RECEIPT" --backup "$ROLLBACK" --wallet-export "$EXPORT" --output "$ANCHOR"` 绑定导出与旧备份。停写换包后，迁移 `run --installation "$RECEIPT" --backup "$RESUME_BACKUP" --wallet-export "$EXPORT" --wallet-rollback "$ANCHOR"`。中断后 `run --installation "$RECEIPT" --resume` 核对本轮原件。
-
-验收窗口用隔离的一次性克隆。原副本 `segment=settled`、导入证明和每个待办均核对后，工具才逐源清除原键。回退时保持停写，换回旧包，运行 `verify-wallet-rollback --installation "$RECEIPT" --wallet-export "$EXPORT" --wallet-rollback "$ANCHOR"`，恢复核准的旧备份，验证钱包、存储清单和 Body，再按原值回插。主人关闭回退窗口后才能处理私有导出。历史核验使用持久摘要。
-
-离线入口是 `scripts/migrate/runner.mjs` 的 `runWalletBrowserOperation`：按安装回执确定绑定，持有 Repo 互斥锁，复查 DSH、Core、Economy、Memory（含配置已移除但仍运行的保留 Bank）和工作区绑定；导出前全源复读，清源和回插前核对同一轮导出的迁移或回退证明，逐源比较原值，结束前再复读。可见的竞写报 `wallet-source-conflict`，日志记下冲突并阻止自动续做；无冲突的中断凭同轮 `intent` 续做。v0.4.0 已打开的页面先写 `localStorage` 再发 RPC，程序拦不住这段旧代码，只能靠下面的隔离。
-
-主人在隔离副本上的操作顺序：
-
-1. **隔断旧页和写入口**：停止新业务请求，完全退出使用该副本的浏览器及后台进程，关掉会话自动恢复；确认授权 profile／origin 都在清单内，清源或回退验收前只让获准工具访问原浏览器存储。
-2. **排空并停住旧宿主**：停下 Life 和其他写入口，在 v0.4.0 宿主确认 Economy、Body 正常卸载且没有清理错误，再完全退出 DSH。页面关闭、请求取消或进程退出都不算排空证据；拿不到证据、来源无法独占或没有获准的读取适配时，停在导出前。
-3. **导出和备份**：停写下由获准适配私有导出原来源；用 v0.4.0 建并核对旧备份，封存同轮锚；确认换包不会重新激活原副本的业务写。
-4. **换包和迁移**：原副本继续停写，用 RC 同源码执行 `plan`、带导出和双备份锚的 `run`、`status`，中断用原轮 `--resume`；需要启动 DSH 时只用访问不到原库和原浏览器存储的一次性克隆。
-5. **核对及清源**：确认 `segment=settled`、原号、余额、库存和 Body，并验克隆的新页面；主人确认后用同轮日志逐源清旧键，冲突时保留现场并停止放行。
-6. **回退**：放行前保持停写，换回 v0.4.0，验锚、恢复旧备份，用单独的同轮日志按原值回插；原号、余额、库存和 Body 核对通过才解除停写。私有导出保留到主人关闭回退窗口，历史只留核对摘要。
+新装、搬家、离线修复与同机备份恢复见[可搬迁存储](portability.md)。升级和换回 0.5.0 的隔离流程见[安装与更新](github-updates.md#dsh-installation-and-updates)。
 
 <a id="baseline-counting"></a>
 ## 典型修改的计数
@@ -174,7 +90,7 @@ node scripts/companion-backup.mjs restore --installation /tmp/her-world-syntheti
 git diff --stat bfe069f..<分支>
 ```
 
-只统计起点与实验分支之间已提交的差异。分为 `src/`、测试和其他，其他包含跟踪的 build 产物；不为压低数字删除这些差异。按 `arch/layers.json` 的文件根映射模块和层，测试及 `dist/src` 归回相应源码模块，不另造测试层；位于 `src/` 的生成文件仍计入其物理模块，并注明它的生成源。三个分支都只度量，不合并。
+只统计起点与实验分支之间已提交的差异。分别统计手写源码、`src/` 生成文件、测试、`dist/src/` 产物和其他文件。按 `arch/layers.json` 的文件根映射模块和层，测试及 `dist/src` 归回相应源码模块，不另造测试层；位于 `src/` 的生成文件仍计入其物理模块，并注明它的生成源。这些实验分支只度量。
 
 在源码检出中用 `pnpm run metrics` 汇总 `docs/product.md`「G5 手工度量」，用 `pnpm run metrics -- --json` 输出 JSON。度量只报告，修复批次占比和典型修改基线显示表中最新一列的人工记录。
 
@@ -186,14 +102,16 @@ pnpm run verify
 
 这是 PR 与发布共用的检查。先查环境、类型和架构棘轮并构建一次，再递归收集 `dist/tests/**/*.test.js`、`tests/**/*.test.mjs`，各入口执行一次，随后跑 Python Memory 测试、校验发布元数据，并生成和检查一份归档（`scripts/checks/verify.mjs:13–25`）。测试使用可丢弃数据且不调用付费模型。Memory 进程测试需要本机回环，沙箱拒绝监听时记为环境失败并在允许回环的环境复跑（`src/memory/main.py:17`、`tests/memory/memory-process.test.mjs:72–83`）。
 
-PR CI 和发布工作流各自执行全量检查（`.github/workflows/ci.yml:13–16`、`.github/workflows/release.yml:49–53`）。日常只做相关快测。发布入口及脏工作区的隔离方法见[发布与更新说明](github-updates.md#publication)。
+PR CI 和发布工作流各自执行全量检查（`.github/workflows/ci.yml:13–16`、`.github/workflows/release.yml:49–53`）。日常只做相关快测。发布入口和冻结候选的方式见[发布与更新说明](github-updates.md#publication)。
 
 ## 可选原生检查
 
 `scripts/checks/`、`tests/manual/` 中的原生与窗口检查需要显式指定的隔离环境，不对个人伙伴数据运行。
 
 - `test:native-context`：已安装 DSH 的原生循环与落盘，使用本机脚本模型，核对上下文、互动确认、原始记录和已接受计划。
-- `test:native-services`：跨会话 Bank 召回及 provider 重启。
+- `test:native-services`：跨会话 Bank 召回、provider 重启和 guest 权限。
+- `test:native-room`：合成或隔离宿主上的原生 Room 拍照入口。
+- `test:room-voice`：Room 语音窗口和请求生命周期。
 - `test:native-life`：限定作用域的回顾读写、越界拒绝、纠正/撤回、原生历史恢复及压缩连续性。
 - `test:room-refresh`：可选的 macOS Room 合成器与窗口检查。
 - 以下窗口检查需手动运行。先 `pnpm run build`，Electron 用 DSH 自带的 `~/.dsh/electron/Electron.app/Contents/MacOS/Electron`。
@@ -206,8 +124,6 @@ PR CI 和发布工作流各自执行全量检查（`.github/workflows/ci.yml:13�
     ```sh
     env -u ELECTRON_RUN_AS_NODE "${DSH_CHATBOT_ELECTRON_PATH:-${DSH_HOME:-$HOME/.dsh}/electron/Electron.app/Contents/MacOS/Electron}" tests/desktop/compact-voice-window.cjs
     ```
-
-- 回退到 0.2.0 的演练 `tests/migrate/home-rollback.mjs` 不在门禁里，要先准备一份装好依赖并构建过的 v0.2.0 检出，再运行 `HER_WORLD_020_ROOT=/absolute/v0.2.0 node --test tests/migrate/home-rollback.mjs`。它核对回退后聊天、召回和共享 home 可用，2a 发版前跑过。
 
 这些检查不安装或更新 DSH。已安装环境里的主人验收，与源码、包和脚本宿主验证分开。
 
@@ -231,6 +147,6 @@ Body 在现有 home 检查点保留可选 `gardenClockEnabled` 元数据。显�
 
 回顾回归包含 `tests/life/life-review-runtime.test.mjs` 及编译后的 `life-review-files`、`review-continuation`、`life-sleep-continuity`，覆盖按日重试、重启核对、历史日记保护，以及经 Life/Body 协调器完成实际睡眠，不用付费模型。
 
-运行时 exports、原生 bundle ID 和伙伴数据格式保持稳定。`dist/src` 保留给 GitHub 安装，发布工作流将它与已验证源码一起构建并冻结；`dist/tests`、source map、缓存、工具和个人伙伴数据不交付。普通 build 校验内置媒体，可选重新生成使用 `src/presentation/animation-allocation.json` 与 `art/` 素材。
+当前支持基线及包的公开面见源码检出的 `docs/architecture.md` 第 6 节。`dist/src` 保留给 GitHub 安装，发布工作流将它与已验证源码一起构建并冻结；`dist/tests`、source map、缓存、工具和个人伙伴数据不交付。普通 build 校验内置媒体，可选重新生成使用 `src/presentation/animation-allocation.json` 与 `art/` 素材。
 
 素材交接、画布与锚点、时序、视觉验收及登记见源码检出中的 `docs/animation-standard.md`。

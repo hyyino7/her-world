@@ -9,8 +9,7 @@ import {MemoryClient} from '../../vendor/mnemosyne/src/memory-client.js';
 import {createCore} from '../../dist/src/core/index.js';
 import {settingsHandler} from '../../dist/src/console/settings.js';
 
-const scope={companionId:'fixture-fish',scopeId:'fixture-owner',workspaceId:'fixture-bank'};
-const memoryScope={companionId:scope.companionId,scopeId:scope.scopeId,bankId:scope.workspaceId};
+const memoryScope={companionId:'fixture-fish',scopeId:'fixture-owner',bankId:'fixture-bank'};
 function deferred(){let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};}
 function memoryFixture(t) {
   const root=realpathSync(mkdtempSync(join(tmpdir(),'r2-memory-code-')));
@@ -42,8 +41,9 @@ test('R2-1: the same Bank recovers after observed child exit through the origina
   const f=memoryFixture(t);await f.start();const initial=await f.connection.call('context',{});
   f.die();assert.equal(f.connection.lifecycle,'stopped');await f.start();
   assert.equal(f.state.starts,2);assert.equal(f.state.maxOwned,1);assert.equal(f.connection.lifecycle,'ready');
-  const recovered=await f.connection.call('context',{},scope.workspaceId);
-  assert.notEqual(recovered.baseUrl,initial.baseUrl);assert.deepEqual(recovered.body.scope,scope);
+  const recovered=await f.connection.call('context',{},memoryScope.bankId);
+  assert.notEqual(recovered.baseUrl,initial.baseUrl);assert.deepEqual(recovered.body.scope,memoryScope);
+  assert.deepEqual(JSON.parse(f.state.hosts.at(-1).serviceEnv.CHATPET_MEMORY_SCOPE),memoryScope);
 });
 
 test('R2-1: a dead host never sends a request through its stale client before recovery',async t=>{

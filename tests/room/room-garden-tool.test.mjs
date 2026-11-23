@@ -12,7 +12,7 @@ test('native garden care returns the same playback as the Room window after acce
   const target = {id: 'fixture', path};
   const now = new Date(2026, 10, 12, 12).getTime();
   t.mock.timers.enable({apis: ['Date'], now});
-  const directory = join(path, '.chatpet/data/life');
+  const directory = join(path, '.chatpet/data/behavior');
   mkdirSync(directory, {recursive: true});
   const home = emptyHomeState(now);
   home.lastInteractionAt = 0;

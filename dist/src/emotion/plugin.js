@@ -59,7 +59,7 @@ export class CompanionEmotion {
         if (binding.state !== 'ready' || binding.target?.id !== id)
             throw Error('Emotion requires the current bound workspace');
         const runtime = this.host.workspace.runtime, storageId = this.host.workspace.storageId();
-        return new EmotionFile({ path: binding.target.path, storageId, companionId: runtime.config.companionId, scopeId: runtime.config.scopeId }, () => runtime.store.get('emotion-state', storageId));
+        return new EmotionFile({ path: binding.target.path, storageId, companionId: runtime.config.companionId, scopeId: runtime.config.scopeId });
     }
     ledger(id) {
         const state = this.host.workspace.status();
@@ -75,9 +75,6 @@ export class CompanionEmotion {
             return;
         this.ledger(receipt.workspaceId)?.playback(receipt);
     }
-    /** Emotion is companion-owned state, not a cached Memory projection. Legacy
-     * source fields remain readable metadata and never make a missing Bank a
-     * prerequisite for feeling, displaying or updating the current state. */
     async read(workspaceId) {
         let snapshot;
         try {

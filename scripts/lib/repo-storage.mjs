@@ -85,10 +85,9 @@ export function inspectRepoBinding(config) {
   assert.ok(manifestStat.isFile() && !manifestStat.isSymbolicLink() && manifestStat.nlink === 1, 'Invalid companion manifest');
   const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
   assert.equal(manifest.companionId, config.companionId, 'Initialized workspace belongs to another companion');
-  assert.ok([1, 2, 3].includes(manifest.schemaVersion) && Array.isArray(manifest.files), 'Unexpected initialized workspace format');
+  assert.ok(manifest.schemaVersion === 3 && Array.isArray(manifest.files), 'Unexpected initialized workspace format');
   const required = ['README.md', 'manifest.json', 'SOUL.md', 'USER.md', 'core.json'];
-  if (manifest.schemaVersion === 3) required.push(...manifest.files);
-  for (const name of new Set(required)) {
+  for (const name of new Set([...required, ...manifest.files])) {
     assert.ok(typeof name === 'string' && name && !isAbsolute(name) && !name.split(/[\\/]/).includes('..'), 'Invalid initialized file declaration');
     let path = managed;
     const parts = name.split('/').filter(Boolean);

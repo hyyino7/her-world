@@ -1,111 +1,195 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync,lstatSync,realpathSync,symlinkSync} from 'node:fs';
-import {join,resolve,dirname,isAbsolute,relative,sep} from 'node:path';
-import {tmpdir} from 'node:os';
-import {createHash} from 'node:crypto';
-import {runInNewContext} from 'node:vm';
-import * as preparation from '../../scripts/lib/core-config.mjs';
+import {spawnSync} from 'node:child_process';
+import {existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {prepareMemoryServiceEntry} from '../../scripts/lib/core-config.mjs';
+import {profileFixture} from '../behavior-list/setup-config.test.mjs';
+
+const bundleShim = 'src/memory/main.py';
+const installer = fileURLToPath(new URL('../../scripts/install-dsh.mjs', import.meta.url));
+const testPython = fileURLToPath(new URL('../../.venv/bin/python', import.meta.url));
+const entryOption = entry => ['--memory-service-entry', entry];
 
 function fixture(t) {
-  const root=realpathSync(mkdtempSync(join(tmpdir(),'memory-entry-code-'))),current=join(root,'current-bundle'),installed=join(root,'profile/node_modules/her-world');
-  t.after(()=>rmSync(root,{recursive:true,force:true}));
-  const bundle=directory=>{
-    mkdirSync(join(directory,'src/memory'),{recursive:true});writeFileSync(join(directory,'package.json'),JSON.stringify({name:'her-world'}));
-    writeFileSync(join(directory,'src/memory/main.py'),'# packaged fixture shim\n');writeFileSync(join(directory,'src/memory/provider.py'),'# packaged fixture provider\n');
-    return join(directory,'src/memory/main.py');
+  const profile = profileFixture(t);
+  const config = {
+    dataDir: join(profile.home, 'core'),
+    companionId: 'fixture-fish',
+    scopeId: 'fixture-scope',
+    ownerActorId: 'owner',
+    displayName: 'Fixture',
+    character: '',
   };
-  bundle(current);bundle(installed);
-  const memory={python:join(root,'source-python'),dataDir:join(root,'retained-bank'),serviceEntry:undefined};
-  function run(entry,choice,settings={}) {
-    const config=preparation.prepareCoreConfiguration({dataDir:join(root,'core'),companionId:'fixture-fish',scopeId:'fixture-scope',ownerActorId:'owner',memory:{...memory,...(entry===undefined?{}:{serviceEntry:entry})}});
-    const before=structuredClone(config),plans=[];
-    const source=readFileSync('scripts/install-dsh.mjs','utf8'),from=source.indexOf('// Plan the device runtime without creating it'),to=source.indexOf('const patch = preparePatch(',from);
-    assert.ok(from>0&&to>from,'The fixture executes the actual program/runtime binding block');
-    const context={assert,config,structuredClone,packageRoot:current,installedBundle:join(installed,'cordis.patch.yml'),profileDir:join(root,'profile'),
-      prepareMemoryServiceEntry:preparation.prepareMemoryServiceEntry,
-      arg:(name,fallback)=>name==='--memory-service-entry'?choice:fallback,
-      process:{argv:settings.missingChoice?['node','installer','--memory-service-entry']:choice===undefined?[]:['node','installer','--memory-service-entry',choice]},
-      prepareDeviceRuntime:options=>{plans.push(structuredClone(options));return {python:join(root,'device/venv/bin/python'),deviceRoot:join(root,'device')};},
-      join,resolve,dirname,isAbsolute,relative,sep,existsSync,lstatSync,realpathSync,readFileSync,createHash,
-    };
-    if(settings.noMemory)delete config.memory;
-    try {runInNewContext(source.slice(from,to),context);}
-    catch(error){error.fixture={config,before,plans};throw error;}
-    return {config,before,plans};
-  }
-  return {root,current,installed,bundle,memory,run};
+  const memory = {python: join(profile.home, 'source-python'), dataDir: join(profile.home, 'retained-bank')};
+  const current = join(profile.home, 'current-bundle');
+  const installed = join(profile.profileDir, 'node_modules/her-world');
+  const managedRoots = [current, installed];
+  const deviceRoot = join(profile.profileDir, 'chatpet-runtime');
+  return {...profile, config, memory, current, installed, managedRoots, deviceRoot};
 }
 
-test('R4-2: a default Memory entry stays package-relative while Bank and identity remain the same',t=>{
-  const f=fixture(t),result=f.run();assert.equal(result.config.memory.serviceEntry,undefined);
-  assert.equal(result.config.memory.dataDir,f.memory.dataDir);assert.equal(result.config.companionId,'fixture-fish');
-  assert.equal(result.plans[0].python,f.memory.python);assert.equal(result.config.memory.python,join(f.root,'device/venv/bin/python'));
+function writeShim(root) {
+  mkdirSync(join(root, 'src/memory'), {recursive: true});
+  const entry = join(root, bundleShim);
+  writeFileSync(entry, '# synthetic package shim\n');
+  return entry;
+}
+
+function prepare(f, args, mode) {
+  const result = f.checked(args, mode);
+  assert.equal(result.status, 'prepared');
+  return JSON.parse(readFileSync(result.attemptReceipt, 'utf8'));
+}
+
+function assertRejectedBeforeRuntime(f, args, reason) {
+  // An actual probe would leave a marker even if setup later reports another error.
+  const probe = join(f.home, 'python-probed');
+  writeFileSync(f.memory.python, '#!/bin/sh\ntouch "$(dirname "$0")/python-probed"\nexit 1\n', {mode: 0o700});
+  const patch = readFileSync(f.patchPath);
+  const manifest = readFileSync(f.manifest);
+  const result = f.command(args);
+  assert.equal(result.status, 1, result.error?.message ?? result.stderr);
+  assert.deepEqual(JSON.parse(result.stderr), {
+    status: 'failed', reason, ...(reason === 'invalid-arguments' ? {} : {profileDir: f.profileDir}),
+  });
+  assert.equal(result.stdout, '');
+  assert.equal(existsSync(probe), false);
+  assert.equal(existsSync(f.deviceRoot), false);
+  assert.equal(existsSync(f.receiptDir), false);
+  assert.deepEqual(readFileSync(f.patchPath), patch);
+  assert.deepEqual(readFileSync(f.manifest), manifest);
+  assert.deepEqual(f.calls(), []);
+}
+
+test('R4-2: a default Memory entry stays package-relative while Bank and identity remain the same', t => {
+  const f = fixture(t);
+  f.installFixture({...f.config, memory: {...f.memory, python: testPython}});
+  // Start the CLI with the synthetic DSH modules and let it plan the real test interpreter.
+  const electronMarker = 'data:text/javascript,Object.defineProperty(process.versions,"electron",{value:"fixture"})';
+  const result = spawnSync(process.execPath, ['--import', electronMarker, installer,
+    '--dsh-app', join(f.home, 'Synthetic DSH.app'), '--dsh-home', f.home, '--profile', 'fixture',
+  ], {encoding: 'utf8'});
+  assert.equal(result.status, 0, result.error?.message ?? result.stderr);
+  const {status, attemptReceipt} = JSON.parse(result.stdout);
+  assert.equal(status, 'prepared');
+  const attempt = JSON.parse(readFileSync(attemptReceipt, 'utf8'));
+  assert.deepEqual(attempt.config, {
+    ...f.config,
+    memory: {...f.memory, python: join(f.deviceRoot, 'venv/bin/python'), runtimeRoot: f.deviceRoot},
+  });
+  assert.equal(attempt.deviceRuntime.status, 'planned');
+  assert.equal(attempt.deviceRuntime.plan.source.python, testPython);
+  assert.equal(attempt.deviceRuntime.plan.python, attempt.config.memory.python);
+  assert.equal(existsSync(f.deviceRoot), false);
 });
 
-test('R4-2: inherited managed entries from current or previous installed Bundle rebind to the new shim',t=>{
-  const f=fixture(t);
-  for(const directory of [f.current,f.installed]) {
-    const result=f.run(join(directory,'src/memory/main.py'));assert.equal(result.config.memory.serviceEntry,undefined);
-    assert.equal(result.config.memory.dataDir,result.before.memory.dataDir);
+test('R4-2: the current bundle and the installed profile bundle both use the bundled entry', t => {
+  const f = fixture(t);
+  for (const root of f.managedRoots) {
+    const inherited = {...f.memory, serviceEntry: writeShim(root)};
+    const selected = prepareMemoryServiceEntry(inherited, {managedRoots: f.managedRoots});
+    assert.deepEqual(selected, f.memory);
+    assert.equal(inherited.serviceEntry, join(root, bundleShim));
   }
 });
 
-test('R4-2: a deleted old installed shim is recognized by its trusted installed Bundle location',t=>{
-  const f=fixture(t),entry=join(f.installed,'src/memory/main.py');rmSync(entry);
-  assert.equal(f.run(entry).config.memory.serviceEntry,undefined);
+test('R4-2: the known installed bundle path still selects the bundled entry when its shim is missing', t => {
+  const f = fixture(t);
+  const entry = writeShim(f.installed);
+  rmSync(entry);
+  assert.deepEqual(
+    prepareMemoryServiceEntry({...f.memory, serviceEntry: entry}, {managedRoots: f.managedRoots}),
+    f.memory,
+  );
 });
 
-test('R4-2: a canonical package-store path is recognized through the prior installed-package root',t=>{
-  const f=fixture(t),actual=join(f.root,'package-store/old-bundle');f.bundle(actual);rmSync(f.installed,{recursive:true});symlinkSync(actual,f.installed);
-  assert.equal(f.run(join(actual,'src/memory/main.py')).config.memory.serviceEntry,undefined);
+test('R4-2: the real package-store path of the installed profile bundle is recognized', t => {
+  const f = fixture(t);
+  const storeRoot = join(f.home, 'package-store/her-world');
+  const entry = writeShim(storeRoot);
+  mkdirSync(join(f.profileDir, 'node_modules'));
+  symlinkSync(storeRoot, f.installed, 'dir');
+  assert.deepEqual(
+    prepareMemoryServiceEntry({...f.memory, serviceEntry: entry}, {managedRoots: f.managedRoots}),
+    f.memory,
+  );
 });
 
-test('R4-2: a verifiable old development Bundle shim/provider rebinds without retaining a checkout dependency',t=>{
-  const f=fixture(t),old=join(f.root,'old-checkout'),entry=f.bundle(old);
-  assert.equal(f.run(entry).config.memory.serviceEntry,undefined);
+test('R4-2: unproven inherited entries fail before probing an interpreter or mutating the profile', t => {
+  const f = fixture(t);
+  const custom = join(f.home, 'custom.py');
+  writeFileSync(custom, '# deliberate custom entry\n');
+  const inherited = {...f.memory, serviceEntry: custom};
+  assert.throws(
+    () => prepareMemoryServiceEntry(inherited, {managedRoots: f.managedRoots}),
+    {reason: 'memory-service-entry-unverified', message: /--memory-service-entry/},
+  );
+  assert.deepEqual(inherited, {...f.memory, serviceEntry: custom});
+  f.installFixture({...f.config, memory: inherited});
+  assertRejectedBeforeRuntime(f, [], 'memory-service-entry-unverified');
 });
 
-test('R4-2: unproven inherited entries fail before probing an interpreter or mutating the configuration',t=>{
-  const f=fixture(t),custom=join(f.root,'custom.py');writeFileSync(custom,'# deliberate custom entry\n');
-  assert.throws(()=>f.run(custom),error=>{
-    assert.match(error.message,/--memory-service-entry/);assert.equal(error.fixture.plans.length,0);assert.deepEqual(error.fixture.config,error.fixture.before);return true;
-  });
+test('R4-2: setup honors an explicit bundled or custom choice over an inherited entry', t => {
+  const f = fixture(t);
+  const custom = join(f.home, 'custom.py');
+  writeFileSync(custom, '# deliberate custom entry\n');
+  const plannedMemory = {...f.memory, runtimeRoot: f.deviceRoot};
+  f.installFixture({...f.config, memory: {...f.memory, serviceEntry: custom}});
+  assert.deepEqual(prepare(f, entryOption('bundled'), {runtime: true}).config.memory, plannedMemory);
+  assert.deepEqual(
+    prepare(f, entryOption(custom), {runtime: true}).config.memory,
+    {...plannedMemory, serviceEntry: custom},
+  );
+
+  f.installFixture({...f.config, memory: {...f.memory, serviceEntry: writeShim(f.installed)}});
+  assert.deepEqual(
+    prepare(f, entryOption(custom), {runtime: true}).config.memory,
+    {...plannedMemory, serviceEntry: custom},
+  );
 });
 
-test('R4-2: a user can explicitly select the current Bundle or preserve a deliberate custom host entry',t=>{
-  const f=fixture(t),custom=join(f.root,'custom.py');writeFileSync(custom,'# deliberate custom entry\n');
-  assert.equal(f.run(custom,'bundled').config.memory.serviceEntry,undefined);
-  assert.equal(f.run(custom,custom).config.memory.serviceEntry,custom);
-  assert.equal(f.run(join(f.current,'src/memory/main.py'),custom).config.memory.serviceEntry,custom,'explicit current choice overrides inherited managed classification');
+test('R4-2: setup requires an explicit choice for a custom program inside the package and repair preserves it', t => {
+  const f = fixture(t);
+  const custom = join(f.installed, 'custom.py');
+  const config = {...f.config, memory: {...f.memory, serviceEntry: custom}};
+  f.installFixture(config);
+  writeFileSync(custom, '# intentional custom program\n');
+  assertRejectedBeforeRuntime(f, [], 'memory-service-entry-unverified');
+  assert.deepEqual(
+    prepare(f, entryOption(custom), {runtime: true}).config.memory,
+    {...config.memory, runtimeRoot: f.deviceRoot},
+  );
+
+  assert.equal(f.checked(['repair-core-config', '--apply']).status, 'repaired');
+  assert.deepEqual(f.coreConfig(), config);
+  assert.deepEqual(JSON.parse(readFileSync(f.receiptPath, 'utf8')).config, config);
 });
 
-test('R4-2: matching names alone cannot classify modified or incomplete developer code as managed',t=>{
-  const f=fixture(t),old=join(f.root,'custom-bundle'),entry=f.bundle(old);writeFileSync(join(old,'src/memory/provider.py'),'# customized provider\n');
-  assert.throws(()=>f.run(entry),/--memory-service-entry/);
-  writeFileSync(join(old,'src/memory/provider.py'),'# packaged fixture provider\n');writeFileSync(join(old,'package.json'),JSON.stringify({name:'another-program'}));
-  assert.throws(()=>f.run(entry),/--memory-service-entry/);
+test('R4-2: explicit missing, relative or linked custom entries fail before runtime preparation', t => {
+  const f = fixture(t);
+  const linked = join(f.home, 'linked.py');
+  symlinkSync(writeShim(f.current), linked);
+  f.installFixture({...f.config, memory: f.memory});
+  for (const choice of [join(f.home, 'missing.py'), 'relative.py', linked]) {
+    assertRejectedBeforeRuntime(f, entryOption(choice), 'memory-service-entry-choice-invalid');
+  }
 });
 
-test('R4-2: an arbitrary custom program inside the package is not silently erased as if it were the managed shim',t=>{
-  const f=fixture(t),custom=join(f.current,'custom.py');writeFileSync(custom,'# intentional custom program\n');
-  assert.throws(()=>f.run(custom),/--memory-service-entry/);assert.equal(f.run(custom,custom).config.memory.serviceEntry,custom);
+test('R4-2: no-Memory configuration never requires an entry selection or interpreter', t => {
+  const f = fixture(t);
+  f.installFixture(f.config);
+  for (const args of [[], entryOption('bundled')]) {
+    const attempt = prepare(f, args);
+    assert.deepEqual(attempt.config, f.config);
+    assert.equal(Object.hasOwn(attempt, 'deviceRuntime'), false);
+    assert.equal(existsSync(f.deviceRoot), false);
+  }
 });
 
-test('R4-2: explicit missing, relative or linked custom entries fail without runtime preparation',t=>{
-  const f=fixture(t),linked=join(f.root,'linked.py');symlinkSync(join(f.current,'src/memory/main.py'),linked);
-  for(const choice of [join(f.root,'missing.py'),'relative.py',linked])assert.throws(()=>f.run(undefined,choice),error=>{
-    assert.equal(error.fixture.plans.length,0);assert.match(error.message,/entry|Entry|absolute|regular|--memory-service-entry/);return true;
-  });
-});
-
-test('R4-2: no-Memory configuration never requires an entry selection or interpreter',t=>{
-  const f=fixture(t),result=f.run(undefined,undefined,{noMemory:true});assert.equal(result.config.memory,undefined);assert.deepEqual(result.plans,[]);
-  assert.equal(f.run(undefined,'bundled',{noMemory:true}).config.memory,undefined);
-});
-
-test('R4-2: a supplied entry flag without its value fails before runtime preparation',t=>{
-  const f=fixture(t);assert.throws(()=>f.run(undefined,undefined,{missingChoice:true}),error=>{
-    assert.equal(error.fixture.plans.length,0);assert.match(error.message,/Provide --memory-service-entry/);return true;
-  });
+test('R4-2: a supplied entry flag without its value fails before runtime preparation', t => {
+  const f = fixture(t);
+  f.installFixture({...f.config, memory: f.memory});
+  assertRejectedBeforeRuntime(f, ['--memory-service-entry'], 'invalid-arguments');
 });

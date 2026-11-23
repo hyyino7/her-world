@@ -1,7 +1,5 @@
 import type { BehaviorPresentation, CompanionExpression } from '../../contracts/behavior.js';
 import { type CompanionFeeling } from '../../contracts/emotion.js';
-/** Shared semantic names; displays choose their own existing assets. */
-export declare const companionFeelings: readonly ["happy", "calm", "sweet", "heartache", "worry", "sad", "jealous", "anger", "boredom"];
 export declare const feelingLabels: Record<CompanionFeeling, string>;
 /** The actual activity takes precedence. A live touch still needs a single known feeling. */
 export declare function classifyActivity(home: any): {

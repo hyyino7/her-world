@@ -14,7 +14,6 @@ export interface WorkspaceStatus {
     error: string | null;
     sourceRevision: string | null;
     migrationReason?: MigrationReason;
-    olderMigrationJournal?: true;
 }
 type NativeSessionScope = {
     id: string;
@@ -96,7 +95,6 @@ export declare class CoreWorkspace {
     private read;
     private initializationMarker;
     private retainedFiles;
-    private emptyLegacyInitialization;
     private inspectMigration;
     /** Match the binding and declared inventory accepted by inspectRepoBinding. */
     private offlineBindingReady;

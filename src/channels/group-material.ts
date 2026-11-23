@@ -25,9 +25,7 @@ export interface Impression {speakerId:string;name:string;traits:string[];intera
 interface Corpus {lines:Observed[]; forwards:string[]; learnedThrough?:string}
 type Source = {url:string;title?:string;snippet?:string;summary?:string};
 interface Options {
-  dataDirectory?:string;
-  /** Legacy helper alias. Production always supplies the bound Repo root. */
-  deviceDirectory?:string;
+  dataDirectory:string;
   active():boolean;
   allowed(identity:SpeakerIdentity):boolean;
   companionName?():string;
@@ -63,9 +61,9 @@ export class GroupGameplay {
   }
   private directory(account:string, group:string) {
     requireValue(!this.disposed && this.options.active() && /^\d{1,24}$/.test(account) && /^\d{1,24}$/.test(group), '群资料已停用或群号无效');
-    const root=this.options.dataDirectory ?? this.options.deviceDirectory;
+    const root=this.options.dataDirectory;
     requireValue(root,'群资料需要已绑定的伙伴资料目录');
-    const dir = privateDeviceDirectory(root!,'group-material');
+    const dir = privateDeviceDirectory(root,'group-material');
     return privateDeviceDirectory(dir,createHash('sha256').update(JSON.stringify([account,group])).digest('hex'));
   }
   private files(identity:SpeakerIdentity) {

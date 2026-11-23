@@ -136,7 +136,7 @@ try {
   const photo=JSON.parse(await albumTurn('a','pet_keep_photo',{description:'跨会话图片'},[{type:'text',text:'保存照片'},...attachment]));
   assert.ok(JSON.parse(await albumTurn('b','pet_list_photos',{},[{type:'text',text:'看相册'}])).photos.some(p=>p.id===photo.id));
   await albumTurn('c','pet_forget_photo',{id:photo.id},[{type:'text',text:'移除这张图片'}]);
-  assert.equal((await ctx.petLife.library(ws.id,'album',0)).total,0);
+  assert.equal((await host.records.library(ws.id,'album',0)).total,0);
   await owner.dispose();
   assert.equal(frameSource.lease.isCurrent(),false);
   assert.equal(host.native.sourceTable.classify(tvInput.data),undefined);

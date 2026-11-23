@@ -33,7 +33,7 @@ writeFileSync(resolve(import.meta.dirname, '../../src/desktop/helper/upstream/sh
   `window.PetShared = { ...require('src/shared/index.ts'), ...require('src/shared/chat/encode.ts'), ...require('src/shared/chat/hear-control.ts') }; })();\n`);
 
 // Keep pinned native inputs unchanged; bind voice cancellation at the original
-// route/queue/synthesis boundaries, then adapt their import suffixes.
+// route/queue/synthesis boundaries, then adapt imports to the generated layout.
 for (const [path, hash] of Object.entries(origin.nativeFiles ?? {})) {
   const source = readFileSync(resolve(root, path), 'utf8');
   if (createHash('sha256').update(source).digest('hex') !== hash) throw Error('Upstream source changed: ' + path);
@@ -43,12 +43,11 @@ for (const [path, hash] of Object.entries(origin.nativeFiles ?? {})) {
   mkdirSync(dirname(target), {recursive:true});
   const code = ts.transpileModule(adaptCompactVoice(path,source), {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
   const compiled = code.replace(/(from\s+['"][^'"]+)\.ts(['"])/g, '$1.js$2');
-  writeFileSync(target, compiled);
-  if (voice) {
-    const legacy = resolve(import.meta.dirname, '../../dist/src/desktop/upstream', output);
-    mkdirSync(dirname(legacy), {recursive:true});
-    writeFileSync(legacy, `export * from '../../../../voice/upstream/${output}';\n`);
-  }
+  // Desktop's configuration validator still uses the canonical Voice catalog.
+  const relocated = path === 'src/host/config/validate.ts'
+    ? compiled.replace('../voice/voices.js', '../../../../voice/upstream/host/voice/voices.js')
+    : compiled;
+  writeFileSync(target, relocated);
   if (path === 'src/host/routes/result.ts') {
     const voiceResult = resolve(import.meta.dirname, '../../dist/src/voice/upstream', output);
     mkdirSync(dirname(voiceResult), {recursive:true});

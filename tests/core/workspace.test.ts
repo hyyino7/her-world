@@ -6,6 +6,7 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {syncBuiltinESMExports} from 'node:module';
+import { settingsHandler } from '../../src/console/settings.js';
 import { createCore, type CoreConfig } from '../../src/core/index.js';
 import { CONSOLE_WALLET_IMPORT_FILE, CONSOLE_WALLET_STEP, ECONOMY_STORAGE_STEP, freshWalletImportProof, HOME_STORAGE_STEP,
   INITIAL_STORAGE_STEP, storageManifest } from '../../src/core/storage-migration.js';
@@ -19,7 +20,15 @@ const fixture = () => {
   return { root, repo, config };
 };
 
-test('new workspaces are initialized with the current storage version', async () => {
+async function assertPortableSnapshot(host: ReturnType<typeof createCore>) {
+  const signal = new AbortController().signal;
+  const snapshot = await settingsHandler(() => host, () => undefined)('snapshot',
+    {requestId:'portable-storage', input:{}}, signal, {principal:{kind:'owner'}, signal});
+  assert.ok(snapshot.ok, JSON.stringify(snapshot));
+  assert.partialDeepStrictEqual(snapshot.value, {workspace:{state:'ready'}, storage:{complete:true}});
+}
+
+test('new workspaces receive a fresh proof and report complete portable storage', async () => {
   const f = fixture();
   mkdirSync(join(f.repo,'.chatpet','diary'),{recursive:true});
   const host = createCore(f.config);
@@ -35,6 +44,45 @@ test('new workspaces are initialized with the current storage version', async ()
       storageManifest(f.config.companionId, CONSOLE_WALLET_STEP.to));
     assert.deepEqual(JSON.parse(readFileSync(join(f.repo,'.chatpet/data',CONSOLE_WALLET_IMPORT_FILE),'utf8')),
       freshWalletImportProof({companionId:f.config.companionId,storageId:host.workspace.storageId()}));
+    assert.equal(existsSync(join(f.repo,'.chatpet/data/migrations.jsonl')), false);
+    await assertPortableSnapshot(host);
+  } finally { await host.close(); rmSync(f.root, {recursive:true, force:true}); }
+});
+
+test('a portable 0.5.0 workspace with a completed 0004 journal reports complete storage', async () => {
+  const f = fixture(); let host = createCore(f.config);
+  const request = () => host.operator.request('migrated-workspace');
+  const target = {id:'repo', path:f.repo, title:'Repo'};
+  const data = join(f.repo, '.chatpet/data');
+  try {
+    const prefs = unwrap(await host.services.preferences.read(request(), {}));
+    const bound = unwrap(await host.services.preferences.save(request(), {
+      expectedRevision:prefs.revision, workspace:target, conversation:prefs.conversation,
+    }));
+    unwrap(await host.services.workspace.initialize(request(), {expectedPreferencesRevision:bound.revision}));
+    const storageId = host.workspace.storageId();
+    await host.close();
+
+    const steps = [INITIAL_STORAGE_STEP, HOME_STORAGE_STEP, ECONOMY_STORAGE_STEP, CONSOLE_WALLET_STEP];
+    const digest = 'a'.repeat(64), archive = join(f.root, 'backup');
+    const proof = {format:1, mode:'import', binding:{storageId, companionId:f.config.companionId}, wallet:'absent',
+      round:'fixture', sourceCount:1, requestCount:0, sourceDigest:digest, requestDigest:digest, exportDigest:digest};
+    const migrationId = 'completed-0004';
+    const journal = [{event:'migration', id:migrationId, schema:2, steps, backup:archive, backupHash:digest,
+      binding:{storageId, repoHash:createHash('sha256').update(f.repo).digest('hex')}, economyAdopted:false,
+      walletImport:{exportFile:join(f.root,'export.json'), rollbackFile:join(f.root,'rollback.json'),
+        rollbackDigest:digest, codeFingerprint:digest, proof}},
+    ...steps.map(step => ({event:'done', migrationId, step:step.id}))];
+    writeFileSync(join(data, CONSOLE_WALLET_IMPORT_FILE), JSON.stringify(proof) + '\n');
+    const journalFile = join(data, 'migrations.jsonl');
+    writeFileSync(journalFile, journal.map(row => JSON.stringify(row)).join('\n') + '\n', {mode:0o600});
+
+    host = createCore(f.config);
+    await assertPortableSnapshot(host);
+    await host.close();
+    rmSync(journalFile);
+    host = createCore(f.config);
+    assert.partialDeepStrictEqual(host.workspace.status(), {state:'migration-required', migrationReason:'migration-incomplete'});
   } finally { await host.close(); rmSync(f.root, {recursive:true, force:true}); }
 });
 
@@ -214,7 +262,7 @@ test('workspace retains unknown files and refuses foreign identity, symlinks and
   } finally { await host.close(); rmSync(f.root, { recursive: true, force: true }); }
 });
 
-test('legacy STATE declarations migrate without reading, rewriting or recreating the retired summary', async t => {
+test('a current Repo never reads, rewrites or recreates an undeclared STATE.md', async t => {
   const f = fixture(); const host = createCore(f.config); let sequence = 0;
   const context = () => host.operator.request(`retire-state-${++sequence}`);
   try {
@@ -223,16 +271,12 @@ test('legacy STATE declarations migrate without reading, rewriting or recreating
       workspace: { id: 'repo', title: 'Repo', path: f.repo }, conversation: original.conversation }));
     unwrap(await host.services.workspace.initialize(context(), { expectedPreferencesRevision: prefs.revision }));
     const dir = join(f.repo, '.chatpet');
-    const manifest = JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8'));
-    // A real v1 declaration has the historical six-file inventory, rather
-    // than a modern inventory with a retired filename appended to it.
-    const legacy = { ...manifest, schemaVersion: 1, files: ['README.md', 'manifest.json', 'SOUL.md', 'USER.md', 'core.json', 'STATE.md'] };
+    const manifest = readFileSync(join(dir, 'manifest.json'), 'utf8');
     const retired = '# Old summary\n\nOwner-edited text that must be preserved.\n';
     const retiredFile = join(dir, 'STATE.md'); writeFileSync(retiredFile, retired);
-    writeFileSync(join(dir, 'manifest.json'), JSON.stringify(legacy));
     const originalOpen = fs.openSync, originalRead = fs.readFileSync;
     const guard = (read: (...args:any[])=>any) => (path:any, ...args:any[]) => {
-      assert.notEqual(path, retiredFile, 'Migration and role writes must never read the retired summary');
+      assert.notEqual(path, retiredFile, 'Initialization and role writes must never read the retired summary');
       return read(path, ...args);
     };
     const openGuard = t.mock.method(fs, 'openSync', guard(originalOpen));
@@ -241,9 +285,9 @@ test('legacy STATE declarations migrate without reading, rewriting or recreating
     // both surfaces before the fixture itself verifies the preserved bytes.
     syncBuiltinESMExports();
     try {
-      const migrated = unwrap(await host.services.workspace.initialize(context(), { expectedPreferencesRevision: prefs.revision }));
-      assert.equal(migrated.state, 'ready'); assert.ok(!migrated.files.includes('STATE.md'));
-      assert.equal(JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).schemaVersion, 3);
+      const initialized = unwrap(await host.services.workspace.initialize(context(), { expectedPreferencesRevision: prefs.revision }));
+      assert.equal(initialized.state, 'ready'); assert.ok(!initialized.files.includes('STATE.md'));
+      assert.equal(readFileSync(join(dir, 'manifest.json'), 'utf8'), manifest);
       const identity = unwrap(await host.services.core.getIdentity(context(), {}));
       unwrap(await host.services.core.reviseIdentity(context(), { expectedScope:host.workspace.editScope(),expectedRevision: identity.revision, displayName: identity.displayName, character: 'Updated role' }));
     } finally {
@@ -251,7 +295,6 @@ test('legacy STATE declarations migrate without reading, rewriting or recreating
     }
     assert.equal(readFileSync(retiredFile, 'utf8'), retired);
     rmSync(retiredFile);
-    writeFileSync(join(dir, 'manifest.json'), JSON.stringify(legacy));
     assert.equal(unwrap(await host.services.workspace.initialize(context(), { expectedPreferencesRevision: prefs.revision })).state, 'ready');
     assert.ok(!readdirSync(dir).includes('STATE.md'), 'A missing retired file must not be recreated');
   } finally { await host.close(); rmSync(f.root, { recursive: true, force: true }); }

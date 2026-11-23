@@ -15,7 +15,7 @@ function fixture(t) {
   t.after(() => rmSync(root,{recursive:true,force:true}));
   const repo=join(root,'repo'), home=join(root,'dsh'), profile=join(home,'profiles','desktop'), managed=join(repo,'.chatpet');
   const config={companionId:'fish',scopeId:'scope',ownerActorId:'human',dataDir:join(managed,'data','core'),memory:{dataDir:join(managed,'data','memory')}};
-  write(join(managed,'manifest.json'),JSON.stringify({schemaVersion:2,companionId:'fish',files:['README.md','manifest.json','SOUL.md','USER.md','core.json']}));
+  write(join(managed,'manifest.json'),JSON.stringify({schemaVersion:3,companionId:'fish',files:['README.md','manifest.json','SOUL.md','USER.md','core.json','COMPANION.md','data/core/core.sqlite']}));
   for (const [name, value] of Object.entries({'README.md':'companion fixture','core.json':'{}','SOUL.md':'original role','USER.md':'original owner','COMPANION.md':'guidance',
     'data/memory/data/memory.db':'original Bank','data/emotion/state.json':'original emotion',
     'data/life/self.md':'original self','data/life/home.json':'original body','data/life/diary/2026-11-12.md':'diary',

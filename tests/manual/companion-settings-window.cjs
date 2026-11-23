@@ -9,7 +9,7 @@ const { randomUUID } = require('node:crypto');
 const { createServer } = require('node:http');
 const { basename } = require('node:path');
 const { setTimeout: pause } = require('node:timers/promises');
-const root = fs.mkdtempSync(join(tmpdir(), 'chatpet-settings-ui-'));
+const root = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'chatpet-settings-ui-')));
 app.setPath('userData', join(root, 'profile'));
 const frontend = join(process.env.DSH_APP || '/Applications/DeepSeek Harness.app',
   'Contents/Resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets');
@@ -38,8 +38,10 @@ function createFixturePage() {
 }
 
 async function check() {
+  const { Context } = await import('@deepseek-ai/cordis');
   const { createCore } = await import('../../dist/src/core/index.js');
   const { settingsHandler } = await import('../../dist/src/console/settings.js');
+  const { ensureDeviceRuntime } = await import('../../scripts/lib/device-runtime.mjs');
   const { CompanionEmotion, emotionConsoleOperations } = await import('../../dist/src/emotion/plugin.js');
   const { lifeConsoleOperations } = await import('../../dist/src/living/plan/plugin.js');
   const { roomConsoleOperations } = await import('../../dist/src/room/plugin.js');
@@ -55,10 +57,11 @@ async function check() {
   const secondWorkspace = { id: 'second', title: '新小屋', path: fs.realpathSync(secondDirectory),
     sessionIds: [], status: async () => 'ok' };
   const targets = [workspace, secondWorkspace];
-  const config = { dataDir: join(root, 'core'), companionId: 'settings-fixture', scopeId: 'fixture',
+  const runtime = ensureDeviceRuntime({ python: join(__dirname, '../../.venv/bin/python'),
+    deviceRoot: join(root, 'profile', 'chatpet-runtime'), sourceRepo: join(__dirname, '../..') });
+  const config = { dataDir: join(workspace.path, '.chatpet/data/core'), companionId: 'settings-fixture', scopeId: 'fixture',
     ownerActorId: 'owner', displayName: '大肥鱼', character: '一条喜欢听你说话的蓝鱼。',
-    // Invoke the venv entry point so Python loads the fixture's installed Memory dependencies.
-    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: join(__dirname, '../../.venv/bin/python') } };
+    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: runtime.python, runtimeRoot: runtime.deviceRoot } };
   const host = createCore(config);
   const emotion = new CompanionEmotion(host);
   const searchCalls = [];
@@ -98,7 +101,17 @@ async function check() {
   let openedRooms=0;const room={open:async workspaceId=>({workspaceId,open:++openedRooms}),status:()=>({running:false})};
   const {PetPlatform,platformConsoleOperations}=await import('../../dist/src/desktop/platform/plugin.js');
   let address;
-  const nativeCtx={get:()=>undefined,logger:console,connection:{broadcast(){},authenticatedUrl:url=>url},on:()=>()=>{},petDesktop:{chat:{id:'fixture-chat',snapshot:()=>({messages:[],sessionId:'fixture-chat',workspaceId:'fixture',generating:false})}},webServer:{getOrigin:()=>address},petCore:host};
+  const webServer = { getOrigin: () => address };
+  const nativeCtx = new Context();
+  await nativeCtx.plugin(scope => {
+    scope.provide('logger', console);
+    scope.provide('connection', { broadcast() {}, authenticatedUrl: url => url });
+    scope.provide('petDesktop', { chat: { id: 'fixture-chat', snapshot: () => ({
+      messages: [], sessionId: 'fixture-chat', workspaceId: workspace.id, generating: false,
+    }) } });
+    scope.provide('webServer', webServer);
+    scope.provide('petCore', host);
+  });
   const platform=new PetPlatform(nativeCtx);
   let desktopStatus={running:false,requested:false,starting:false},desktopCloses=0;
   const desktop={status:()=>({...desktopStatus}),start:async()=>{desktopStatus={running:false,requested:true,starting:true};},
@@ -147,7 +160,6 @@ async function check() {
     });
   });
 
-  createFixturePage();
   const server=createServer((req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(url.pathname.startsWith('/chatpet-presentation/')) {
@@ -160,11 +172,17 @@ async function check() {
     res.setHeader('Content-Type',name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':name.endsWith('.html')?'text/html':'application/octet-stream');
     res.end(fs.readFileSync(file));
   });
-  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  address='http://127.0.0.1:'+server.address().port;nativeCtx.webServer.port=server.address().port;
-  const win = new BrowserWindow({ width: 800, height: 900, useContentSize: true, show: false,
-    webPreferences: { preload: join(root, 'preload.cjs'), backgroundThrottling: false } });
+  let win;
   try {
+    createFixturePage();
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    webServer.port = server.address().port;
+    address = 'http://127.0.0.1:' + webServer.port;
+    win = new BrowserWindow({ width: 800, height: 900, useContentSize: true, show: false,
+      webPreferences: { preload: join(root, 'preload.cjs'), backgroundThrottling: false } });
     const evaluate = (func, ...args) => win.webContents.executeJavaScript(
       '(' + func.toString() + ')(' + args.map(arg => JSON.stringify(arg)).join(',') + ')');
     async function waitFor(func, ...args) {
@@ -255,9 +273,40 @@ async function check() {
     await click('刷新设置');
     await waitFor(() => !document.querySelector('#fixture [role=alert]') && !!document.querySelector('#fixture [role=tabpanel] h3'));
     let preferences = await call('preferences', {expectedRevision:(await call('snapshot')).preferences.revision,workspaceId:'fixture',conversation:(await call('snapshot')).preferences.conversation});
-    await call('initialize',{expectedPreferencesRevision:preferences.revision});
-    await click('刷新设置'); await waitFor(() => document.querySelector('#fixture [role=tabpanel]')?.innerText.includes('蓝鱼小屋'));
+    const initialized = await call('initialize',{expectedPreferencesRevision:preferences.revision});
+    assert.equal(initialized.state, 'ready');
+    const {storage} = await call('snapshot');
+    assert.equal(storage.complete, true, JSON.stringify(storage));
     platform.ownerAccess('fixture');
+    const configUrl = new URL('/chatpet-presentation/config', address);
+    const {obj:{main:{bodyTemplate}}} = await platform.handle(configUrl, 'GET', undefined, signal);
+    const saved = await platform.handle(configUrl, 'PUT',
+      JSON.stringify({pets:[{...bodyTemplate, size:232, display:'none'}]}), signal);
+    assert.equal(saved.status, 200);
+    const {obj:{main:{pets}}} = await platform.handle(configUrl, 'GET', undefined, signal);
+    assert.equal(pets.find(pet => pet.id === bodyTemplate.id)?.size, 232);
+    await click('刷新设置'); await waitFor(() => document.querySelector('#fixture [role=tabpanel]')?.innerText.includes('蓝鱼小屋'));
+    const voiceUrl = new URL('/chatpet-presentation/voice/voices', address);
+    const listVoices = () => platform.handle(voiceUrl, 'GET', undefined, signal);
+    const unavailable = { kind: 'json', status: 503, obj: { ok: false, message: '语音组件未启用' } };
+    assert.deepEqual(await listVoices(), unavailable);
+    const voices = [{ id: 'fixture', name: '合成语音夹具' }];
+    const voiceScope = await nativeCtx.plugin(scope => {
+      scope.effect(() => host.native.voiceTable.register(scope, {
+        availability: () => ({ speak: true, hear: false }),
+        async handle({ rest, method }) {
+          assert.equal(rest, 'voice/voices');
+          assert.equal(method, 'GET');
+          return { kind: 'json', status: 200, obj: { ok: true, voices } };
+        },
+      }).revoke);
+    });
+    try {
+      assert.deepEqual(await listVoices(), { kind: 'json', status: 200, obj: { ok: true, voices } });
+    } finally {
+      await voiceScope.dispose();
+    }
+    assert.deepEqual(await listVoices(), unavailable);
     await screenshot(process.env.CP_VISUAL_PHASE||'after');
     {
       for (const label of ['角色','情绪','记忆与档案','桌宠','生活','连接','工作区']) {await click(label,'[role=tab]'); await pause(200); await screenshot('after-' + label);}
@@ -284,7 +333,14 @@ async function check() {
         if(!size)throw Error('Original size field missing');
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(size,'289');size.dispatchEvent(new Event('input',{bubbles:true}));
       });
-      await click('生活','[role=tab]');assert.ok(!(await panelText()).includes('此刻的心情'),'Previous Emotion panel must unmount');await waitFor(()=>[...document.querySelectorAll('button')].find(e=>e.textContent==='喂小鱼干'&&!e.disabled));
+      const lifeView = await call('lifeView', {workspaceId: workspace.id});
+      assert.equal(lifeView.enabled, false);
+      const feed = lifeView.careActions.find(({action}) => action === 'feed');
+      assert.ok(feed?.label, 'The paused Life view must offer free feeding');
+      await click('生活','[role=tab]');
+      assert.ok(!(await panelText()).includes('此刻的心情'),'Previous Emotion panel must unmount');
+      await waitFor(label => [...document.querySelectorAll('[role=tabpanel] button')]
+        .some(button => button.textContent === label && !button.disabled), feed.label);
       await click('桌宠','[role=tab]');assert.ok(await evaluate(()=>[...document.querySelectorAll('.cp-appearance input')].some(e=>e.type==='number'&&e.value==='289')),'Original appearance draft must survive tab changes');
       await screenshot('after-桌宠');
       await click('角色','[role=tab]');await setField('角色名称','Unsaved fixture name');
@@ -306,7 +362,23 @@ async function check() {
       console.log({foundationSaved:true,emotionSaved:true,roomOpen:openedRooms,nativeEditorInputs:nativeInputs.length,nativePersonaModelHidden:true,canonicalTiming:true,pausedCareEnabled:true,crossPageDrafts:true,appearanceDraftPreserved:true,desktopReadiness:true,desktopCancelRetry:true});
       console.log(await evaluate(() => ({tabs:[...document.querySelectorAll('[role=tab]')].map(e=>e.textContent),iframes:document.querySelectorAll('iframe').length,overflow:document.documentElement.scrollWidth>innerWidth})));
     }
-  } finally {ipcMain.removeHandler('fixture:settings');ipcMain.removeHandler('fixture:platform');await win.webContents.executeJavaScript('window.stopNative?.()');platform.close();await host.close();win.destroy();server.closeAllConnections();server.close();}
+  } finally {
+    ipcMain.removeHandler('fixture:settings');
+    ipcMain.removeHandler('fixture:platform');
+    try {
+      if (win && !win.isDestroyed()) await win.webContents.executeJavaScript('window.stopNative?.()');
+    } finally {
+      if (win && !win.isDestroyed()) win.destroy();
+      server.closeAllConnections();
+      if (server.listening) await new Promise(resolve => server.close(resolve));
+      platform.close();
+      try {
+        await nativeCtx.fiber.dispose();
+      } finally {
+        await host.close();
+      }
+    }
+  }
 }
 app.on('window-all-closed',()=>{});
 app.whenReady().then(check).then(()=>app.exit(0)).catch(error=>{console.error(error);app.exit(1)});

@@ -88,12 +88,14 @@ test('R5: generic same-named custom files are data, while a malformed real Memor
   assert.throws(()=>createOfflineBackup(f.plan,join(f.root,'invalid'),noWriter),/Invalid memory owner/);
 });
 
-test('R5: a manifest-declared retained Bank with an unreadable owner is refused without initializing its missing database',async t=>{
+test('R5: backup refuses a missing declared Bank or its unreadable owner without repairing either',async t=>{
   const f=await fixture(t,{memory:false}),directory=join(f.managed,'data/declared-memory'),file=join(f.managed,'manifest.json');
-  const manifest=JSON.parse(readFileSync(file,'utf8'));manifest.schemaVersion=2;manifest.files.push('data/declared-memory/data/memory.db');writeFileSync(file,JSON.stringify(manifest));
+  const manifest=JSON.parse(readFileSync(file,'utf8'));manifest.files.push('data/declared-memory/data/memory.db');writeFileSync(file,JSON.stringify(manifest));
   write(f.ownerFile(directory),'malformed former Memory owner');
-  assert.throws(()=>createOfflineBackup(f.plan,join(f.root,'invalid'),noWriter),/JSON/);
+  assert.throws(()=>createOfflineBackup(f.plan,join(f.root,'missing'),noWriter),/Declared companion structure is incomplete/);
   assert.equal(existsSync(join(directory,'data/memory.db')),false);
+  f.bank(directory);
+  assert.throws(()=>createOfflineBackup(f.plan,join(f.root,'invalid'),noWriter),/JSON/);
   assert.equal(readFileSync(f.ownerFile(directory),'utf8'),'malformed former Memory owner');
 });
 

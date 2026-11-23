@@ -19,7 +19,6 @@ import type { CompanionBinding } from './tables/companion-ports.js';
 
 const BASE_REQUIRED = ['README.md', 'manifest.json', 'SOUL.md', 'USER.md', 'core.json'] as const;
 const REQUIRED = [...BASE_REQUIRED, 'COMPANION.md'] as const;
-const LEGACY_FILES = [...BASE_REQUIRED, 'STATE.md'];
 const WORKSPACE_INSTRUCTIONS = `# Companion workspace
 
 The companion documents are under .chatpet/. SOUL.md owns the configured name
@@ -40,8 +39,8 @@ const STORAGE_MANIFEST = 'storage-manifest.json', MIGRATION_JOURNAL = 'migration
 const READABLE_FILES = new Set<string>([...REQUIRED, STORAGE_MANIFEST, MIGRATION_JOURNAL, CONSOLE_WALLET_IMPORT_FILE, INITIALIZING]);
 const STORAGE_STEPS = [INITIAL_STORAGE_STEP, HOME_STORAGE_STEP, ECONOMY_STORAGE_STEP, CONSOLE_WALLET_STEP];
 const BOOTSTRAP_FILES = new Set(['core.sqlite', 'core.sqlite-wal', 'core.sqlite-shm', 'core.sqlite-journal', 'core.lock']);
-interface MigrationBlock { reason: MigrationReason; olderMigrationJournal?: true }
-interface Manifest { schemaVersion: 1 | 2 | 3; companionId: string; files: readonly string[] }
+interface MigrationBlock { reason: MigrationReason }
+interface Manifest { schemaVersion: 3; companionId: string; files: readonly string[] }
 interface FileConfig { schemaVersion: 1; quiet: boolean | null; conversation: CorePreferences['conversation'] | null; companion?: CompanionConfiguration }
 interface Binding { revision: number; target: WorkspaceTarget; phase: 'ready' | 'inactive'; hashes: Record<string, string>; initializedAt: string }
 interface Documents { identity: Pick<CompanionIdentity, 'displayName' | 'character'>; user: string; config: FileConfig; hashes: Record<string, string> }
@@ -51,7 +50,6 @@ export interface WorkspaceStatus {
   target: WorkspaceTarget | null; files: readonly string[]; error: string | null;
   sourceRevision: string | null;
   migrationReason?: MigrationReason;
-  olderMigrationJournal?: true;
 }
 type NativeSessionScope = { id: string; header: { cwd?: string; parentSession?: unknown; origin?: string; agentPreset?: string } };
 type NativeWorkspaceRegistry = { get(id: string): { path: string; sessionIds: readonly string[] } | undefined };
@@ -190,15 +188,11 @@ export class CoreWorkspace {
     const {companionId, scopeId} = this.runtime.config;
     return {companionId, scopeId, workspaceId, modules:CONSOLE_WALLET_STEP.to};
   }
-  private retainedFiles(directory: string, ignore?: string): boolean {
+  private retainedFiles(directory: string): boolean {
     return readdirSync(directory, {withFileTypes:true}).some(entry => {
-      if (entry.name === ignore) return false;
       if (directory === this.runtime.store.directory && entry.isFile() && BOOTSTRAP_FILES.has(entry.name)) return false;
       return !entry.isDirectory() || this.retainedFiles(join(directory, entry.name));
     });
-  }
-  private emptyLegacyInitialization(directory: string, marker: unknown): boolean {
-    return isDeepStrictEqual(marker, {companionId:this.runtime.config.companionId}) && !this.retainedFiles(directory, INITIALIZING);
   }
   private inspectMigration(target: WorkspaceTarget, storageId: string, initialized: boolean): MigrationBlock | undefined {
     const {companionId} = this.runtime.config;
@@ -223,8 +217,7 @@ export class CoreWorkspace {
           return {reason:MIGRATION_REASON.journalStepMismatch};
         if (last && !settled(last)) {
           if (last.header.binding && last.header.binding.repoHash !== bytesDigest(Buffer.from(target.path)).slice(7)) return {reason:MIGRATION_REASON.bindingChanged};
-          return {reason:MIGRATION_REASON.migrationIncomplete,
-            olderMigrationJournal:last.header.steps.length < STORAGE_STEPS.length ? true : undefined};
+          return {reason:MIGRATION_REASON.migrationIncomplete};
         }
         const importProof = last?.header.walletImport?.proof;
         if (importProof && importProof.binding.companionId !== companionId) return {reason:MIGRATION_REASON.bindingChanged};
@@ -244,7 +237,7 @@ export class CoreWorkspace {
     try {
       if (lstatSync(join(directory, INITIALIZING), {throwIfNoEntry:false})) {
         const marker: unknown = JSON.parse(this.read(directory, INITIALIZING));
-        if (isDeepStrictEqual(marker, this.initializationMarker(target.id)) || this.emptyLegacyInitialization(directory, marker)) return;
+        if (isDeepStrictEqual(marker, this.initializationMarker(target.id))) return;
         return {reason:MIGRATION_REASON.storageVersionOutdated};
       }
       if ((initialized && existsSync(directory)) || [...REQUIRED, 'STATE.md', 'self.md', 'diary', 'self.history', 'data'].some(name => {
@@ -267,8 +260,8 @@ export class CoreWorkspace {
       const directory = this.directory(target);
       if (existsSync(join(directory, INITIALIZING))) return false;
       const manifest = JSON.parse(this.read(directory, 'manifest.json', true)) as Manifest;
-      if (manifest.companionId !== config.companionId || ![1, 2, 3].includes(manifest.schemaVersion) || !Array.isArray(manifest.files)) return false;
-      this.verifyDeclaredFiles(directory, manifest.schemaVersion === 3 ? [...new Set([...BASE_REQUIRED, ...manifest.files])] : BASE_REQUIRED);
+      if (manifest.companionId !== config.companionId || manifest.schemaVersion !== 3 || !Array.isArray(manifest.files)) return false;
+      this.verifyDeclaredFiles(directory, [...new Set([...BASE_REQUIRED, ...manifest.files])]);
       return true;
     } catch { return false; }
   }
@@ -280,8 +273,7 @@ export class CoreWorkspace {
   }
   private migrationBlock(): MigrationBlock | undefined {
     const blocked = this.migrationBlocked;
-    // A restart still clears a completed migration gate, but its advice
-    // depends on whether the binding can be opened by the offline tool now.
+    // Keep the process gate until restart while the recorded binding is available.
     if (blocked && this.offlineBindingReady(blocked.target)) return blocked.block;
     const store = this.runtime.store, saved = store.get<Binding>('workspace-binding', 'current');
     const selected = preferences(this.runtime).workspace, portable = dirname(dirname(dirname(store.directory)));
@@ -322,10 +314,9 @@ export class CoreWorkspace {
     const manifestText = this.read(directory, 'manifest.json');
     const manifest = JSON.parse(manifestText) as Manifest;
     check(manifest.companionId === this.runtime.config.companionId, 'Workspace belongs to a different companion');
-    check(Array.isArray(manifest.files) && (manifest.schemaVersion === 3 && REQUIRED.every(name => manifest.files.includes(name))
-      && manifest.files.every(name => typeof name === 'string' && name.length > 0 && !isAbsolute(name) && !name.split(/[\\/]/).includes('..'))
-      || manifest.schemaVersion === 2 && canonical(manifest.files) === canonical(BASE_REQUIRED)
-      || manifest.schemaVersion === 1 && canonical(manifest.files) === canonical(LEGACY_FILES)), 'Unexpected managed format or file declaration');
+    check(manifest.schemaVersion === 3 && Array.isArray(manifest.files) && REQUIRED.every(name => manifest.files.includes(name))
+      && manifest.files.every(name => typeof name === 'string' && name.length > 0 && !isAbsolute(name) && !name.split(/[\\/]/).includes('..')),
+      'Unexpected managed format or file declaration');
     const soul = this.read(directory, 'SOUL.md'); const match = soul.trim() === '' ? ['', '', ''] : /^# ([^\r\n]*)\r?\n\r?\n([\s\S]*)$/.exec(soul);
     check(match, 'SOUL.md requires a role heading, a blank line and character text');
     const identity = { displayName: match![1], character: match![2] }; this.soul(identity);
@@ -412,15 +403,14 @@ export class CoreWorkspace {
     if (manifestExists) {
       const manifest = JSON.parse(this.read(directory, 'manifest.json')) as Manifest;
       check(manifest.companionId === identity.companionId, 'Workspace belongs to a different companion');
-      check([1, 2, 3].includes(manifest.schemaVersion), 'Unexpected managed format');
+      check(manifest.schemaVersion === 3, 'Unexpected managed format');
     }
     // Files survive a database rollback. Record this version and binding
     // before creating any companion data, so only this initialization can retry.
     const pending = join(directory, INITIALIZING), marker = this.initializationMarker(target.id);
     if (existsSync(pending)) {
       const previousMarker: unknown = JSON.parse(this.read(directory, INITIALIZING));
-      if (this.emptyLegacyInitialization(directory, previousMarker)) this.atomic(directory, INITIALIZING, JSON.stringify(marker) + '\n');
-      else check(isDeepStrictEqual(previousMarker, marker), 'Initialization scope changed');
+      check(isDeepStrictEqual(previousMarker, marker), 'Initialization scope changed');
     } else this.atomic(directory, INITIALIZING, JSON.stringify(marker) + '\n');
     this.runtime.fileEffect = true;
     if (!manifestExists) {
@@ -450,7 +440,7 @@ export class CoreWorkspace {
     store.put('workspace-binding', 'current', binding);
     try {
       initializeCompanionFiles(target.path, {companionId: identity.companionId, scopeId: this.runtime.config.scopeId,
-        storageId: this.storageId()}, () => store.get('emotion-state', this.storageId()));
+        storageId: this.storageId()});
       initializeCompanionRecords(target.path);
       for (const entry of this.initializers.values()) entry.run(target);
       const manifest: Manifest = {schemaVersion: 3, companionId: identity.companionId, files: this.inventory(target)};
@@ -604,7 +594,7 @@ export class CoreWorkspace {
     const target = preferences(this.runtime).workspace, binding = this.binding();
     const block = this.migrationBlock();
     if (block) return {state:'migration-required', revision:binding?.revision ?? null, target, files:[],
-      error:'migration-required', migrationReason:block.reason, olderMigrationJournal:block.olderMigrationJournal, sourceRevision:null};
+      error:'migration-required', migrationReason:block.reason, sourceRevision:null};
     if (!target) return { state: 'unbound', revision: null, target: null, files: [], error: null, sourceRevision: null };
     if (!binding) return { state: 'pending', revision: null, target, files: [], error: null, sourceRevision: null };
     try {
@@ -616,8 +606,7 @@ export class CoreWorkspace {
       if (existsSync(join(directory, INITIALIZING)))
         return {state: 'pending', revision: binding.revision, target, files: [], error: 'Initialization is incomplete; retry to prepare the same workspace', sourceRevision: null};
       const docs = this.documents(target);
-      const manifest = JSON.parse(this.read(directory, 'manifest.json')) as Manifest;
-      const files = manifest.schemaVersion === 3 ? this.verifyInventory(target) : [...BASE_REQUIRED];
+      const files = this.verifyInventory(target);
       return { state: 'ready', revision: binding.revision, target, files, error: null, sourceRevision: bytesDigest(Buffer.from(canonical(docs.hashes))) };
     } catch { return { state: 'unavailable', revision: binding.revision, target, files: REQUIRED, error: 'Managed workspace files cannot be loaded; inspect the files and binding', sourceRevision: null }; }
   }

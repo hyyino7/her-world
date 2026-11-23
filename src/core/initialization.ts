@@ -1,4 +1,4 @@
-import { constants, closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { constants, closeSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { EmotionFile } from '../emotion/state.js';
@@ -38,18 +38,14 @@ function createEmpty(file: string, value: unknown) {
   finally { closeSync(fd); }
 }
 
-export function inspectCompanionFiles(root: string): string[] {
-  const managed = join(root, '.chatpet');
-  const pet = existsSync(join(managed, 'data/pet-platform/main-config.jsonc'))
-    ? 'data/pet-platform/main-config.jsonc' : 'data/pet-platform/main-config.json';
-  return [...DIRECTORIES.map(name => name + '/'), pet, 'data/life/control.json', 'data/emotion/state.json'];
+export function inspectCompanionFiles(_root: string): string[] {
+  return [...DIRECTORIES.map(name => name + '/'), 'data/pet-platform/main-config.jsonc', 'data/life/control.json', 'data/emotion/state.json'];
 }
 
 /** Read-only validation used by readiness checks; it never repairs a bad file. */
 export function validateCompanionConfiguration(root: string): void {
   const managed = join(root, '.chatpet');
-  const primary = join(managed, 'data/pet-platform/main-config.jsonc');
-  const file = existsSync(primary) ? primary : join(managed, 'data/pet-platform/main-config.json');
+  const file = join(managed, 'data/pet-platform/main-config.jsonc');
   regular(file);
   const pet = petConfig.readJsonc(file);
   check(pet !== null && typeof pet === 'object' && !Array.isArray(pet), 'Invalid Pet configuration; original retained');
@@ -64,17 +60,13 @@ export function validateCompanionConfiguration(root: string): void {
   if (saved.preferences !== undefined) parseLifePreferences(saved.preferences);
 }
 
-export function initializeCompanionFiles(root: string, identity: {companionId: string; scopeId: string; storageId: string}, legacyEmotion: () => unknown) {
+export function initializeCompanionFiles(root: string, identity: {companionId: string; scopeId: string; storageId: string}) {
   containers(root);
   const managed = join(root, '.chatpet');
-  const petFile = join(managed, 'data/pet-platform/main-config.jsonc');
-  const legacyPet = join(managed, 'data/pet-platform/main-config.json');
-  regular(petFile); regular(legacyPet);
-  if (!existsSync(petFile) && !existsSync(legacyPet)) createEmpty(petFile, {pets: []});
+  createEmpty(join(managed, 'data/pet-platform/main-config.jsonc'), {pets: []});
   const control = join(managed, 'data/life/control.json');
   createEmpty(control, {version: 1, enabled: false, preferences: {...defaultLifePreferences}});
   validateCompanionConfiguration(root);
 
-  // Emotion owns its format and legacy import. A null state is valid, not a mood.
-  new EmotionFile({path: root, ...identity}, legacyEmotion).initialize();
+  new EmotionFile({path: root, ...identity}).initialize();
 }

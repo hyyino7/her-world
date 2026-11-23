@@ -4,7 +4,7 @@ export declare class Rejection extends Error {
     readonly detail: ContractError;
     constructor(detail: ContractError);
 }
-export declare function reject(code: Exclude<RejectedCode, 'EXPIRED_USE'>, message: string): never;
+export declare function reject(code: RejectedCode, message: string): never;
 export declare function unavailable(message: string): never;
 export declare function check(condition: unknown, message: string): asserts condition;
 export declare function text(value: unknown, label: string, max?: number): asserts value is string;

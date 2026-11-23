@@ -48,7 +48,7 @@ export class GroupGameplay {
     }
     directory(account, group) {
         requireValue(!this.disposed && this.options.active() && /^\d{1,24}$/.test(account) && /^\d{1,24}$/.test(group), '群资料已停用或群号无效');
-        const root = this.options.dataDirectory ?? this.options.deviceDirectory;
+        const root = this.options.dataDirectory;
         requireValue(root, '群资料需要已绑定的伙伴资料目录');
         const dir = privateDeviceDirectory(root, 'group-material');
         return privateDeviceDirectory(dir, createHash('sha256').update(JSON.stringify([account, group])).digest('hex'));

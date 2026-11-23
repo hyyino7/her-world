@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, lstatSync, readFileSync, realpathSync} from 'node:fs';
-import {dirname, isAbsolute, join, resolve, sep} from 'node:path';
+import {existsSync, lstatSync, realpathSync} from 'node:fs';
+import {isAbsolute, join, resolve, sep} from 'node:path';
 import {isDeepStrictEqual, parseArgs} from 'node:util';
 
 // Mirror the actual CoreConfig surface. Model routes belong to native DSH,
@@ -22,7 +22,6 @@ export function prepareCoreConfiguration(...layers) {
 
 const corePackage = 'her-world';
 const bundledMemoryEntry = join('src', 'memory', 'main.py');
-const bundledMemoryFiles = [bundledMemoryEntry, 'src/memory/provider.py'];
 const defaultMemoryEntry = entry => entry == null || entry === '';
 
 function regularFile(path) {
@@ -32,20 +31,13 @@ function regularFile(path) {
 
 function isManagedMemoryServiceEntry(entry, roots) {
   const path = resolve(entry);
-  const root = resolve(dirname(path), '../..');
-  if (path !== join(root, bundledMemoryEntry)) return false;
   try {
-    if (roots.some(known => path === join(known, bundledMemoryEntry)
-      || existsSync(known) && path === join(realpathSync(known), bundledMemoryEntry))) return true;
-    // An older package or checkout needs both matching program files and its manifest.
-    const manifest = join(root, 'package.json');
-    return regularFile(manifest) && JSON.parse(readFileSync(manifest, 'utf8')).name === corePackage
-      && roots.some(known => bundledMemoryFiles.every(file => regularFile(join(root, file)) && regularFile(join(known, file))
-        && readFileSync(join(root, file)).equals(readFileSync(join(known, file)))));
+    return roots.some(known => path === join(known, bundledMemoryEntry)
+      || existsSync(known) && path === join(realpathSync(known), bundledMemoryEntry));
   } catch { return false; }
 }
 
-/** Setup can select a local entry explicitly. Migration can also retain a
+/** Setup can select a local entry explicitly. Repair can also retain a
  * regular custom program already recorded in the effective configuration. */
 export function prepareMemoryServiceEntry(memory, {args, managedRoots = [], preserveCustom = false} = {}) {
   // The binding step reads its own option from the CLI arguments with the same
@@ -174,8 +166,7 @@ export function patchWithCoreOverride(text, patches, override, config, yaml, sch
   const fragment = yaml.dump([replacement], {schema, noRefs: true, lineWidth: -1});
   if (text === undefined) return fragment;
 
-  // Use the same expression tag as prepare-store-switch. Read the resulting
-  // document with the loader's dialect to verify untouched entries and tags.
+  // Read the resulting document with the loader's dialect to verify untouched entries and tags.
   const customTags = [{tag: 'tag:yaml.org,2002:js', resolve: value => value}];
   const doc = yamlDocument.parseDocument(text, {customTags});
   requireSetup(!doc.errors.length, 'patch-invalid');

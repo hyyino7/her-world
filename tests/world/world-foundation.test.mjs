@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import * as world from 'her-world/world';
+import * as world from '../../dist/src/world/index.js';
 
 test('the public foundation has sixteen components and ships the pinned release files', () => {
   assert.deepEqual(Object.keys(world), [

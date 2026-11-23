@@ -32,6 +32,7 @@
       "generated": []
     },
     "contracts": {
+      "description": "共用物理目录归第一层；照料表的业务拥有者是 Living，仓内共享契约。",
       "layer": 1,
       "root": "src/contracts/",
       "services": [],
@@ -52,6 +53,7 @@
       "generated": []
     },
     "living": {
+      "description": "身体、计划回顾和钱包各由自己的入口装卸，共用登记实例；变化经 world.changed 发布。",
       "layer": 2,
       "root": "src/living/",
       "services": ["petBehavior","petLife","petEconomy"],
@@ -125,16 +127,18 @@
       "generated": []
     },
     "voice": {
+      "description": "70-Voice 经 Core 的 VoiceTable 登记；petVoice 是隔离键。",
       "layer": 3,
       "root": "src/voice/",
-      "services": ["petVoice"],
+      "services": [],
       "dependencies": ["core","memory","emotion","contracts","world","living","voice"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petVoice"],
+      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy"],
       "publishes": [],
       "subscribes": ["pet/core.changed"],
       "generated": []
     },
     "console": {
+      "description": "生成的浏览器入口加载设置页，记录库和钱包操作由各拥有者处理。",
       "layer": 3,
       "root": "src/console/",
       "services": [],

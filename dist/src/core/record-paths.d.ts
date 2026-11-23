@@ -1,5 +1,3 @@
-/** One selected location per resource. Existing Life records remain authoritative
- * until an explicit migration moves them; a blank new file never hides them. */
 export declare function companionRecordPaths(root: string): {
     directory: string;
     selfFile: string;

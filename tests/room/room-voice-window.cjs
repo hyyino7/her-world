@@ -19,7 +19,7 @@ async function run(){
   const {Context}=await import('@deepseek-ai/cordis');
   const {Room}=await import(pathToFileURL(join(root,'dist/src/room/plugin.js')).href);
   const {roomAsset}=await import(pathToFileURL(join(root,'dist/src/room/assets.js')).href);
-  const {registerVoiceProvider}=await import(pathToFileURL(join(root,'dist/src/desktop/upstream/host/voice/registry.js')).href);
+  const {registerVoiceProvider}=await import(pathToFileURL(join(root,'dist/src/voice/upstream/host/voice/registry.js')).href);
   let heard=0,spoken=0;
   const scope=new Context(),voiceTable=new VoiceTable();
   const host={workspace:{status:()=>({state:'ready',target:{id:'fixture',path:temp}}),storageId:()=> 'fixture',

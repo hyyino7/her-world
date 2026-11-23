@@ -1,6 +1,6 @@
 import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,realpathSync,readFileSync,existsSync,cpSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,realpathSync,readFileSync,writeFileSync,existsSync,cpSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {compiledURL} from '../fixtures/playback.mjs';
@@ -27,6 +27,7 @@ syncBuiltinESMExports();
 after(()=>{for(const restore of restores.reverse())restore();syncBuiltinESMExports();assert.deepEqual(forbidden,[]);});
 
 const {createCore}=await import(compiledURL('core/index.js'));
+const {digest}=await import(compiledURL('core/storage.js'));
 const {CompanionChannels,channelsConsoleOperations}=await import(compiledURL('channels/plugin.js'));
 const {settingsHandler}=await import(compiledURL('console/settings.js'));
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
@@ -72,12 +73,28 @@ async function fixture(t,{search}={}) {
   const policy=which=>join(paths[which],'.chatpet/data/channels/preferences.json');
   const status=()=>channels.request('same-native-workspace','channelStatus',{});
   const configure=async next=>channels.request('same-native-workspace','messagingSettings',{expected:(await status()).messaging.config,next});
-  return {host,channels,paths,bind,prepare,policy,status,configure,listeners,
+  const deviceDirectory=join(profile,'chatpet-channels',digest(host.workspace.storageId()));
+  return {host,channels,paths,bind,prepare,policy,status,configure,listeners,deviceDirectory,
     initialize:revision=>host.services.workspace.initialize(request(),{expectedPreferencesRevision:revision}),
     bytes:which=>readFileSync(policy(which),'utf8'),
     copy(from,to){cpSync(join(paths[from],'.chatpet'),join(paths[to],'.chatpet'),{recursive:true});},
     onRemove(fn){onRemove=fn;},onRegister(fn){onRegister=fn;}};
 }
+
+test('Channels starts from split settings and leaves device files untouched',async t=>{
+  const f=await fixture(t);
+  const legacy=join(f.deviceDirectory,'group-material'), device=join(f.deviceDirectory,'messaging.json');
+  mkdirSync(legacy,{recursive:true});
+  writeFileSync(join(legacy,'archived.txt'),'archived fixture');
+  const deviceBytes='{"qq":{"enabled":false,"accountId":"123"}}\n';
+  const policyBytes='{"qq":{"ownerSpeakerId":"456","allowPrivate":["456"]}}\n';
+  writeFileSync(device,deviceBytes);writeFileSync(f.policy('a'),policyBytes);
+  const {qq}= (await f.status()).messaging.config;
+  assert.equal(qq.accountId,'123');assert.equal(qq.ownerSpeakerId,'456');assert.deepEqual(qq.allowPrivate,['456']);
+  assert.equal(readFileSync(device,'utf8'),deviceBytes);
+  assert.equal(f.bytes('a'),policyBytes);
+  assert.equal(readFileSync(join(legacy,'archived.txt'),'utf8'),'archived fixture');
+});
 
 test('real Core same-ID copied-workspace rebind saves channel policy only in the new root',async t=>{
   const f=await fixture(t),first=await f.channels.refresh();

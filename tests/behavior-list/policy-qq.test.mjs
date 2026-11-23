@@ -96,13 +96,31 @@ test('guest 预设屏蔽继承和晚登记工具，仅组装公开角色卡、�
   await until(()=>transport.sent.length===2);
 });
 
-test('guest footer 写共享情绪（现状，待主人决定）',async t=>{
+test('guest 回复剥离 footer，混入其他来源也不写共享情绪',async t=>{
   const {f,send,receive,transport}=await setup(t);
-  send('300','guest-emotion','Synthetic guest input');
-  const {agent,message}=await receive('guest-emotion',()=>f.agents());
-  await f.end(await f.begin(agent.id,message),'completed',footer('Guest'));
-  await until(()=>transport.sent.length===1);
-  await assertEmotion(f,'Guest');
+  const emotion=f.service('petEmotion');
+  const before=await emotion.read('world');
+  const kind='synthetic-footer-source';
+  const registration=f.host.native.sourceTable.register({id:kind,order:0,sources:[kind],
+    branches:{owner:{turnKind:'foreground',toolSource:'owner',toolPolicy:null,memoryObservation:null,
+      emotionUpdate:{footer:true,tool:false}}},
+    admit:()=>({kind:'accepted',branch:'owner',context:{policyKey:kind}}),
+  });
+  t.after(()=>registration.revoke());
+  for(const [index,mixed] of [false,true].entries()) {
+    const id='guest-emotion-'+index;
+    send('300',id,'Synthetic guest input');
+    const {agent,message}=await receive(id,()=>f.agents());
+    const active=await f.begin(agent.id,message);
+    if(mixed) {
+      const other=createUserMessage({source:{kind},content:[{type:'text',text:'Synthetic second source'}]});
+      await f.step(active,[other]);
+    }
+    await f.end(active,'completed',footer('Guest'));
+    await until(()=>transport.sent.length===index+1);
+    assert.equal(transport.sent[index].text,'Synthetic reply');
+    assert.deepEqual(await emotion.read('world'),before);
+  }
 });
 
 test('QQ guest 已准入的消息在会话 cwd 或组合预设变化后被拒',async t=>{
