@@ -1139,7 +1139,7 @@
       ],
       "level": "L1",
       "file": "tests/behavior-list/entries-lifecycle.test.mjs",
-      "name": "缺少 control.json 和 Life 时沿用原菜园开关",
+      "name": "未加载 Life 且无暂停区间记录时沿用原菜园开关",
       "l1Stage": "阶段 2",
       "families": [
         "种地时钟"

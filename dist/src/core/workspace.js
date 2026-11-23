@@ -12,7 +12,6 @@ import { bytesDigest, canonical, check, reject, Rejection, revision, now } from 
 import { CONSOLE_WALLET_IMPORT_FILE, CONSOLE_WALLET_STEP, decodeMigrationJournal, ECONOMY_STORAGE_STEP, freshWalletImportProof, HOME_STORAGE_STEP, INITIAL_STORAGE_STEP, MIGRATION_REASON, MigrationBindingChanged, parseMigrationJournal, settled, storageManifest, storageManifestIndex } from './storage-migration.js';
 const BASE_REQUIRED = ['README.md', 'manifest.json', 'SOUL.md', 'USER.md', 'core.json'];
 const REQUIRED = [...BASE_REQUIRED, 'COMPANION.md'];
-const LEGACY_FILES = [...BASE_REQUIRED, 'STATE.md'];
 const WORKSPACE_INSTRUCTIONS = `# Companion workspace
 
 The companion documents are under .chatpet/. SOUL.md owns the configured name
@@ -273,9 +272,9 @@ export class CoreWorkspace {
             if (existsSync(join(directory, INITIALIZING)))
                 return false;
             const manifest = JSON.parse(this.read(directory, 'manifest.json', true));
-            if (manifest.companionId !== config.companionId || ![1, 2, 3].includes(manifest.schemaVersion) || !Array.isArray(manifest.files))
+            if (manifest.companionId !== config.companionId || manifest.schemaVersion !== 3 || !Array.isArray(manifest.files))
                 return false;
-            this.verifyDeclaredFiles(directory, manifest.schemaVersion === 3 ? [...new Set([...BASE_REQUIRED, ...manifest.files])] : BASE_REQUIRED);
+            this.verifyDeclaredFiles(directory, [...new Set([...BASE_REQUIRED, ...manifest.files])]);
             return true;
         }
         catch {
@@ -354,10 +353,8 @@ export class CoreWorkspace {
         const manifestText = this.read(directory, 'manifest.json');
         const manifest = JSON.parse(manifestText);
         check(manifest.companionId === this.runtime.config.companionId, 'Workspace belongs to a different companion');
-        check(Array.isArray(manifest.files) && (manifest.schemaVersion === 3 && REQUIRED.every(name => manifest.files.includes(name))
-            && manifest.files.every(name => typeof name === 'string' && name.length > 0 && !isAbsolute(name) && !name.split(/[\\/]/).includes('..'))
-            || manifest.schemaVersion === 2 && canonical(manifest.files) === canonical(BASE_REQUIRED)
-            || manifest.schemaVersion === 1 && canonical(manifest.files) === canonical(LEGACY_FILES)), 'Unexpected managed format or file declaration');
+        check(manifest.schemaVersion === 3 && Array.isArray(manifest.files) && REQUIRED.every(name => manifest.files.includes(name))
+            && manifest.files.every(name => typeof name === 'string' && name.length > 0 && !isAbsolute(name) && !name.split(/[\\/]/).includes('..')), 'Unexpected managed format or file declaration');
         const soul = this.read(directory, 'SOUL.md');
         const match = soul.trim() === '' ? ['', '', ''] : /^# ([^\r\n]*)\r?\n\r?\n([\s\S]*)$/.exec(soul);
         check(match, 'SOUL.md requires a role heading, a blank line and character text');
@@ -455,7 +452,7 @@ export class CoreWorkspace {
         if (manifestExists) {
             const manifest = JSON.parse(this.read(directory, 'manifest.json'));
             check(manifest.companionId === identity.companionId, 'Workspace belongs to a different companion');
-            check([1, 2, 3].includes(manifest.schemaVersion), 'Unexpected managed format');
+            check(manifest.schemaVersion === 3, 'Unexpected managed format');
         }
         // Files survive a database rollback. Record this version and binding
         // before creating any companion data, so only this initialization can retry.
@@ -709,8 +706,7 @@ export class CoreWorkspace {
             if (existsSync(join(directory, INITIALIZING)))
                 return { state: 'pending', revision: binding.revision, target, files: [], error: 'Initialization is incomplete; retry to prepare the same workspace', sourceRevision: null };
             const docs = this.documents(target);
-            const manifest = JSON.parse(this.read(directory, 'manifest.json'));
-            const files = manifest.schemaVersion === 3 ? this.verifyInventory(target) : [...BASE_REQUIRED];
+            const files = this.verifyInventory(target);
             return { state: 'ready', revision: binding.revision, target, files, error: null, sourceRevision: bytesDigest(Buffer.from(canonical(docs.hashes))) };
         }
         catch {

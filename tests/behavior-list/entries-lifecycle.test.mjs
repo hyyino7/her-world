@@ -801,15 +801,15 @@ if (process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1]))
     assertCrop(committedGarden(f),2,Date.now());
   });
 
-  test('缺少 control.json 和 Life 时沿用原菜园开关',async t=>{
+  test('未加载 Life 且无暂停区间记录时沿用原菜园开关',async t=>{
     const f = await clockFixture(t);
     await f.unload('life');
-    // 旧版清单允许工作区在没有 control.json 时仍然就绪。
-    const manifest=join(f.repo,'.chatpet','manifest.json');
-    const saved=JSON.parse(readFileSync(manifest,'utf8'));
-    writeFileSync(manifest,JSON.stringify({...saved,schemaVersion:2,files:['README.md','manifest.json','SOUL.md','USER.md','core.json']}));
     const control=join(f.directory,'control.json');
     rmSync(control);
+    assert.equal(f.core.workspace.status().state,'unavailable');
+    assert.equal(existsSync(control),false);
+    const settings=JSON.stringify({version:1,enabled:false});
+    writeFileSync(control,settings);
     assert.equal(f.core.workspace.status().state,'ready');
     t.mock.timers.tick(2*hour);
     await settleCrop(f,2);
@@ -819,9 +819,9 @@ if (process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1]))
     await f.unload('body');
     t.mock.timers.tick(hour);
     const {configurationVersion} = await f.economy.snapshot(f.id);
-    await f.economy.settings(f.id,configurationVersion,{},'settings-no-control',signal());
+    await f.economy.settings(f.id,configurationVersion,{},'settings-no-pauses',signal());
     assertCrop(committedGarden(f),3,Date.now());
-    assert.equal(existsSync(control),false);
+    assert.equal(readFileSync(control,'utf8'),settings);
   });
 
   test('重试开关和修改偏好保留原有暂停区间',async t=>{
@@ -970,16 +970,14 @@ if (process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1]))
     const f = await cordisFixture(t,{order:['body','economy']});
     const records = f.core.records;
     const diaryDay = '2026-11-13', activityDay = '2026-11-12';
-    // An older ready workspace may not have the activity directory from the current inventory.
-    const manifest = join(f.repo,'.chatpet','manifest.json'), current = readFileSync(manifest,'utf8');
-    writeFileSync(manifest,JSON.stringify({...JSON.parse(current),schemaVersion:2,
-      files:['README.md','manifest.json','SOUL.md','USER.md','core.json']}));
-    rmdirSync(join(f.directory,'activity'));
+    const activityDirectory = join(f.directory,'activity');
+    rmdirSync(activityDirectory);
+    await assert.rejects(() => records.library(f.id,'dates'), {code:'STALE_BINDING'});
+    assert.equal(existsSync(activityDirectory),false,'查询缺失的活动目录不会创建目录');
+    mkdirSync(activityDirectory);
     assert.deepEqual(await records.library(f.id,'dates'),[]);
     assert.deepEqual((await records.library(f.id,'journal',diaryDay)).activity,[]);
-    assert.equal(existsSync(join(f.directory,'activity')),false,'查询缺失的活动目录不会创建目录');
     const store = createLifeStore(f.directory,Intl.DateTimeFormat().resolvedOptions().timeZone);
-    writeFileSync(manifest,current);
     await f.load('life');
     f.core.records.getLibrary(f.id).album().keep({ref:{attachmentId:'fixture-image',mediaType:'image/png',bytes:3,width:1,height:1},
       data:Uint8Array.of(1,2,3)},'Synthetic drawing');

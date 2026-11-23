@@ -160,8 +160,8 @@ test('同一组待升级的合成形状，运行时可迁移与 inspectRepoBindi
   for (const [label, prepare, ready] of [
     ['schema 3', () => {}, true],
     ['schema 3 with a large manifest', f => edit(f, {description:'x'.repeat(65 * 1024)}), true],
-    ['schema 1 without STATE.md', f => edit(f, {schemaVersion:1,files:['STATE.md']}), true],
-    ['schema 2 without extra file', f => edit(f, {schemaVersion:2,files:['old-extra']}), true],
+    ['retired schema 1', f => edit(f, {schemaVersion:1}), false],
+    ['retired schema 2', f => edit(f, {schemaVersion:2}), false],
     ['schema 3 with a missing declaration', f => edit(f, {files:['missing/']}), false],
     ['schema 3 with an invalid declaration', f => edit(f, {files:['../outside']}), false],
     ['marker with initialized data', f => writeFileSync(join(f.managed, '.initialization-pending.json'), JSON.stringify({companionId:f.config.companionId})), false],
@@ -182,6 +182,28 @@ test('同一组待升级的合成形状，运行时可迁移与 inspectRepoBindi
       assert.equal(state.state, 'migration-required');
       assert.equal(['storage-version-outdated', 'manifest-mismatch', 'migration-incomplete'].includes(state.migrationReason), offlineReady);
       if (version === 'v2') assert.equal(state.migrationReason, ready ? 'storage-version-outdated' : 'binding-not-migratable');
+    } finally { await host.close(); }
+  });
+});
+
+test('旧工作区清单在当前存储版本也不能读取或被初始化改写', async t => {
+  for (const schemaVersion of [1, 2]) await t.test(`schema ${schemaVersion}`, async t => {
+    const f = await initialize(t);
+    const path = join(f.managed, 'manifest.json');
+    const current = read(path);
+    const base = ['README.md', 'manifest.json', 'SOUL.md', 'USER.md', 'core.json'];
+    const files = schemaVersion === 1 ? [...base, 'STATE.md'] : base;
+    const original = JSON.stringify({...current, schemaVersion, files});
+    writeFileSync(path, original);
+    assert.throws(() => inspectRepoBinding(f.config), /Unexpected initialized workspace format/);
+    const host = createCore(f.config);
+    try {
+      assert.equal(host.workspace.status().state, 'unavailable');
+      const result = await host.services.workspace.initialize(host.operator.request('reject-old-manifest'),
+        {expectedPreferencesRevision:f.prefs.revision});
+      assert.equal(result.ok, false);
+      assert.equal(readFileSync(path, 'utf8'), original);
+      assert.equal(existsSync(join(f.managed, '.initialization-pending.json')), false);
     } finally { await host.close(); }
   });
 });
