@@ -30,7 +30,7 @@ async function run(){
   wave.writeUInt16LE(1,20);wave.writeUInt16LE(1,22);wave.writeUInt32LE(16000,24);wave.writeUInt32LE(32000,28);wave.writeUInt16LE(2,32);wave.writeUInt16LE(16,34);wave.write('data',36);wave.writeUInt32LE(3200,40);
   releaseVoice=registerVoiceProvider({id:'synthetic',name:'synthetic',synthesize:async()=>{spoken++;return wave;}});
   voiceRegistration=voiceTable.register(scope,voice);
-  const room=new Room({petCore:host,on:()=>()=>{},root:scope,[Context.isolate]:scope[Context.isolate]});
+  const room=new Room({petCore:host,on:()=>()=>{},get:name=>scope.get(name,false),root:scope,[Context.isolate]:scope[Context.isolate]});
   const pending=new Map();
   ipcMain.handle('fixture-room',(event,endpoint,data,requestId)=>{
     assert.equal(event.sender,win.webContents);assert.equal(endpoint,'roomVoice');
