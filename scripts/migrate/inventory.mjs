@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { checked, requireMigration, diagnostic } from './errors.mjs';
+import { checked, requireInventory, diagnostic } from './errors.mjs';
 import { lstatSync, readdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join, relative, matchesGlob, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -95,7 +95,7 @@ export function inventory(installation) {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    requireMigration(process.argv.length === 4 && process.argv[2] === '--installation', 'usage');
+    requireInventory(process.argv.length === 4 && process.argv[2] === '--installation', 'usage');
     console.log(JSON.stringify(inventory(process.argv[3]), null, 2));
   } catch (error) {
     console.error(diagnostic(error));

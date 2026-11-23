@@ -12,7 +12,7 @@ test('0.5.0 保留当前盘点、身份和记忆召回', {timeout:60000}, async 
   const report = inventory(f.installation);
   assert.deepEqual(report.coverage.map(row => row.id),storage.entries.map(row => row.id));
   assert.deepEqual(report.differences,{extra:[],missing:[]});
-  assert.equal(report.coverage.filter(row => row.state === 'browser-check-required').length,2);
+  assert.deepEqual(report.coverage.filter(row => row.state === 'browser-check-required').map(row => row.id),['room-home']);
   const manifest = join(f.managed,'manifest.json'), identity = readFileSync(manifest);
   await coreReady(f); await recall(f);
   assert.deepEqual(readFileSync(manifest),identity);

@@ -30,7 +30,7 @@ function versionMap(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value)
         && Object.keys(value).length > 0 && Object.values(value).every(version => Number.isSafeInteger(version) && version > 0);
 }
-export function validateMigrationContract(contract) {
+function validateMigrationContract(contract) {
     assert.ok(Array.isArray(contract) && contract.length > 0);
     const ids = new Set(), targets = [];
     let previous = null;
@@ -47,7 +47,7 @@ export function validateMigrationContract(contract) {
 const stepEvents = new Set(['start', 'skip', 'done', 'failed']);
 const otherEvents = new Set(['lock-takeover', 'journal-repaired']);
 const digest = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
-export function isWalletImportProof(value, storageId) {
+function isWalletImportProof(value, storageId) {
     if (!value || typeof value !== 'object')
         return false;
     const proof = value;
@@ -67,7 +67,7 @@ function validWalletImportJournal(row, storageId) {
 export class MigrationBindingChanged extends Error {
 }
 export const settled = (segment) => segment.header.steps.every(step => isStepSettled(segment.states.get(step.id)));
-export const isStepSettled = (event) => event === 'done' || event === 'skip';
+const isStepSettled = (event) => event === 'done' || event === 'skip';
 export function parseMigrationJournal(text) {
     const lines = text.split('\n');
     // Only a non-newline-terminated final record may be a torn append.

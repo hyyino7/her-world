@@ -59,7 +59,7 @@ function versionMap(value: unknown): value is StorageVersions {
     && Object.keys(value).length > 0 && Object.values(value).every(version => Number.isSafeInteger(version) && version > 0);
 }
 
-export function validateMigrationContract(contract: unknown): asserts contract is MigrationStepContract[] {
+function validateMigrationContract(contract: unknown): asserts contract is MigrationStepContract[] {
   assert.ok(Array.isArray(contract) && contract.length > 0);
   const ids = new Set<string>(), targets: StorageVersions[] = [];
   let previous: StorageVersions | null = null;
@@ -78,7 +78,7 @@ const stepEvents = new Set(['start', 'skip', 'done', 'failed']);
 const otherEvents = new Set(['lock-takeover', 'journal-repaired']);
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
-export function isWalletImportProof(value: unknown, storageId: string): value is WalletImportProof {
+function isWalletImportProof(value: unknown, storageId: string): value is WalletImportProof {
   if (!value || typeof value !== 'object') return false;
   const proof = value as WalletImportProof;
   return proof.format === 1 && proof.mode === 'import' && proof.binding?.storageId === storageId
@@ -117,7 +117,7 @@ interface JournalSegment { header: JournalHeader; states: Map<string, string> }
 
 export class MigrationBindingChanged extends Error {}
 export const settled = (segment: JournalSegment) => segment.header.steps.every(step => isStepSettled(segment.states.get(step.id)));
-export const isStepSettled = (event: string | undefined) => event === 'done' || event === 'skip';
+const isStepSettled = (event: string | undefined) => event === 'done' || event === 'skip';
 
 export function parseMigrationJournal(text: string) {
   const lines = text.split('\n');

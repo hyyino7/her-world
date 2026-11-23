@@ -151,8 +151,6 @@ export declare function storageManifest(companionId: string, modules: StorageVer
     modules: Readonly<Record<string, number>>;
 };
 export declare function storageManifestIndex(manifest: unknown, companionId: string, contract: readonly MigrationStepContract[]): number;
-export declare function validateMigrationContract(contract: unknown): asserts contract is MigrationStepContract[];
-export declare function isWalletImportProof(value: unknown, storageId: string): value is WalletImportProof;
 export interface WalletImportJournal {
     exportFile: string;
     rollbackFile: string;
@@ -179,7 +177,6 @@ interface JournalSegment {
 export declare class MigrationBindingChanged extends Error {
 }
 export declare const settled: (segment: JournalSegment) => boolean;
-export declare const isStepSettled: (event: string | undefined) => event is "skip" | "done";
 export declare function parseMigrationJournal(text: string): {
     rows: unknown[];
     truncated: boolean;
