@@ -42,11 +42,12 @@ export class LocalBridge {
     name;
     store;
     storageId;
+    active;
     preferences;
     instance;
     settingsFile;
     discovery;
-    constructor(ctx, directory, origin, home, isHome, quiet, name, store, storageId) {
+    constructor(ctx, directory, origin, home, isHome, quiet, name, store, storageId, active) {
         this.ctx = ctx;
         this.directory = directory;
         this.origin = origin;
@@ -56,6 +57,7 @@ export class LocalBridge {
         this.name = name;
         this.store = store;
         this.storageId = storageId;
+        this.active = active;
         this.settingsFile = join(directory, 'local-bridge.json');
         this.discovery = join(directory, 'bridge.json');
         const stat = lstatSync(this.settingsFile, { throwIfNoEntry: false });
@@ -101,7 +103,7 @@ export class LocalBridge {
         }
     }
     async reach(push, homeId) {
-        if (!this.instance || this.quiet())
+        if (!this.active() || !this.instance || this.quiet())
             return [];
         const destinations = this.preferences.outlets.filter(o => o.kinds.includes('reach'));
         return Promise.allSettled(destinations.map(async (destination) => {
@@ -115,6 +117,8 @@ export class LocalBridge {
                 this.store.put('life-outlet-delivery', key, 'pending');
             }
             await createOutlet(destination, this.origin).send(push);
+            if (!this.active())
+                throw Error('Channel workspace changed');
             if (key)
                 this.store.put('life-outlet-delivery', key, 'sent');
             return destination.name;

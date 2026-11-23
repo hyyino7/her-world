@@ -4,8 +4,9 @@ import {isDeepStrictEqual} from 'node:util';
 import {bridgeRoute, compactRoute} from '#dsh-world/ecosystem/bridge/route';
 import type {Push} from '#dsh-world/ecosystem/shared/outlets';
 import type {WorldChanged} from '../contracts/living.js';
+import {unknownEffect} from '../contracts/common.js';
 import {CONTRACT_VERSION} from '../contracts/version.js';
-import {digest} from '../core/storage.js';
+import {digest, Rejection} from '../core/storage.js';
 import {object, requiredText, type ConsoleOperation} from '../core/tables/console.js';
 import type {PetCoreHost} from '../core/index.js';
 import type {HomeBinding} from '../core/workspace.js';
@@ -21,7 +22,7 @@ interface Services {
   profileContext?: {dir: string};
   sessionController: {resolveAgent(id: string): Promise<{agent?: Agent}>};
 }
-type Binding = {id:string; path:string; storageId:string; bridge:LocalBridge; messaging:Awaited<ReturnType<typeof createMessaging>>};
+type Binding = HomeBinding & { bridge:LocalBridge; messaging:Awaited<ReturnType<typeof createMessaging>>};
 export class CompanionChannels {
   private bound?: Binding;
   private closed = false;
@@ -32,32 +33,22 @@ export class CompanionChannels {
     this.queue = next.catch(() => {});
     return next;
   }
-  private target() {
-    const status = this.host.workspace.status();
-    return !this.closed && status.state === 'ready' ? status.target : undefined;
-  }
-  private current(binding: Pick<Binding,'id'|'path'|'storageId'>) {
-    const target=this.target();
-    return target?.id===binding.id && target.path===binding.path && this.host.workspace.storageId()===binding.storageId;
-  }
-  private async reconcile(expected?: HomeBinding) {
-    const sameScope = () => !expected || sameHomeBinding(this.host.workspace.homeScope(), expected);
+  private scope() { return this.closed ? undefined : this.host.workspace.homeScope(); }
+  private current(binding: HomeBinding) { return sameHomeBinding(this.scope(), binding); }
+  private async reconcile(expected: HomeBinding | undefined) {
+    const sameScope = () => sameHomeBinding(this.scope(), expected);
     if (!sameScope()) return;
     if (this.bound && !this.current(this.bound)) {
       const previous = this.bound; this.bound = undefined;
       previous.bridge.stop(); await previous.messaging.close();
+      if (!sameScope()) return;
     }
-    // Closing an old adapter can await external cleanup. Capture the current
-    // root afterwards, and discard a world notice if its binding has moved.
-    if (!sameScope()) return;
-    const current = this.target(), storageId = current ? this.host.workspace.storageId() : undefined;
-    if (!current || !storageId || !this.profileDir) return;
+    if (!expected || !this.profileDir) return;
     if (!this.bound) {
-      const {id,path}=current, binding={id,path,storageId};
+      const {workspaceId, path, storageId} = expected;
       const deviceDirectory = privateDeviceDirectory(privateDeviceDirectory(this.profileDir, 'chatpet-channels'), digest(storageId));
       const dataDirectory=companionChannelDirectory(path,deviceDirectory);
-      let initializing = true;
-      const active = () => this.current(binding) && (!initializing || sameScope());
+      const active = sameScope;
       const isHome = (sessionId: string) => active() && isCompanionHome(this.ctx,this.host,sessionId);
       const ownerHome = async () => {
         if (!active()) throw Error('主人会话工作区已切换');
@@ -67,20 +58,19 @@ export class CompanionChannels {
       };
       const bridge = new LocalBridge(this.ctx, deviceDirectory, () => this.services.webServer.getOrigin(), ownerHome, isHome,
         () => this.host.workspace.runtime.policy().quiet, () => this.host.workspace.runtime.identity().displayName,
-        this.host.workspace.runtime.store,storageId);
-      const messaging = await createMessaging(this.ctx, this.host, {deviceDirectory, dataDirectory, workspaceId:id, storageId, active, ownerHome});
+        this.host.workspace.runtime.store,storageId,active);
+      const messaging = await createMessaging(this.ctx, this.host, {deviceDirectory, dataDirectory, workspaceId, storageId, active, ownerHome});
       if (!active()) { bridge.stop(); await messaging.close(); return; }
-      initializing = false;
-      this.bound = {...binding, messaging, bridge};
+      this.bound = {...expected, messaging, bridge};
     }
     this.bound.bridge.sync(true);
     return this.bound;
   }
   async refresh(change?: WorldChanged) {
-    if (!change) return this.serial(() => this.reconcile());
-    const binding = this.host.workspace.homeScope();
-    if (!binding || change.workspaceId !== binding.workspaceId || change.storageId !== binding.storageId ||
-      change.bootId !== binding.bootId || change.generation !== binding.generation) return;
+    const binding = this.scope();
+    if (change && (!binding || change.workspaceId !== binding.workspaceId || change.storageId !== binding.storageId ||
+      change.bootId !== binding.bootId || change.generation !== binding.generation)) return;
+    if (this.bound && !this.current(this.bound)) this.bound.messaging.cancelVoice();
     return this.serial(() => this.reconcile(binding));
   }
   get local() { return this.bound && this.current(this.bound) ? this.bound.bridge.current : undefined; }
@@ -99,33 +89,50 @@ export class CompanionChannels {
   }
   async reach(workspaceId: string, push: Push) {
     const bound = this.bound;
-    if (!bound || bound.id !== workspaceId || !this.current(bound) || this.host.workspace.runtime.policy().quiet) return [];
+    if (!bound || bound.workspaceId !== workspaceId || !this.current(bound) || this.host.workspace.runtime.policy().quiet) return [];
     const home = readRunningLifeHome(this.ctx,this.host);
     if (!home) return [];
     const deliveries = await Promise.allSettled([bound.bridge.reach(push,home),bound.messaging.reach(push,home)]);
+    if (!this.current(bound)) return [];
     return deliveries.flatMap(result => result.status === 'fulfilled' ? result.value : [result]);
   }
   request(id: string, operation: string, input: Record<string, unknown>, validate?: () => void) {
+    const binding = this.scope();
+    const assertCurrent = () => {
+      validate?.();
+      if (!binding || binding.workspaceId !== id || !this.current(binding)) throw {code:'STALE_BINDING'};
+    };
     return this.serial(async () => {
-      validate?.();
-      const bound = await this.reconcile();
-      validate?.();
-      if (!bound || bound.id !== id || !this.current(bound)) throw {code:'STALE_BINDING'};
+      assertCurrent();
+      const bound = await this.reconcile(binding);
+      assertCurrent();
+      if (!bound) throw {code:'STALE_BINDING'};
       if (!Object.hasOwn(channelOperations, operation)) throw {code:'INVALID_ARGUMENT'};
       if (channelOperations[operation].group) {
         const response = await bound.messaging.group(operation, input);
-        if (!this.current(bound)) throw {code:'STALE_BINDING'};
+        assertCurrent();
         return response;
       }
-      if (operation === 'bridgeSettings') {
-        if (!isDeepStrictEqual(input.expected,bound.bridge.status().preferences)) throw {code:'STALE_REVISION'};
-        bound.bridge.configure(input.next);
-        bound.bridge.sync(true);
-      } else if (operation === 'messagingSettings') {
-        if (!isDeepStrictEqual(input.expected, bound.messaging.status().config)) throw {code:'STALE_REVISION'};
-        await bound.messaging.configure(input.next as Parameters<typeof bound.messaging.configure>[0]);
+      let saved = false;
+      try {
+        if (operation === 'bridgeSettings') {
+          if (!isDeepStrictEqual(input.expected,bound.bridge.status().preferences)) throw {code:'STALE_REVISION'};
+          bound.bridge.configure(input.next);
+          saved = true;
+          bound.bridge.sync(true);
+        } else if (operation === 'messagingSettings') {
+          if (!isDeepStrictEqual(input.expected, bound.messaging.status().config)) throw {code:'STALE_REVISION'};
+          await bound.messaging.configure(input.next as Parameters<typeof bound.messaging.configure>[0], assertCurrent,
+            () => { saved = true; });
+        }
+        assertCurrent();
+      } catch (error) {
+        if (saved) {
+          const code = error && typeof error === 'object' && 'code' in error && error.code === 'CANCELLED' ? 'CANCELLED' : 'OUTCOME_UNKNOWN';
+          throw new Rejection(unknownEffect(code, 'Channel configuration saved; refresh to reconcile the change'));
+        }
+        throw error;
       }
-      if (!this.current(bound)) throw {code:'STALE_BINDING'};
       return {bridge:bound.bridge.status(), messaging:bound.messaging.status()};
     });
   }

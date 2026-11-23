@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
 import {join} from 'node:path';
 import {digest} from '../../dist/src/core/storage.js';
 import {channelsPlugin,consolePlugin,desktopPlugin,platformPlugin,roomPlugin,voicePlugin} from '../../dist/tests/behavior-list/entries.js';
@@ -7,6 +8,20 @@ import {cordisFixture} from './entries-lifecycle.test.mjs';
 
 const plugins={desktop:desktopPlugin,platform:platformPlugin,room:roomPlugin,channels:channelsPlugin,voice:voicePlugin,console:consolePlugin};
 export const peripherals=Object.keys(plugins);
+
+export async function selectHome(f,target) {
+  const call=id=>f.core.operator.request(id+'-'+randomUUID());
+  const read=await f.core.services.preferences.read(call('read'),{});
+  assert.equal(read.ok,true);
+  const {id,path,title}=target;
+  const saved=await f.core.services.preferences.save(call('save'),{expectedRevision:read.value.revision,
+    conversation:read.value.conversation,workspace:{id,path,title}});
+  assert.equal(saved.ok,true,JSON.stringify(saved));
+  const ready=await f.core.services.workspace.initialize(call('initialize'),{expectedPreferencesRevision:saved.value.revision});
+  assert.equal(ready.ok,true,JSON.stringify(ready));
+  assert.equal(ready.value.state,'ready');
+  return f.core.workspace.homeScope();
+}
 
 export async function presentationFixture(t,options) {
   const f=await cordisFixture(t,options);

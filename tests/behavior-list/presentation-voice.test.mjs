@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {mkdtempSync,realpathSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {resolveCompanionHome} from '../../dist/tests/behavior-list/entries.js';
 import {registerVoiceProvider} from '../../dist/src/desktop/upstream/host/voice/registry.js';
 import {eventually} from './entries-lifecycle.test.mjs';
-import {presentationFixture} from './presentation-r7-fixture.mjs';
+import {presentationFixture,selectHome} from './presentation-r7-fixture.mjs';
 import {qqTransport} from './qq-transport.mjs';
 
 const audio = {audio:'AA=='};
@@ -84,7 +87,7 @@ test('启用 QQ 语音但 Voice 缺席时，一条语音回复降级为一条纯
   assert.equal(result.qq.voiceVerified,0);
 });
 
-test('关闭 Channels 时，即使查询尚未结束也会立即取消 QQ 语音', {timeout:10_000}, async t => {
+async function voiceAndSearchInFlight(t) {
   const transport=qqTransport(t);
   const f=await presentationFixture(t);
   const speaking=Promise.withResolvers(), lateSpeech=Promise.withResolvers();
@@ -106,17 +109,71 @@ test('关闭 Channels 时，即使查询尚未结束也会立即取消 QQ 语音
   f.model=async()=> '[[voice:Synthetic fixture reply]]';
   transport.gateway.onPrivateMessage({kind:'private',selfId:'100',userId:'200',messageId:'voice-in-flight',text:'Synthetic owner input'});
   const callerSignal=await speaking.promise;
-  const search=assert.rejects(channels.request(f.id,'groupResearch',{groupId:'6789',content:'fixtureword'}),{code:'STALE_BINDING'});
+  const search=channels.request(f.id,'groupResearch',{groupId:'6789',content:'fixtureword'});
+  const rejected=assert.rejects(search,{code:'STALE_BINDING'});
   await searching.promise;
+  const release=()=>{
+    lateSearch.resolve({sources:[]});
+    lateSpeech.resolve({kind:'json',status:200,obj:{ok:false}});
+  };
+  t.after(release);
+  return {f,channels,transport,callerSignal,rejected,release};
+}
 
+test('关闭 Channels 时，即使查询尚未结束也会立即取消 QQ 语音', {timeout:10_000}, async t => {
+  const {channels,transport,callerSignal,rejected,release}=await voiceAndSearchInFlight(t);
   const closing=channels.close();
   try {
     assert.equal(callerSignal.aborted,true);
     assert.deepEqual(transport.sent,[]);
   } finally {
-    lateSearch.resolve({sources:[]});
-    lateSpeech.resolve({kind:'json',status:200,obj:{ok:false}});
-    await Promise.all([search,closing]);
+    release();
+    await Promise.all([rejected,closing]);
   }
+  assert.deepEqual(transport.sent,[]);
+});
+
+test('回到 A 后取消旧 QQ 合成并保持零送达', {timeout:10_000}, async t => {
+  const {f,channels,transport,callerSignal,rejected,release}=await voiceAndSearchInFlight(t);
+  const secondPath=realpathSync(mkdtempSync(join(tmpdir(),'her-world-qq-rebind-')));
+  t.after(()=>rmSync(secondPath,{recursive:true,force:true}));
+  const original=f.core.workspace.homeScope(), second=await f.registry.create(secondPath);
+  try {
+    await selectHome(f,second);
+    const current=await selectHome(f,f.bound);
+    assert.equal(current.storageId,original.storageId);
+    assert.notEqual(current.generation,original.generation);
+    assert.equal(callerSignal.aborted,true);
+  } finally {
+    release();
+    await rejected;
+  }
+  assert.equal((await channels.request(f.id,'channelStatus',{})).messaging.config.qq.enabled,true);
+  assert.deepEqual(transport.sent,[]);
+});
+
+test('撤销在途的 QQ 语音合成不会改发文字', {timeout:10_000}, async t => {
+  const transport=qqTransport(t), f=await presentationFixture(t);
+  const speaking=Promise.withResolvers(), lateSpeech=Promise.withResolvers();
+  const voice=await f.ctx.plugin(scope=>{
+    scope.effect(()=>f.core.native.voiceTable.register(scope,{
+      availability:()=>({speak:true,hear:false}),
+      async handle({signal}) { speaking.resolve(signal); return lateSpeech.promise; },
+    }).revoke);
+  });
+  t.after(()=>lateSpeech.resolve({kind:'json',status:200,obj:{ok:false}}));
+  await f.mount('channels');
+  const home=await resolveCompanionHome(f.ctx,f.core);
+  home.inject=()=>{};
+  const channels=f.ctx.petChannels, {messaging}=await channels.request(f.id,'channelStatus',{});
+  await channels.request(f.id,'messagingSettings',{expected:messaging.config,
+    next:{qq:{enabled:true,accountId:'100',ownerSpeakerId:'200',allowPrivate:['200'],voiceEnabled:true}}});
+  f.model=async()=> '[[voice:Synthetic interrupted speech]]';
+  transport.gateway.onPrivateMessage({kind:'private',selfId:'100',userId:'200',messageId:'voice-cancelled',text:'Synthetic owner input'});
+  const providerSignal=await speaking.promise;
+  await voice.dispose();
+  assert.equal(providerSignal.aborted,true);
+  lateSpeech.resolve({kind:'json',status:200,obj:{ok:false}});
+  await new Promise(setImmediate);
   assert.deepEqual(transport.sent,[]);
 });

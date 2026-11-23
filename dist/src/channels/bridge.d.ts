@@ -24,11 +24,12 @@ export declare class LocalBridge {
     private name;
     private store;
     private storageId;
+    private active;
     private preferences;
     private instance?;
     private readonly settingsFile;
     readonly discovery: string;
-    constructor(ctx: Context, directory: string, origin: () => string, home: () => Promise<Agent>, isHome: (id: string) => boolean, quiet: () => boolean, name: () => string, store: CoreStore, storageId: string);
+    constructor(ctx: Context, directory: string, origin: () => string, home: () => Promise<Agent>, isHome: (id: string) => boolean, quiet: () => boolean, name: () => string, store: CoreStore, storageId: string, active: () => boolean);
     get current(): {
         start: () => void;
         stop: () => void;

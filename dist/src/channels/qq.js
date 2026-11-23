@@ -115,8 +115,10 @@ export function openQQ(host) {
                 try {
                     bytes = await host.speak(spoken);
                 }
-                catch {
+                catch (failure) {
                     voiceTimes.set(targetKey, (voiceTimes.get(targetKey) ?? []).filter(t => t !== now));
+                    if (!allowed(last.identity) || muted() || failure instanceof Error && failure.name === 'AbortError')
+                        return;
                     error = '语音合成不可用，已改用文字';
                 }
                 if (!allowed(last.identity) || muted())

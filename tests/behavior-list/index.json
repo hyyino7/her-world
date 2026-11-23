@@ -1782,6 +1782,37 @@
       "name": "Console 投喂只查不动，Body 部分提交只由显式同号重试续完",
       "l1Stage": "阶段 3",
       "families": []
+    },
+    {
+      "id": "3-CHANNELS-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/regressions/mapped-channel-path-binding.test.mjs",
+      "name": "queued world notice cannot reuse the same workspace after its binding generation changes",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-VOICE-05",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "撤销在途的 QQ 语音合成不会改发文字",
+      "l1Stage": "阶段 3",
+      "families": [
+        "关闭后晚到的录音与取消"
+      ]
+    },
+    {
+      "id": "3-VOICE-06",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "回到 A 后取消旧 QQ 合成并保持零送达",
+      "l1Stage": "阶段 3",
+      "families": [
+        "关闭后晚到的录音与取消"
+      ]
     }
   ]
 }

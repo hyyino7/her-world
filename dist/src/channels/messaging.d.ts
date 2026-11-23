@@ -113,7 +113,7 @@ export declare function createMessaging(ctx: Context, host: PetCoreHost, options
             uncertain: number;
         };
     };
-    configure(patch: Parameters<typeof messagingPreferences>[1]): Promise<void>;
+    configure(patch: Parameters<typeof messagingPreferences>[1], validate?: () => void, committed?: () => void): Promise<void>;
     reach(push: Push & {
         deliveryId?: string;
     }, homeId?: string): Promise<PromiseSettledResult<string>[]>;

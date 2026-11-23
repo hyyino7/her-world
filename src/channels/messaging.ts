@@ -97,6 +97,7 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
         const voice=host.native.voiceTable.lookup(ctx,voiceLifetime.signal);check(voice && qqActive(),'语音未启用');
         const response=await voice.handle({rest:'voice/speak',method:'POST',body:JSON.stringify({text})});
         voice.assertCurrent();
+        if (!qqActive()) throw new DOMException('QQ 语音所属绑定已切换', 'AbortError');
         check(response.kind==='file' && response.contentType==='audio/mpeg' && safeFile(response.file)
           && lstatSync(response.file).size<=4*1024*1024 && qqActive(),'合成音频不可用');
         return readFileSync(response.file);
@@ -167,10 +168,11 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
           store.put('channel-received',key,{state:'started'});
           try {
             const answer=await ask();
+            check(active(),'Channel workspace changed');
             store.put('channel-received',key,{state:'done'});
             return answer;
           } catch(error) {
-            if(error instanceof Error && error.constructor.name==='WechatHomeBusy')store.put('channel-received',key,null);
+            if(active() && error instanceof Error && error.constructor.name==='WechatHomeBusy')store.put('channel-received',key,null);
             throw error;
           }
         },
@@ -190,14 +192,16 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
     status(){return {config:structuredClone(config),fields:editableMessagingFields(),qq:{connected:false,state:config.qq.enabled?'unavailable':'off',error:qqError,
       sent:0,failed:0,blocked:0,outbox:0,voiceReceived:0,voiceVerified:0,voiceUncertain:0,...qq?.status(),usage:usage.read('qq',config.qq.accountId),credentialSet:!!config.qq.tokenEnv&&!!process.env[config.qq.tokenEnv]},
       wechat:{account:null,lastContactAt:null,chats:0,pending:0,uncertain:0,...wx?.status(),error:wxError,path:wxFile,presence:wx?.presence(new Date())??null,usage:usage.read('wechat',config.wechat.accountId)}};},
-    async configure(patch:Parameters<typeof messagingPreferences>[1]){
+    async configure(patch:Parameters<typeof messagingPreferences>[1], validate?: () => void, committed?: () => void){
       const next=messagingPreferences(config,patch);check(active(),'Channel workspace changed');
       const updateQQ=!isDeepStrictEqual(next.qq,config.qq)||Boolean(qqError);
       const updateWX=!isDeepStrictEqual(next.wechat,config.wechat)||Boolean(wxError);
+      validate?.();
       persistence.save(next);
       config=next;
-      if(updateQQ){await stopQQ();qqError=null;await qqStart();}
-      if(updateWX){await stopWechat();wxError=null;wxStart();}
+      committed?.();
+      if(updateQQ){await stopQQ();validate?.();qqError=null;await qqStart();validate?.();}
+      if(updateWX){await stopWechat();validate?.();wxError=null;wxStart();}
     },
     async reach(push:Push & {deliveryId?:string},homeId?:string):Promise<PromiseSettledResult<string>[]> {
       if(!active() || !homeId || !isRunningLifeHome(ctx,host,homeId) || host.workspace.runtime.policy().quiet ||
@@ -217,10 +221,12 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
           check(qq?.status().connected && (!config.qq.mutedUntil || Date.now()>=Date.parse(config.qq.mutedUntil)), '主人 QQ 已离线或处于静默时段');
           store.put('channel-reach',entry,{state:'uncertain'});
           const messageId=await qq.reach(identity,push.text);
+          check(active(),'Channel workspace changed');
           store.put('channel-reach',entry,{state:'sent',messageId});return 'QQ';
         }
         check(wx,'微信尚未接入');
-        await wx.reach(identity,homeId,push.text);return '微信';
+        await wx.reach(identity,homeId,push.text);
+        check(active(),'Channel workspace changed');return '微信';
       });
       return Promise.allSettled(senders);
     },

@@ -8,7 +8,7 @@ import {memoryPlugin} from '../../dist/tests/behavior-list/entries.js';
 import {lookupLifeOutlet} from '../../dist/src/living/outlets.js';
 import {eventually,submitPlan} from './entries-lifecycle.test.mjs';
 import {interactionFacts} from './native-facts.mjs';
-import {peripherals,presentationFixture,readRpcResult} from './presentation-r7-fixture.mjs';
+import {peripherals,presentationFixture,readRpcResult,selectHome} from './presentation-r7-fixture.mjs';
 
 const services={desktop:'petDesktop',platform:'petPlatform',room:'petRoom',channels:'petChannels',voice:'petVoice'};
 const routes={platform:['/chatpet-presentation'],room:['/chatpet-room'],
@@ -230,20 +230,6 @@ test('Room 已准入但尚未写入时取消，Body 应保持零效果',async t=
   assert.deepEqual({hasReceipt:Boolean(receipt),effects:notes.length},{hasReceipt:false,effects:0});
 });
 
-
-async function selectHome(f,target) {
-  const call=(id)=>f.core.operator.request(id+'-'+randomUUID());
-  const read=await f.core.services.preferences.read(call('read'),{});
-  assert.equal(read.ok,true);
-  const {id,path,title}=target;
-  const saved=await f.core.services.preferences.save(call('save'),{expectedRevision:read.value.revision,
-    conversation:read.value.conversation,workspace:{id,path,title}});
-  assert.equal(saved.ok,true,JSON.stringify(saved));
-  const ready=await f.core.services.workspace.initialize(call('initialize'),{expectedPreferencesRevision:saved.value.revision});
-  assert.equal(ready.ok,true,JSON.stringify(ready));
-  assert.equal(ready.value.state,'ready');
-  return f.core.workspace.homeScope();
-}
 
 test('Room 回到 A 后丢弃旧 A 的读写和通知，新窗口只接收当前代次',async t=>{
   const f=await presentationFixture(t,{order:['body']});

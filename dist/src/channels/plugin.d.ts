@@ -5,6 +5,7 @@ import type { Push } from '#dsh-world/ecosystem/shared/outlets';
 import type { WorldChanged } from '../contracts/living.js';
 import { type ConsoleOperation } from '../core/tables/console.js';
 import type { PetCoreHost } from '../core/index.js';
+import type { HomeBinding } from '../core/workspace.js';
 import { LocalBridge } from './bridge.js';
 import { createMessaging } from './messaging.js';
 interface Services {
@@ -21,10 +22,7 @@ interface Services {
         }>;
     };
 }
-type Binding = {
-    id: string;
-    path: string;
-    storageId: string;
+type Binding = HomeBinding & {
     bridge: LocalBridge;
     messaging: Awaited<ReturnType<typeof createMessaging>>;
 };
@@ -38,7 +36,7 @@ export declare class CompanionChannels {
     private queue;
     constructor(ctx: Context, host: PetCoreHost, services: Services, profileDir: string);
     private serial;
-    private target;
+    private scope;
     private current;
     private reconcile;
     refresh(change?: WorldChanged): Promise<Binding | undefined>;
