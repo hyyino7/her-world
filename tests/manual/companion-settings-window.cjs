@@ -57,7 +57,8 @@ async function check() {
   const targets = [workspace, secondWorkspace];
   const config = { dataDir: join(root, 'core'), companionId: 'settings-fixture', scopeId: 'fixture',
     ownerActorId: 'owner', displayName: '大肥鱼', character: '一条喜欢听你说话的蓝鱼。',
-    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: fs.realpathSync(join(__dirname, '../../.venv/bin/python')) } };
+    // Invoke the venv entry point so Python loads the fixture's installed Memory dependencies.
+    memory: { dataDir: join(workspace.path, '.chatpet/data/memory'), python: join(__dirname, '../../.venv/bin/python') } };
   const host = createCore(config);
   const emotion = new CompanionEmotion(host);
   const searchCalls = [];
