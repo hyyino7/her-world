@@ -50,6 +50,8 @@ pnpm run check:arch -- --report
 pnpm run check:arch -- --write-baseline
 ```
 
+在源码检出中运行 `pnpm run metrics` 查看自动度量，或用 `pnpm run metrics -- --json` 获取 JSON。输出包括规则违规、词表及字符串判断、超过 1500 行的手写文件和模块间依赖。度量只报告。
+
 行为索引是 `tests/behavior-list/index.json`。先完成上面的 build，再运行含索引自测的入口：
 
 ```sh
@@ -80,19 +82,6 @@ node scripts/migrate/inventory.mjs --installation /tmp/her-world-synthetic/insta
 准入失败时，设置页显示「需要迁移」及固定拒写原因。核对选中的 Repo、v3 工作区清单和 0.5.0 存储完成凭证；确需旧版本升级时，查阅 [v0.5.0 对应工具和步骤](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#migration-inventory)。盘点入口只读取状态。
 
 新装、搬家、离线修复与同机备份恢复见[可搬迁存储](portability.md)。升级和换回 0.5.0 的隔离流程见[安装与更新](github-updates.md#dsh-installation-and-updates)。
-
-<a id="baseline-counting"></a>
-## 典型修改的计数
-
-固定起点为 `bfe069f`（M1 基线）；M2 复测的起点是 `d865bff`，5a 重测的起点是 `754a0a5`，分支见源码检出中 `docs/product.md`「典型修改前后对比」。先把修改提交到对应的实验分支，再将 `<分支>` 替换为该分支名执行（M2 复测把 `bfe069f` 换成对应起点）：
-
-```sh
-git diff --stat bfe069f..<分支>
-```
-
-只统计起点与实验分支之间已提交的差异。分别统计手写源码、`src/` 生成文件、测试、`dist/src/` 产物和其他文件。按 `arch/layers.json` 的文件根映射模块和层，测试及 `dist/src` 归回相应源码模块，不另造测试层；位于 `src/` 的生成文件仍计入其物理模块，并注明它的生成源。这些实验分支只度量。
-
-在源码检出中用 `pnpm run metrics` 汇总 `docs/product.md`「G5 手工度量」，用 `pnpm run metrics -- --json` 输出 JSON。度量只报告，修复批次占比和典型修改基线显示表中最新一列的人工记录。
 
 ## 全量验证与发布
 

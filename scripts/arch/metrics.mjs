@@ -8,8 +8,6 @@ import { scan } from './lib/scan.mjs';
 
 const lineLimit = 1500;
 const codeExtensions = new Set(['.ts', '.mts', '.cts', '.tsx', '.js', '.mjs', '.cjs', '.jsx', '.py', '.sh', '.html', '.css']);
-const productDoc = 'docs/product.md';
-const manualItems = [[6, '修复批次占比'], [7, '典型修改基线']];
 
 function longHandwrittenFiles(root, skipped) {
   const tracked = execFileSync('git', ['ls-files', '--deduplicate', '-z', '--', 'src/', 'scripts/', 'tests/'], {
@@ -28,53 +26,7 @@ function longHandwrittenFiles(root, skipped) {
   return { limit: lineLimit, count: files.length, files };
 }
 
-function tableCells(line) {
-  return line.trim().replace(/^\||(?<!\\)\|$/gu, '').split(/(?<!\\)\|/u).map(cell => cell.trim());
-}
-
-function readManualMetrics(root) {
-  let text;
-  try {
-    text = readFileSync(join(root, productDoc), 'utf8');
-  } catch (error) {
-    throw Error(`读取 ${productDoc} 失败（${error.code ?? error.message}）`);
-  }
-  const lines = text.split(/\r?\n/u);
-  const start = lines.findIndex(line => line.trim() === '### G5 手工度量');
-  if (start === -1) throw Error(`${productDoc} 缺少「G5 手工度量」章节`);
-  const section = [];
-  for (const line of lines.slice(start + 1)) {
-    if (/^#{1,3}\s/u.test(line)) break;
-    section.push(line);
-  }
-  const header = section.findIndex(line => line.trimStart().startsWith('|'));
-  if (header === -1) throw Error(`${productDoc} 缺少 G5 度量表`);
-  const columns = tableCells(section[header]);
-  const separator = tableCells(section[header + 1] ?? '');
-  if (separator.length !== columns.length || !separator.every(cell => /^:?-{3,}:?$/u.test(cell))) {
-    throw Error(`${productDoc} 的 G5 度量表缺少有效表头分隔行`);
-  }
-  if (columns.length < 3 || columns.at(-1) !== '口径') {
-    throw Error(`${productDoc} 的 G5 度量表无法定位「口径」前的最新记录列`);
-  }
-  const rows = [];
-  for (const line of section.slice(header + 2)) {
-    if (!line.trimStart().startsWith('|')) break;
-    rows.push(tableCells(line));
-  }
-  return manualItems.map(([number, label]) => {
-    const item = `第 ${number} 项「${label}」`;
-    const row = rows.find(row => row[0] === `${number}. ${label}`);
-    if (!row) throw Error(`${productDoc} 的 G5 度量表缺少${item}`);
-    if (row.length !== columns.length) throw Error(`${productDoc} 的 G5 度量表${item}列数与表头不符`);
-    const record = row.at(-2);
-    if (!record) throw Error(`${productDoc} 的 G5 度量表${item}的最新记录为空`);
-    return { label, status: '人工', source: `${productDoc}#g5-手工度量`, record };
-  });
-}
-
 function collectMetrics(root) {
-  const manual = readManualMetrics(root);
   const baseline = readJson(join(root, 'arch/baseline/vocabulary.json'));
   const result = scan(root, {objectTables: baseline.objectTables === true});
   const rules = Object.fromEntries(summarizeRules(result).map(({ rule, entries, callSites, violationEdges }) => [
@@ -96,11 +48,10 @@ function collectMetrics(root) {
     },
     handwrittenFiles: longHandwrittenFiles(root, result.skipped),
     moduleDependencies: { count: edges.size },
-    manual,
   };
 }
 
-function printMetrics({ violations, r8, handwrittenFiles, moduleDependencies, manual }) {
+function printMetrics({ violations, r8, handwrittenFiles, moduleDependencies }) {
   const { total, ...rules } = violations;
   for (const [rule, { targets, callSites, violationEdges }] of Object.entries(rules)) {
     console.log(`${rule}：${targets} 条违规目标；${callSites} 个调用点；${violationEdges} 条违规依赖边`);
@@ -114,7 +65,6 @@ function printMetrics({ violations, r8, handwrittenFiles, moduleDependencies, ma
   console.log(`手写超过 ${handwrittenFiles.limit} 行的文件：${handwrittenFiles.count} 个`);
   for (const { file, lines } of handwrittenFiles.files) console.log(`  ${file}（${lines} 行）`);
   console.log(`模块间依赖：${moduleDependencies.count} 条`);
-  for (const { label, status, record } of manual) console.log(`${label}：${status}，${record}`);
 }
 
 try {
