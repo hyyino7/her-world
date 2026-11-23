@@ -250,7 +250,7 @@ async function check() {
       window.stopNative=()=>disposers.reverse().forEach(dispose=>dispose());
     });
     await waitFor(() => document.querySelector('#fixture [role=alert]')?.textContent.includes('暂时无法读取'));
-    assert.deepEqual(await evaluate(() => window.settingsSlot), { id: 'her-world', label: '大肥鱼' });
+    assert.deepEqual(await evaluate(() => window.settingsSlot), { id: 'her-world', label: 'Her World' });
     await click('刷新设置');
     await waitFor(() => !document.querySelector('#fixture [role=alert]') && !!document.querySelector('#fixture [role=tabpanel] h3'));
     let preferences = await call('preferences', {expectedRevision:(await call('snapshot')).preferences.revision,workspaceId:'fixture',conversation:(await call('snapshot')).preferences.conversation});
