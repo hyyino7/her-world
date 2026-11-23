@@ -234,6 +234,7 @@
 - `pnpm run build`、`pnpm run check:arch` 通过，规则 9、词表 590，新增均为 0。受影响快测 212/212，行为索引 11/11，行为清单 170/170。用 HEAD 产物与返工产物对照，第 1–6 条所选的 13 个回归用例全部由红转绿。
 - `pnpm run verify` 的 Node 阶段通过 1776/1777，桌宠原红项通过。唯一失败为 `tests/memory/memory-process.test.mjs:81` 的沙箱 `spawnSync /bin/ps EPERM`，未跳过。门禁因此中止，后续的 Python 22/22、发布元数据及本地打包检查另跑通过。实际窗口、生产 DSH 与真数据验收待完成。
 - 补丁按功能拆分，`dist/src/**` 产物随对应补丁，按项目约定免计提交尺寸。
+- Claude 在沙箱外复跑提交后的代码（工作区与第 18 份补丁后一致）：`pnpm run verify` 1777/1777 通过，含发布元数据和本地打包检查。真实 Electron 的 `pnpm run test:room-voice`、`pnpm run test:room-refresh`、`pnpm run test:pet-platform-window` 和 `tests/desktop/compact-voice-window.cjs` 均通过，第 10、22 条的窗口验证完成，Compact 三种取消（停止朗读、会话切换、隐藏）实测生效。第 5 条已派给上游的单笔关闭写入仍可能在原路径完成，待主人决定接受或另立方案。生产 DSH 窗口、实机 QQ／微信、隔离安装包和 RC 待做。
 
 ## 审查结论
 
