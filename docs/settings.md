@@ -246,8 +246,8 @@ The settings page calls owner-authenticated native Connection routes under
 `quiet`, `preferences` and `companion`, initializes the selected Repo with
 `initialize`, and requests `desktopOpen` or `desktopClose` for the bound
 workspace. It also reads/saves the Core foundation and Emotion state, opens Room
-through `roomOpen`, and calls the owning presentation timing/reconciliation
-operations. The handler checks the request shape, binding and revision as
+through `roomOpen`, and calls the owning presentation timing
+operation. The handler checks the request shape, binding and revision as
 appropriate. The native connection identifies the owner. The page receives a
 readable error when its backing service is unavailable.
 

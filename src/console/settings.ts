@@ -39,7 +39,7 @@ const owners = {
   emotion: ['emotionState', 'emotionUpdate'],
   room: ['roomOpen', ...ROOM_ENDPOINTS],
   desktop: ['desktopOpen', 'desktopClose'],
-  platform: ['presentationTiming', 'presentationMigration', 'petPlatformAccess', 'petControlAccess', 'petStandaloneAccess'],
+  platform: ['presentationTiming', 'petPlatformAccess', 'petControlAccess', 'petStandaloneAccess'],
   channels: ['qzoneState', 'qzoneSettings', 'qzoneDraft', 'qzoneRemove', 'groupState', 'groupSettings', 'groupSlang',
     'groupResearch', 'channelStatus', 'bridgeSettings', 'messagingSettings'],
   life: ['lifeView', 'lifeControl', 'lifeAction', 'lifePreferences'],

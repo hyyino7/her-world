@@ -272,8 +272,15 @@ async function check() {
     await waitFor(() => !document.querySelector('#fixture [role=alert]') && !!document.querySelector('#fixture [role=tabpanel] h3'));
     let preferences = await call('preferences', {expectedRevision:(await call('snapshot')).preferences.revision,workspaceId:'fixture',conversation:(await call('snapshot')).preferences.conversation});
     await call('initialize',{expectedPreferencesRevision:preferences.revision});
-    await click('刷新设置'); await waitFor(() => document.querySelector('#fixture [role=tabpanel]')?.innerText.includes('蓝鱼小屋'));
     platform.ownerAccess('fixture');
+    const configUrl = new URL('/chatpet-presentation/config', address);
+    const {obj:{main:{bodyTemplate}}} = await platform.handle(configUrl, 'GET', undefined, signal);
+    const saved = await platform.handle(configUrl, 'PUT',
+      JSON.stringify({pets:[{...bodyTemplate, size:232, display:'none'}]}), signal);
+    assert.equal(saved.status, 200);
+    const {obj:{main:{pets}}} = await platform.handle(configUrl, 'GET', undefined, signal);
+    assert.equal(pets.find(pet => pet.id === bodyTemplate.id)?.size, 232);
+    await click('刷新设置'); await waitFor(() => document.querySelector('#fixture [role=tabpanel]')?.innerText.includes('蓝鱼小屋'));
     const voiceUrl = new URL('/chatpet-presentation/voice/voices', address);
     const listVoices = () => platform.handle(voiceUrl, 'GET', undefined, signal);
     const unavailable = { kind: 'json', status: 503, obj: { ok: false, message: '语音组件未启用' } };

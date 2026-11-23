@@ -82,6 +82,43 @@ test('bound platform runs original config, media, controls, animation and native
  }finally{platform.close();rmSync(root,{recursive:true,force:true});}
 });
 
+test('current appearance config supports an empty editor, a size-232 pet and primary pet settings', async t => {
+  const root=mkdtempSync(join(tmpdir(),'chatpet-platform-config-')), {platform}=fixture(root);
+  t.after(()=>{platform.close();rmSync(root,{recursive:true,force:true});});
+  const directory=join(root,'.chatpet/data/pet-platform'), current=join(directory,'main-config.jsonc');
+  mkdirSync(directory,{recursive:true});
+  const retired=join(directory,'main-config.json'), old='{"pets":[{"id":"old","size":462}]}';
+  writeFileSync(retired,old);
+
+  platform.ownerAccess('a');
+  const endpoint=new URL('http://localhost/chatpet-presentation/config'), signal=new AbortController().signal;
+  const read=async()=>(await platform.handle(endpoint,'GET',undefined,signal)).obj.main;
+  const {pets,bodyTemplate}=await read();
+  assert.deepEqual(pets,[]);
+  const main={...bodyTemplate,id:'main',size:232,display:'none',fixedEnabled:false};
+  const second={...main,id:'second',size:144};
+  assert.equal((await platform.handle(endpoint,'PUT',JSON.stringify({pets:[second,main]}),signal)).status,200);
+  assert.deepEqual((await read()).pets.map(({id,size})=>[id,size]),[['second',144],['main',232]]);
+  await platform.savePreference('desktopFixed',true);
+  assert.deepEqual((await read()).pets.map(({id,fixedEnabled})=>[id,fixedEnabled]),[['second',false],['main',true]]);
+
+  const config=JSON.parse(readFileSync(current,'utf8'));
+  writeFileSync(current,'// Hand-edited JSONC\n'+JSON.stringify({...config,custom:'https://example.test/a//b'}));
+  const timing=platform.status().timing, next={...timing,whisper:timing.whisper+1};
+  await platform.saveTiming('a',timing,next);
+  const persisted=JSON.parse(readFileSync(current,'utf8'));
+  assert.deepEqual(persisted.eventsRefreshSec,next);
+  assert.deepEqual(persisted.pets,config.pets);
+  assert.equal(persisted.custom,'https://example.test/a//b');
+  assert.equal(readFileSync(retired,'utf8'),old);
+
+  platform.close();
+  const broken='{"pets": /* unfinished';
+  writeFileSync(current,broken);
+  assert.throws(()=>platform.ownerAccess('a'),/外观配置无法解析/);
+  assert.equal(readFileSync(current,'utf8'),broken);
+});
+
 test('settings read creates no body; one host preserves raw configuration while activity overrides only the render view',async()=>{
  const root=mkdtempSync(join(tmpdir(),'chatpet-platform-activity-'));
  let state={her:{kind:'idle',asleep:false},emotion:{feelings:[]}};

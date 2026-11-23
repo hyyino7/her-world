@@ -6,7 +6,6 @@ import { dirname, join, relative, sep } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import { isDeepStrictEqual } from 'node:util';
 import { desktopHomePlayback, activityPresentation, eatingClips, physicalClips, sleepingClips, projectActivityConfig } from './activity.js';
-import { migratePresentation, resolvePresentationMigration } from './migration.js';
 import { COMPANION_FEELINGS } from '../../contracts/emotion.js';
 import { isWorldChangeFor } from '../../contracts/living.js';
 import { fail, object, requiredText } from '../../core/tables/console.js';
@@ -48,7 +47,7 @@ function dataFolder(bound) {
     return directory;
 }
 function safeConfig(directory) {
-    for (const file of ['main-config.jsonc', 'main-config.json', 'logs.txt']) {
+    for (const file of ['main-config.jsonc', 'logs.txt']) {
         const path = join(directory, file);
         try {
             if (!lstatSync(path).isFile())
@@ -93,7 +92,6 @@ export class PetPlatform {
     playbackKinds = new Map();
     playbackReported = new Map();
     feedPlaybacks = new Map();
-    migration;
     restartPresentation;
     presentationStatus;
     constructor(ctx) {
@@ -128,7 +126,6 @@ export class PetPlatform {
         this.playbackKinds.clear();
         this.playbackReported.clear();
         this.feedPlaybacks.clear();
-        this.migration = undefined;
         this.restartPresentation = undefined;
         this.presentationStatus = undefined;
         this.ownerToken = '';
@@ -151,10 +148,17 @@ export class PetPlatform {
         this.directory = dataFolder(target.path);
         safeConfig(this.directory);
         const config = join(this.directory, 'main-config.jsonc');
-        if (!existsSync(config) && !existsSync(join(this.directory, 'main-config.json'))) {
+        if (!existsSync(config)) {
             writeFileSync(config, JSON.stringify({ pets: [] }, null, 2), { mode: 0o600, flag: 'wx' });
         }
-        this.migration = migratePresentation(this.directory, this.ctx.petCore.workspace.companionSettings());
+        const configStat = lstatSync(config);
+        if (configStat.nlink !== 1 || configStat.size > 4_194_304)
+            throw Error('桌宠配置文件无效，已保留原文件');
+        const raw = upstream.readJsonc(config);
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+            throw Error('外观配置无法解析，已保留原文件');
+        if (raw.pets !== undefined && (!Array.isArray(raw.pets) || raw.pets.some((pet) => !pet || typeof pet !== 'object' || Array.isArray(pet))))
+            throw Error('桌宠列表无效，已保留原文件');
         this.scope = new AbortController();
         this.bound = { id: target.id, path: target.path };
         const homeBinding = this.homeBinding = this.ctx.petCore.workspace.homeScope?.();
@@ -191,6 +195,9 @@ export class PetPlatform {
                 },
             };
             const setup = this.setup = upstream.createHostSetup(bridge, this.directory);
+            // The canonical file already exists when upstream starts. Keep it the
+            // only main configuration even if it is removed while this host is open.
+            delete setup.configPaths.legacyUserFile;
             const lookup = this.lookup = upstream.createPetLookup(setup);
             const work = upstream.createWorkStatusBridge(setup);
             // Native Desktop owns the configured delay. Keep upstream reduction and
@@ -341,9 +348,10 @@ export class PetPlatform {
         const body = { desktopFixed: 'fixedEnabled', desktopWhisperEnabled: 'whisperEnabled', desktopBalanceEnabled: 'balanceEnabled' };
         if (!top[key] && !body[key])
             throw Error('无效桌宠设置');
-        const config = upstream.readAllConfig(this.setup.configPaths).main, id = this.migration?.bodyId ?? config.pets[0]?.id;
+        const config = upstream.readAllConfig(this.setup.configPaths).main;
+        const primary = config.pets.find((pet) => pet.id === 'main') ?? config.pets[0];
         const result = await this.handle(new URL(route + '/config', 'http://localhost'), 'PUT', JSON.stringify({
-            pets: config.pets.map((pet) => pet.id === id && body[key] ? { ...pet, [body[key]]: value } : pet), ...(top[key] ? { [top[key]]: value } : {})
+            pets: config.pets.map((pet) => pet.id === primary?.id && body[key] ? { ...pet, [body[key]]: value } : pet), ...(top[key] ? { [top[key]]: value } : {})
         }), this.scope.signal);
         if (result.status >= 400 || result.obj?.ok === false)
             throw Error(result.obj?.message || '设置保存失败');
@@ -358,7 +366,6 @@ export class PetPlatform {
             throw Error('时间间隔无效');
         // 0.4.7 reads this section but its form-save whitelist does not write it.
         // Preserve every other JSONC field through the original parser and an atomic scoped write.
-        this.migration = migratePresentation(this.directory, this.ctx.petCore.workspace.companionSettings());
         const file = this.setup.configPaths.userFile, before = readFileSync(file, 'utf8'), raw = upstream.readJsonc(file);
         if (!raw || typeof raw !== 'object' || Array.isArray(raw))
             throw Error('外观配置无法解析，已保留原文件');
@@ -372,20 +379,9 @@ export class PetPlatform {
         finally {
             rmSync(draft, { force: true });
         }
-        this.migration = migratePresentation(this.directory, this.ctx.petCore.workspace.companionSettings());
         this.setup.state.writeSection('config', {});
         this.restartPresentation?.();
         await this.ctx.petDesktop.features?.refresh();
-        return this.status();
-    }
-    resolveMigration(workspaceId, field, choice, expectedConfigHash) {
-        this.ownerAccess(workspaceId);
-        if (!/^[a-f0-9]{64}$/.test(expectedConfigHash))
-            throw Error('请刷新后再选择配置');
-        this.migration = resolvePresentationMigration(this.directory, [{ field, choice }], undefined, expectedConfigHash);
-        this.setup.state.writeSection('config', {});
-        this.restartPresentation?.();
-        void this.ctx.petDesktop.features?.refresh();
         return this.status();
     }
     async show() {
@@ -641,7 +637,6 @@ export class PetPlatform {
         const main = upstream.readAllConfig(this.setup.configPaths).main;
         return { path: route, pets: this.pets().map(({ id, name, display, position, assetRoot }) => ({ id, name, display, position, assetRoot })),
             running: this.bodyStatus().running, timing: main.eventsRefreshSec,
-            migration: this.migration,
             activity: this.behavior?.behavior, representation: { ...activityPresentation(this.behavior),
                 packGaps: this.behavior?.her ? this.pets().filter(p => !main.pets.some((own) => own.id === p.id)).map(p => p.id) : [] }, packsDirectory: join(this.directory, 'pet') };
     }
@@ -1014,16 +1009,6 @@ export function platformConsoleOperations(platform) {
             call.checkBinding(id);
             call.validate();
             return platform.saveTiming(id, input.expected, input.eventsRefreshSec);
-        },
-        presentationMigration(call) {
-            const input = object(call.input, ['workspaceId', 'field', 'choice', 'expectedConfigHash']);
-            const id = requiredText(input.workspaceId, 200);
-            call.checkBinding(id);
-            if (input.choice !== 'legacy' && input.choice !== 'current')
-                fail('INVALID_ARGUMENT');
-            const field = requiredText(input.field, 300), hash = requiredText(input.expectedConfigHash, 64);
-            call.validate();
-            return platform.resolveMigration(id, field, input.choice, hash);
         },
         petPlatformAccess: access(id => platform.ownerAccess(id)),
         petControlAccess: access(id => platform.controlAccess(id)),

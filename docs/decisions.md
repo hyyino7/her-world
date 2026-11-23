@@ -277,7 +277,7 @@
 
 ## 2026-11-23 阶段 3 第三层 R1 长期例外
 
-- 决定：主人批准下列 R1 留在基线作长期例外：`src/desktop/platform/migration.ts`（从发行包根加载上游配置迁移工具，复用上游 JSONC 解析与校验）；`src/desktop/platform/plugin.ts`（从发行包根加载固定版本的 PetPlatform 运行时，改成包子路径会动包导出）；`src/desktop/standalone.mjs`（npm bin 指向源码 CLI，便携默认值在编译后的 Core）；`src/core/companion-settings.ts`（Core 未挂载 Desktop 时也要验证旧的完整外观，依赖包内 Desktop 素材和上游校验）。同表里的 `src/console/settings.ts` 那条已在 Console 批清除。
+- 决定：主人批准下列 R1 留在基线作长期例外：`src/desktop/platform/plugin.ts`（从发行包根加载固定版本的 PetPlatform 运行时，改成包子路径会动包导出）；`src/desktop/standalone.mjs`（npm bin 指向源码 CLI，便携默认值在编译后的 Core）；`src/core/companion-settings.ts`（Core 未挂载 Desktop 时也要验证旧的完整外观，依赖包内 Desktop 素材和上游校验）。同表里的 `src/console/settings.ts` 那条已在 Console 批清除。
 - 为什么：都取决于发行包里源码和编译树的相对位置，或复用上游校验；改动要碰 `package.json` 的 `exports` 或重写上游逻辑，收益不抵风险。
 - 放弃的选项：改成包子路径导入；在 Core 里复制一份外观校验。
 

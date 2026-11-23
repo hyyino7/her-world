@@ -16953,9 +16953,7 @@ registerCompanion({
       .chatpet-settings .cp-desktop-panel {display:flex;flex-direction:column;}
       .chatpet-settings .cp-desktop-panel > * {order:2;}
       .chatpet-settings .cp-desktop-panel > .cp-card:first-child {order:0;}
-      .chatpet-settings .cp-desktop-panel > .cp-migration-panel {order:0;}
       .chatpet-settings .cp-desktop-panel > .cp-appearance {order:1;margin-bottom:14px;}
-      .chatpet-settings .cp-migration + .cp-migration {border-top:1px solid color-mix(in srgb,currentColor 14%,transparent);padding-top:8px;}
       .chatpet-settings .cp-big {font:600 22px/1.3 var(--cp-serif);margin:4px 0 8px;}
       .chatpet-settings .cp-emotion {border-left:2px solid var(--cp-gold);padding-left:12px;}
       .chatpet-settings .cp-badge { display: inline-flex; flex: 0 0 auto; border: 1px solid color-mix(in srgb,currentColor 20%,transparent); border-radius: 20px; padding: 3px 9px; font-size: 11px; line-height: 1.5; }
@@ -17652,24 +17650,6 @@ registerCompanion({
       },[getEditor]);
       return Editor?h(Editor):h(Card,{title:'外观与动作'},h('p',{className:'cp-muted'},'原版桌宠外观编辑器尚未加载。启用桌宠模块后会在这里显示。'));
     }
-    function PresentationMigration({workspaceId,migration,request,onResolved}) {
-      const [busy,setBusy]=useState(''),[error,setError]=useState('');
-      const lifetime=useRef(null);
-      React.useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[workspaceId]);
-      async function choose(field,choice) {
-        const signal=lifetime.current.signal;setBusy(field);setError('');
-        try {await request('presentationMigration',{workspaceId,field,choice,expectedConfigHash:migration.configHash},signal);if(!signal.aborted)await onResolved();}
-        catch(e){if(!signal.aborted)setError(e.message);}
-        finally{if(!signal.aborted)setBusy('');}
-      }
-      if(!migration?.conflicts?.length)return null;
-      const show=value=>typeof value==='string'?value:JSON.stringify(value);
-      return h(Card,{title:'外观设置需要选择',note:'两份已保存的设置存在差异。选择每项要保留的值，不会增加桌宠。'},
-        ...migration.conflicts.map(row=>h('div',{key:row.field,className:'cp-migration'},h('h4',null,row.field),
-          h('p',null,'原大肥鱼设置：'+show(row.legacy)),h('p',null,'原版桌宠设置：'+show(row.current)),
-          h('div',{className:'cp-inline-actions'},...['legacy','current'].map(choice=>h('button',{key:choice,type:'button',className:'cp-save',disabled:Boolean(busy),onClick:()=>choose(row.field,choice)},choice==='legacy'?'使用原大肥鱼设置':'保留原版桌宠设置'))))),
-        error&&h('p',{role:'alert'},error));
-    }
     function PresentationTiming({workspaceId,initial,value,onChange,request}) {
       const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
       const lifetime=useRef(null);
@@ -18058,7 +18038,6 @@ registerCompanion({
         if (active === 'desktop') {
           return h(React.Fragment, null,
             h(Card, { title: '桌面陪伴', status: desktopState, note: '点击角色会收到回应。右键打开菜单，Cmd 或 Ctrl 加点击打开聊天。' }, desktopButton()),
-            h('div',{className:'cp-migration-panel'},h(PresentationMigration,{key:'migration-'+boundId,workspaceId:boundId,migration:snapshot.presentation?.migration,request,onResolved:async()=>{const value=await request('snapshot',{},lifetime.current.signal);if(!lifetime.current.signal.aborted)setSnapshot(value);}})),
             snapshot.companion ? h(React.Fragment, null,
               h(Card,{title:'对话表现'},fields(switchField('desktopReplyBubble','回复显示在桌宠气泡'),numberField('desktopBubbleSeconds','文字气泡显示时长（秒）',300,1),numberField('stickerProbabilityPercent','想发贴图时的出现概率（%）',100))),
               h(PresentationTiming,{key:'timing-'+boundId,workspaceId:boundId,initial:snapshot.presentation?.timing,value:document.timing,onChange:editDocument('timing'),request}),

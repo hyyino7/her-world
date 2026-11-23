@@ -9,7 +9,6 @@ import {setTimeout as wait} from 'node:timers/promises';
 import {isDeepStrictEqual} from 'node:util';
 import type {} from '../plugin.js';
 import {desktopHomePlayback,activityPresentation,eatingClips,physicalClips,sleepingClips,projectActivityConfig} from './activity.js';
-import {migratePresentation,resolvePresentationMigration,type PresentationMigrationReceipt} from './migration.js';
 import { COMPANION_FEELINGS } from '../../contracts/emotion.js';
 import type { PlaybackReceipt } from '../../emotion/index.js';
 import type { CompanionFactActor } from '../../contracts/interaction.js';
@@ -60,7 +59,7 @@ function dataFolder(bound: string) {
 }
 
 function safeConfig(directory: string) {
-  for (const file of ['main-config.jsonc','main-config.json','logs.txt']) {
+  for (const file of ['main-config.jsonc','logs.txt']) {
     const path = join(directory,file);
     try { if (!lstatSync(path).isFile()) throw Error('桌宠配置文件无效'); }
     catch(error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
@@ -98,7 +97,6 @@ export class PetPlatform {
   private playbackKinds=new Map<string,PlaybackReceipt['kind']>();
   private playbackReported=new Map<string,string>();
   private feedPlaybacks=new Map<string,Promise<string|undefined>>();
-  private migration?:PresentationMigrationReceipt;
   private restartPresentation?:()=>void;
   private presentationStatus?:()=>{running:boolean;starting:boolean};
 
@@ -117,7 +115,7 @@ export class PetPlatform {
     this.bound=undefined; this.homeBinding=undefined; this.router=undefined; this.lookup=undefined; this.setup=undefined;
     this.behavior=undefined;this.behaviorKey='';this.animationFeedbackKey='';this.identityKey='';
     this.playbackKinds.clear();this.playbackReported.clear();this.feedPlaybacks.clear();
-    this.migration=undefined;this.restartPresentation=undefined;this.presentationStatus=undefined;
+    this.restartPresentation=undefined;this.presentationStatus=undefined;
     this.ownerToken=''; this.toolToken=''; this.mediaToken='';
   }
   sync() {
@@ -133,10 +131,17 @@ export class PetPlatform {
     this.directory=dataFolder(target.path);
     safeConfig(this.directory);
     const config=join(this.directory,'main-config.jsonc');
-    if (!existsSync(config) && !existsSync(join(this.directory,'main-config.json'))) {
+    if (!existsSync(config)) {
       writeFileSync(config,JSON.stringify({pets:[]},null,2),{mode:0o600,flag:'wx'});
     }
-    this.migration=migratePresentation(this.directory,this.ctx.petCore.workspace.companionSettings());
+    const configStat=lstatSync(config);
+    if (configStat.nlink!==1 || configStat.size>4_194_304)
+      throw Error('桌宠配置文件无效，已保留原文件');
+    const raw=upstream.readJsonc(config);
+    if (!raw || typeof raw!=='object' || Array.isArray(raw))
+      throw Error('外观配置无法解析，已保留原文件');
+    if (raw.pets!==undefined && (!Array.isArray(raw.pets) || raw.pets.some((pet:unknown)=>
+      !pet || typeof pet!=='object' || Array.isArray(pet)))) throw Error('桌宠列表无效，已保留原文件');
     this.scope=new AbortController();
     this.bound={id:target.id,path:target.path};
     const homeBinding=this.homeBinding=this.ctx.petCore.workspace.homeScope?.();
@@ -168,6 +173,9 @@ export class PetPlatform {
         },
       };
       const setup=this.setup=upstream.createHostSetup(bridge,this.directory);
+      // The canonical file already exists when upstream starts. Keep it the
+      // only main configuration even if it is removed while this host is open.
+      delete setup.configPaths.legacyUserFile;
       const lookup=this.lookup=upstream.createPetLookup(setup);
       const work=upstream.createWorkStatusBridge(setup);
       // Native Desktop owns the configured delay. Keep upstream reduction and
@@ -288,9 +296,10 @@ export class PetPlatform {
     const top:Record<string,string>={desktopClickSound:'clickSoundEnabled',desktopConfineToScreen:'confineToScreen'};
     const body:Record<string,string>={desktopFixed:'fixedEnabled',desktopWhisperEnabled:'whisperEnabled',desktopBalanceEnabled:'balanceEnabled'};
     if(!top[key] && !body[key])throw Error('无效桌宠设置');
-    const config=upstream.readAllConfig(this.setup.configPaths).main, id=this.migration?.bodyId ?? config.pets[0]?.id;
+    const config=upstream.readAllConfig(this.setup.configPaths).main;
+    const primary=config.pets.find((pet:{id:string})=>pet.id==='main') ?? config.pets[0];
     const result=await this.handle(new URL(route+'/config','http://localhost'),'PUT',JSON.stringify({
-      pets:config.pets.map((pet:any)=>pet.id===id && body[key] ? {...pet,[body[key]]:value} : pet),...(top[key] ? {[top[key]]:value} : {})}),this.scope.signal);
+      pets:config.pets.map((pet:any)=>pet.id===primary?.id && body[key] ? {...pet,[body[key]]:value} : pet),...(top[key] ? {[top[key]]:value} : {})}),this.scope.signal);
     if(result.status>=400 || result.obj?.ok===false)throw Error(result.obj?.message || '设置保存失败');
     return {...this.ctx.petCore.workspace.companionSettings(),...this.featurePreferences(),[key]:value};
   }
@@ -301,7 +310,6 @@ export class PetPlatform {
     if(!upstream.topFieldValid('eventsRefreshSec',next))throw Error('时间间隔无效');
     // 0.4.7 reads this section but its form-save whitelist does not write it.
     // Preserve every other JSONC field through the original parser and an atomic scoped write.
-    this.migration=migratePresentation(this.directory,this.ctx.petCore.workspace.companionSettings());
     const file=this.setup.configPaths.userFile, before=readFileSync(file,'utf8'), raw=upstream.readJsonc(file);
     if(!raw || typeof raw!=='object' || Array.isArray(raw))throw Error('外观配置无法解析，已保留原文件');
     const draft=join(this.directory,randomUUID()+'.tmp');
@@ -310,17 +318,8 @@ export class PetPlatform {
       if(readFileSync(file,'utf8')!==before)throw Error('设置已改变，请刷新后重试');
       renameSync(draft,file);
     }finally{rmSync(draft,{force:true});}
-    this.migration=migratePresentation(this.directory,this.ctx.petCore.workspace.companionSettings());
     this.setup.state.writeSection('config',{});this.restartPresentation?.();
     await this.ctx.petDesktop.features?.refresh();
-    return this.status();
-  }
-  resolveMigration(workspaceId:string,field:string,choice:'legacy'|'current',expectedConfigHash:string) {
-    this.ownerAccess(workspaceId);
-    if(!/^[a-f0-9]{64}$/.test(expectedConfigHash))throw Error('请刷新后再选择配置');
-    this.migration=resolvePresentationMigration(this.directory,[{field,choice}],undefined,expectedConfigHash);
-    this.setup.state.writeSection('config',{});this.restartPresentation?.();
-    void this.ctx.petDesktop.features?.refresh();
     return this.status();
   }
   async show() {
@@ -533,7 +532,6 @@ export class PetPlatform {
     const main=upstream.readAllConfig(this.setup.configPaths).main;
     return {path:route,pets:this.pets().map(({id,name,display,position,assetRoot})=>({id,name,display,position,assetRoot})),
       running:this.bodyStatus().running,timing:main.eventsRefreshSec,
-      migration:this.migration,
       activity:this.behavior?.behavior,representation:{...activityPresentation(this.behavior),
         packGaps:this.behavior?.her ? this.pets().filter(p=>!main.pets.some((own:any)=>own.id===p.id)).map(p=>p.id) : []},packsDirectory:join(this.directory,'pet')};
   }
@@ -818,7 +816,7 @@ export class PetPlatform {
   }
 }
 export function platformConsoleOperations(platform: Pick<PetPlatform,
-  'ownerAccess' | 'controlAccess' | 'standaloneAccess' | 'saveTiming' | 'resolveMigration' | 'status'>) {
+  'ownerAccess' | 'controlAccess' | 'standaloneAccess' | 'saveTiming' | 'status'>) {
   const access = (operation: (workspaceId: string) => unknown): ConsoleOperation => call => {
     const {workspaceId} = object(call.input, ['workspaceId']);
     call.checkBinding(workspaceId, true);
@@ -832,15 +830,6 @@ export function platformConsoleOperations(platform: Pick<PetPlatform,
       call.checkBinding(id);
       call.validate();
       return platform.saveTiming(id, input.expected, input.eventsRefreshSec);
-    },
-    presentationMigration(call) {
-      const input = object(call.input, ['workspaceId', 'field', 'choice', 'expectedConfigHash']);
-      const id = requiredText(input.workspaceId, 200);
-      call.checkBinding(id);
-      if (input.choice !== 'legacy' && input.choice !== 'current') fail('INVALID_ARGUMENT');
-      const field = requiredText(input.field, 300), hash = requiredText(input.expectedConfigHash, 64);
-      call.validate();
-      return platform.resolveMigration(id, field, input.choice, hash);
     },
     petPlatformAccess: access(id => platform.ownerAccess(id)),
     petControlAccess: access(id => platform.controlAccess(id)),

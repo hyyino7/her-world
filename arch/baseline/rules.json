@@ -37,18 +37,8 @@
     },
     {
       "rule": "R1",
-      "file": "src/desktop/platform/migration.ts",
-      "line": 28,
-      "column": 16,
-      "scope": "<module>",
-      "target": "?",
-      "expression": "require ( join ( root , \"vendor/dsh-pet/platform/runtime.mjs\" ) )",
-      "reason": "无法静态判定本地依赖"
-    },
-    {
-      "rule": "R1",
       "file": "src/desktop/platform/plugin.ts",
-      "line": 42,
+      "line": 40,
       "column": 18,
       "scope": "<module>",
       "target": "?",
@@ -68,7 +58,7 @@
     {
       "rule": "R1",
       "file": "src/memory/client.ts",
-      "line": 55,
+      "line": 54,
       "column": 41,
       "scope": "MemoryConnection/open",
       "target": "?",
@@ -78,7 +68,7 @@
     {
       "rule": "R1",
       "file": "src/memory/client.ts",
-      "line": 56,
+      "line": 55,
       "column": 36,
       "scope": "MemoryConnection/open",
       "target": "?",
