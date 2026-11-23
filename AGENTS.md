@@ -9,13 +9,13 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 ## 一页入口
 
 ```
-第三层 呈现与连接   desktop · room · channels · voice · console
+第三层 呈现与连接   desktop · room · presentation · channels · voice · console
 第二层 生活世界     living（body · plan · economy）
 第一层 伙伴本体     core · memory · emotion · contracts · world
                     DSH（聊天、调度、会话日志）
 ```
 
-向下用调用，向上用事件和登记。上面是现有 `src/` 模块的归层，以 [arch/layers.json](arch/layers.json) 为准；重构后的目标结构见 [architecture.md 第 0 节](docs/architecture.md#0-一页总览)。
+向下用调用，向上用事件和登记。模块归层以 [arch/layers.json](arch/layers.json) 为准，职责见[架构模块清单](docs/architecture.md#21-模块归属)。
 
 **概念在哪里定义**
 
@@ -42,7 +42,7 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 | 第二层的一个区，或区之间的查找 | 区在入口用 `mountLivingArea`（`src/living/index.ts`）登记到常驻实例，不按服务名互相查找；见 architecture.md 2.3、6.2 |
 | 第一层要知道的生活判定（身体可用、Life home、相册门控等） | 登记到 `host.native.companionPorts`（`src/core/tables/companion-ports.ts`），第一层不读生活服务；见 architecture.md 2.2 |
 | 第三层给 Life 的呈现或送达 | 在入口用 `registerLifeOutlet`（`src/living/outlets.ts`）登记生活出口，卸载时撤销；见 architecture.md 5.2 |
-| 设置项、照料动作、事实领域 | 目标做法和所在阶段见 [architecture.md 5.10](docs/architecture.md#510-扩展一处声明其余派生)；现在要改哪些文件，见 product.md「典型修改前后对比」 |
+| 设置项、照料动作、事实领域 | 现行接线见[架构 5.10](docs/architecture.md#510-扩展一处声明其余派生) |
 | kind、action 的词表 | 先跑 `pnpm run check:arch -- --report`，看 R8 报告里有没有现成的定义可以复用 |
 | 必须保住的行为 | 测试写进 `tests/behavior-list/`，并在 `index.json` 加一条 |
 | 不在当前阶段完成标准里的想法 | `~/Developer/project-design/ideas/inbox.md` |
