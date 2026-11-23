@@ -52,6 +52,7 @@ app.setPath('userData', profile);
 let body, chat, sequence = 0, quitting = false, lastChat, loaded = false;
 let voiceWindow = new AbortController();
 const pending = new Map();
+const compactVoice = new Map();
 const out = value => process.stdout.write(JSON.stringify(value) + '\n');
 function cancelWindowVoice() {
     voiceWindow.abort();
@@ -172,6 +173,24 @@ ipcMain.handle('pet:command', async (event, action, input) => {
     if (action === 'identity' && [body?.webContents, chat.webContents].includes(event.sender))
         return request(action, input);
     if (event.sender === chat.webContents) {
+        if (action === 'voice-start' || action === 'voice-cancel') {
+            const {id, path, body} = input ?? {};
+            if (typeof id !== 'string' || !/^[\da-f-]{36}$/.test(id)) throw Error('无效语音请求');
+            if (action === 'voice-cancel') {
+                compactVoice.get(id)?.abort();
+                return;
+            }
+            if (!chat.isVisible() || compactVoice.has(id) || !['/voice/hear', '/voice/speak'].includes(path) || typeof body !== 'string')
+                throw Error('无效语音请求');
+            if (Buffer.byteLength(body) > (path === '/voice/hear' ? 1048576 : 16384)) throw Error('语音请求过大');
+            const controller = new AbortController();
+            compactVoice.set(id, controller);
+            try {
+                return await request('desktop-api', {path, method:'POST', body}, AbortSignal.any([controller.signal, voiceWindow.signal]));
+            } finally {
+                compactVoice.delete(id);
+            }
+        }
         if (action === 'hide')
             return chat.hide();
         if (action === 'capture') return requestCapture();

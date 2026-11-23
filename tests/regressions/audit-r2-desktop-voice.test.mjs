@@ -83,6 +83,23 @@ test('R2-4: a late transcription failure cannot clear a reopened recording or it
   }finally{f.close();await settle();}
 });
 
+test('stopping manual speech aborts the synthesis already handed to Compact transport',async()=>{
+  const window={},submitted=Promise.withResolvers(),phases=[];
+  const request=(_url,{signal})=>{
+    submitted.resolve(signal);
+    return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
+  };
+  const context=createContext({window,fetch:request,AbortSignal,AbortController});
+  runInContext(readFileSync('src/desktop/helper/upstream/shared-core.js','utf8'),context);
+  window.PetShared.setVoiceConfig('fixture',.8);
+  window.PetShared.speakText('Synthetic reply',phase=>phases.push(phase),request);
+  const signal=await submitted.promise;
+  window.PetShared.stopManualSpeech();
+  assert.equal(signal.aborted,true);
+  await settle();
+  assert.deepEqual(phases,['loading']);
+});
+
 function chatFixture() {
   const elements=new Map(),listeners=new Map(),fresh=deferred();let receive;
   const make=()=>({value:'',textContent:'',style:{},dataset:{},hidden:false,disabled:false,scrollHeight:0,scrollTop:0,clientHeight:0,
@@ -117,15 +134,17 @@ test('R2-4: explicit hide and Escape revoke voice before the native window becom
 
 test('compact voice forwards request cancellation and window hide by request ID', async () => {
   const frames=[], input=new EventEmitter();
-  let protocol, window;
+  let protocol, command, window;
   class BrowserWindow extends EventEmitter {
-    webContents=Object.assign(new EventEmitter(),{setWindowOpenHandler(){}});
+    webContents=Object.assign(new EventEmitter(),{setWindowOpenHandler(){}, mainFrame:{}});
     constructor() { super(); window=this; }
+    isDestroyed() { return false; }
+    isVisible() { return true; }
     setVisibleOnAllWorkspaces() {}
     loadFile() {}
   }
   const electron={BrowserWindow,app:{setPath(){},on(){},whenReady:async()=>{}},
-    screen:{getPrimaryDisplay:()=>({workArea:{}})},ipcMain:{handle(){}},
+    screen:{getPrimaryDisplay:()=>({workArea:{}})},ipcMain:{handle(_channel,fn){command=fn;}},
     protocol:{registerSchemesAsPrivileged(){},handle(_scheme,fn){protocol=fn;}}};
   const modules={'electron':electron,'node:readline':{createInterface:()=>input},'node:path':{join},
     'node:fs':{mkdtempSync:()=>'/fixture'},'node:os':{tmpdir:()=>'/fixture'}};
@@ -159,4 +178,16 @@ test('compact voice forwards request cancellation and window hide by request ID'
   respond(hiddenRequest.id,'old transcript');
   respond(reopenedRequest.id,'current transcript');
   assert.deepEqual(await (await reopened).json(),{text:'current transcript'});
+
+  const invoke = (action, data) => command({sender:window.webContents,senderFrame:window.webContents.mainFrame}, action, data);
+  const voiceId = '9d1923c9-412d-4d70-b6c5-ff256bec8f21';
+  const speaking = invoke('voice-start',{id:voiceId,path:'/voice/speak',body:'{"text":"fixture"}'});
+  const stopped = assert.rejects(speaking,{name:'AbortError'});
+  const speakingRequest = frames.at(-1);
+  assert.equal(speakingRequest.action,'desktop-api');
+  assert.equal(speakingRequest.input.path,'/voice/speak');
+  assert.equal(speakingRequest.cancellableVoice,true);
+  await invoke('voice-cancel',{id:voiceId});
+  assert.deepEqual(frames.at(-1),{type:'voice-cancel',id:speakingRequest.id});
+  await stopped;
 });

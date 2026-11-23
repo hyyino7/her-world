@@ -30,7 +30,7 @@ function readReply(text, button) {
             if (phase === 'idle') return next();
             button.textContent = phase === 'failed' ? '重试朗读' : '停止朗读';
             if (phase === 'failed') { button.onclick = () => readReply(text,button); errors('语音合成失败，请检查语音组件和服务。'); }
-        });
+        }, fetchVoice);
     }
     next();
 }
@@ -150,9 +150,26 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !compositi
 controls();
 
 const voiceBase = 'dsh-pet-bridge://dsh-pet/dsh-pet-7340';
+async function fetchVoice(url, {body, signal}) {
+    signal.throwIfAborted();
+    const id = crypto.randomUUID(), path = url.slice(voiceBase.length);
+    const cancel = () => { void bridge.call('voice-cancel', {id}).catch(() => {}); };
+    signal.addEventListener('abort', cancel, {once:true});
+    try {
+        const result = await bridge.call('voice-start', {id, path, body});
+        signal.throwIfAborted();
+        if (path === '/voice/speak') {
+            if (!result?.audio) return Response.json(result ?? null, {status:422});
+            return new Response(Uint8Array.from(atob(result.audio), byte => byte.charCodeAt(0)), {headers:{'content-type':'audio/mpeg'}});
+        }
+        return Response.json(result ?? null);
+    } finally {
+        signal.removeEventListener('abort', cancel);
+    }
+}
 window.PetShared.setVoiceBase(voiceBase);
 microphone = window.PetShared.createHearControl({micBtn:$('mic'), input:$('input'), hearUrl:voiceBase + '/voice/hear',
-    active:() => !document.hidden && !!state?.sessionId && !pending,
+    fetchVoice, active:() => !document.hidden && !!state?.sessionId && !pending,
     hint:{show:errors, flash:errors, hide:() => errors('')}, resizeInput:controls});
 document.addEventListener('visibilitychange', () => { if (document.hidden) releaseVoice(); });
 window.addEventListener('pagehide', releaseVoice, {once:true});

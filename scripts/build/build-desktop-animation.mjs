@@ -21,7 +21,7 @@ for (const [path, hash] of Object.entries(origin.files)) {
   let code = ts.transpileModule(adaptCompactVoice(path,source), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   if (path === 'src/shared/voice.ts') {
     // The compact chat persists across hides and can be rebound to another session.
-    code += '\nexports.stopManualSpeech = () => { manualSeq++; if (manualAudio) { manualAudio.pause(); URL.revokeObjectURL(manualAudio.src); manualAudio = null; } };';
+    code += '\nexports.stopManualSpeech = () => { manualSeq++; manualRequest?.abort(); manualRequest = undefined; if (manualAudio) { manualAudio.pause(); URL.revokeObjectURL(manualAudio.src); manualAudio = null; } };';
   }
   code = code.replace(/require\("([^"\n]+)"\)/g, (_, name) => `require(${JSON.stringify(posix.normalize(posix.join(dirname(path), name)))})`);
   modules.push(`${JSON.stringify(path)}: function(exports, require) {\n${code}\n}`);

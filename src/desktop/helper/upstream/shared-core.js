@@ -2179,7 +2179,7 @@ function createHearControl(opts) {
             }
             if (!live(owner))
                 return;
-            const outcome = await (0, hear_ts_1.hearAudio)(hearUrl, (0, hear_ts_1.toBase64)(clip.wave), signal);
+            const outcome = await (0, hear_ts_1.hearAudio)(hearUrl, (0, hear_ts_1.toBase64)(clip.wave), signal, opts.fetchVoice);
             if (!live(owner))
                 return;
             if (!outcome.ok) {
@@ -3265,10 +3265,10 @@ function reasonOf(raw) {
  * @param audio - 规范 base64（不带 data: 前缀）。
  * @returns 文字或失败分类；网络异常也收敛成 outcome，不向上抛。
  */
-async function hearAudio(url, audio, signal) {
+async function hearAudio(url, audio, signal, fetchVoice = fetch) {
     const timeout = AbortSignal.timeout(HEAR_TIMEOUT_MS);
     try {
-        const res = await fetch(url, {
+        const res = await fetchVoice(url, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ audio }),
@@ -7224,6 +7224,7 @@ async function speak(text, canPlayHidden = false) {
 let manualAudio = null;
 /** 手动点播的世代号：新的点播会作废旧请求的阶段回调，避免旧回调清掉新状态。 */
 let manualSeq = 0;
+let manualRequest;
 /**
  * 手动播报一句（对话面板的喇叭按钮用）。
  *
@@ -7232,28 +7233,30 @@ let manualSeq = 0;
  * @param text - 要念的正文。
  * @param onPhase - 阶段回调：请求合成时 `loading`、音频就绪开始播时 `playing`、播完 `idle`、失败或超时 `failed`。
  */
-function speakText(text, onPhase) {
+function speakText(text, onPhase, fetchVoice = fetch) {
     if (!text)
         return;
-    void playManual(text, onPhase);
+    void playManual(text, onPhase, fetchVoice);
 }
 /** 请求合成并播放手动点播；失败静默，不打断面板交互。 */
-async function playManual(text, onPhase) {
+async function playManual(text, onPhase, fetchVoice) {
     const token = ++manualSeq;
+    manualRequest?.abort();
+    const controller = manualRequest = new AbortController();
     await loadConfigOnce();
+    if (token !== manualSeq)
+        return;
     if (manualAudio) {
         manualAudio.pause();
         manualAudio = null;
     }
-    if (token !== manualSeq)
-        return; // 等配置期间又被点了一次：这次直接让位
     onPhase?.('loading');
     try {
-        const response = await fetch(voiceBase + '/voice/speak', {
+        const response = await fetchVoice(voiceBase + '/voice/speak', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ text, ...(voiceName ? { voice: voiceName } : {}) }),
-            signal: speakSignal(),
+            signal: AbortSignal.any([speakSignal(), controller.signal]),
         });
         if (token !== manualSeq)
             return;
@@ -7261,9 +7264,10 @@ async function playManual(text, onPhase) {
             onPhase?.('failed');
             return;
         }
-        const objectUrl = URL.createObjectURL(await response.blob());
+        const blob = await response.blob();
         if (token !== manualSeq)
             return;
+        const objectUrl = URL.createObjectURL(blob);
         const audio = new Audio(objectUrl);
         audio.volume = voiceVolume;
         audio.onended = () => {
@@ -7283,9 +7287,13 @@ async function playManual(text, onPhase) {
         if (token === manualSeq)
             onPhase?.('failed');
     }
+    finally {
+        if (manualRequest === controller)
+            manualRequest = undefined;
+    }
 }
 
-exports.stopManualSpeech = () => { manualSeq++; if (manualAudio) { manualAudio.pause(); URL.revokeObjectURL(manualAudio.src); manualAudio = null; } };
+exports.stopManualSpeech = () => { manualSeq++; manualRequest?.abort(); manualRequest = undefined; if (manualAudio) { manualAudio.pause(); URL.revokeObjectURL(manualAudio.src); manualAudio = null; } };
 },
 "src/shared/weights.ts": function(exports, require) {
 "use strict";
