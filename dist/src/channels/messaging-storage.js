@@ -1,11 +1,10 @@
 import { lstatSync, readFileSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { durableWrite } from '#dsh-world/life/lifeStore';
-import { defaults, messagingPreferences } from './messaging-settings.js';
-const connectionKeys = { qq: ['enabled', 'accountId', 'wsUrl', 'tokenEnv'], wechat: ['enabled', 'accountId'] };
+import { defaults, isDeviceMessagingField, messagingPreferences } from './messaging-settings.js';
 function split(config, connection) {
     return Object.fromEntries(['qq', 'wechat'].map(platform => [platform,
-        Object.fromEntries(Object.entries(config[platform]).filter(([key]) => connectionKeys[platform].includes(key) === connection))]));
+        Object.fromEntries(Object.entries(config[platform]).filter(([key]) => isDeviceMessagingField(platform, key) === connection))]));
 }
 function read(path) {
     const stat = lstatSync(path, { throwIfNoEntry: false });
@@ -27,11 +26,11 @@ export function messagingStorage(deviceDirectory, dataDirectory) {
     if (savedPolicy)
         for (const [platform, values] of Object.entries(savedPolicy)) {
             if (!['qq', 'wechat'].includes(platform) || !values || typeof values !== 'object' || Array.isArray(values)
-                || Object.keys(values).some(key => connectionKeys[platform].includes(key)))
+                || Object.keys(values).some(key => isDeviceMessagingField(platform, key)))
                 throw Error('工作区渠道策略不能包含设备连接或凭证设置');
         }
     const legacy = messagingPreferences(defaults, device ?? {});
-    const hasLegacyPolicy = device && ['qq', 'wechat'].some(platform => Object.keys(device[platform] ?? {}).some(key => !connectionKeys[platform].includes(key)));
+    const hasLegacyPolicy = device && ['qq', 'wechat'].some(platform => Object.keys(device[platform] ?? {}).some(key => !isDeviceMessagingField(platform, key)));
     const policy = savedPolicy ?? (hasLegacyPolicy ? split(legacy, false) : { qq: {}, wechat: {} });
     const connection = split(legacy, true);
     const merged = { qq: { ...policy.qq, ...connection.qq }, wechat: { ...policy.wechat, ...connection.wechat } };

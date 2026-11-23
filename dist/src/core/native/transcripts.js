@@ -2,6 +2,8 @@ import { constants, closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, open
 import { join, relative, sep } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
+import { sameHomeBinding } from '../home-binding.js';
+import { reject } from '../storage.js';
 const equal = isDeepStrictEqual;
 const key = (id) => createHash('sha256').update(id).digest('hex') + '.json';
 /** Complete native log copies, not model-facing context. DSH remains the sole
@@ -175,7 +177,8 @@ export class NativeTranscripts {
             && session.header.agentPreset === 'chatpet-channel-guest')
             this.schedule(session.id);
     }
-    async restoreCopy(copy, workspace, path, registry) {
+    async restoreCopy(copy, workspace, path, registry, validate = () => { }) {
+        validate();
         const native = this.native(), id = copy.header.id, wasAttached = workspace.sessionIds.includes(id);
         let existing, missing = [];
         try {
@@ -187,7 +190,9 @@ export class NativeTranscripts {
         }
         if (existing) {
             try {
+                validate();
                 const current = (await existing.read()).events;
+                validate();
                 const { cwd: _old, ...expectedHeader } = copy.header, { cwd: _current, ...currentHeader } = existing.header;
                 if (existing.header.cwd !== path || !equal(expectedHeader, currentHeader)
                     || !equal(current.slice(0, Math.min(current.length, copy.events.length)), copy.events.slice(0, Math.min(current.length, copy.events.length))))
@@ -197,14 +202,19 @@ export class NativeTranscripts {
             finally {
                 await existing.close();
             }
+            validate();
             if (missing.length) {
                 const writer = await native.sessionPersistence.open(id, 'write');
                 try {
+                    validate();
                     const current = (await writer.read()).events;
+                    validate();
                     if (!equal(current, copy.events.slice(0, current.length)))
                         throw Error('Native log changed during restore: ' + id);
                     await writer.append(copy.events.slice(current.length));
+                    validate();
                     await writer.flush();
+                    validate();
                 }
                 finally {
                     await writer.close();
@@ -212,25 +222,41 @@ export class NativeTranscripts {
             }
         }
         else {
+            validate();
             const writer = await native.sessionPersistence.create({ ...copy.header, cwd: path }, copy.inheritedEventCount ? { inheritedEventCount: copy.inheritedEventCount } : undefined);
             try {
+                validate();
                 await writer.append(copy.events);
+                validate();
                 await writer.flush();
+                validate();
             }
             finally {
                 await writer.close();
             }
         }
-        if (!workspace.sessionIds.includes(id))
+        validate();
+        if (!workspace.sessionIds.includes(id)) {
             await workspace.attachSession(id);
-        if (!wasAttached && copy.archived && !registry.archivedSessionIds.includes(id))
+            validate();
+        }
+        if (!wasAttached && copy.archived && !registry.archivedSessionIds.includes(id)) {
             await registry.archiveSession(id);
+            validate();
+        }
     }
-    async restore() {
+    async restore(caller) {
+        const scope = this.host.workspace.homeScope?.();
+        const validate = () => {
+            caller?.();
+            if (this.closed || !sameHomeBinding(this.host.workspace.homeScope?.(), scope))
+                reject('STALE_BINDING', 'Native transcript binding changed');
+        };
         return this.enqueue(async () => {
+            validate();
             const { target, workspace, registry } = this.target();
             const binding = target.id + '\n' + target.path;
-            if (this.restored === binding)
+            if (this.restored?.key === binding && sameHomeBinding(scope, this.restored.scope))
                 return;
             const directory = this.directory(target.path);
             const config = this.host.workspace.runtime.config;
@@ -241,9 +267,10 @@ export class NativeTranscripts {
                     throw Error('Portable session filename mismatch');
                 if (copy.channel)
                     continue;
-                await this.restoreCopy(copy, workspace, target.path, registry);
+                await this.restoreCopy(copy, workspace, target.path, registry, validate);
+                validate();
             }
-            this.restored = binding;
+            this.restored = { key: binding, scope };
             // Also refresh copies when this device already owns a longer native log
             // (for example, recovery after an abrupt previous shutdown).
             for (const id of workspace.sessionIds)

@@ -50,13 +50,30 @@ async function trayRequest(method, path, payload) {
 const profile = mkdtempSync(join(tmpdir(), 'chatpet-window-'));
 app.setPath('userData', profile);
 let body, chat, sequence = 0, quitting = false, lastChat, loaded = false;
+let voiceWindow = new AbortController();
 const pending = new Map();
+const compactVoice = new Map();
 const out = value => process.stdout.write(JSON.stringify(value) + '\n');
-function request(action, input) {
+function cancelWindowVoice() {
+    voiceWindow.abort();
+    voiceWindow = new AbortController();
+}
+function request(action, input, signal) {
+    if (signal?.aborted) return Promise.reject(signal.reason);
     return new Promise((resolve, reject) => {
         const id = ++sequence;
-        pending.set(id, { resolve, reject });
-        out({ type: 'request', id, action, input });
+        const cancel = () => {
+            pending.delete(id);
+            out({ type: 'voice-cancel', id });
+            reject(signal.reason);
+        };
+        const cleanup = () => signal?.removeEventListener('abort', cancel);
+        signal?.addEventListener('abort', cancel, {once:true});
+        pending.set(id, {
+            resolve(value) { cleanup(); resolve(value); },
+            reject(error) { cleanup(); reject(error); },
+        });
+        out({ type: 'request', id, action, input, ...(signal && {cancellableVoice:true}) });
     });
 }
 function emit(win, event, value) {
@@ -156,6 +173,24 @@ ipcMain.handle('pet:command', async (event, action, input) => {
     if (action === 'identity' && [body?.webContents, chat.webContents].includes(event.sender))
         return request(action, input);
     if (event.sender === chat.webContents) {
+        if (action === 'voice-start' || action === 'voice-cancel') {
+            const {id, path, body} = input ?? {};
+            if (typeof id !== 'string' || !/^[\da-f-]{36}$/.test(id)) throw Error('无效语音请求');
+            if (action === 'voice-cancel') {
+                compactVoice.get(id)?.abort();
+                return;
+            }
+            if (!chat.isVisible() || compactVoice.has(id) || !['/voice/hear', '/voice/speak'].includes(path) || typeof body !== 'string')
+                throw Error('无效语音请求');
+            if (Buffer.byteLength(body) > (path === '/voice/hear' ? 1048576 : 16384)) throw Error('语音请求过大');
+            const controller = new AbortController();
+            compactVoice.set(id, controller);
+            try {
+                return await request('desktop-api', {path, method:'POST', body}, AbortSignal.any([controller.signal, voiceWindow.signal]));
+            } finally {
+                compactVoice.delete(id);
+            }
+        }
         if (action === 'hide')
             return chat.hide();
         if (action === 'capture') return requestCapture();
@@ -220,9 +255,10 @@ app.whenReady().then(() => {
         if (path === '/sound/click-duck.wav' && req.method === 'GET') return net.fetch(pathToFileURL(join(__dirname,'../assets/sound/click-duck.wav')).href);
         if (!/^\/(todos(?:\/[A-Za-z0-9_-]+)?|voice\/(hear|speak|voices)|whisper|balance|sleep|wake)$/.test(path)) return new Response('Unsupported operation',{status:404});
         try {
+            const signal = path.startsWith('/voice/') ? AbortSignal.any([req.signal, voiceWindow.signal]) : undefined;
             const bodyText = ['POST','PATCH'].includes(req.method) ? await req.text() : undefined;
             if (bodyText && Buffer.byteLength(bodyText) > (path === '/voice/hear' ? 1048576 : 16384)) return new Response('Too large',{status:413});
-            const result=await request('desktop-api',{path:path+url.search,method:req.method,body:bodyText});
+            const result=await request('desktop-api',{path:path+url.search,method:req.method,body:bodyText},signal);
             if (path === '/voice/speak' && result?.audio) return new Response(Buffer.from(result.audio, 'base64'), {
                 headers:{'Content-Type':'audio/mpeg','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'}});
             return Response.json(result,{headers:{'Access-Control-Allow-Origin':'*'}});
@@ -232,6 +268,7 @@ app.whenReady().then(() => {
     const a = screen.getPrimaryDisplay().workArea;
     if (chatOnly) {
         chat=createWindow('chat',{frame:true,alwaysOnTop:false,skipTaskbar:false,resizable:true,width:420,height:480,backgroundColor:'#f6f8f8',title:'伙伴聊天'});
+        chat.on('hide',cancelWindowVoice);
         chat.webContents.once('did-finish-load',()=>{loaded=true;out({type:'ready'});});
         chat.on('close',e=>{if(!quitting){e.preventDefault();chat.hide();}});
         return;
@@ -240,6 +277,7 @@ app.whenReady().then(() => {
     body = createWindow('body', { hasShadow: false, useContentSize: true, enableLargerThanScreen: true, transparent: true, width: 146, height: 132, x: a.x + a.width - 195, y: a.y + a.height - 195, title: '伙伴' });
     body.webContents.setBackgroundThrottling(false);
     chat = createWindow('chat', { width: 386, height: 310, backgroundColor: '#f6f8f8', title: '伙伴聊天' });
+    chat.on('hide',cancelWindowVoice);
     tray = createTray({
         app, Tray, Menu, nativeImage, hostRequest: trayRequest, callbackUrl: () => true,
         isBridge: true, appMode: false, petRoute: '', platform: trayPlatform(process.platform),

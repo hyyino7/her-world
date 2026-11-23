@@ -9,6 +9,7 @@ import { closeSqliteLease, setSqliteMeta } from '../../core/sqlite.js';
 import { effectiveEconomyConfiguration, defaultEconomyConfiguration, economyCatalog, isWritableCatalogKey, ORIGINAL_READINGS } from './catalog.js';
 import { isBodyMetric } from '../../contracts/behavior.js';
 import { advanceGardenClock } from './garden-clock.js';
+import { ConsoleRequests, installConsoleRequests } from './console-requests.js';
 import { ECONOMY_INITIALIZED, economyAdoptionPath, economyFile, economyRecoveryAdvice, ensureAdoptionDirectory, inspectEconomyAdoption, readEconomyDatabaseMarker, readEconomyFileEvidence, syncPath, writeEconomyFile } from './adoption.js';
 const cropRows = CROPS;
 const runningClock = { enabled: true };
@@ -41,6 +42,7 @@ export class EconomyStore {
     markerPath;
     lockToken = `${process.pid}:${randomUUID()}`;
     db;
+    consoleRequests;
     databaseFile;
     closed = false;
     walletDirty = false;
@@ -130,6 +132,7 @@ export class EconomyStore {
         CREATE TABLE IF NOT EXISTS bookmarks (id TEXT PRIMARY KEY,value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS reading_operations (id TEXT PRIMARY KEY,value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS interaction_facts (sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,request_id TEXT NOT NULL UNIQUE,value TEXT NOT NULL,acknowledged INTEGER NOT NULL DEFAULT 0 CHECK(acknowledged IN (0,1)));`);
+                    installConsoleRequests(this.db);
                     const now = Date.now();
                     this.setMeta('configuration', defaultEconomyConfiguration());
                     const imported = legacy ? clone(legacy.state) : undefined;
@@ -155,6 +158,7 @@ export class EconomyStore {
                         this.recordLedger('migration:legacy-garden', 'legacy-import', garden.coins, this.resourceDeltas({}, this.gardenResources(garden)), 'Imported the retained garden once; legacy files were not changed', now);
                     this.setMeta(ECONOMY_INITIALIZED, expected);
                 });
+            this.consoleRequests = new ConsoleRequests(this.db, expected);
             syncPath(this.directory);
             this.writeStorageMarker();
         }
@@ -191,10 +195,12 @@ export class EconomyStore {
             unavailable(`Economy storage is missing or changed; recover it before continuing (${String(error)})`);
         }
     }
+    factWritten = false;
     transaction(fn) {
         this.ensure();
         this.db.exec('BEGIN IMMEDIATE');
         this.walletDirty = false;
+        this.factWritten = false;
         let result;
         try {
             result = fn();
@@ -209,6 +215,11 @@ export class EconomyStore {
                 this.options.walletChanged?.();
             }
             catch { /* The wallet has committed. */ }
+        if (this.factWritten)
+            try {
+                this.options.factsCommitted?.();
+            }
+            catch { /* The fact has committed. */ }
         return result;
     }
     meta(key) { const row = this.db.prepare('SELECT value FROM meta WHERE key=?').get(key); return row ? json(row.value) : undefined; }
@@ -253,6 +264,13 @@ export class EconomyStore {
             return result;
         });
     }
+    originalRequest(requestId) {
+        this.ensure();
+        return this.db.prepare('SELECT digest,result FROM requests WHERE id=?').get(requestId);
+    }
+    withConsoleRequests(write) {
+        return this.transaction(() => write(this.consoleRequests));
+    }
     recordLedger(requestId, kind, moneyDelta, itemDeltas, note, now = Date.now()) {
         check(Number.isSafeInteger(moneyDelta), 'Invalid money change');
         atTime(now);
@@ -277,6 +295,7 @@ export class EconomyStore {
         const fact = { version: 1, id: `economy:${digest(requestId).slice(7)}`, requestId, domain: 'economy', type,
             occurredAt: new Date().toISOString(), actor: clone(actor), result: { status: 'completed', summary, before, after }, operationId: requestId };
         this.db.prepare('INSERT INTO interaction_facts(id,request_id,value) VALUES(?,?,?)').run(fact.id, requestId, canonical(fact));
+        this.factWritten = true;
     }
     pendingFacts() {
         this.ensure();

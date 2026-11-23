@@ -1,13 +1,11 @@
 import {lstatSync,readFileSync,chmodSync} from 'node:fs';
 import {join} from 'node:path';
 import {durableWrite} from '#dsh-world/life/lifeStore';
-import {defaults,messagingPreferences,type MessagingSettings} from './messaging-settings.js';
+import {defaults,isDeviceMessagingField,messagingPreferences,type MessagingSettings} from './messaging-settings.js';
 
-const connectionKeys = {qq:['enabled','accountId','wsUrl','tokenEnv'],wechat:['enabled','accountId']} as const;
 function split(config:MessagingSettings, connection:boolean) {
   return Object.fromEntries((['qq','wechat'] as const).map(platform=>[platform,
-    Object.fromEntries(Object.entries(config[platform]).filter(([key])=>
-      (connectionKeys[platform] as readonly string[]).includes(key)===connection))]));
+    Object.fromEntries(Object.entries(config[platform]).filter(([key])=>isDeviceMessagingField(platform,key)===connection))]));
 }
 function read(path:string):Record<string,Record<string,unknown>>|undefined {
   const stat=lstatSync(path,{throwIfNoEntry:false});
@@ -25,12 +23,12 @@ export function messagingStorage(deviceDirectory:string,dataDirectory:string) {
   const device=read(deviceFile), savedPolicy=read(policyFile);
   if(savedPolicy)for(const [platform,values] of Object.entries(savedPolicy)) {
     if(!['qq','wechat'].includes(platform) || !values || typeof values!=='object' || Array.isArray(values)
-      || Object.keys(values).some(key=>(connectionKeys[platform as 'qq'|'wechat'] as readonly string[]).includes(key)))
+      || Object.keys(values).some(key=>isDeviceMessagingField(platform as keyof MessagingSettings,key)))
       throw Error('工作区渠道策略不能包含设备连接或凭证设置');
   }
   const legacy=messagingPreferences(defaults,device ?? {});
   const hasLegacyPolicy=device && (['qq','wechat'] as const).some(platform=>
-    Object.keys(device[platform] ?? {}).some(key=>!(connectionKeys[platform] as readonly string[]).includes(key)));
+    Object.keys(device[platform] ?? {}).some(key=>!isDeviceMessagingField(platform,key)));
   const policy=savedPolicy ?? (hasLegacyPolicy ? split(legacy,false) : {qq:{},wechat:{}});
   const connection=split(legacy,true);
   const merged={qq:{...policy.qq,...connection.qq},wechat:{...policy.wechat,...connection.wechat}};

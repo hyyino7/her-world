@@ -1,9 +1,12 @@
 import {fileURLToPath} from 'node:url';
 import {resolve,join} from 'node:path';
+import {existsSync} from 'node:fs';
+import {readJson} from './lib/ast.mjs';
 import {scan} from './lib/scan.mjs';
 import {summarizeJudgments,summarizeRules} from './lib/counts.mjs';
 import {updateBaselines} from './lib/ratchet.mjs';
 import {baselineMove} from './lib/move.mjs';
+import {vocabularyDeltaLines} from './lib/vocabulary-delta.mjs';
 
 export function report(result,log=console.log) {
   for(const {rule,entries,callSites,violationEdges,dependencyEdges} of summarizeRules(result)) {
@@ -36,11 +39,17 @@ export function main(args=process.argv.slice(2),root=resolve(import.meta.dirname
   }
   if(flags.some(arg=>!['--report','--write-baseline'].includes(arg)))throw Error('只支持 --report、--write-baseline 和 --move <对照文件>');
   const rewrite=movePath?baselineMove(resolve(root,movePath)):undefined;
-  const result=scan(root);
-  if(flags.includes('--report'))report(result);
+  const vocabularyFile=join(root,'arch/baseline/vocabulary.json');
+  const objectTables=existsSync(vocabularyFile)&&readJson(vocabularyFile).objectTables===true;
+  const preview=flags.includes('--report');
+  const result=scan(root,{objectTables:objectTables||preview});
+  if(preview) {
+    report(result);
+    if(!objectTables)for(const line of vocabularyDeltaLines(result.objectTableRelations))console.log(line);
+  }
   const outcomes=updateBaselines([
     {file:join(root,'arch/baseline/rules.json'),items:result.rules},
-    {file:join(root,'arch/baseline/vocabulary.json'),items:result.vocabulary},
+    {file:vocabularyFile,items:objectTables?result.vocabulary:result.legacyVocabulary,metadata:objectTables?{objectTables}:undefined},
   ],write,rewrite);
   for(const r of outcomes) {
     console.log(`${r.file}：当前 ${r.items.length}；新增 ${r.added.length}；消失 ${r.removed.length}`);

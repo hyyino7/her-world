@@ -23,6 +23,7 @@ function fixture(t:TestContext,enabled?:boolean) {
     runtime:{identity:()=>({companionId:'fish',displayName:'Fixture'})}}} as unknown as PetCoreHost;
   let life:CompanionLife,row:any,starts=0,resumes=0;
   const body={setAutonomy:async(_workspace:string,value:boolean)=>{clockChanges.push(value);},setReconsiderConditions:async()=>{},
+    syncLifeClock:async()=>{},
     inspectPlanned:async(_workspace:string,id:string)=>row?.operationId===id?structuredClone(row):undefined,
     startPlanned:async(_workspace:string,input:any)=>{starts++;row={...input,status:'running',phase:'working',startedAt:new Date().toISOString(),updatedAt:new Date().toISOString()};return structuredClone(row);},
     pausePlanned:async()=>{row.status='paused';return structuredClone(row);},

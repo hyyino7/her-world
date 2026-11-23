@@ -50,3 +50,11 @@ export function readLifeEnabled(ctx: Context, host: PetCoreHost, workspaceId: st
   // Saved intent owns autonomy even when native execution is unavailable.
   return plan?.bodyClockState(workspaceId)?.enabled ?? plan?.running() ?? false;
 }
+
+export function readRunningLifeHome(ctx: Context, host: PetCoreHost) {
+  return LivingWorld.lookupPlan(ctx, host)?.homeSessionId();
+}
+
+export function isRunningLifeHome(ctx: Context, host: PetCoreHost, sessionId: string) {
+  return LivingWorld.lookupPlan(ctx, host)?.isHome(sessionId) === true;
+}

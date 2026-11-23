@@ -7,7 +7,7 @@ import {syncBuiltinESMExports} from 'node:module';
 import {fixture,until} from './fixture.mjs';
 import {cordisFixture} from './entries-lifecycle.test.mjs';
 import {runMigration} from '../../scripts/migrate/runner.mjs';
-import {mockDsh} from '../migrate/helpers.mjs';
+import {emptyWalletMigrationInputs,mockDsh} from '../migrate/helpers.mjs';
 import {economyPaths,offlineFixture} from '../migrate/offline-helpers.mjs';
 const meal='food:improved-meal',HOUR=3_600_000;
 
@@ -196,7 +196,7 @@ test('迁移日志挡住双目录丢失后重建钱包并保留免费照料',asy
   const {database,adoption}=economyPaths(f);
   const declared=JSON.parse(readFileSync(join(f.managed,'manifest.json'),'utf8')).files;
   assert.ok(!declared.some(path=>path.startsWith('data/economy/') || path.startsWith('data/living/')));
-  await runMigration({installation:f.installation,backup:join(f.out,'backup')});
+  await runMigration({installation:f.installation,backup:join(f.out,'backup'),...emptyWalletMigrationInputs(f)});
   const journal=join(f.data,'migrations.jsonl'), log=readFileSync(journal,'utf8');
   assert.equal(JSON.parse(log.split('\n')[0]).economyAdopted,true);
   for (const file of [database,adoption]) rmSync(dirname(file),{recursive:true});

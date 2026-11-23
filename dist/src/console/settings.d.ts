@@ -1,29 +1,25 @@
+import type { Context } from '@deepseek-ai/cordis';
+import { type ContractError } from '../contracts/common.js';
 import type { PetCoreHost } from '../core/index.js';
-import type { WorkspaceTarget } from '../core/preferences.js';
-import type { CompanionEmotion } from '../emotion/plugin.js';
-import type { CompanionLife } from '../living/plan/plugin.js';
+import { type SettingsWorkspaceRegistry } from '../core/tables/console.js';
+export type { SettingsWorkspaceRegistry } from '../core/tables/console.js';
 export interface EconomyControls {
-    snapshot(workspaceId: string, validate?: () => void, options?: {
-        includeWritableKeys?: boolean;
-    }): Promise<unknown>;
-    ownerAction(workspaceId: string, action: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
-    settings(workspaceId: string, expectedVersion: string, next: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
+    consoleWrite(endpoint: string, input: unknown, requestId: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
 }
-interface RoomControls {
-    request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
-    open?(workspaceId: string): Promise<unknown>;
-}
-/** Structural subset of the native Connection RPC contract; no new transport. */
+/** Connection's locally available structural PeerScope subset. */
+type SettingsError = {
+    code: string;
+    message: string;
+    details: Record<string, never>;
+    effect: ContractError['effect'];
+    retry: ContractError['retry'];
+};
 export type SettingsReply = {
     ok: true;
     value: unknown;
 } | {
     ok: false;
-    error: {
-        code: string;
-        message: string;
-        details: Record<string, never>;
-    };
+    error: SettingsError;
 };
 export type SettingsHandler = (endpoint: string, payload: unknown, signal: AbortSignal, peer: {
     principal: {
@@ -31,21 +27,6 @@ export type SettingsHandler = (endpoint: string, payload: unknown, signal: Abort
     };
     signal: AbortSignal;
 }) => Promise<SettingsReply>;
-export interface SettingsWorkspace extends WorkspaceTarget {
-    readonly sessionIds?: readonly string[];
-    status(): Promise<'ok' | 'missing-dir'>;
-}
-export interface SettingsWorkspaceRegistry {
-    list(): SettingsWorkspace[];
-    get(id: string): SettingsWorkspace | undefined;
-}
-/** Owner-only, finite endpoint map. No caller-supplied operation, actor or authority is forwarded. */
-interface DesktopControls {
-    status(): {
-        running: boolean;
-    };
-    start(): Promise<unknown>;
-    closeWindow(): unknown;
-}
-export declare function settingsHandler(getHost: () => PetCoreHost | undefined, getWorkspaces: () => SettingsWorkspaceRegistry | undefined, getDesktop?: (host: PetCoreHost) => DesktopControls | undefined, getWorldModules?: () => readonly string[], getEmotion?: () => Pick<CompanionEmotion, 'current' | 'catalog'> & Partial<Pick<CompanionEmotion, 'read' | 'update'>> | undefined, getLife?: () => (Pick<CompanionLife, 'snapshot' | 'control' | 'act'> & Partial<Pick<CompanionLife, 'settings' | 'library'>>) | undefined, getRoom?: () => RoomControls | undefined, getChannels?: () => Pick<import('../channels/plugin.js').CompanionChannels, 'request'> | undefined, getPlatform?: () => Pick<import('../desktop/platform/plugin.js').PetPlatform, 'ownerAccess' | 'controlAccess' | 'standaloneAccess'> & Partial<Pick<import('../desktop/platform/plugin.js').PetPlatform, 'status' | 'saveTiming' | 'resolveMigration'>> | undefined, getEconomy?: () => EconomyControls | undefined): SettingsHandler;
-export {};
+export declare const settingsEndpoints: string[];
+/** Owner-only exact RPCs share admission. Both wallet write routes use the durable owner registry. */
+export declare function settingsHandler(getHost: () => PetCoreHost | undefined, getWorkspaces: () => SettingsWorkspaceRegistry | undefined, getWorldModules?: () => readonly string[], getEconomy?: () => EconomyControls | undefined, scope?: Context): SettingsHandler;

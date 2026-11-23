@@ -1,12 +1,17 @@
 import {CONTRACT_VERSION} from '../contracts/version.js';
-import type {CapabilityStatus, ServiceCall} from '../contracts/common.js';
+import {unknownEffect, type CallOptions, type CapabilityStatus, type ServiceCall} from '../contracts/common.js';
 import type {AttentionPolicy, CompanionIdentity, CoreService} from '../contracts/core.js';
 import type {CapabilityRegistration} from '../contracts/tables.js';
+import {sameHomeBinding} from './home-binding.js';
 import {CoreAuthority} from './authority.js';
 import {conversationOptions, type ConversationOptions} from './options.js';
 import {canonical, check, CoreStore, id, reject, Rejection, revision, text, timestamp} from './storage.js';
 import {CapabilityTable} from './tables/capabilities.js';
 import type {CoreWorkspace} from './workspace.js';
+
+export interface CoreCallOptions extends CallOptions {
+  validateInitialization?: () => void;
+}
 
 export interface CoreConfig {
   dataDir:string; companionId:string;
@@ -66,7 +71,7 @@ export class CoreRuntime {
           const before=this.identity();revision(before.revision,input.expectedRevision);this.validateIdentity(input);
           const next={...before,revision:before.revision+1,displayName:input.displayName,character:input.character};
           this.files?.write('identity',next);this.store.put('identity','current',next);return next;
-        }),
+        }, input=>this.files?.assertEditScope(input.expectedScope)),
         getPolicy:this.call('getPolicy',false,()=>this.policy()),
         listCapabilities:this.call('listCapabilities',false,()=>this.capabilities()),
       };
@@ -93,16 +98,32 @@ export class CoreRuntime {
     return conversationOptions(this.store.get<import('./preferences.js').CorePreferences>('preferences','current')?.conversation??this.defaultConversation);
   }
   /** Configuration API authority, compare-and-set and request deduplication. */
-  call<I,O>(name:string,write:boolean,fn:(input:I)=>O):ServiceCall<I,O> {
+  call<I,O>(name:string,write:boolean,fn:(input:I)=>O, preflight?:(input:I)=>void):ServiceCall<I,O> {
     return async(context,input,options)=>{
       this.fileEffect=false;
       try {
-        if(this.stopped)reject('DISABLED','Core has stopped');
+        const validate = () => {
+          if(this.stopped)reject('DISABLED','Core has stopped');
+          if(options?.signal?.aborted)throw new Rejection({code:'CANCELLED',message:'Call cancelled before admission',effect:'none',retry:'never'});
+          if(options?.deadline){timestamp(options.deadline);if(Date.parse(options.deadline)<=Date.now())throw new Rejection({code:'TIMED_OUT',message:'Call deadline expired',effect:'none',retry:'never'});}
+        };
+        validate();
         const principal=this.authority.owner(context,name,this.config.ownerActorId);
-        if(options?.signal?.aborted)throw new Rejection({code:'CANCELLED',message:'Call cancelled before admission',effect:'none',retry:'never'});
-        if(options?.deadline){timestamp(options.deadline);if(Date.parse(options.deadline)<=Date.now())throw new Rejection({code:'TIMED_OUT',message:'Call deadline expired',effect:'none',retry:'never'});}
+        preflight?.(input);
         if(write)this.workspace?.assertMigrationReady();
-        if(name==='workspace.initialize')await this.store.ensurePersisted();
+        if(name==='workspace.initialize') {
+          const home=this.workspace?.homeScope(), editor=this.workspace?.editScope();
+          const recovering=!this.store.persisted();
+          await this.store.ensurePersisted();
+          this.fileEffect=false;
+          validate();
+          // Recovery may make the same pending workspace ready. Its editor
+          // revision still has to match, and any previously ready scope must match too.
+          if((home || !recovering) && !sameHomeBinding(this.workspace?.homeScope(),home))
+            reject('STALE_BINDING','Workspace binding changed during initialization');
+          if(editor)this.workspace?.assertEditScope(editor);
+          (options as CoreCallOptions | undefined)?.validateInitialization?.();
+        }
         this.files?.synchronize(name);this.fileEffect=false;canonical(input);
         check(input!==null&&typeof input==='object'&&!Array.isArray(input),'Expected request object');
         if(write)this.workspace?.assertMigrationReady();
@@ -115,7 +136,7 @@ export class CoreRuntime {
         }catch{/* Committed configuration remains authoritative. */}
         return {ok:true,value:structuredClone(value)};
       } catch(error){
-        return {ok:false,error:this.fileEffect?{code:'OUTCOME_UNKNOWN',message:'Workspace file changed; refresh to reconcile the acknowledged state',effect:'unknown',retry:'reconcile'}:error instanceof Rejection?error.detail:error instanceof TypeError
+        return {ok:false,error:this.fileEffect?unknownEffect('OUTCOME_UNKNOWN', 'Workspace file changed; refresh to reconcile the acknowledged state'):error instanceof Rejection?error.detail:error instanceof TypeError
           ?{code:'INVALID_ARGUMENT',message:'Malformed request object',effect:'none',retry:'never'}
           :{code:'INTERNAL',message:'Core operation failed; inspect local diagnostics',effect:'none',retry:'never'}};
       }

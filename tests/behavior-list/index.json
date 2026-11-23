@@ -1475,9 +1475,470 @@
       ],
       "level": "L2",
       "file": "tests/behavior-list/concepts-economy-settings.test.mjs",
-      "name": "设置页保存种子和堆肥价格，排除只读价格并用原请求重试",
+      "name": "设置页保存种子和堆肥价格，排除只读价格并按原号查证遗失回包",
       "l1Stage": "阶段 2",
       "families": []
+    },
+    {
+      "id": "3-SAFETY-01",
+      "categories": [
+        "送达与记忆召回分开"
+      ],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "六个外围入口全关时原生聊天、Memory、身体与钱包仍可用",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-SAFETY-02",
+      "categories": [
+        "计划续行"
+      ],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "反序挂载、逐关和重载六个外围入口时在途生活计划继续且可撤销资源随入口切换",
+      "l1Stage": "阶段 3",
+      "families": [
+        "关闭后晚到的录音与取消"
+      ]
+    },
+    {
+      "id": "3-SAFETY-03",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 写入后截断回包，重载后凭原号核对 Body 持久回执且只生效一次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-SAFETY-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 在已收到请求但尚未准入写入时取消，Body 没有回执或效果",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 已准入但尚未写入时取消，Body 应保持零效果",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 回到 A 后丢弃旧 A 的读写和通知，新窗口只接收当前代次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Room 和 Console 兼容回包保留同一活动的播放描述",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-04",
+      "categories": [],
+      "level": "L2",
+      "file": "dist/tests/regressions/mapped-playback.test.js",
+      "name": "mixed feelings share the same priority and sampled Room and Desktop frames",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-VOICE-01",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "Voice 与 Room 分别撤销时，旧录音结束且重载后只接受新识别",
+      "l1Stage": "阶段 3",
+      "families": ["关闭后晚到的录音与取消"]
+    },
+    {
+      "id": "3-VOICE-02",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "桌宠和 Room 复用语音登记，缺组件或只有合成时沿用原有回包",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-VOICE-03",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "启用 QQ 语音但 Voice 缺席时，一条语音回复降级为一条纯文字",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-VOICE-04",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "关闭 Channels 时，即使查询尚未结束也会立即取消 QQ 语音",
+      "l1Stage": "阶段 3",
+      "families": ["关闭后晚到的录音与取消"]
+    },
+    {
+      "id": "3-ROOM-IMAGES-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 与桌宠图片分目录准入，重建附件后可从原副本恢复",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-IMAGES-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 与桌宠拒绝空图、越界及取消，保留各自大小上限",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-IMAGES-03",
+      "categories": [
+        "换目录时在途请求不写旧目录"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 图片准入返回时复核绑定代次，原 A 的结果不会写入新 A",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-IMAGES-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/room-images.test.mjs",
+      "name": "Room 图片拒绝越过目录所有者的符号链接",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CHANNELS-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/channels.test.mjs",
+      "name": "Channels 只刷新当前绑定并跟随 home 写入、运行、暂停和卸载",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CHANNELS-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/channels.test.mjs",
+      "name": "钱包的 world.changed 刷新不发送 QQ 主动消息",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠原入口装载后，吃饭请求应能调用已注册的 Body",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-02",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠两个并发吃饭请求只在 Body 投喂一次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠吃饭请求在 Body 准入读取时取消，保持零投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠吃饭准入读失败时，Body 不按旧空闲状态投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-05",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠投喂提交后取消，重载后在新活动中按原号核对",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-06",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠在 Body 缺席时拒绝吃饭，重新挂载后恢复准入",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-07",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠吃饭准入在 A 回到 A 后拒绝旧请求",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-08",
+      "categories": [
+        "同请求重试不重复生效"
+      ],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠投喂写入前复核占用锁，已提交结果仍可按原号核对",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 卸载后实际请求应找不到 Connection 路由",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 重载后 Connection 对同一路由应只登记一次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 旧外观设置在 Desktop 缺席、挂载和卸载时都可读",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "Console 丢弃卸载前的迟到回包并透传结构化设置错误",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-05",
+      "categories": ["同请求重试不重复生效"],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "原号查证区分已提交、同号异内容和无证据，显式放弃保留原编号",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-06",
+      "categories": ["效果已落盘后结算失败再重启"],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "Console 投喂只查不动，Body 部分提交只由显式同号重试续完",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CHANNELS-04",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/regressions/mapped-channel-path-binding.test.mjs",
+      "name": "queued world notice cannot reuse the same workspace after its binding generation changes",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-VOICE-05",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "撤销在途的 QQ 语音合成不会改发文字",
+      "l1Stage": "阶段 3",
+      "families": [
+        "关闭后晚到的录音与取消"
+      ]
+    },
+    {
+      "id": "3-ROOM-CHAT-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "a late Room transcript restore cannot create recovery data in the replacement workspace",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-CHAT-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "roomChat cancels the active turn and stops flushing when its binding generation changes",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-CHAT-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "roomTelevision cancels the active turn and stops flushing when its binding generation changes",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-VOICE-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "a Room voice request checks the original binding at provider admission",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-GARDEN-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-garden-tool.test.mjs",
+      "name": "native garden care returns the same playback as the Room window after acceptance",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-07",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "Console 钱包写入与四个恢复入口拒绝上一代绑定的请求",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-08",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "出售回执可以按原号查证与重放且只到账一次",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-09",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "余额不足或配置版本过期的明确拒绝释放钱包且原号不会后来执行",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-10",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "Console 已提交但遗失的回包在重启和重开钱包后仍可按原号查证",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-09",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠不在伙伴到达主人指定位置的停留期间投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-DESKTOP-FEED-10",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-r7.test.mjs",
+      "name": "桌宠同号查到原播放编号并在移除桌宠后核对已提交的投喂",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-LIFE-PAUSE-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/living/living-lifecycle.test.mjs",
+      "name": "显式关闭 Life 在计划读取失败时仍关闭 Body 自治",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-11",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/behavior-list/console-wallet.test.mjs",
+      "name": "Console 钱包已到账后换绑仍可按原号查证",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-CONSOLE-12",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/regressions/mapped-sleeping-inventory.test.mjs",
+      "name": "cancelled reply after a wallet commit preserves the original transfer",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-VOICE-06",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/presentation-voice.test.mjs",
+      "name": "回到 A 后取消旧 QQ 合成并保持零送达",
+      "l1Stage": "阶段 3",
+      "families": [
+        "关闭后晚到的录音与取消"
+      ]
     }
   ]
 }

@@ -2,16 +2,17 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,dirname,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {join,dirname} from 'node:path';
+import {compiledURL} from '../fixtures/playback.mjs';
 import {syncBuiltinESMExports} from 'node:module';
-import {runInNewContext} from 'node:vm';
+import {setImmediate} from 'node:timers/promises';
+import {randomUUID} from 'node:crypto';
+import {panelNodes,renderEconomyPanel} from '../behavior-list/economy-panel.mjs';
 import childProcess from 'node:child_process';
 import net from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
 import tls from 'node:tls';
-import ts from 'typescript';
 
 const forbidden=[],restore=[];
 function block(object,key) {
@@ -25,13 +26,13 @@ for(const [object,keys] of [[net,['connect','createConnection']],[net.Socket.pro
 syncBuiltinESMExports();
 after(()=>{for(const undo of restore.reverse())undo();syncBuiltinESMExports();assert.deepEqual(forbidden,[]);});
 
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {createCore}=await import(new URL('../../core/index.js',playbackURL));
-const {digest}=await import(new URL('../../core/storage.js',playbackURL));
-const {CompanionBehavior}=await import(new URL('./plugin.js',playbackURL));
-const {CompanionEconomy}=await import(new URL('../economy/plugin.js',playbackURL));
-const {PersistentLifePlan}=await import(new URL('../plan/plan.js',playbackURL));
-const {settingsHandler}=await import(new URL('../../console/settings.js',playbackURL));
+const {createCore}=await import(compiledURL('core/index.js'));
+const {digest}=await import(compiledURL('core/storage.js'));
+const {CompanionBehavior}=await import(compiledURL('living/body/plugin.js'));
+const {CompanionEconomy}=await import(compiledURL('living/economy/plugin.js'));
+const {LivingView}=await import(compiledURL('living/index.js'));
+const {PersistentLifePlan}=await import(compiledURL('living/plan/plan.js'));
+const {settingsHandler}=await import(compiledURL('console/settings.js'));
 const meal='food:improved-meal',requestId='sleeping-inventory-meal';
 const operation=id=>'owner-food:'+digest(id).slice(7,55);
 const value=result=>{assert.equal(result.ok,true,JSON.stringify(result.error));return result.value;};
@@ -50,15 +51,22 @@ async function fixture(t) {
   const logger=Object.assign(()=>logger,{warn:(...args)=>warnings.push(args),info(){},error(){}});
   const ctx={get:name=>services.get(name),on(name,receive){const set=listeners.get(name)??new Set();listeners.set(name,set);set.add(receive);return()=>set.delete(receive);},
     emit(name,...args){for(const receive of listeners.get(name)??[])receive(...args);},logger};
-  services.set('petLife',{running:()=>true,bodyClockState:()=>({enabled:true,restoreElapsed:false})});
+  services.set('petLife',{running:()=>true,bodyClockState:()=>({enabled:true,restoreElapsed:false}),noticeDomainChange(){}});
   const start=()=>{
     economy=new CompanionEconomy(ctx,host,{body:()=>body,plan:()=>services.get('petLife')});services.set('petEconomy',economy);
-    body=new CompanionBehavior(ctx,host,{economy:()=>economy,plan:()=>services.get('petLife')});services.set('petBehavior',body);
+    economy.prepare(registered);
+    host.native.consoleOperations.register('economy',economy.consoleOperations());
+    const view=new LivingView({economy:()=>economy,plan:()=>services.get('petLife')},undefined,undefined,undefined,
+      binding=>ctx.emit('world.changed',binding));
+    body=new CompanionBehavior(ctx,host,view);body.activate();services.set('petBehavior',body);
   };
   start();
   const signal=new AbortController().signal,peer={signal,principal:{kind:'owner'}};
-  const handler=settingsHandler(()=>host,()=>registry,undefined,undefined,undefined,undefined,undefined,undefined,undefined,()=>economy);
+  const handler=settingsHandler(()=>host,()=>registry,undefined,()=>economy);
   const call=(id=requestId,itemId=meal)=>handler('economyAction',{requestId:id,input:{workspaceId:registered.id,action:{kind:'feed',itemId,quantity:1}}},signal,peer);
+  const recover=(endpoint,id=requestId)=>handler(endpoint,{
+    requestId:'fixture-'+endpoint,input:{workspaceId:registered.id,requestId:id},
+  },signal,peer);
   value(await handler('economyAction',{requestId:'fixture-gift',input:{workspaceId:registered.id,action:{kind:'gift',itemId:meal,quantity:1}}},signal,peer));
   await body.act(registered.id,'sleep','fixture-sleep','desktop');
   let home=await body.roomState(registered.id);t.mock.timers.setTime(Date.now()+Math.ceil(home.her.etaMs)+1);home=await body.roomState(registered.id);
@@ -73,7 +81,7 @@ async function fixture(t) {
   const inventory=()=>store().snapshot().inventory.find(row=>row.itemId===meal);
   const terminal=result=>{const execution=value(result).execution;assert.equal(execution.status,'failed');assert.equal(execution.phase,'completed');assert.match(execution.reason,/先叫醒/);return execution;};
   t.after(async()=>{await body.close();economy.close();await host.close();fs.rmSync(root,{recursive:true,force:true});assert.deepEqual(forbidden,[]);});
-  return {repo,ctx,services,signal,peer,handler,call,terminal,plan,read,state,store,inventory,homeFile,
+  return {repo,ctx,services,signal,peer,handler,call,recover,terminal,plan,read,state,store,inventory,homeFile,
     get host(){return host;},get body(){return body;},get economy(){return economy;},
     async reopen(){await body.close();economy.close();await host.close();host=createCore(config);assert.equal(host.workspace.status().state,'ready');start();await body.roomState(registered.id);},
     async wake(){await body.act(registered.id,'wake','fixture-wake','desktop');t.mock.timers.setTime(Date.now()+20000);await body.roomState(registered.id);assert.equal(state().asleep,false);},
@@ -155,32 +163,72 @@ test('a failed atomic Body checkpoint commits neither refusal receipt nor fact a
   assert.equal(fs.readFileSync(f.homeFile,'utf8'),before);assert.equal(f.state().plannedExecutions[operation(requestId)],undefined);
   assert.equal(f.state().interactionReceipts?.[digest(requestId)],undefined);assert.deepEqual(f.store().snapshot(),stock);assert.deepEqual(f.store().ledger(),ledger);
   assert.equal(f.store().itemUse(operation(requestId)),undefined);deny.mock.restore();
+  const replay = await f.call();
+  assert.equal(replay.ok,false);assert.equal(replay.error.code,'OUTCOME_UNKNOWN');
+  assert.equal(fs.readFileSync(f.homeFile,'utf8'),before);
+  assert.deepEqual(value(await f.recover('economyRetry')),{state:'no-evidence'});
   f.terminal(await f.call());denialFact(f);assert.equal(f.inventory().quantity,1);assert.equal(f.inventory().reserved,0);
 });
 
 test('a lost Settings response after the refusal checkpoint retains the same terminal result for an awake retry',async t=>{
   const f=await fixture(t),caller=new AbortController();let committed=false;
-  const stop=f.ctx.on('pet/behavior.changed',()=>{
+  const stop=f.ctx.on('world.changed',()=>{
     if(f.state().plannedExecutions[operation(requestId)]?.status==='failed'){committed=true;caller.abort();}
   });
   const result=await f.handler('economyAction',{requestId,input:{workspaceId:'workspace',action:{kind:'feed',itemId:meal,quantity:1}}},caller.signal,f.peer);
   stop();assert.equal(committed,true);assert.equal(result.ok,false);
+  assert.equal(result.error.effect,'unknown');assert.equal(result.error.retry,'reconcile');
   const row=f.read().plannedExecutions[operation(requestId)],fact=denialFact(f);
   assert.equal(row.status,'failed');assert.equal(f.store().itemUse(operation(requestId)),undefined);
   await f.wake();f.terminal(await f.call());assert.deepEqual(f.read().plannedExecutions[operation(requestId)],row);
   assert.deepEqual(denialFact(f),fact);assert.equal(f.inventory().quantity,1);assert.equal(f.inventory().reserved,0);
 });
 
-test('the existing Economy UI clears the sleeping request and displays wake-first from the terminal Settings receipt',async t=>{
-  const f=await fixture(t),source=fs.readFileSync('src/console/client.js','utf8'),tree=ts.createSourceFile('actual-client.js',source,ts.ScriptTarget.Latest,true);
-  let send;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text==='send'&&node.parameters[0]?.name.getText(tree)==='operation')send=node.getText(tree);ts.forEachChild(node,visit);}visit(tree);assert.ok(send);
-  const storage=new Map(),ui={pending:null,fault:'',feedback:'',busy:false},operationRequest={endpoint:'economyAction',requestId,input:{workspaceId:'workspace',action:{kind:'feed',itemId:meal,quantity:1}}};
-  const scope={locked:{current:false},unresolved:{current:null},lifetime:{current:{signal:f.signal}},storageKey:'fixture-pending',
-    localStorage:{setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
-    setBusy:value=>{ui.busy=value;},setFault:value=>{ui.fault=value;},setFeedback:value=>{ui.feedback=value;},setPending:value=>{ui.pending=value;},setEdit(){},setAmount(){},setNote(){},setImported(){},setTitle(){},
-    request:async(endpoint,input,signal,id)=>{const result=await f.handler(endpoint,{requestId:id,input},signal,f.peer);if(!result.ok)throw Object.assign(Error(result.error.message),result.error);return result.value;},refresh:async()=>{},
+test('EconomyPanel clears a terminal sleeping reply and tells the owner to wake her first',async t=>{
+  const f=await fixture(t),workspaceId='workspace';
+  const page=renderEconomyPanel(async(endpoint,input,signal,id=randomUUID())=>{
+    if(endpoint==='economyView')
+      return f.economy.snapshot(input.workspaceId,()=>signal.throwIfAborted(),{includeWritableKeys:true});
+    const result=await f.handler(endpoint,JSON.parse(JSON.stringify({requestId:id,input})),signal,f.peer);
+    if(!result.ok)throw Object.assign(Error(result.error.message),result.error);
+    return result.value;
+  },workspaceId);
+  page.render();t.after(page.mount());await setImmediate();
+
+  const [feed]=panelNodes(page.render(),node=>node.type==='details'&&node.props.label==='立即投喂');
+  const [food]=panelNodes(feed,node=>node.type==='select');
+  assert.equal(food.props.disabled,false);
+  food.props.onChange({target:{value:meal}});
+  const feedButton=()=>panelNodes(page.render(),node=>node.type==='button'&&node.children[0]==='立即投喂 1 份')[0];
+  assert.equal(feedButton().props.disabled,false);
+  await feedButton().props.onClick();
+
+  const rendered=page.render();
+  const [fault]=panelNodes(rendered,node=>node.props?.role==='alert');
+  const [feedback]=panelNodes(rendered,node=>node.props?.role==='status');
+  assert.match(fault.children[0],/先叫醒/);assert.match(feedback.children[0],/未完成/);
+  assert.equal(panelNodes(rendered,node=>node.type==='button'&&node.children[0]==='重试原操作').length,0);
+  assert.deepEqual(value(await f.handler('economyPending',{requestId:'pending-after-refusal',input:{workspaceId}},f.signal,f.peer)),[]);
+  assert.equal(feedButton().props.disabled,false,'A confirmed no-effect refusal must not block the next wallet operation');
+  assert.equal(f.state().asleep,true);assert.equal(f.inventory().quantity,1);assert.equal(f.inventory().reserved,0);
+});
+
+test('cancelled reply after a wallet commit preserves the original transfer',async t=>{
+  const f=await fixture(t), caller=new AbortController(), original='transfer-before-cancel';
+  const before=f.store().snapshot().balance;
+  let committed=false;
+  f.services.get('petLife').noticeDomainChange=()=>{
+    committed=f.store().ledger().items.some(row=>row.requestId===original);
+    if(committed)caller.abort();
   };
-  runInNewContext(send+'\nglobalThis.sendActual=send;',scope);await scope.sendActual(operationRequest);
-  assert.equal(ui.pending,null);assert.equal(scope.unresolved.current,null);assert.equal(storage.has('fixture-pending'),false);assert.equal(ui.busy,false);
-  assert.match(ui.fault,/先叫醒/);assert.match(ui.feedback,/未完成/);assert.equal(f.state().asleep,true);assert.equal(f.inventory().quantity,1);
+  const input={requestId:original,input:{workspaceId:'workspace',action:{kind:'grant',amount:4}}};
+  const reply=await f.handler('economyAction',input,caller.signal,f.peer);
+  assert.equal(committed,true);
+  assert.equal(reply.ok,false);
+  assert.equal(reply.error.code,'CANCELLED');
+  assert.equal(reply.error.effect,'unknown');
+  assert.equal(reply.error.retry,'reconcile');
+  assert.deepEqual(value(await f.recover('economyCheck',original)),{state:'committed'});
+  assert.equal(value(await f.handler('economyAction',input,f.signal,f.peer)).balance,before+4);
+  assert.equal(f.store().ledger().items.filter(row=>row.requestId===original).length,1);
 });

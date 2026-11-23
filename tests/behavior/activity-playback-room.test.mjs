@@ -2,14 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
-import {pathToFileURL} from 'node:url';
-import {resolve} from 'node:path';
+import {animationMapURL,loadPlayback} from '../fixtures/playback.mjs';
 import ts from 'typescript';
 
-const root = process.env.CHATPET_PLAYBACK_TEST_MODULE || resolve('dist/src/living/body/playback.js');
-const shared = await import(pathToFileURL(root).href);
-const {animationAssets}=await import(new URL('./animation-map.js',pathToFileURL(root)));
-const {resolveActivityPlayback, sampleActivityPlayback} = shared;
+const {resolveActivityPlayback, sampleActivityPlayback} = await loadPlayback();
+const {animationAssets}=await import(animationMapURL);
 const source = readFileSync('vendor/feiyu-room-template/public/room/actor.js', 'utf8');
 const appSource = readFileSync('vendor/feiyu-room-template/public/room/app.js', 'utf8');
 const ast = ts.createSourceFile('actor.js',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);

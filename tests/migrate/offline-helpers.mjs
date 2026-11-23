@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 import { createCore } from '../../dist/src/core/index.js';
+import { CONSOLE_WALLET_IMPORT_FILE } from '../../dist/src/core/storage-migration.js';
 import { EconomyStore } from '../../dist/src/living/economy/store.js';
 import { value } from '../../scripts/fixtures/synthetic-companion.mjs';
 import { backupPlan } from '../../scripts/lib/offline-backup.mjs';
@@ -41,7 +42,10 @@ export async function offlineFixture(t, memory = true, {keepStorageManifest = fa
     assert.equal(value(await host.services.workspace.initialize(request(),{expectedPreferencesRevision:prefs.revision})).state,'ready');
     storageId = host.workspace.storageId();
   } finally {await host.close();}
-  if (!keepStorageManifest) rmSync(join(data, 'storage-manifest.json'));
+  if (!keepStorageManifest) {
+    rmSync(join(data, 'storage-manifest.json'));
+    rmSync(join(data, CONSOLE_WALLET_IMPORT_FILE),{force:true});
+  }
   const write = (file,text) => {mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);};
   write(join(profile,'node_modules/her-world/package.json'),JSON.stringify({name:'her-world',version:'0.1.8',synthetic:true}));
   write(join(profile,'cordis.patch.yml'),'# Synthetic metadata fixture\n');

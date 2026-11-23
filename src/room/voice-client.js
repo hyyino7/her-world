@@ -1,6 +1,6 @@
 // Room supplies a narrow transport; original Pet controls own recording, WAV
 // encoding, transcription UI and speech playback. No second chat runtime.
-import {roomRequest} from './native-room.js';
+import {roomRequest, roomVoiceOperations, roomVoicePath} from './native-room.js';
 
 const shared=window.PetShared, form=document.getElementById('chatForm'), input=document.getElementById('chatInput');
 if (shared && form && input) {
@@ -20,11 +20,11 @@ if (shared && form && input) {
   const voiceFetch=async(resource,options={})=>{
     const url=new URL(resource instanceof Request?resource.url:String(resource),location.href);
     const operation=url.pathname.startsWith(base.pathname+'voice/')?url.pathname.slice((base.pathname+'voice/').length):'';
-    if (url.origin!==base.origin || !['hear','speak','voices'].includes(operation)) return originalFetch.call(window,resource,options);
+    if (url.origin!==base.origin || !roomVoiceOperations.has(operation)) return originalFetch.call(window,resource,options);
     const owner=current;
     if(!owner||!active(owner)||(operation==='hear'&&url.searchParams.get('roomVoiceGeneration')!==owner.token))throw aborted();
     const signal=AbortSignal.any([owner.controller.signal,...(options.signal?[options.signal]:[])]);
-    const response=await roomRequest('/api/room/voice',{method:'POST',body:JSON.stringify({operation,payload:options.body?JSON.parse(options.body):undefined}),signal});
+    const response=await roomRequest(roomVoicePath,{method:'POST',body:JSON.stringify({operation,payload:options.body?JSON.parse(options.body):undefined}),signal});
     const data=await response.json();signal.throwIfAborted();if(!active(owner))throw aborted();
     if (operation==='speak' && response.ok && data.ok!==false && typeof data.audio==='string') {
       const bytes=Uint8Array.from(atob(data.audio),value=>value.charCodeAt(0));

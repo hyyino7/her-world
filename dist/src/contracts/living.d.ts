@@ -33,7 +33,16 @@ export interface WorldSnapshot {
     readonly wallet: WalletView | null;
 }
 /** Invalidate the previous snapshot. This signal is not a persistence receipt. */
-export type WorldChanged = Pick<WorldSnapshot, 'workspaceId' | 'storageId'>;
+export type WorldChanged = Pick<WorldSnapshot, 'workspaceId' | 'storageId'> & {
+    readonly bootId: string;
+    readonly generation: number;
+    readonly bodyOnly?: true;
+    readonly bodyObservation?: Readonly<{
+        bootId: string;
+        revision: Revision;
+    }>;
+};
+export declare function isWorldChangeFor(change: WorldChanged, binding: WorldChanged | undefined): boolean;
 export interface WorldCommandRequest {
     workspaceId: string;
     requestId: RequestContext['requestId'];

@@ -1,3 +1,4 @@
+import { fail, object, requiredText, type ConsoleCall, type ConsoleOperations } from '../../core/tables/console.js';
 import {economyOverview,economyPage} from './tool-context.js';
 import {InFlight, LivingView, mountLivingArea, settleCleanup, withLivingCaller, type LivingPorts, type RecordCommandEffect} from '../index.js';
 import type { Context } from '@deepseek-ai/cordis';
@@ -7,7 +8,9 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { PetCoreHost, WorkspaceTarget } from '../../core/index.js';
-import { bytesDigest, canonical, check, digest, integer, Rejection } from '../../core/storage.js';
+import type { HomeBinding } from '../../core/workspace.js';
+import { bytesDigest, canonical, check, digest, integer, reject, Rejection, unavailable } from '../../core/storage.js';
+import { unknownEffect } from '../../contracts/common.js';
 import { registerWorldContext } from '../../core/native/prompt.js';
 import { OWNER_LIFE_TOOL_SOURCES } from '../../core/native/conversation.js';
 import { isHistoryObject } from '../../core/native/history-maintenance.js';
@@ -17,7 +20,8 @@ import type { PlanTradeOperation } from '../../contracts/behavior.js';
 import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomEconomyPort, RoomFoodReservation } from '../body/room.js';
 import { EconomyStore, projectWallet } from './store.js';
-import type { EconomyConfigurationPatch, ItemUse } from './types.js';
+import { consoleFoodOperationId, legacyWalletDigest, normalizeWalletRequest, walletActionReceipt, type WalletEvidence, type WalletRequest, type WalletState } from './console-requests.js';
+import type { EconomyConfigurationPatch, EconomySnapshot, ItemUse } from './types.js';
 import { installEconomyAccessGuard } from './access.js';
 import type { CompanionFact, CompanionFactActor } from '../../contracts/interaction.js';
 import type { GardenClock } from './garden-clock.js';
@@ -36,11 +40,12 @@ export const economyStateToolDeclaration = {
 /** One synchronous ledger per active Core binding. Body owns effect receipts;
  * this service owns money/items and never creates another assistant runtime. */
 export class CompanionEconomy {
-  private current?: {key:string;binding:{target:WorkspaceTarget};store:EconomyStore};
+  private current?: {key:string;binding:{target:WorkspaceTarget;scope?:HomeBinding};store:EconomyStore};
   private preparationFailure?: {key:string;error:unknown};
   private closed=false;
   private readonly living: LivingView;
   private readonly inFlight = new InFlight();
+  private readonly walletInFlight = new Set<string>();
   constructor(private readonly ctx:Context, readonly host:PetCoreHost, ports:LivingPorts | LivingView = {}) {
     this.living = ports instanceof LivingView ? ports : new LivingView(ports);
   }
@@ -74,21 +79,25 @@ export class CompanionEconomy {
       'Economy requires the current bound workspace');
     const storageId=this.host.workspace.storageId(), companionId=this.host.workspace.runtime.config.companionId;
     const key=canonical({path:target.path,storageId,companionId});
+    const scope=this.host.workspace.homeScope?.();
     this.preparationFailure=undefined;
     if(this.current?.key===key) {
       this.current.store.validate(initializing);
       this.current.binding.target=target;
+      this.current.binding.scope=scope;
       return this.current.store;
     }
     this.current?.store.close();this.current=undefined;
     const metadata=this.host.workspace.runtime.store;
-    const binding={target};
+    const binding={target,scope};
     try {
       const store=new EconomyStore({workspacePath:target.path,storageId,companionId,
         loadLegacyGarden:()=>this.retainedGarden(target,legacyFile),
         walletChanged:()=>{
-          const {id,path}=binding.target;
-          this.living.changed({workspaceId:id,path,storageId});
+          if(binding.scope)this.living.changed(binding.scope);
+        },
+        factsCommitted:()=>{
+          if(binding.scope)this.notifyFacts(binding.scope);
         },
         guard:()=>{this.assertOpen();check(this.host.workspace.status().state!=='migration-required','migration-required');
           check(metadata.persisted(),'Core database is absent or moved');
@@ -174,6 +183,7 @@ export class CompanionEconomy {
         check(item?.kind==='food'&&item.effects,'The selected item is not usable food');
         check(s.snapshot().inventory.some(row=>row.itemId===itemId&&row.available>=1),'No available food remains in inventory');
       },
+      consoleFoodPending:operationId=>checked().consoleRequests.waitsForRetry(operationId),
       foodPresentation:itemId=>{const item=checked().catalog().find(row=>row.id===itemId);return item?.kind==='food'?item.presentationSlot:undefined;},
       reserveFood:(operationId,itemId)=>this.use(checked(),checked().beginUse(operationId,itemId)),
       finishFood:(operationId,proof)=>this.use(checked(),checked().finishUse(operationId,proof)),
@@ -201,8 +211,13 @@ export class CompanionEconomy {
   }
   async snapshot(workspaceId:string,validate:()=>void=()=>{},options:{includeWritableKeys?:boolean}={}) {
     validate();const store=this.bound(workspaceId),{writableKeys,...snapshot}=store.snapshot();validate();
-    return {...snapshot,workspaceId,ledger:store.ledger({limit:80}).items,configurationVersion:String(snapshot.configuration.revision),access,
-      ...(options.includeWritableKeys?{writableKeys}:{})};
+    return {...this.walletSnapshot(store, workspaceId, snapshot),
+      ...(options.includeWritableKeys?{writableKeys,recentRequests:store.consoleRequests.recentCommitted()}:{})};
+  }
+  private walletSnapshot(store: EconomyStore, workspaceId: string, snapshot?: EconomySnapshot) {
+    const {writableKeys: _keys, ...current} = snapshot ? {...snapshot, writableKeys:undefined} : store.snapshot();
+    return {...current, workspaceId, ledger:store.ledger({limit:80}).items,
+      configurationVersion:String(current.configuration.revision), access};
   }
   walletView(workspaceId: string) { return projectWallet(this.bound(workspaceId).snapshot()); }
   worldSnapshot(workspaceId: string) { return this.living.worldSnapshot(this.host, workspaceId); }
@@ -223,11 +238,192 @@ export class CompanionEconomy {
   async acknowledgeFacts(workspaceId:string,ids:readonly string[]):Promise<void> {
     const store=this.bound(workspaceId);store.acknowledgeFacts(ids);check(this.bound(workspaceId)===store,'Economy binding changed');
   }
-  private notifyFacts(workspaceId:string):void {
+  private notifyFacts(scope:HomeBinding):void {
     // Publication is a hint. A committed fact remains available to Life after
     // listener failure, unload or restart; notification cannot undo settlement.
-    try {this.ctx.emit('pet/economy.fact',workspaceId);}
+    try {
+      const plan=this.living.lookup('plan');
+      if(plan)plan.value.noticeDomainChange(scope,()=>!this.closed && this.living.isCurrent() && plan.isCurrent());
+    }
     catch(error){try {this.ctx.logger('chatpet-economy').warn('Committed economic facts await delivery',error);}catch {}}
+  }
+  private openWallet(workspaceId: string) {
+    const status = this.host.workspace.status(), current = this.current;
+    if (this.closed || !this.living.isCurrent() || status.state !== 'ready' || status.target?.id !== workspaceId
+      || current?.binding.target.id !== workspaceId || current.binding.target.path !== status.target.path)
+      unavailable('The bound wallet is not open');
+    current.store.validate();
+    return current.store;
+  }
+  private walletEvidence(store: EconomyStore, id: string, request: WalletRequest): WalletEvidence {
+    const original = store.originalRequest(id);
+    const legacy = legacyWalletDigest(id, request);
+    if (legacy) {
+      if (!original) return {state:'no-evidence'};
+      return original.digest === legacy ? {state:'committed', savedSnapshot:String(original.result)} : {state:'conflict'};
+    }
+    if (original || !('action' in request.input)) return {state:'conflict'};
+    const body = this.living.lookup('body');
+    if (!body?.isCurrent()) unavailable('The original Body owner is not open');
+    const operationId = consoleFoodOperationId(id), use = store.itemUse(operationId);
+    let receipt;
+    try { receipt = body.value.originalFood(this.current!.binding.target.id, operationId); }
+    catch { unavailable('The original Body checkpoint is not available'); }
+    if (use && !receipt || receipt?.applied && !use) unavailable('The original food settlement evidence is incomplete');
+    const itemId = request.input.action.itemId;
+    if (receipt && (receipt.operationId !== operationId || receipt.itemId !== itemId || receipt.requestId !== id
+      || receipt.actor?.kind !== 'owner' || receipt.actor.id !== this.host.workspace.runtime.config.ownerActorId || receipt.actor.channel !== 'settings')
+      || use && (use.opId !== operationId || use.itemId !== itemId || use.quantity !== 1
+        || use.status !== 'reserved' && use.bodyReceiptId !== operationId)) return {state:'conflict'};
+    if (receipt?.applied && receipt.settled && use?.status === 'consumed') return {state:'committed', execution:receipt.execution};
+    if (receipt?.declined && !receipt.applied && (!use || use.status === 'cancelled'))
+      return {state:'no-evidence', declined:true, execution:receipt.execution};
+    return {state:receipt || use ? 'partial' : 'no-evidence'};
+  }
+  private walletUnknown(): never {
+    throw new Rejection(unknownEffect('OUTCOME_UNKNOWN', 'Check the original wallet request before retrying'));
+  }
+  async consoleWrite(endpoint: string, input: unknown, id: string, signal: AbortSignal, validate: () => void): Promise<unknown> {
+    validate();
+    const request = normalizeWalletRequest(endpoint, input);
+    const store = this.bound(request.input.workspaceId);
+    let dispatch = false;
+    validate();
+    const original = store.withConsoleRequests(rows => {
+      const prior = rows.get(id);
+      if (prior && prior.fingerprint !== request.fingerprint) reject('CONFLICT', 'Wallet request ID reused with different input');
+      if (prior?.state === 'abandoned') reject('CONFLICT', 'Wallet request was abandoned');
+      if (this.walletInFlight.has(id)) return this.walletUnknown();
+      const evidence = this.walletEvidence(store, id, request);
+      if (evidence.state === 'conflict') reject('CONFLICT', 'Wallet receipt belongs to different input');
+      if (!prior && rows.pending().length) reject('CONFLICT', 'Resolve the pending wallet requests before starting another');
+      if (!prior) rows.add(id, request);
+      if (!prior || prior.state === 'pending') this.finishWallet(rows, id, request, evidence);
+      dispatch = !prior && evidence.state === 'no-evidence' && !evidence.declined;
+      return evidence;
+    });
+    if (dispatch) return this.dispatchWallet(store, request, id, signal, validate);
+    if (original.state === 'committed' || original.declined) {
+      const saved = original.savedSnapshot === undefined ? undefined : JSON.parse(original.savedSnapshot) as EconomySnapshot;
+      return {...this.walletSnapshot(store, request.input.workspaceId, saved), ...(original.execution ? {execution:original.execution} : {})};
+    }
+    return this.walletUnknown();
+  }
+  async consoleRecover(endpoint: string, workspaceId: string, id: string, acceptNoEvidence: boolean,
+    signal: AbortSignal, validate: () => void) {
+    validate();
+    const store = this.openWallet(workspaceId);
+    if (endpoint === 'economyPending') return store.consoleRequests.pending();
+    const observe = (): {state: WalletState; declined?: boolean} => {
+      const row = store.consoleRequests.get(id);
+      if (!row) {
+        if (store.originalRequest(id) || store.itemUse(consoleFoodOperationId(id))) unavailable('No registered fingerprint for this wallet request');
+        return {state:'no-evidence' as const};
+      }
+      if (!row.request) return {state:row.state === 'declined' ? 'no-evidence' : row.state === 'committed' ? 'committed' : 'abandoned'};
+      return this.walletEvidence(store, id, row.request);
+    };
+    if (endpoint === 'economyCheck') return {state:observe().state};
+    validate();
+    const request = store.withConsoleRequests(rows => {
+      if (this.walletInFlight.has(id)) reject('CONFLICT', 'Wallet request is still running');
+      const row = rows.get(id);
+      if (!row) reject('NOT_FOUND', 'Original wallet request does not exist');
+      const outcome = observe();
+      if (!row.request) return {state:outcome.state} as const;
+      if (outcome.state === 'conflict') reject('CONFLICT', 'Wallet receipt belongs to different input');
+      if (endpoint === 'economyAbandon') {
+        if (outcome.state !== 'no-evidence' || !outcome.declined && !acceptNoEvidence)
+          reject('CONFLICT', 'Original wallet request cannot be abandoned');
+        rows.finish(id, row.fingerprint, 'abandoned');
+        return {state:'abandoned'} as const;
+      }
+      if (outcome.state === 'committed' || outcome.declined) {
+        this.finishWallet(rows, id, row.request, outcome);
+        return {state:outcome.state};
+      }
+      return row.request;
+    });
+    if ('state' in request) return request;
+    await this.dispatchWallet(store, request, id, signal, validate, workspaceId);
+    validate();
+    return {state:observe().state};
+  }
+
+  consoleOperations(): ConsoleOperations {
+    const registeredScope = async (call: ConsoleCall, id: string) => {
+      call.checkBinding(id,true);
+      const binding = this.host.workspace.status(), registered = call.getWorkspaces()?.get(id);
+      if (!registered || binding.target?.path !== registered.path) fail('STALE_BINDING');
+      const validate = () => {
+        call.validate();
+        const current = this.host.workspace.status();
+        if (call.getWorkspaces()?.get(id) !== registered || current.revision !== binding.revision
+          || current.sourceRevision !== binding.sourceRevision) fail('STALE_BINDING');
+      };
+      const available = await registered.status();
+      validate();
+      if (available !== 'ok') fail('NOT_FOUND');
+      return validate;
+    };
+    const recovery = (endpoint: string, keys: string[]) => async (call: ConsoleCall) => {
+      const {workspaceId,requestId='',acceptNoEvidence=false} = object(call.input,['workspaceId',...keys]);
+      const id = requiredText(workspaceId,200);
+      if (typeof requestId !== 'string' || requestId.length > 160 || typeof acceptNoEvidence !== 'boolean') fail('INVALID_ARGUMENT');
+      const validate = await registeredScope(call,id);
+      validate();
+      const value = await this.consoleRecover(endpoint,id,requestId,acceptNoEvidence,call.signal,validate);
+      validate();
+      return value;
+    };
+    return {operations:{
+      economyPending:recovery('economyPending',[]),
+      economyCheck:recovery('economyCheck',['requestId']),
+      economyRetry:recovery('economyRetry',['requestId']),
+      economyAbandon:recovery('economyAbandon',['requestId','acceptNoEvidence']),
+      economyView:async call => {
+        const id = requiredText(object(call.input,['workspaceId']).workspaceId,200);
+        const validate = await registeredScope(call,id);
+        validate();
+        const value = await this.snapshot(id,validate,{includeWritableKeys:true});
+        validate();
+        return value;
+      },
+    }};
+  }
+  private finishWallet(rows: EconomyStore['consoleRequests'], id: string, request: WalletRequest,
+    evidence: {state: WalletState; declined?: boolean}) {
+    if (evidence.state === 'committed' || evidence.declined)
+      rows.finish(id, request.fingerprint, evidence.declined ? 'declined' : 'committed');
+  }
+  private dispatchWallet(store: EconomyStore, request: WalletRequest, id: string, signal: AbortSignal, validate: () => void,
+    workspaceId = request.input.workspaceId) {
+    this.walletInFlight.add(id);
+    return this.inFlight.run(async () => {
+      const outcome = {effect:'none'};
+      const recordEffect: RecordCommandEffect = effect => { outcome.effect = effect; };
+      try {
+        const {input} = request;
+        const value = 'action' in input ? await this.ownerAction(workspaceId, input.action, id, signal, validate, undefined, recordEffect)
+          : await this.settings(workspaceId, input.expectedVersion, input.next, id, signal, validate, recordEffect);
+        validate();
+        const evidence = this.walletEvidence(store, id, request);
+        if (evidence.state === 'committed' || evidence.declined)
+          store.withConsoleRequests(rows => this.finishWallet(rows, id, request, evidence));
+        return value;
+      } catch (error) {
+        if (outcome.effect !== 'none')
+          throw new Rejection(unknownEffect(signal.aborted ? 'CANCELLED' : 'OUTCOME_UNKNOWN', 'Check the original wallet request before retrying'));
+        const atomic = !('action' in request.input) || request.input.action.kind !== 'feed';
+        if (atomic && error instanceof Rejection && error.detail.effect === 'none'
+          && error.detail.retry !== 'same_request' && !signal.aborted) {
+          validate();
+          if (this.walletEvidence(store,id,request).state === 'no-evidence')
+            store.withConsoleRequests(rows => this.finishWallet(rows,id,request,{state:'no-evidence',declined:true}));
+        }
+        throw error;
+      } finally { this.walletInFlight.delete(id); }
+    });
   }
   async ownerAction(workspaceId:string,action:any,requestId:string,signal:AbortSignal,validate:()=>void=()=>{},trustedActor?:CompanionFactActor,
     recordEffect?: RecordCommandEffect) {
@@ -240,10 +436,10 @@ export class CompanionEconomy {
       guard();check(this.bound(workspaceId)===store,'Economy binding changed');
       const snapshot=await this.snapshot(workspaceId,guard);return {...snapshot,...(execution?{execution}:{})};
     };
-    switch(action.kind) {
-      case 'grant':store.grantMoney(requestId,action.amount,typeof action.note==='string'&&action.note.trim()?action.note:undefined,actor);break;
-      case 'gift':store.giftItem(requestId,action.itemId,quantity,typeof action.note==='string'&&action.note.trim()?action.note:undefined,actor);break;
-      case 'buy': case 'sell': {
+    switch(walletActionReceipt(requestId, action).operation) {
+      case 'grant-money':store.grantMoney(requestId,action.amount,typeof action.note==='string'&&action.note.trim()?action.note:undefined,actor);break;
+      case 'gift-item':store.giftItem(requestId,action.itemId,quantity,typeof action.note==='string'&&action.note.trim()?action.note:undefined,actor);break;
+      case 'purchase': case 'sell': {
         recordEffect?.('unknown');
         try {
           if(action.kind==='buy')store.purchase(requestId,action.itemId,quantity,actor);
@@ -252,30 +448,31 @@ export class CompanionEconomy {
           if(error instanceof Rejection)recordEffect?.('none');
           throw error;
         }
-        recordEffect?.('partial');
         break;
       }
-      case 'importReading': {
+      case 'import-reading': {
         const sourceName=action.source?.name;
         check(typeof sourceName==='string'&&sourceName.length>0&&sourceName.length<=200,'Invalid reading source');
         store.importBook(requestId,{itemId:`reading:owner-${digest(requestId).slice(7,39)}`,title:action.title,text:action.content,...(action.format===undefined?{}:{format:action.format}),source:{kind:'owner-import',name:sourceName}},actor);break;
       }
-      case 'feed': {
+      case 'consume': {
         integer(quantity,'food quantity',1,1);
         const body=this.living.lookup('body');check(body,'The shared Body is unavailable');
         const admit=()=>{guard();check(body.isCurrent(),'The shared Body changed');};
         return this.inFlight.run(async()=>{
           const execution=await withLivingCaller(admit,()=>body.value.consumeFood(workspaceId,
-            {operationId:`owner-food:${digest(requestId).slice(7,55)}`,itemId:action.itemId,interaction:{requestId,actor}},guard));
+            {operationId:consoleFoodOperationId(requestId),itemId:action.itemId,interaction:{requestId,actor}},guard));
+          recordEffect?.('partial');
           admit();return finish(execution);
         });
       }
       default:throw Error('Unknown economic action');
     }
-    this.notifyFacts(workspaceId);
+    recordEffect?.('partial');
     return finish();
   }
-  async settings(workspaceId:string,expectedVersion:string,next:EconomyConfigurationPatch,requestId:string,signal:AbortSignal,validate:()=>void=()=>{}) {
+  async settings(workspaceId:string,expectedVersion:string,next:EconomyConfigurationPatch,requestId:string,signal:AbortSignal,validate:()=>void=()=>{},
+    recordEffect?: RecordCommandEffect) {
     signal.throwIfAborted();validate();const store=this.bound(workspaceId);
     const version=Number(expectedVersion);integer(version,'configuration version',1);
     // UI may send the complete edited configuration. Schema/revision are CAS
@@ -290,6 +487,7 @@ export class CompanionEconomy {
       if(body)await withLivingCaller(admit,()=>body.value.snapshot(workspaceId));
       admit();check(this.bound(workspaceId)===store,'Economy binding changed');
       store.configure(requestId,patch,version,this.gardenClock(workspaceId));
+      recordEffect?.('partial');
       admit();return this.snapshot(workspaceId,validate);
     });
   }
@@ -302,7 +500,6 @@ export const name='22-Economy';
 export const inject=['petCore','petWorld','tools','systemPrompt','agents'];
 declare module '@deepseek-ai/cordis' {
   interface Context {petEconomy:CompanionEconomy}
-  interface Events {'pet/economy.fact'(workspaceId:string):void}
 }
 export function apply(ctx:Context) {
   const host=ctx.petCore;
@@ -322,6 +519,7 @@ export function apply(ctx:Context) {
       status:()=>service.capabilityStatus(),
     }).revoke);
     ctx.provide('petEconomy',service);
+    ctx.effect(() => host.native.consoleOperations.register('economy', service.consoleOperations(), ctx).revoke);
     installEconomyAccessGuard(ctx,()=>{
       const directory=service.protectedDirectory();
       return directory ? [directory, economyAdoptionPath(resolve(directory, '../../..'))] : undefined;

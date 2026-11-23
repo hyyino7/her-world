@@ -1,3 +1,4 @@
+import { fail, object, requiredText } from '../../core/tables/console.js';
 import { reviewDiaryStatus } from './review-completion.js';
 import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,7 +22,7 @@ import { readFactReferences } from './facts.js';
 import { createLifeSourceAdapter } from './tool-policy.js';
 import { recordGardenPause } from '../economy/garden-clock.js';
 import { lifeDirectories, readLifeControl, readLifeSettings, safeLifeFile } from './control-file.js';
-import { InFlight, LivingView, mountLivingArea, settleCleanup, withLivingCaller } from '../index.js';
+import { InFlight, LivingView, mountLivingArea, sameHomeBinding, settleCleanup, withLivingCaller } from '../index.js';
 import { lookupLifeOutlet } from '../outlets.js';
 /** The upstream fact layer is the only state writer. World owns scheduling,
  * journal and native home recovery; Core owns every model step and Memory. */
@@ -43,6 +44,7 @@ export class CompanionLife {
     fault;
     serial = Promise.resolve();
     timer;
+    tickGuards = [];
     subscriptions = [];
     sourceRegistration;
     timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -74,10 +76,6 @@ export class CompanionLife {
         });
         const changed = () => this.scheduleTick();
         this.subscriptions.push(ctx.on('pet/core.changed', changed));
-        this.subscriptions.push(ctx.on('pet/behavior.changed', event => { if (event.reason !== 'observation')
-            changed(); }));
-        this.subscriptions.push(ctx.on('pet/economy.fact', changed));
-        this.subscriptions.push(ctx.on('pet/life.changed', changed));
         this.scheduleTick();
     }
     registerSource() {
@@ -85,14 +83,35 @@ export class CompanionLife {
             && (!('facts' in message.source) || this.runtime.acceptsFactMessage(id, message))));
     }
     /** Domain changes and native alarms wake Life; an idle world needs no pump. */
-    scheduleTick() {
-        if (!this.isOpen() || this.timer)
+    noticeDomainChange(scope, sourceCurrent) {
+        this.scheduleTick(scope, sourceCurrent);
+    }
+    scheduleTick(scope = this.host.workspace.homeScope(), sourceCurrent = () => true) {
+        const current = () => sourceCurrent() && sameHomeBinding(this.host.workspace.homeScope(), scope);
+        if (!this.isOpen() || !current())
+            return;
+        this.tickGuards.push(current);
+        if (this.timer)
             return;
         this.timer = setTimeout(() => {
             this.timer = undefined;
-            void this.enqueue(() => this.tick()).catch(error => { this.fault = String(error); });
+            const guards = this.tickGuards.splice(0);
+            if (guards.some(guard => guard()))
+                void this.enqueue(async () => { if (guards.some(guard => guard()))
+                    await this.tick(); }).catch(error => { this.fault = String(error); });
         }, 0);
         this.timer.unref();
+    }
+    notifyLife(scope, synchronizeBody = true) {
+        if (!this.isOpen() || !sameHomeBinding(this.host.workspace.homeScope(), scope))
+            return;
+        this.noticeDomainChange(scope, () => this.isOpen());
+        if (!synchronizeBody)
+            return;
+        const body = this.living.lookup('body');
+        if (body)
+            void body.value.syncLifeClock(this, () => this.isOpen() && body.isCurrent() &&
+                sameHomeBinding(this.host.workspace.homeScope(), scope));
     }
     native() { return this.ctx; }
     isOpen() { return !this.closed && this.living.isCurrent(); }
@@ -109,8 +128,14 @@ export class CompanionLife {
     enqueue(work, { finishOnClose = false } = {}) {
         if (!this.isOpen())
             return Promise.reject(Error('生活组件已停止'));
-        const next = this.serial.then(() => { if (!finishOnClose)
-            this.assertOpen(); return work(); });
+        const scope = this.host.workspace.homeScope();
+        const next = this.serial.then(() => {
+            if (!finishOnClose)
+                this.assertOpen();
+            if (!sameHomeBinding(this.host.workspace.homeScope(), scope))
+                reject('STALE_BINDING', '生活工作区已切换');
+            return work();
+        });
         this.serial = next.catch(() => { });
         return next;
     }
@@ -126,7 +151,7 @@ export class CompanionLife {
             return false;
         const current = this.current();
         return current?.id === bound.id && current.path === bound.path
-            && this.host.workspace.homeScope()?.generation === bound.scope.generation
+            && sameHomeBinding(this.host.workspace.homeScope(), bound.scope)
             && this.host.workspace.storageId() === bound.plan.storageId
             && this.host.workspace.runtime.identity().companionId === bound.plan.companionId;
     }
@@ -146,7 +171,7 @@ export class CompanionLife {
         if (!current || current.id !== workspaceId)
             return;
         if (this.binding?.id === current.id && this.binding.path === current.path
-            && this.binding.plan.storageId === this.host.workspace.storageId())
+            && sameHomeBinding(this.host.workspace.homeScope(), this.binding.scope))
             return { enabled: this.enabled, restoreElapsed: this.enabled && this.restoredClock, ...(this.pauses && { pauses: this.pauses }) };
         const saved = readLifeControl(current.path);
         const enabled = saved?.enabled ?? false;
@@ -176,18 +201,18 @@ export class CompanionLife {
         this.assertOpen();
         if (this.binding ? this.isCurrentBinding(this.binding) : !this.current())
             return;
+        const scope = this.host.workspace.homeScope();
         await this.stopRuntime();
         this.assertOpen();
+        if (!sameHomeBinding(this.host.workspace.homeScope(), scope))
+            reject('STALE_BINDING', '生活工作区已切换');
         this.binding = undefined;
         this.enabled = false;
         this.restoredClock = false;
         this.pauses = undefined;
         this.fault = undefined;
         const current = this.current();
-        if (!current)
-            return;
-        const scope = this.host.workspace.homeScope();
-        if (!scope)
+        if (!current || !scope)
             return;
         const directory = this.directory(current.path);
         for (const name of ['home.json', 'life.json'])
@@ -198,7 +223,10 @@ export class CompanionLife {
         this.pauses = settings?.pauses;
         this.preferences = settings?.preferences ?? { ...defaultLifePreferences };
         const storageId = scope.storageId;
-        const home = createHomeStore(createLifeStore(directory, this.timeZone), directory, this.host.workspace, scope, () => this.ctx.emit('pet/life.changed'));
+        const home = createHomeStore(createLifeStore(directory, this.timeZone), directory, this.host.workspace, scope, () => {
+            this.living.changed(scope);
+            this.notifyLife(scope);
+        });
         const bound = { id: current.id, path: current.path, directory, library: this.host.records.getLibrary(current.id),
             plan: new PersistentLifePlan(directory, this.host.workspace.runtime.identity().companionId, storageId, this.timeZone, () => this.isCurrentBinding(bound), () => this.notifyWorld(bound)), scope, home };
         this.binding = bound;
@@ -224,7 +252,7 @@ export class CompanionLife {
         }
     }
     notifyWorld(bound) {
-        this.living.changed({ workspaceId: bound.id, path: bound.path, storageId: bound.plan.storageId });
+        this.living.changed(bound.scope);
     }
     async startRuntime(resumed = false) {
         if (this.runtime || !this.binding || !this.enabled || !this.isOpen())
@@ -406,12 +434,16 @@ export class CompanionLife {
         }
         catch (error) {
             runtime.stop();
-            if (this.runtime === runtime)
+            if (this.runtime === runtime) {
                 this.runtime = undefined;
+                this.notifyWorld(bound);
+            }
             throw error;
         }
-        if (active())
-            this.ctx.emit('pet/life.changed');
+        if (active()) {
+            this.notifyWorld(bound);
+            this.notifyLife(bound.scope);
+        }
     }
     async stopRuntime(pausing) {
         const runtime = this.runtime;
@@ -424,28 +456,36 @@ export class CompanionLife {
                     if (body && !body.isCurrent())
                         throw Error('生活区已变化');
                 };
-                validate();
-                const saved = pausing.plan.read();
-                if (saved.plan && ['active', 'waiting'].includes(saved.plan.status)) {
-                    await pausing.plan.control(saved.revision, 'pause', 'Autonomous life paused', body?.value, pausing.id, validate);
+                try {
                     validate();
-                    pausing.plan.markAutoResume(true);
+                    const saved = pausing.plan.read();
+                    if (saved.plan && ['active', 'waiting'].includes(saved.plan.status)) {
+                        await pausing.plan.control(saved.revision, 'pause', 'Autonomous life paused', body?.value, pausing.id, validate);
+                        validate();
+                        pausing.plan.markAutoResume(true);
+                    }
+                }
+                catch (error) {
+                    bodyError = error;
                 }
                 if (body)
                     await withLivingCaller(validate, () => body.value.setAutonomy(pausing.id, false));
             }
         }
         catch (error) {
-            bodyError = error;
+            bodyError ??= error;
         }
         // A stale or unavailable optional body must never prevent cancellation of
         // the old native home after rebinding or during component disposal.
         if (runtime && this.runtime === runtime) {
             this.drainingRuntime = runtime;
             this.runtime = undefined;
+            if (this.binding) {
+                this.notifyWorld(this.binding);
+                this.notifyLife(this.binding.scope);
+            }
             const id = this.living.isLatestGeneration() ? this.binding?.home.sessionId() : undefined;
-            await settleCleanup(() => { if (this.living.isLatestGeneration())
-                this.ctx.emit('pet/life.changed'); }, () => runtime.stop(), async () => { if (id)
+            await settleCleanup(() => runtime.stop(), async () => { if (id)
                 await this.native().get('sessionController').cancel({ sessionId: id }); }, async () => {
                 try {
                     await runtime.settled();
@@ -466,7 +506,7 @@ export class CompanionLife {
         if (!this.enabled || !this.binding)
             return;
         const bound = this.binding;
-        const body = this.living.lookup('body'), validate = this.guardArea(body);
+        const body = this.living.lookup('body'), validate = this.guardArea(body, () => this.assertCurrentBinding(bound));
         let advanced = false;
         if (body) {
             const behavior = body.value;
@@ -480,7 +520,7 @@ export class CompanionLife {
             validate();
         }
         await this.startRuntime();
-        this.assertOpen();
+        validate();
         if (advanced)
             this.runtime?.reschedulePlan();
         this.runtime?.notifyFacts();
@@ -493,12 +533,11 @@ export class CompanionLife {
             this.scheduleTick();
     }
     async resumeAcceptedPlan(bound, body = this.living.lookup('body')) {
-        const current = this.current();
-        if (!this.enabled || !this.isOpen() || this.binding !== bound || current?.id !== bound.id || current.path !== bound.path)
+        if (!this.enabled || !this.isOpen() || !this.isCurrentBinding(bound))
             return;
         const saved = bound.plan.read();
         if (saved.plan?.resumeOnEnable && saved.plan.status === 'paused') {
-            const validate = this.guardArea(body);
+            const validate = this.guardArea(body, () => this.assertCurrentBinding(bound));
             await bound.plan.control(saved.revision, 'resume', 'Autonomous life resumed', body?.value, bound.id, validate);
             validate();
             bound.plan.markAutoResume(false);
@@ -643,7 +682,7 @@ export class CompanionLife {
             const result = await bound.plan.commit(expectedRevision, draft, body?.value, workspaceId, admit);
             admit();
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return { enabled: this.enabled, running: this.running(), ...result };
         });
     }
@@ -653,7 +692,7 @@ export class CompanionLife {
             validate();
             const result = bound.plan.keep(expectedRevision, reason, nextConsiderAt);
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return result;
         });
     }
@@ -704,7 +743,7 @@ export class CompanionLife {
             await bound.plan.advance(workspaceId, body.value, admit);
             admit();
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return { execution, ...bound.plan.read() };
         });
     }
@@ -720,7 +759,7 @@ export class CompanionLife {
             const result = await bound.plan.control(expectedRevision, action, reason, body?.value, workspaceId, admit);
             admit();
             this.runtime?.reschedulePlan();
-            this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope);
             return result;
         });
     }
@@ -741,7 +780,7 @@ export class CompanionLife {
         durableWrite(file, JSON.stringify({ version: 1, enabled, preferences, pauses }, null, 2));
         this.pauses = pauses;
     }
-    control(workspaceId, enabled) {
+    control(workspaceId, enabled, validate) {
         return this.enqueue(async () => {
             // A queued pause may finish on its existing binding during disposal.
             if (this.isOpen())
@@ -751,6 +790,7 @@ export class CompanionLife {
             const bound = this.binding;
             if (bound?.id !== workspaceId)
                 throw Error('生活工作区已切换');
+            validate?.();
             const changed = enabled !== this.enabled;
             const pauses = changed ? recordGardenPause(this.pauses, enabled, Date.now()) : this.pauses;
             this.writeControl(bound, enabled, this.preferences, pauses);
@@ -760,8 +800,7 @@ export class CompanionLife {
             if (changed)
                 this.notifyWorld(bound);
             // Body observes committed intent now, before native home/model startup.
-            if (this.isOpen())
-                this.ctx.emit('pet/life.changed');
+            this.notifyLife(bound.scope, enabled);
             if (enabled) {
                 await this.resumeAcceptedPlan(bound);
                 await this.startRuntime(true);
@@ -774,10 +813,10 @@ export class CompanionLife {
             return { enabled, running: this.running() };
         }, { finishOnClose: !enabled });
     }
-    act(workspaceId, action, requestId, channel = 'settings') {
+    act(workspaceId, action, requestId, channel = 'settings', validate) {
         if (!isCareAction(action))
             return Promise.reject(Error('未知的生活动作'));
-        return this.forwardToBody(body => body.act(workspaceId, action, requestId, channel));
+        return this.forwardToBody(body => body.act(workspaceId, action, requestId, channel), validate);
     }
     behavior() {
         this.assertOpen();
@@ -786,8 +825,8 @@ export class CompanionLife {
             throw Error('共享身体组件尚未启用');
         return behavior;
     }
-    forwardToBody(work) {
-        const body = this.behavior(), validate = this.guardArea(body);
+    forwardToBody(work, caller) {
+        const body = this.behavior(), validate = this.guardArea(body, caller);
         return this.inFlight.run(async () => {
             const result = await withLivingCaller(validate, () => work(body.value));
             validate();
@@ -802,7 +841,7 @@ export class CompanionLife {
     garden(workspaceId, operation, input) {
         return this.forwardToBody(body => body.garden(workspaceId, operation, input));
     }
-    settings(workspaceId, expected, next) {
+    settings(workspaceId, expected, next, validate) {
         return this.enqueue(async () => {
             await this.synchronize();
             this.assertOpen();
@@ -813,6 +852,7 @@ export class CompanionLife {
             if (JSON.stringify(parseLifePreferences(expected)) !== JSON.stringify(this.preferences))
                 throw { code: 'STALE_REVISION' };
             const before = this.preferences;
+            validate?.();
             this.writeControl(bound, this.enabled, preferences, this.pauses);
             this.preferences = preferences;
             if (before.wake !== preferences.wake || before.review !== preferences.review)
@@ -830,6 +870,7 @@ export class CompanionLife {
         this.closed = true;
         clearTimeout(this.timer);
         this.timer = undefined;
+        this.tickGuards = [];
         const subscriptions = this.subscriptions.splice(0);
         return this.closing = settleCleanup(() => this.sourceRegistration?.revoke(), ...subscriptions, () => { if (subscriptions.length)
             this.publishRest(); }, () => this.stopRuntime(), async () => { await this.serial; }, () => this.inFlight.settled()).finally(() => { this.binding = undefined; });
@@ -837,11 +878,40 @@ export class CompanionLife {
 }
 export const name = '40-Life';
 export const inject = ['petCore', 'petWorld', 'agents', 'sessions', 'tools', 'systemPrompt'];
+export function lifeConsoleOperations(life) {
+    const lifeView = call => {
+        const { workspaceId } = object(call.input, ['workspaceId']);
+        call.checkBinding(workspaceId, true);
+        return life.snapshot(workspaceId);
+    };
+    const lifeControl = call => {
+        const { workspaceId, enabled } = object(call.input, ['workspaceId', 'enabled']);
+        call.checkBinding(workspaceId, true);
+        if (typeof enabled !== 'boolean')
+            fail('INVALID_ARGUMENT');
+        return life.control(workspaceId, enabled, call.validate);
+    };
+    const lifeAction = call => {
+        const { workspaceId, action } = object(call.input, ['workspaceId', 'action']);
+        call.checkBinding(workspaceId, true);
+        if (!isCareAction(action))
+            fail('INVALID_ARGUMENT');
+        return life.act(workspaceId, action, call.requestId, 'settings', call.validate);
+    };
+    const lifePreferences = call => {
+        const { workspaceId, expected, next } = object(call.input, ['workspaceId', 'expected', 'next']);
+        const id = requiredText(workspaceId, 200);
+        call.checkBinding(id);
+        return life.settings(id, expected, next, call.validate);
+    };
+    return { operations: { lifeView, lifeControl, lifeAction, lifePreferences } };
+}
 export function apply(ctx, config = {}) {
     const host = ctx.petCore;
     return mountLivingArea(ctx, host, 'plan', view => new CompanionLife(ctx, host, config.agentPreset ?? 'standard', view), (life, view) => {
         life.activate();
         ctx.provide('petLife', life);
+        ctx.effect(() => host.native.consoleOperations.register('life', lifeConsoleOperations(life), ctx).revoke);
         life.registerSource();
         ctx.effect(() => host.workspace.runtime.capabilityTable.register({
             id: 'life.pursuits', owner: 'life', contractVersion: CONTRACT_VERSION, order: 3,

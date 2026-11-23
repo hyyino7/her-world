@@ -67,7 +67,7 @@ L1 是插件入口的完整流程，L2 是公开面行为，L3 是保留在全�
 <a id="migration-inventory"></a>
 ## 合成副本、迁移与盘点
 
-这些也是源码检出命令，需要已经构建。输入是完成安装的 `installation.json` 回执。开发使用生成器产出的合成副本；真实副本由主人提供且只在另行授权的隔离检查点使用。已登记三步：`0001-storage-manifest` 写存储清单；`0002-home-identity` 把 `life.json` 的 home 会话 ID 复制到 Core 的 `companion-home` 记录（只复制，`life.json` 原字节保留；两边 ID 不同时报 `home-identity-conflict`），清单换成 `core:2`、`living:2`；`0003-economy-marker` 把 Core `meta` 里属于当前绑定的那一条 `economy.initialized:<storageId>` 搬进钱包库，并写独立证据 `.chatpet/data/living/economy-adoption.json`，两者都落盘后删掉 Core 旧键，清单换成 `core:3`、`living:3`。`0003` 只打开已存在、身份和 schema 都对的钱包库，不建库、不导入旧菜园；含 `0003` 的日志段头记 `economyAdopted`，用来区分「从未采用」和「源已删、目标缺失」。它的原因码：`economy-database-missing`（已采用而钱包库缺失）、`economy-database-invalid`（钱包库无效或 schema 不完整）、`economy-marker-multiple`（Core 有多条标记）、`economy-marker-invalid`（标记无效）、`economy-marker-binding-mismatch`（标记、钱包库或独立证据属于另一个绑定）；失败时 Core 旧键保留。盘点在 Core 库那一项报 `economyInitialized: {rows, matchesCurrentBinding}`。迁移后钱包目录和独立证据同时丢失时，离线 `status` 报 `binding-changed`，续做和开新一轮都拒绝。
+这些也是源码检出命令，需要已经构建。输入是完成安装的 `installation.json` 回执。开发使用生成器产出的合成副本；真实副本由主人提供且只在另行授权的隔离检查点使用。已登记四步：`0001-storage-manifest` 写存储清单；`0002-home-identity` 把 `life.json` 的 home 会话 ID 复制到 Core 的 `companion-home` 记录（只复制，`life.json` 原字节保留；两边 ID 不同时报 `home-identity-conflict`），清单换成 `core:2`、`living:2`；`0003-economy-marker` 把 Core `meta` 里属于当前绑定的那一条 `economy.initialized:<storageId>` 搬进钱包库，并写独立证据 `.chatpet/data/living/economy-adoption.json`，两者都落盘后删掉 Core 旧键，清单换成 `core:3`、`living:3`。`0003` 只打开已存在、身份和 schema 都对的钱包库，不建库、不导入旧菜园；含 `0003` 的日志段头记 `economyAdopted`，用来区分「从未采用」和「源已删、目标缺失」。它的原因码：`economy-database-missing`（已采用而钱包库缺失）、`economy-database-invalid`（钱包库无效或 schema 不完整）、`economy-marker-multiple`（Core 有多条标记）、`economy-marker-invalid`（标记无效）、`economy-marker-binding-mismatch`（标记、钱包库或独立证据属于另一个绑定）；失败时 Core 旧键保留。盘点在 Core 库那一项报 `economyInitialized: {rows, matchesCurrentBinding}`。迁移后钱包目录和独立证据同时丢失时，离线 `status` 报 `binding-changed`，续做和开新一轮都拒绝。 `0004-console-wallet` 把经停写排空导出的浏览器钱包请求按原号登记，清单换成 `core:3/living:4`。导入不派发请求。已采用的库同时提交待办和导入证明，未采用且零条时原子写独立证明。新装写无旧来源证明。浏览器切换和双备份的操作顺序见 [Console 钱包迁移](#console-wallet-migration)。
 
 存储清单落后于代码时，运行时进入「需要迁移」：对外状态和拒写码都是 `migration-required`，DSH 普通聊天照常，伙伴的设置、身份、策略、生活世界和记忆写入全部拒绝，设置页显示细因和操作提示。细因有 `storage-version-outdated`、`manifest-mismatch`、`migration-incomplete`、`journal-invalid`、`journal-step-mismatch`、`binding-changed`，以及 `binding-not-migratable`：绑定的形状离线迁移器接不了（例如选中的工作区和已初始化的绑定不一致），这时要在版本页换回 0.2.0，把工作区选择和初始化理顺后再升级。一旦判定需要迁移，本进程就锁定，迁移完成后要重启 DSH。新装由主人显式初始化时直接写最新清单，不需要迁移。
 
@@ -123,7 +123,7 @@ node scripts/companion-backup.mjs restore --installation /tmp/her-world-syntheti
 
 1. **在 0.2.0 下做回退备份。** 完全退出 DSH，运行 `node scripts/companion-backup.mjs create --installation "$RECEIPT" --output "$ROLLBACK"`，再用 `verify --installation "$RECEIPT" --backup "$ROLLBACK"` 核对。旧 setup 装的机器先按已知问题 8 跑一次 `migrate-core-config --apply`。
 2. **换包。** 启动 DSH，在版本页换到 0.3.0。看到设置页「需要迁移」、只有普通聊天可用，是预期。显示 `binding-not-migratable` 时换回 0.2.0，按提示理顺工作区选择和初始化再来。
-3. **离线迁移。** 完全退出 DSH 和所有写入者，依次跑 `plan`、`run --backup "$RESUME_BACKUP"`、`status`（命令见上）。三步都 `complete` 且 `segment` 为 `settled` 才算完成；`unfinished` 用 `--resume` 续做。
+3. **离线迁移。** 完全退出 DSH 和所有写入者，依次跑 `plan`、`run --backup "$RESUME_BACKUP"`、`status`（命令见上）。该版的三步都 `complete` 且 `segment` 为 `settled` 才算完成；`unfinished` 用 `--resume` 续做。
 4. **启动核对。** 启动 DSH，确认工作区就绪，聊天、记忆召回、home 和钱包都正常。
 5. **回退（需要时）。** 版本页换回 0.2.0，退出 DSH，用本检出的 `companion-backup.mjs restore` 恢复第 1 步的回退备份（命令见上）。
 
@@ -132,6 +132,26 @@ node scripts/companion-backup.mjs restore --installation /tmp/her-world-syntheti
 原有恢复 CLI 的输出不属于迁移/盘点的固定原因与隐私输出契约；真实数据检查点不能把其原始输出交给 Agent。开发演练只用合成副本。
 
 真实副本检查点（阶段 2 的 2a 做过一次；改数据格式的阶段都要再做，2b 没改格式所以没做）在独立设备上跑：源机退出 DSH 后，打包伙伴 Repo、安装包和源码 bundle，用隔空投送或移动硬盘传过去，不经云端；新设备按 [portability.md](portability.md)「搬到另一台设备」安装绑定，再盘点、迁移、回退、续做。设备 profile 里的语音、附件不随 Repo 走，新设备上为空属于预期。盘点只给出未登记 kind 的个数；要查是哪几种，只按冒号前的前缀聚合计数，不输出完整 kind 和字段值。恢复命令的输出重定向到本机日志，只取退出码和 `restored` 字段。
+
+<a id="console-wallet-migration"></a>
+### Console 钱包迁移
+
+隔离副本从备份到旧键清除一直保持停写。先隔离所有授权 profile／origin 的旧页面和写入口，核实 Economy 与 Body 在途已排空。若无法核实，停在导出之前。浏览器导出、清源和回插函数在 `scripts/migrate/browser-wallet.mjs`，要求调用方持有可复核的来源冻结租约。现有合成适配只用于测试。生产浏览器需要能核验冻结和排空的适配入口。
+
+和回退备份一起封存私有导出。旧包下先完成备份 `create/verify`，再用 `companion-migrate.mjs seal-wallet-rollback --installation "$RECEIPT" --backup "$ROLLBACK" --wallet-export "$EXPORT" --output "$ANCHOR"` 绑定导出与旧备份。停写换包后，迁移 `run --installation "$RECEIPT" --backup "$RESUME_BACKUP" --wallet-export "$EXPORT" --wallet-rollback "$ANCHOR"`。中断后 `run --installation "$RECEIPT" --resume` 核对本轮原件。
+
+验收窗口用隔离的一次性克隆。原副本 `segment=settled`、导入证明和每个待办均核对后，工具才逐源清除原键。回退时保持停写，换回旧包，运行 `verify-wallet-rollback --installation "$RECEIPT" --wallet-export "$EXPORT" --wallet-rollback "$ANCHOR"`，恢复核准的旧备份，验证钱包、存储清单和 Body，再按原值回插。主人关闭回退窗口后才能处理私有导出。历史核验使用持久摘要。
+
+离线入口是 `scripts/migrate/runner.mjs` 的 `runWalletBrowserOperation`：按安装回执确定绑定，持有 Repo 互斥锁，复查 DSH、Core、Economy、Memory（含配置已移除但仍运行的保留 Bank）和工作区绑定；导出前全源复读，清源和回插前核对同一轮导出的迁移或回退证明，逐源比较原值，结束前再复读。可见的竞写报 `wallet-source-conflict`，日志记下冲突并阻止自动续做；无冲突的中断凭同轮 `intent` 续做。v0.4.0 已打开的页面先写 `localStorage` 再发 RPC，程序拦不住这段旧代码，只能靠下面的隔离。
+
+主人在隔离副本上的操作顺序：
+
+1. **隔断旧页和写入口**：停止新业务请求，完全退出使用该副本的浏览器及后台进程，关掉会话自动恢复；确认授权 profile／origin 都在清单内，清源或回退验收前只让获准工具访问原浏览器存储。
+2. **排空并停住旧宿主**：停下 Life 和其他写入口，在 v0.4.0 宿主确认 Economy、Body 正常卸载且没有清理错误，再完全退出 DSH。页面关闭、请求取消或进程退出都不算排空证据；拿不到证据、来源无法独占或没有获准的读取适配时，停在导出前。
+3. **导出和备份**：停写下由获准适配私有导出原来源；用 v0.4.0 建并核对旧备份，封存同轮锚；确认换包不会重新激活原副本的业务写。
+4. **换包和迁移**：原副本继续停写，用 RC 同源码执行 `plan`、带导出和双备份锚的 `run`、`status`，中断用原轮 `--resume`；需要启动 DSH 时只用访问不到原库和原浏览器存储的一次性克隆。
+5. **核对及清源**：确认 `segment=settled`、原号、余额、库存和 Body，并验克隆的新页面；主人确认后用同轮日志逐源清旧键，冲突时保留现场并停止放行。
+6. **回退**：放行前保持停写，换回 v0.4.0，验锚、恢复旧备份，用单独的同轮日志按原值回插；原号、余额、库存和 Body 核对通过才解除停写。私有导出保留到主人关闭回退窗口，历史只留核对摘要。
 
 <a id="baseline-counting"></a>
 ## 典型修改的计数
@@ -193,6 +213,6 @@ Body 在现有 home 检查点保留可选 `gardenClockEnabled` 元数据。显�
 
 回顾回归包含 `tests/life/life-review-runtime.test.mjs` 及编译后的 `life-review-files`、`review-continuation`、`life-sleep-continuity`，覆盖按日重试、重启核对、历史日记保护，以及经 Life/Body 协调器完成实际睡眠，不用付费模型。
 
-运行时 exports、原生 bundle ID 和伙伴数据格式保持稳定。`dist/src` 保留给 GitHub 安装，发布工作流将它与已验证源码一起构建并冻结；`dist/tests`、source map、缓存、工具和个人伙伴数据不交付。普通 build 校验内置媒体，可选重新生成使用 `src/living/body/animation-allocation.json` 与 `art/` 素材。
+运行时 exports、原生 bundle ID 和伙伴数据格式保持稳定。`dist/src` 保留给 GitHub 安装，发布工作流将它与已验证源码一起构建并冻结；`dist/tests`、source map、缓存、工具和个人伙伴数据不交付。普通 build 校验内置媒体，可选重新生成使用 `src/presentation/animation-allocation.json` 与 `art/` 素材。
 
 素材交接、画布与锚点、时序、视觉验收及登记见源码检出中的 `docs/animation-standard.md`。

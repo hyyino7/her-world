@@ -28,6 +28,29 @@ export interface MessagingSettings {
     wechat: WechatSettings;
 }
 export declare const defaults: MessagingSettings;
+export declare function editableMessagingFields(): {
+    qq: ({
+        label: string;
+        kind: "boolean" | "lines" | "number" | "text";
+        key: string;
+    } | {
+        label: string;
+        kind: "select";
+        options: Readonly<Record<string, string>>;
+        key: string;
+    })[];
+    wechat: ({
+        label: string;
+        kind: "boolean" | "lines" | "number" | "text";
+        key: string;
+    } | {
+        label: string;
+        kind: "select";
+        options: Readonly<Record<string, string>>;
+        key: string;
+    })[];
+};
+export declare function isDeviceMessagingField(platform: keyof MessagingSettings, key: string): boolean;
 type Patch = {
     qq?: Partial<QQSettings>;
     wechat?: Partial<WechatSettings>;

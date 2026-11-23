@@ -2,13 +2,12 @@ import { DesktopImages } from './images.js';
 import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { isWorldChangeFor } from '../contracts/living.js';
+import { isVoiceRoute } from '../contracts/voice.js';
 import { sameBinding } from './conversation.js';
 import { DEFAULT_CONVERSATION } from '../core/options.js';
 import { readLifeEnabled } from '../living/outlets.js';
-// All feature algorithms live in the pinned upstream modules. This adapter
-// binds them to native services and the single companion Repo, without HTTP
-// listeners, a second conversation history or another Memory writer.
-const upstream = (file) => import('./upstream/host/' + file + '.js');
+// 上游功能按需加载。构建直接把这些模块生成到 dist 下的相对位置。
 const MAX_TIMER_MS = 2_147_483_647;
 /** Ask the original policy for the first eligible reminder rather than polling
  * or copying its interval table. Before the deadline eligibility is monotonic;
@@ -51,6 +50,7 @@ export class DesktopFeatures {
     lastBalance = Date.now();
     checking = false;
     closed = false;
+    voiceLifetime = new AbortController();
     timer;
     maintenance;
     scheduling = Promise.resolve();
@@ -64,22 +64,21 @@ export class DesktopFeatures {
         this.publish = publish;
         this.available = available;
         this.busy = busy;
-        this.images = new DesktopImages(host, () => this.get('attachments'));
+        this.images = new DesktopImages(host, () => this.ctx.get('attachments'));
         if (typeof ctx.on === 'function') {
             this.subscriptions.push(ctx.on('pet/core.changed', operation => {
                 if (operation.startsWith('preferences.') || operation.startsWith('workspace.') || operation === 'setQuiet' || operation === 'reviseIdentity')
                     void this.refresh();
-            }), ctx.on('pet/behavior.changed', change => {
-                if (change.workspaceId === this.host.workspace.status().target?.id)
+            }), ctx.on('world.changed', change => {
+                if (isWorldChangeFor(change, this.host.workspace.homeScope()))
                     this.restore(false);
-            }), ctx.on('pet/life.changed', () => { void this.refresh(); }), ctx.on('session/event', (session, entry) => {
+            }), ctx.on('session/event', (session, entry) => {
                 if (['turn/start', 'turn/end'].includes(entry.type) && session.header.cwd === this.host.workspace.status().target?.path)
                     void this.refresh();
             }, { global: true }));
         }
         void this.refresh();
     }
-    get(name) { return this.ctx.get(name); }
     preferences() {
         const presentation = this.ctx.get('petPlatform', false);
         return { ...this.host.workspace.companionSettings(), ...presentation?.featurePreferences() };
@@ -122,7 +121,7 @@ export class DesktopFeatures {
                 throw Error('桌宠数据路径无效');
         }
         const file = join(dir, 'todos.json');
-        const types = await upstream('todo/types');
+        const types = await import('./upstream/host/todo/types.js');
         this.assertCurrent(binding);
         for (const candidate of [file, file + '.tmp']) {
             if (existsSync(candidate)) {
@@ -141,7 +140,7 @@ export class DesktopFeatures {
         }
         let store = this.todosByRoot.get(key);
         if (!store) {
-            const { TodoStore } = await upstream('todo/store');
+            const { TodoStore } = await import('./upstream/host/todo/store.js');
             this.assertCurrent(binding);
             store = new TodoStore({ file, log: this.ctx.logger('chatpet-desktop') });
             this.todosByRoot.set(key, store);
@@ -166,24 +165,26 @@ export class DesktopFeatures {
             this.lastDream = Date.now();
         this.publish('sleep', sleeping ? { sleeping, pending, start: 'sleep-start', loop: 'sleep-loop', end: 'sleep-end' } : { sleeping, pending });
     }
-    async request(input) {
+    async request(input, signal) {
         if (this.closed)
             throw Error('桌宠组件正在关闭');
         const target = this.target();
         const path = String(input.path ?? ''), method = String(input.method ?? 'GET');
         const url = new URL(path, 'https://pet.local/');
         const rest = url.pathname.replace(/^\//, '');
-        if (['voice/hear', 'voice/speak', 'voice/voices'].includes(rest)) {
-            const service = this.ctx.get('petVoice');
+        if (isVoiceRoute(rest)) {
+            const lifetime = this.voiceLifetime.signal;
+            const service = this.host.native.voiceTable.lookup(this.ctx, signal ? AbortSignal.any([signal, lifetime]) : lifetime);
             if (!service)
                 throw Error('语音组件尚未启用');
             const result = await service.handle({ rest, method, body: typeof input.body === 'string' ? input.body : undefined });
+            service.assertCurrent();
             if (!this.same(target))
                 throw Error('桌宠工作区已切换');
             return result.kind === 'file' ? { audio: readFileSync(result.file).toString('base64'), mediaType: result.contentType } : result.obj;
         }
         if (rest === 'todos' || /^todos\/[A-Za-z0-9_-]+$/.test(rest)) {
-            const { handleTodoRoutes } = await upstream('routes/todos');
+            const { handleTodoRoutes } = await import('./upstream/host/routes/todos.js');
             this.assertCurrent(target);
             const todos = await this.todos(target);
             this.assertCurrent(target);
@@ -227,12 +228,12 @@ export class DesktopFeatures {
     }
     async balance() {
         const target = this.target();
-        const model = this.get('agentDefaultModel')?.currentSelection();
+        const model = this.ctx.get('agentDefaultModel')?.currentSelection();
         if (!model?.provider)
             throw Error('当前对话未配置服务商');
-        const { queryBalance } = await upstream('balance/index');
+        const { queryBalance } = await import('./upstream/host/balance/index.js');
         this.assertCurrent(target);
-        const result = await queryBalance(model.provider, async (ref) => (await this.get('credentials')?.resolve(ref))?.value, this.get('deepseekAccount') ? () => this.get('deepseekAccount').getBalance({ version: '0.0.0', locale: 'zh-CN', timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60 }) : undefined);
+        const result = await queryBalance(model.provider, async (ref) => (await this.ctx.get('credentials')?.resolve(ref))?.value, this.ctx.get('deepseekAccount') ? () => this.ctx.get('deepseekAccount').getBalance({ version: '0.0.0', locale: 'zh-CN', timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60 }) : undefined);
         if (this.same(target))
             this.publish('balance', result);
         return result;
@@ -253,14 +254,14 @@ export class DesktopFeatures {
         // not the autonomous native session's step/tool accounting.
         const maxDurationMs = this.host.workspace.runtime.conversation?.maxDurationMs ?? DEFAULT_CONVERSATION.maxDurationMs;
         const system = this.host.native.context().identity;
-        const selection = this.get('agentDefaultModel')?.currentSelection();
+        const selection = this.ctx.get('agentDefaultModel')?.currentSelection();
         const abort = new AbortController(), generation = { abort, binding: target, automatic, dream };
         this.generation = generation;
         const timeout = setTimeout(() => abort.abort(Error('后台碎碎念已达到时长上限')), maxDurationMs);
         timeout.unref();
         const run = async () => {
-            const { generateWhisper, SLEEP_TALK_INSTRUCTION } = await upstream('whisper');
-            const { pickMeme, matchMeme } = await upstream('memes');
+            const { generateWhisper, SLEEP_TALK_INSTRUCTION } = await import('./upstream/host/whisper.js');
+            const { pickMeme, matchMeme } = await import('./upstream/host/memes.js');
             const pool = catalog.stickers.map((item) => ({ name: item.id, desc: item.description }));
             const forced = image && matchMeme(pool, image);
             if (image && !forced)
@@ -268,7 +269,7 @@ export class DesktopFeatures {
             const meme = forced || (!dream && this.preferences().desktopWhisperImageEnabled && pickMeme(pool));
             if (abort.signal.aborted || !this.same(target) || automatic && !this.automaticAllowed(target, dream))
                 return { ok: false, reason: 'cancelled' };
-            const llm = this.get('llm');
+            const llm = this.ctx.get('llm');
             const nativeLlm = llm && { resolveModelInfo: llm.resolveModelInfo?.bind(llm), stream: (options) => {
                     this.assertCurrent(target);
                     abort.signal.throwIfAborted();
@@ -304,7 +305,7 @@ export class DesktopFeatures {
         try {
             const target = this.target(), now = Date.now(), settings = this.preferences();
             const { sleeping } = this.rest(target);
-            const todos = await this.todos(target), policy = await upstream('todo/policy');
+            const todos = await this.todos(target), policy = await import('./upstream/host/todo/policy.js');
             this.assertCurrent(target);
             for (const todo of sleeping ? [] : await todos.list()) {
                 const due = policy.nextReminderAt(todo, now);
@@ -321,7 +322,7 @@ export class DesktopFeatures {
                 this.lastBalance = now;
                 await this.balance();
             }
-            const { automaticWhisperSchedule } = await upstream('whisper-policy');
+            const { automaticWhisperSchedule } = await import('./upstream/host/whisper-policy.js');
             const period = sleeping ? settings.desktopSleepTalkSeconds : settings.desktopWhisperMinutes * 60;
             const schedule = automaticWhisperSchedule(undefined, settings.desktopWhisperEnabled, period);
             const previous = sleeping ? this.lastDream : this.lastWhisper;
@@ -365,7 +366,7 @@ export class DesktopFeatures {
         const target = this.target(), settings = this.preferences(), { sleeping } = this.rest(target), now = Date.now();
         let next = Number.POSITIVE_INFINITY;
         if (!sleeping) {
-            const todos = await this.todos(target), policy = await upstream('todo/policy');
+            const todos = await this.todos(target), policy = await import('./upstream/host/todo/policy.js');
             for (const todo of await todos.list()) {
                 const due = nextTodoWake(todo, now, policy);
                 if (due !== null)
@@ -375,7 +376,7 @@ export class DesktopFeatures {
                 next = Math.min(next, this.lastBalance + settings.desktopBalanceMinutes * 60_000);
         }
         if (!this.lifeOwnsAutonomy(target.id)) {
-            const { automaticWhisperSchedule } = await upstream('whisper-policy');
+            const { automaticWhisperSchedule } = await import('./upstream/host/whisper-policy.js');
             const period = sleeping ? settings.desktopSleepTalkSeconds : settings.desktopWhisperMinutes * 60;
             const schedule = automaticWhisperSchedule(undefined, settings.desktopWhisperEnabled, period);
             if (schedule.enabled)
@@ -396,6 +397,7 @@ export class DesktopFeatures {
         this.scheduleRevision++;
         clearTimeout(this.timer);
         this.timer = undefined;
+        this.voiceLifetime.abort();
         for (const stop of this.subscriptions.splice(0))
             stop();
         this.pause();

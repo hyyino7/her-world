@@ -31,21 +31,35 @@ window.__ModuleLoader__={load(e){window.plugin=e;},create({staticModules}){windo
 async function main(){
  await app.whenReady();
  const {PetPlatform}=await import('../../dist/src/desktop/platform/plugin.js');
+ const {CompanionPorts}=await import('../../dist/src/core/tables/companion-ports.js');
+ const {Context}=await import('@deepseek-ai/cordis');
+ const scope=new Context();
  const {RecentLedger}=await import('../../dist/src/emotion/recent.js');
  const {DEFAULT_COMPANION_SETTINGS}=await import('../../dist/src/core/companion-settings.js');
  const receipts=[];
  const ledger=new RecentLedger({id:'test',path:repo},()=>DEFAULT_COMPANION_SETTINGS);
  const chat={id:'session',snapshot:()=>({messages:[],sessionId:'session',workspaceId:'test',generating:false}),run:async()=>chat.snapshot()};
  const handlers=new Set();
- ctx={get:()=>undefined,logger:console,connection:{broadcast(){},authenticatedUrl:url=>url},on:(name,fn)=>{
+ const companionPorts=new CompanionPorts(), roomOpens=[];
+ companionPorts.registerRoomWindow(scope,async workspaceId=>{
+   roomOpens.push(workspaceId);
+   return {running:true,ready:true,workspaceId};
+ });
+ ctx={root:scope.root,fiber:scope.fiber,[Context.isolate]:scope[Context.isolate],get:()=>undefined,logger:console,connection:{broadcast(){},authenticatedUrl:url=>url},on:(name,fn)=>{
    if(name==='session/event')handlers.add(fn);return ()=>handlers.delete(fn);
  },petDesktop:{chat,recordPlayback(receipt){receipts.push(receipt);ledger.playback(receipt);}},webServer:{getOrigin:()=>address},
-   petCore:{workspace:{companionSettings:()=>({...DEFAULT_COMPANION_SETTINGS,desktopSize:232,desktopFixed:false,desktopWorkStatusEnabled:true}),sessionStatus:()=>({target:{id:'test'}}),status:()=>({state:'ready',target:{id:'test',path:repo}})}}};
+   petCore:{native:{companionPorts},workspace:{
+     runtime:{identity:()=>({displayName:'大肥鱼',character:''})},
+     companionSettings:()=>({...DEFAULT_COMPANION_SETTINGS,desktopSize:232,desktopFixed:false,desktopWorkStatusEnabled:true}),
+     sessionStatus:()=>({target:{id:'test'}}),status:()=>({state:'ready',target:{id:'test',path:repo}}),
+   }}};
  platform=new PetPlatform(ctx);
  const access=platform.ownerAccess('test');
  const dispatch=(r,method='GET',input)=>platform.handle(new URL('http://localhost/chatpet-presentation/'+r),method,input?JSON.stringify(input):undefined,new AbortController().signal);
  const mainConfig=(await dispatch('config')).obj.main;
- const original=mainConfig.pets[0];
+ assert.deepEqual(mainConfig.pets,[]);
+ const original=mainConfig.bodyTemplate;
+ assert.ok(original);
  const left={...original,id:'second',name:'第二只',position:{corner:'top-left',marginX:5,marginY:5}};
  const randomAnimations={...mainConfig.animations,idle:['点击回应-元气挥手'],turn:['点击回应-元气挥手'],categories:[],moves:{...mainConfig.animations.moves,actions:[]}};
  const setPools=random=>{
@@ -107,12 +121,14 @@ async function main(){
  await dispatch('anim?pet=second&surface=web','POST',{name:'螃蟹走路'});
  await until(()=>ev("JSON.stringify(window.testServices.get('chatpetPresentation').progress('second') || {})").then(v=>v.includes('螃蟹走路')),'third-party animation on second pet');
  const state=(await dispatch('state')).obj;
- assert.ok(JSON.stringify(state).includes('吃白饭'),'registered rice-game menu');
+ assert.ok(state.sections.menu.data.items.some(item=>item.owner==='chatpet.room' && item.label==='进入房间'));
  await ev(`document.querySelector('.dsh-pet-hit').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:220,clientY:250}))`);
  await until(()=>ev("!!document.querySelector('.dsh-pet-menu')"), 'pet context menu');
  await ev(`[...document.querySelectorAll('.dsh-pet-menu-item')].find(n=>n.textContent.includes('更多')).dispatchEvent(new MouseEvent('mouseenter'))`);
- await ev(`[...document.querySelectorAll('.dsh-pet-menu-item')].find(n=>n.textContent.trim()==='吃白饭' && n.getClientRects().length).click()`);
- await until(()=>ev("document.querySelectorAll('.bf-rice, .bf-toast:not(:empty)').length>0"), 'rice scene entered',24000);
+ await until(()=>ev(`[...document.querySelectorAll('.dsh-pet-menu-item')].some(n=>n.textContent.trim()==='进入房间' && n.getClientRects().length)`),'Room menu visible');
+ await ev(`[...document.querySelectorAll('.dsh-pet-menu-item')].find(n=>n.textContent.trim()==='进入房间' && n.getClientRects().length).click()`);
+ await until(()=>roomOpens.length===1,'Room menu reached the registered window port');
+ assert.deepEqual(roomOpens,['test']);
  await ev('window.stopPets()');
  platform.close();platform.ownerAccess('test');
  await win.loadURL(address);
@@ -169,7 +185,7 @@ async function main(){
  assert.equal((await dispatch('throw?surface=desktop&pet=main','POST',{angle:0,power:1})).obj.ok,true);
  await until(()=>fs.readFileSync(collisions,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse).some(hit=>hit.targetId==='second' && hit.vx>0),'native helper transfers throw impulse to the other window',6500);
  await until(async()=>(await nativePose('second')).x>.5015,'second desktop pet responds to the impulse',3500);
- console.log(JSON.stringify({status:'passed',browserPets:poses.length,decodedMedia:true,thirdPartyAnimation:true,randomPlaybackToLedger:{browser:true,native:true},riceScene:true,browserCollision:true,hapticRequests:haptics,syntheticShake:sensorKinds.every(k=>k==='function'),nativeWindows:desktopPoses.length,nativeCollision:true,sessionNotification:true}));
+ console.log(JSON.stringify({status:'passed',browserPets:poses.length,decodedMedia:true,thirdPartyAnimation:true,randomPlaybackToLedger:{browser:true,native:true},roomMenu:true,browserCollision:true,hapticRequests:haptics,syntheticShake:sensorKinds.every(k=>k==='function'),nativeWindows:desktopPoses.length,nativeCollision:true,sessionNotification:true}));
 }
 main().then(()=>app.quit()).catch(error=>{console.error(error);app.exit(1);}).finally(()=>{
  win?.destroy();platform?.close();server?.closeAllConnections();server?.close();fs.rmSync(dir,{recursive:true,force:true});

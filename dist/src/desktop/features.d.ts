@@ -17,6 +17,7 @@ export declare class DesktopFeatures {
     private lastBalance;
     private checking;
     private closed;
+    private readonly voiceLifetime;
     private timer?;
     private maintenance?;
     private scheduling;
@@ -25,7 +26,6 @@ export declare class DesktopFeatures {
     private subscriptions;
     private generation?;
     constructor(ctx: Context, host: PetCoreHost, publish: (type: string, value: unknown) => void, available: () => boolean, busy: () => boolean);
-    private get;
     private preferences;
     private target;
     private current;
@@ -43,7 +43,7 @@ export declare class DesktopFeatures {
         method?: unknown;
         body?: unknown;
         actor?: CompanionFactActor;
-    }): Promise<any>;
+    }, signal?: AbortSignal): Promise<any>;
     balance(): Promise<any>;
     whisper(image?: string, dream?: boolean, automatic?: boolean): Promise<any>;
     private tick;

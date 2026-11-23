@@ -2,8 +2,8 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,dirname,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {join,dirname} from 'node:path';
+import {compiledURL} from '../fixtures/playback.mjs';
 import {syncBuiltinESMExports} from 'node:module';
 import childProcess from 'node:child_process';
 import net from 'node:net';
@@ -23,13 +23,12 @@ for(const [object,keys] of [[net,['connect','createConnection']],[net.Socket.pro
 syncBuiltinESMExports();
 after(()=>{for(const undo of restore.reverse())undo();syncBuiltinESMExports();assert.deepEqual(forbidden,[]);});
 
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {createCore}=await import(new URL('../../core/index.js',playbackURL));
-const {CompanionBehavior}=await import(new URL('./plugin.js',playbackURL));
-const {CompanionEconomy}=await import(new URL('../economy/plugin.js',playbackURL));
-const {PersistentLifePlan}=await import(new URL('../plan/plan.js',playbackURL));
-const {Room}=await import(new URL('../../room/plugin.js',playbackURL));
-const {digest}=await import(new URL('../../core/storage.js',playbackURL));
+const {createCore}=await import(compiledURL('core/index.js'));
+const {CompanionBehavior}=await import(compiledURL('living/body/plugin.js'));
+const {CompanionEconomy}=await import(compiledURL('living/economy/plugin.js'));
+const {PersistentLifePlan}=await import(compiledURL('living/plan/plan.js'));
+const {Room}=await import(compiledURL('room/plugin.js'));
+const {digest}=await import(compiledURL('core/storage.js'));
 const value=result=>{assert.equal(result.ok,true,JSON.stringify(result.error));return result.value;};
 
 async function fixture(t,{mode='awake',tilled=false,money=0}={}) {

@@ -6,15 +6,6 @@ export interface ActivityClip {
     durationMs: number;
     mirror?: boolean;
 }
-export interface AnimationSlotContext {
-    kind: string;
-    action?: string;
-    economy?: {
-        type: string;
-    };
-    garden?: Record<string, unknown>;
-    foodSlot?: string;
-}
 export interface ActivityAnimationContext {
     slotId?: string;
     foodSlot?: string;
@@ -62,11 +53,21 @@ export interface ActivityPlayback {
         gap?: boolean;
     };
 }
-/** One admission rule shared by plan parsing, Body and item metadata. A slot is
- * cosmetic authority only; it cannot grant an item or a new business action. */
-export declare function animationSlotAllowed(value: unknown, input: string | AnimationSlotContext): boolean;
-export declare function requirePresentationSlot(value: unknown, context: string | AnimationSlotContext): string;
-export declare function resolveActivityPlayback(home: any): ActivityPlayback | undefined;
+type SlotAdmission = (slot: unknown, context: {
+    kind: ActivityPlayback['kind'];
+    foodSlot?: string;
+}) => boolean;
+type ActivityIntent = {
+    kind: ActivityPlayback['kind'];
+    rest: boolean;
+    feeling?: string;
+    touchFeeling?: string;
+    namedRestHint: boolean;
+};
+type ActivityClassifier = (home: unknown) => ActivityIntent;
+export declare function resolveActivityPlayback(home: any, animationSlotAllowed: SlotAdmission, classify: ActivityClassifier): ActivityPlayback | undefined;
+/** Playback is attached by the carriers to their existing home response. */
+export declare function withHomePlayback(home: any, animationSlotAllowed: SlotAdmission, classify: ActivityClassifier): any;
 /** Self-contained for both generated carriers: no resolver/table is inlined.
  * Unknown starts skip historical one-shots; loops share a cosmetic clock. */
 export declare function sampleActivityPlayback(playback: ActivityPlayback, now?: number): {
@@ -80,3 +81,4 @@ export declare function sampleActivityPlayback(playback: ActivityPlayback, now?:
     durationMs: number;
     mirror?: boolean;
 } | undefined;
+export {};

@@ -7,10 +7,11 @@ import {createRequire} from 'node:module';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 import {verifyLifeMedia} from '../../scripts/build/build-life-media.mjs';
-import {animationAssets} from '../../dist/src/living/body/animation-map.js';
-import {resolveActivityPlayback,sampleActivityPlayback} from '../../dist/src/living/body/playback.js';
+import {animationMapURL,loadPlayback} from '../fixtures/playback.mjs';
 import {roomAsset} from '../../dist/src/room/assets.js';
 import {PetPlatform} from '../../dist/src/desktop/platform/plugin.js';
+const {animationAssets}=await import(animationMapURL);
+const {resolveActivityPlayback,sampleActivityPlayback}=await loadPlayback();
 const upstream=createRequire(import.meta.url)('../../vendor/dsh-pet/platform/runtime.mjs');
 const inventory=verifyLifeMedia();
 const source=readFileSync('vendor/feiyu-room-template/public/room/app.js','utf8');
@@ -111,7 +112,11 @@ test('shared original clip bytes cannot be shadowed by custom same-name files',a
 });
 test('Room serves the common compiled timeline and original pout clip through fixed aliases',async()=>{
   const response=await roomAsset(new Request('http://localhost/chatpet-room/activity-playback.js'));
-  assert.equal(response.status,200);const code=await response.text();assert.match(code,/export function resolveActivityPlayback/);assert.match(code,/export function sampleActivityPlayback/);
+  assert.equal(response.status,200);const code=await response.text();assert.match(code,/export (?:function|const) resolveActivityPlayback/);
+  const solver=code.includes("'./media-playback.js'")
+    ? await roomAsset(new Request('http://localhost/chatpet-room/media-playback.js')) : undefined;
+  if(solver)assert.equal(solver.status,200);
+  assert.match(solver ? await solver.text() : code,/export function sampleActivityPlayback/);
   const reaction=await roomAsset(new Request('http://localhost/chatpet-room/assets/pet/react_pout.webm'));
   assert.equal(reaction.status,200);assert.deepEqual(Buffer.from(await reaction.arrayBuffer()),readFileSync('src/desktop/assets/点击回应-傲娇生气.webm'));
 });

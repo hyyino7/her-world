@@ -12,6 +12,7 @@ import type { CompanionFact, CompanionFactActor, EconomyFactType, NewCompanionFa
 import { isBodyMetric, type ReadingState } from '../../contracts/behavior.js';
 import type { WalletView } from '../../contracts/living.js';
 import { advanceGardenClock, type GardenClock } from './garden-clock.js';
+import { ConsoleRequests, installConsoleRequests } from './console-requests.js';
 import { ECONOMY_INITIALIZED, economyAdoptionPath, economyFile, economyRecoveryAdvice, ensureAdoptionDirectory,
   inspectEconomyAdoption, readEconomyDatabaseMarker, readEconomyFileEvidence, syncPath, writeEconomyFile } from './adoption.js';
 
@@ -46,6 +47,7 @@ export class EconomyStore {
   private readonly markerPath: string;
   private readonly lockToken = `${process.pid}:${randomUUID()}`;
   private readonly db: DatabaseSync;
+  readonly consoleRequests: ConsoleRequests;
   private readonly databaseFile: {dev:number;ino:number};
   private closed = false;
   private walletDirty = false;
@@ -104,6 +106,7 @@ export class EconomyStore {
         CREATE TABLE IF NOT EXISTS bookmarks (id TEXT PRIMARY KEY,value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS reading_operations (id TEXT PRIMARY KEY,value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS interaction_facts (sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,request_id TEXT NOT NULL UNIQUE,value TEXT NOT NULL,acknowledged INTEGER NOT NULL DEFAULT 0 CHECK(acknowledged IN (0,1)));`);
+        installConsoleRequests(this.db);
         const now=Date.now();
         this.setMeta('configuration',defaultEconomyConfiguration());
         const imported=legacy?clone(legacy.state) as any:undefined;
@@ -122,6 +125,7 @@ export class EconomyStore {
         if(legacy)this.recordLedger('migration:legacy-garden','legacy-import',garden.coins,this.resourceDeltas({},this.gardenResources(garden)),'Imported the retained garden once; legacy files were not changed',now);
         this.setMeta(ECONOMY_INITIALIZED,expected);
       });
+      this.consoleRequests = new ConsoleRequests(this.db, expected);
       syncPath(this.directory);
       this.writeStorageMarker();
     } catch(error) {opened?.close();if(existsSync(this.lockPath)&&readFileSync(this.lockPath,'utf8')===this.lockToken)unlinkSync(this.lockPath);throw error;}
@@ -145,13 +149,15 @@ export class EconomyStore {
     try {const stat=lstatSync(this.databasePath);check(stat.isFile()&&!stat.isSymbolicLink()&&stat.dev===this.databaseFile.dev&&stat.ino===this.databaseFile.ino&&readFileSync(this.lockPath,'utf8')===this.lockToken,'Economy database or lease changed');}
     catch(error) {unavailable(`Economy storage is missing or changed; recover it before continuing (${String(error)})`);}
   }
+  private factWritten=false;
   private transaction<T>(fn:()=>T):T {
     this.ensure();this.db.exec('BEGIN IMMEDIATE');
-    this.walletDirty=false;
+    this.walletDirty=false;this.factWritten=false;
     let result: T;
     try {result=fn();this.db.exec('COMMIT');}
     catch(error){this.db.exec('ROLLBACK');throw error;}
     if(this.walletDirty)try {this.options.walletChanged?.();}catch { /* The wallet has committed. */ }
+    if(this.factWritten)try {this.options.factsCommitted?.();}catch { /* The fact has committed. */ }
     return result;
   }
   private meta<T>(key:string):T|undefined {const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get(key);return row?json<T>(row.value):undefined;}
@@ -188,6 +194,13 @@ export class EconomyStore {
       const result=fn();this.db.prepare('INSERT INTO requests VALUES(?,?,?)').run(requestId,hash,canonical(result));return result;
     });
   }
+  originalRequest(requestId: string) {
+    this.ensure();
+    return this.db.prepare('SELECT digest,result FROM requests WHERE id=?').get(requestId);
+  }
+  withConsoleRequests<T>(write: (rows: ConsoleRequests) => T): T {
+    return this.transaction(() => write(this.consoleRequests));
+  }
   private recordLedger(requestId:string,kind:LedgerKind,moneyDelta:number,itemDeltas:Record<string,number>,note:string,now=Date.now()) {
     check(Number.isSafeInteger(moneyDelta),'Invalid money change');atTime(now);text(note,'ledger note',2000);
     for(const delta of Object.values(itemDeltas))check(Number.isSafeInteger(delta),'Invalid inventory change');
@@ -206,6 +219,7 @@ export class EconomyStore {
     const fact:NewCompanionFact={version:1,id:`economy:${digest(requestId).slice(7)}`,requestId,domain:'economy',type,
       occurredAt:new Date().toISOString(),actor:clone(actor),result:{status:'completed',summary,before,after},operationId:requestId};
     this.db.prepare('INSERT INTO interaction_facts(id,request_id,value) VALUES(?,?,?)').run(fact.id,requestId,canonical(fact));
+    this.factWritten=true;
   }
   pendingFacts():CompanionFact[] {
     this.ensure();return this.db.prepare('SELECT value FROM interaction_facts WHERE acknowledged=0 ORDER BY sequence').all().map(row=>json<CompanionFact>(row.value));

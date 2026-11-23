@@ -10,7 +10,7 @@ import { applyRoomAction, normalizeRoomState, roomView } from '#feiyu-room/room-
 import { randomUUID } from 'node:crypto';
 import { initialBodyState } from './initial-state.js';
 import { BODY_METRICS, BODY_METRIC_NAMES, FEEDBACK_ACTIONS, ROLE_ACTIONS, PLAN_KINDS, isPlanKind, isPlanBodyAction, isPlanEconomyOperation, isPlanGardenOperation, PlannedAdmissionWaitError } from '../../contracts/behavior.js';
-import { requirePresentationSlot, animationSlotAllowed } from './playback.js';
+import { requirePresentationSlot, animationSlotAllowed } from './animation-slots.js';
 import { canonical, digest } from '../../core/storage.js';
 import { gardenHomeProjection, gardenReceiptProjection, gardenReceiptText } from './garden-receipt.js';
 // 离线时饥饿、口渴和如厕需求有上限，体力有单独的 energyFloor，疼痛不随离线时间变化。
@@ -356,6 +356,21 @@ export class CompanionRoom {
             throw Error('互动事实存档无效，已保留原文件');
         return state.interactionReceipts ??= {};
     }
+    interaction(input, source) {
+        if (!source.requestId || source.requestId.length > 256 || !source.actor.id || !source.actor.channel)
+            throw Error('互动来源无效');
+        canonical(source);
+        const key = digest(source.requestId), fingerprint = digest({ input, actor: source.actor });
+        const prior = this.interactions()[key];
+        if (prior && prior.fingerprint !== fingerprint)
+            throw Error('同一互动请求不能用于不同内容');
+        return { key, fingerprint, prior };
+    }
+    interactionFact(input, source) {
+        const { prior } = this.interaction(input, source);
+        if (prior)
+            return structuredClone(prior.fact);
+    }
     pendingFacts() {
         return Object.values(this.interactions()).filter(row => !row.acknowledged).map(row => structuredClone(row.fact));
     }
@@ -441,7 +456,7 @@ export class CompanionRoom {
         this.checkpoint(this.state, now);
     }
     parkExecution(row, now, cancel = false) {
-        if (row.parkedAt)
+        if (row.parkedAt || this.consoleFoodPending(row))
             return;
         if (row.kind === 'garden') {
             let result;
@@ -598,6 +613,10 @@ export class CompanionRoom {
             else if (original.phase !== 'waiting' || original.reason !== String(error))
                 this.updateExecution(original, { phase: 'waiting', reason: String(error) }, now);
         }
+    }
+    consoleFoodPending(row, economy) {
+        return row.kind === 'economy' && row.input.economy?.type === 'consume'
+            && (economy ?? this.economyPort())?.consoleFoodPending?.(row.operationId);
     }
     dispatchReading(row, now, resume) {
         try {
@@ -772,6 +791,8 @@ export class CompanionRoom {
         if (previous) {
             if (previous.fingerprint !== fingerprint)
                 throw Error('同一计划执行编号不能用于不同内容');
+            if (ownerMeal && this.consoleFoodPending(previous) && !terminalExecution.has(previous.status))
+                this.dispatchEconomy(previous, now);
             this.tick(now);
             return this.publicExecution(this.executions()[input.operationId]);
         }
@@ -811,6 +832,12 @@ export class CompanionRoom {
                 throw Error('相同执行编号不能用于不同餐食');
             if (canonical(existing.interaction ?? null) !== canonical(input.interaction ?? null))
                 throw Error('相同餐食执行编号不能更换互动来源');
+            if ((!terminalExecution.has(existing.status) || existing.effectAppliedAt && !existing.settlementCompletedAt)
+                && this.consoleFoodPending(existing)) {
+                const active = this.currentExecution();
+                if (existing.effectAppliedAt || !active || active.operationId === existing.operationId)
+                    this.dispatchEconomy(existing, now);
+            }
             this.tick(now);
             return this.publicExecution(this.executions()[input.operationId]);
         }
@@ -896,6 +923,19 @@ export class CompanionRoom {
         this.tick(now);
         const row = this.executions()[operationId];
         return row ? this.publicExecution(row) : undefined;
+    }
+    originalFood(operationId) {
+        if (!safeFile(this.homeFile))
+            throw Error('缺少原身体检查点');
+        const saved = record(JSON.parse(readFileSync(this.homeFile, 'utf8')));
+        const rows = saved.plannedExecutions === undefined ? {} : record(saved.plannedExecutions);
+        const row = rows[operationId];
+        if (!row)
+            return undefined;
+        return { execution: this.publicExecution(row), operationId: row.operationId, itemId: row.input.economy?.itemId,
+            requestId: row.interaction?.requestId, actor: row.interaction?.actor,
+            applied: row.effectAppliedAt !== undefined, declined: row.effectDeclinedAt !== undefined,
+            settled: row.settlementCompletedAt !== undefined };
     }
     plannedState() {
         const row = this.currentExecution();
@@ -1063,7 +1103,7 @@ export class CompanionRoom {
         let row = this.executions()[operationId];
         if (!row)
             throw Error('原计划执行不存在');
-        if (row.status === 'running' || terminalExecution.has(row.status))
+        if (row.status === 'running' || terminalExecution.has(row.status) || this.consoleFoodPending(row))
             return this.publicExecution(row);
         if (row.input.freezeOnPause === false && row.until && Date.parse(row.until) <= now) {
             this.updateExecution(row, { status: 'failed', phase: 'completed', reason: '活动的绝对结束时间已过，暂停期间不能算作已执行，也不能自动延长截止时间' }, now);
@@ -1145,7 +1185,7 @@ export class CompanionRoom {
         // A cancelled food intent may have outlived its current-activity pointer.
         // Reconcile its original reservation as soon as the authority is back.
         for (const row of Object.values(this.executions())) {
-            if (row.kind !== 'economy' || row.input.economy?.type !== 'consume')
+            if (row.kind !== 'economy' || row.input.economy?.type !== 'consume' || this.consoleFoodPending(row, economy))
                 continue;
             if (row.effectAppliedAt && !row.settlementCompletedAt && row.status !== 'running') {
                 try {
@@ -1165,6 +1205,12 @@ export class CompanionRoom {
         if (!this.autonomous)
             this.stopAutomatic(now);
         let planned = this.currentExecution();
+        if (planned && this.consoleFoodPending(planned, economy)) {
+            // The request stays durable while Life can continue with another activity.
+            this.state.currentPlannedOperation = null;
+            this.checkpoint(this.state, now);
+            planned = undefined;
+        }
         if (planned && ['paused', 'interrupted', 'cancelled'].includes(planned.status))
             this.parkExecution(planned, now, planned.status === 'cancelled');
         if (planned?.status === 'running' && ['economy', 'read'].includes(planned.kind)) {
@@ -1267,19 +1313,10 @@ export class CompanionRoom {
         if (action === 'talk' && (typeof data.text !== 'string' || !data.text.trim()))
             throw Error('留言不能为空');
         const text = typeof data.text === 'string' ? data.text.trim().slice(0, 120) : '';
-        const fingerprint = interaction ? digest({ input: data, actor: interaction.actor }) : undefined;
-        const key = interaction ? digest(interaction.requestId) : undefined;
-        if (interaction) {
-            if (!interaction.requestId || interaction.requestId.length > 256 || !interaction.actor.id || !interaction.actor.channel)
-                throw Error('互动来源无效');
-            canonical(interaction);
-            const prior = this.interactions()[key];
-            if (prior) {
-                if (prior.fingerprint !== fingerprint)
-                    throw Error('同一互动请求不能用于不同内容');
-                const home = this.view(now);
-                return { ok: true, changed: prior.changed, event: { type: prior.fact.type, text: prior.fact.result.summary }, home, room: home.room, fact: structuredClone(prior.fact) };
-            }
+        const receipt = interaction ? this.interaction(data, interaction) : undefined;
+        if (receipt?.prior) {
+            const { prior } = receipt, home = this.view(now);
+            return { ok: true, changed: prior.changed, event: { type: prior.fact.type, text: prior.fact.result.summary }, home, room: home.room, fact: structuredClone(prior.fact) };
         }
         const noChange = action === 'sleep' && (this.state.asleep || this.state.sleepPending) || action === 'wake' && !this.state.asleep && !this.state.sleepPending;
         if (!interaction && action === 'sleep' && (this.state.asleep || this.state.sleepPending)) {
@@ -1304,7 +1341,7 @@ export class CompanionRoom {
         const before = structuredClone(this.state.needs);
         const result = refused ? movement : noChange ? { state: normalizeHomeState(this.state, now), changed: false, event: null } : applyHomeAction(this.state, { ...event, emotion: this.emotion() });
         let fact;
-        if (interaction) {
+        if (interaction && receipt) {
             const who = interaction.actor.kind === 'owner' ? '主人' : interaction.actor.kind === 'companion' ? '你自己' : '系统';
             const labels = {
                 water: interaction.actor.kind === 'companion' ? '喝水' : '喂水', feed: '给予免费基础餐食', pet: '摸摸', poke: '轻戳', play: '陪伴玩耍',
@@ -1316,9 +1353,9 @@ export class CompanionRoom {
             const summary = result.event?.reason === 'sleeping' ? `${who}${labels[factType]}未执行：${result.event.text}`
                 : action === 'sleep' && result.state.sleepPending ? `${who}的睡觉安排已接收，正在前往床，尚未入睡。`
                     : action === 'talk' ? `${who}的留言已保存：${text}` : `${who}${labels[factType] || action}${result.changed ? '已完成' : '没有改变当前状态'}。`;
-            fact = { version: 1, id: `body:${key}`, requestId: interaction.requestId, domain: 'body', type: factType, occurredAt: new Date(now).toISOString(), actor: structuredClone(interaction.actor),
+            fact = { version: 1, id: `body:${receipt.key}`, requestId: interaction.requestId, domain: 'body', type: factType, occurredAt: new Date(now).toISOString(), actor: structuredClone(interaction.actor),
                 result: { status: result.changed ? 'completed' : 'unchanged', summary, before, after: structuredClone(result.state.needs) } };
-            result.state.interactionReceipts = { ...this.interactions(), [key]: { fingerprint: fingerprint, fact, acknowledged: false, changed: result.changed } };
+            result.state.interactionReceipts = { ...this.interactions(), [receipt.key]: { fingerprint: receipt.fingerprint, fact, acknowledged: false, changed: result.changed } };
         }
         if (result.changed) {
             // Additive host attribution survives the original normalizer. Native

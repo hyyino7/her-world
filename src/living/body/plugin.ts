@@ -5,22 +5,23 @@ import { createHash, randomUUID } from 'node:crypto';
 import { buildHomePromptLine } from '#feiyu-home';
 import { check, digest, reject, text } from '../../core/storage.js';
 import type { PetCoreHost } from '../../core/index.js';
-import { isCareAction, type BehaviorActivity, type BehaviorChange, type BehaviorSnapshot, type CompanionExpression, type CurrentActivityId, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
-import { bodyPhaseOf, companionBusy } from './activity.js';
+import type { HomeBinding } from '../../core/workspace.js';
+import { isCareAction, type BehaviorActivity, type BehaviorSnapshot, type CompanionExpression, type CurrentActivityId, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
+import { bodyPhaseOf, feedAdmission } from './activity.js';
 import { CompanionRoom } from './room.js';
 import { behaviorPresentation } from './presentation.js';
-import { resolveActivityPlayback } from './playback.js';
 import type { CompanionFactActor, CompanionFactSource } from '../../contracts/interaction.js';
 import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomInteractionContext } from './room.js';
 import {gardenHomeProjection} from './garden-receipt.js';
 import { LifeControlFileError, readLifeControl } from '../plan/control-file.js';
+import type { CompanionLife } from '../plan/plugin.js';
 import { readEconomyFileEvidence, readEconomyJournalEvidence } from '../economy/adoption.js';
-import { LivingView, livingCaller, mountLivingArea, settleCleanup, type LivingPorts, type RecordCommandEffect } from '../index.js';
+import { LivingView, livingCaller, mountLivingArea, sameHomeBinding, settleCleanup, type LivingPorts, type RecordCommandEffect } from '../index.js';
 export type { PlannedActivity, PlannedExecution } from '../../contracts/behavior.js';
 
 interface Binding {
-  id: string; path: string; storageId: string; room: CompanionRoom;
+  id: string; path: string; storageId: string; room: CompanionRoom; scope?: HomeBinding;
   fingerprint?: string; presentationFingerprint?: string; worldFingerprint?: string;
 }
 type VersionedBehavior = BehaviorActivity & {revision: number; bootId: ReturnType<typeof randomUUID>};
@@ -83,11 +84,8 @@ export class CompanionBehavior {
         ...(event.feelings ? {feelings:[...event.feelings]} : {})};
       refresh(event.workspaceId);
     }));
-    let stopLife: (()=>void) | undefined;
-    this.subscriptions.push(()=>stopLife?.());
     this.subscriptions.push(living.watch(ctx,'plan',(plan,observed)=>{
       if(!plan) {
-        stopLife?.();stopLife=undefined;
         void this.enqueue(()=>{
           if(!observed()||living.get('plan'))return;
           this.synchronize();
@@ -95,33 +93,36 @@ export class CompanionBehavior {
         },observed).catch(error=>{this.fault=String(error);});
         return;
       }
-      const {value:life}=plan;
-      const current=()=>observed() && plan.isCurrent();
-      const synchronize=()=>{
-        if(!current())return;
-        void this.enqueue(async validate=>{
-          if(!current())return;
-          const status=this.host.workspace.status(),admission=status.target?life.bodyClockState?.(status.target.id):undefined;
-          if(!this.binding && !life.running() && !admission?.enabled)return;
-          this.synchronize();const bound=this.binding;if(!bound)return;
-          await this.refreshEmotion(bound.id);validate();
-          if(!current()||this.currentBound(bound.id)!==bound)return;
-          this.autonomous=admission?.enabled ?? life.running();
-          if(admission || this.autonomous)bound.room.setAutonomy(this.autonomous,Date.now(),admission?.restoreElapsed);
-          else bound.room.suspendAutonomy();
-          this.publish('transition',false);
-        },current).catch(error=>{this.fault=String(error);});
-      };
-      stopLife=ctx.on('pet/life.changed',synchronize);synchronize();
+      void this.syncLifeClock(plan.value,()=>observed() && plan.isCurrent());
     }));
   }
-  private enqueue<T>(work: (validate:()=>void) => T | Promise<T>, observed=()=>true): Promise<T> {
+  syncLifeClock(life: Pick<CompanionLife,'bodyClockState'|'running'>, current: () => boolean) {
+    const scope=this.host.workspace.homeScope?.();
+    const active=()=>current() && sameHomeBinding(this.host.workspace.homeScope?.(),scope);
+    return this.enqueue(async validate=>{
+      if(!active())return;
+      const target=this.host.workspace.status().target,admission=target?life.bodyClockState?.(target.id):undefined;
+      if(!this.binding && !life.running() && !admission?.enabled)return;
+      this.synchronize();const bound=this.binding;if(!bound)return;
+      await this.refreshEmotion(bound.id);
+      if(!active())return;
+      validate();
+      if(this.currentBound(bound.id)!==bound)return;
+      this.autonomous=admission?.enabled ?? life.running();
+      if(admission || this.autonomous)bound.room.setAutonomy(this.autonomous,Date.now(),admission?.restoreElapsed);
+      else bound.room.suspendAutonomy();
+      this.publish('transition',false);
+    },active,scope).catch(error=>{if(active())this.fault=String(error);});
+  }
+  private enqueue<T>(work: (validate:()=>void) => T | Promise<T>, observed=()=>true,
+    scope = this.host?.workspace.homeScope?.()): Promise<T> {
     const caller=livingCaller();
     let admitted=true;
     const validate=()=>{
       try {
-        if(this.closed || !this.living.isCurrent())throw Error('身体工作区已切换或组件已停止');
         caller?.();
+        if(this.closed || !this.living.isCurrent() || !sameHomeBinding(this.host?.workspace.homeScope?.(),scope))
+          reject('STALE_BINDING','身体工作区已切换或组件已停止');
       } catch(error) {admitted=false;throw error;}
     };
     try {validate();} catch(error) {return Promise.reject(error);}
@@ -133,7 +134,9 @@ export class CompanionBehavior {
     clearTimeout(this.timer);this.timer=undefined;
     if(this.closed || !this.living.isCurrent() || !this.binding) {this.deadlineAt=undefined;return;}
     if(this.awaitingRecovery)return;
-    const bound=this.binding,now=Date.now();
+    const bound=this.binding,scope=bound.scope;
+    if(!sameHomeBinding(this.host.workspace.homeScope?.(),scope))return;
+    const now=Date.now();
     // A queue operation that did not advance physics cannot consume an overdue
     // boundary by rearming from stale needs at a later observation time.
     const at=this.deadlineAt!==undefined && this.deadlineAt<=now?this.deadlineAt:bound.room.nextWakeAt(now,this.conditions);
@@ -141,11 +144,15 @@ export class CompanionBehavior {
     this.deadlineAt=at;
     // Bound physical deadlines, never an activity-planning interval. Long waits
     // recheck the wall clock using the same segment as the native alarm timer.
-    this.timer=setTimeout(()=>{this.timer=undefined;void this.enqueue(async validate=>{
-      this.synchronize();if(this.binding!==bound)return;
-      await this.refreshEmotion(bound.id);validate();if(this.binding!==bound)return;
-      this.advanceRoom(bound);this.deadlineAt=undefined;this.publish();
-    }).catch(error=>{this.fault=String(error);});},Math.min(5*60_000,Math.max(1,at-Date.now())));
+    this.timer=setTimeout(()=>{
+      this.timer=undefined;
+      if(!sameHomeBinding(this.host.workspace.homeScope?.(),scope))return;
+      void this.enqueue(async validate=>{
+        this.synchronize();if(this.binding!==bound)return;
+        await this.refreshEmotion(bound.id);validate();if(this.binding!==bound)return;
+        this.advanceRoom(bound);this.publish();
+      },undefined,scope).catch(error=>{this.fault=String(error);});
+    },Math.min(5*60_000,Math.max(1,at-Date.now())));
     this.timer.unref();
   }
   private advanceRoom(bound:Binding) {
@@ -165,7 +172,11 @@ export class CompanionBehavior {
   private synchronize() {
     const status = this.host.workspace.status(), target = status.state === 'ready' ? status.target : null;
     const storageId = target ? this.host.workspace.storageId() : undefined;
-    if (this.binding?.id === target?.id && this.binding?.path === target?.path && this.binding?.storageId === storageId) return;
+    const scope = this.host.workspace.homeScope?.();
+    if (this.binding && this.binding.id === target?.id && this.binding.path === target.path && this.binding.storageId === storageId) {
+      this.binding.scope=scope;
+      return;
+    }
     if (status.state !== 'migration-required') this.binding?.room.flush();
     this.binding = undefined; this.conditions=[];this.awaitingRecovery=false;this.autonomous = false; this.fault = undefined;this.publicationFault=undefined;this.expression=undefined;
     if (this.closed || !target || !storageId) return;
@@ -179,7 +190,7 @@ export class CompanionBehavior {
       if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error('身体数据目录无效');
     }
     const id = target.id;
-    this.binding = {id, path:target.path, storageId,
+    this.binding = {id, path:target.path, storageId, scope,
       room:new CompanionRoom(directory, () => this.ctx.get('petEmotion')?.roomSnapshot(id),legacyFile=>{
         const economy=this.living.get('economy');
         if(!economy) {
@@ -208,7 +219,7 @@ export class CompanionBehavior {
     if (this.closed || !this.binding || this.binding.id !== workspaceId) throw Error('身体工作区已切换或组件已停止');
     return this.binding;
   }
-  private activity(): Omit<BehaviorActivity, 'busy'> {
+  private activity(): Omit<BehaviorActivity, 'busy' | 'interruptibility'> {
     const state = this.binding?.room.state;
     if (!state) return {activityId:null, kind:'idle', phase:'idle'};
     const planned = this.binding?.room.plannedState();
@@ -231,16 +242,17 @@ export class CompanionBehavior {
       phase:state.route ? 'moving' : state.asleep ? 'sleeping' : state.sleepPending || state.freeTarget || state.command ? 'pending' :
         state.dwell || state.reactionUntil > Date.now() ? 'working' : task?.completedAt ? 'completed' : 'idle'};
   }
-  private publicBehavior(her: Parameters<typeof companionBusy>[0]): VersionedBehavior {
-    return {...this.activity(),busy:companionBusy(her),revision:this.revision,bootId:this.bootId};
+  private publicBehavior(her: Parameters<typeof feedAdmission>[0]): VersionedBehavior {
+    const feed=feedAdmission(her);
+    return {...this.activity(),busy:Boolean(her) && feed!=='start',interruptibility:{feed},revision:this.revision,bootId:this.bootId};
   }
-  private presentHome(home:any,behavior=this.publicBehavior(home.her)) {
-    const projected={...home,behavior:{...behavior}};
-    return {...projected,playback:resolveActivityPlayback(projected)};
+  private behaviorHome(home:any,behavior=this.publicBehavior(home.her)) {
+    return {...home,behavior:{...behavior}};
   }
   private publish(reason:'observation'|'transition'='transition',notifyFirst = reason==='transition') {
     const bound = this.binding; if (!bound || this.closed || !this.living.isCurrent()) return;
-    if(reason==='observation' && this.deadlineAt!==undefined && Date.now()>=this.deadlineAt) {reason='transition';this.deadlineAt=undefined;}
+    const deadlineReached = this.deadlineAt !== undefined && Date.now() >= this.deadlineAt;
+    if (deadlineReached) {reason = 'transition'; this.deadlineAt = undefined;}
     try {
       const {updatedAt:_updated,lastTickAt:_tick,...semantic} = bound.room.state;
       // This is an internal projection of the existing JSON save, not an
@@ -260,6 +272,7 @@ export class CompanionBehavior {
       const visibleChanged=presentationFingerprint!==bound.presentationFingerprint;
       const hadProjection=bound.presentationFingerprint!==undefined;
       if(changed) {bound.fingerprint=fingerprint;this.revision++;}
+      let notifyWorld = deadlineReached && changed;
       if(visibleChanged) {
         bound.presentationFingerprint=presentationFingerprint;
         const receipts=new Set(Object.values(semantic.interactionReceipts ?? {}));
@@ -273,11 +286,14 @@ export class CompanionBehavior {
           })).digest('hex') : presentationFingerprint;
         const worldChanged=worldFingerprint!==bound.worldFingerprint;
         bound.worldFingerprint=worldFingerprint;
-        if(worldChanged && (hadProjection || notifyFirst))
-          this.living.changed({workspaceId:bound.id,path:bound.path,storageId:bound.storageId});
+        notifyWorld ||= worldChanged && (hadProjection || notifyFirst);
       }
-      if(!this.publicationFault && (!changed || reason==='observation' && !visibleChanged))return;
-      this.ctx.emit('pet/behavior.changed', {workspaceId:bound.id,bootId:this.bootId,revision:this.revision,reason});
+      if (bound.scope && notifyWorld)
+        this.living.changed(bound.scope, true, reason === 'observation' ? this.presentationVersion() : undefined);
+      if(changed && reason==='transition' && bound.scope) {
+        const scope=bound.scope, plan=this.living.lookup('plan');
+        if(plan)plan.value.noticeDomainChange(scope,()=>this.living.isCurrent() && plan.isCurrent());
+      }
       this.publicationFault=undefined;
     } catch(error) {
       // Body work and its durable receipt have already committed. A failed
@@ -291,6 +307,7 @@ export class CompanionBehavior {
       }
     }
   }
+  presentationVersion() { return {bootId:this.bootId,revision:this.revision}; }
   private currentBound(workspaceId: string) {
     const status = this.host.workspace.status(), bound = this.binding;
     return !this.closed && this.living.isCurrent() && bound?.id === workspaceId && status.state === 'ready' && status.target?.id === workspaceId &&
@@ -318,7 +335,7 @@ export class CompanionBehavior {
       const bound=this.checked(workspaceId);if(bound!==before)throw Error('身体工作区已切换');
       const execution=JSON.stringify(bound.room.plannedState());this.advanceRoom(bound);
       this.publish(execution===JSON.stringify(bound.room.plannedState())?'observation':'transition');
-      const home=this.presentHome(bound.room.view());
+      const home=this.behaviorHome(bound.room.view());
       const {revision,bootId,...behavior}=home.behavior as VersionedBehavior;
       return {workspaceId,storageId:bound.storageId,bootId,revision,
         autonomyEnabled:this.autonomous,behavior,home,needs:structuredClone(bound.room.state.needs),presentation:behaviorPresentation(home,this.expression),fault:this.fault ?? this.publicationFault ?? null,
@@ -349,6 +366,28 @@ export class CompanionBehavior {
       autonomyEnabled:value.autonomyEnabled,presentation:value.presentation,
       behavior:value.home.behavior as VersionedBehavior}));
   }
+  presentFeed<T>(workspaceId: string, interaction: RoomInteractionContext, presentationBlocked: () => T | undefined) {
+    return this.enqueue(async validate => {
+      const bound=this.checked(workspaceId),input={action:'feed'};
+      const prior=bound.room.interactionFact(input,interaction);
+      if(prior)return {admission:'replayed' as const,fact:prior};
+      await this.refreshEmotion(workspaceId);validate();
+      const blocked=presentationBlocked();
+      if(blocked)return {admission:'presentation-blocked' as const,blocked};
+      const execution=JSON.stringify(bound.room.plannedState());
+      this.advanceRoom(bound);
+      const admission=feedAdmission(bound.room.view().her);
+      validate();
+      if(admission!=='start') {
+        this.publish(execution===JSON.stringify(bound.room.plannedState())?'observation':'transition');
+        return {admission};
+      }
+      this.expression=undefined;
+      const {fact}=bound.room.act(input,interaction.actor.kind==='owner'?'主人':'大肥鱼',Date.now(),interaction);
+      this.publish();
+      return {admission:'started' as const,fact};
+    });
+  }
   roomAction(workspaceId: string, input: unknown, by = '伙伴', interaction?: RoomInteractionContext, recordEffect?: RecordCommandEffect) {
     return this.enqueue(async validate => {
       const before=this.checked(workspaceId);await this.refreshEmotion(workspaceId);validate();
@@ -361,7 +400,8 @@ export class CompanionBehavior {
       recordEffect?.('partial');
       this.publish();
       const behavior=this.publicBehavior(result.home.her);
-      return {...result,home:{...this.presentHome(result.home,behavior),presentation:behaviorPresentation(result.home,this.expression)},behavior};
+      const home=this.behaviorHome(result.home,behavior);
+      return {...result,home:{...home,presentation:behaviorPresentation(home,this.expression)},behavior};
     });
   }
   act(workspaceId: string, action: string, requestId:string = randomUUID(), channel = 'desktop', recordEffect?: RecordCommandEffect) {
@@ -382,7 +422,7 @@ export class CompanionBehavior {
       this.publish(operation==='state' && execution===JSON.stringify(bound.room.plannedState())?'observation':'transition');
       const home='home' in result ? result.home : undefined;
       const behavior=this.publicBehavior((home || bound.room.view()).her);
-      return {...result,behavior,...(home ? {home:this.presentHome(home,behavior)} : {})};
+      return {...result,behavior,...(home ? {home:this.behaviorHome(home,behavior)} : {})};
     });
   }
   setAutonomy(workspaceId: string, enabled: boolean) {
@@ -425,6 +465,13 @@ export class CompanionBehavior {
   inspectPlanned(workspaceId: string, operationId: string): Promise<PlannedExecution | undefined> {
     return this.plannedCall(workspaceId,room=>room.inspectPlanned(operationId),()=>{},true);
   }
+  originalFood(workspaceId: string, operationId: string) {
+    const status = this.host.workspace.status(), binding = this.binding;
+    if (this.closed || !this.living.isCurrent() || status.state !== 'ready'
+      || status.target?.id !== workspaceId || binding?.id !== workspaceId || binding.path !== status.target.path
+      || binding.storageId !== this.host.workspace.storageId()) throw Error('身体工作区暂不可核对');
+    return binding.room.originalFood(operationId);
+  }
   pausePlanned(workspaceId: string, operationId: string): Promise<PlannedExecution> {
     return this.plannedCall(workspaceId,room=>room.pausePlanned(operationId));
   }
@@ -455,7 +502,6 @@ export const name = '25-Behavior';
 export const inject = ['petCore'];
 declare module '@deepseek-ai/cordis' {
   interface Context {petBehavior: CompanionBehavior}
-  interface Events {'pet/behavior.changed'(value: BehaviorChange): void}
 }
 export function apply(ctx: Context) {
   const host=ctx.petCore;

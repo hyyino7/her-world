@@ -1,11 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { randomUUID } from 'node:crypto';
 import type { PetCoreHost } from '../../core/index.js';
-import { type BehaviorActivity, type BehaviorChange, type BehaviorSnapshot, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
+import { type BehaviorActivity, type BehaviorSnapshot, type PlannedActivity, type PlannedExecution } from '../../contracts/behavior.js';
 import { CompanionRoom } from './room.js';
-import type { CompanionFactSource } from '../../contracts/interaction.js';
+import type { CompanionFactActor, CompanionFactSource } from '../../contracts/interaction.js';
 import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomInteractionContext } from './room.js';
+import type { CompanionLife } from '../plan/plugin.js';
 import { LivingView, type LivingPorts, type RecordCommandEffect } from '../index.js';
 export type { PlannedActivity, PlannedExecution } from '../../contracts/behavior.js';
 type VersionedBehavior = BehaviorActivity & {
@@ -36,6 +37,7 @@ export declare class CompanionBehavior {
     readonly worldFacts: CompanionFactSource;
     constructor(ctx: Context, host: PetCoreHost, ports?: LivingPorts | LivingView);
     activate(): void;
+    syncLifeClock(life: Pick<CompanionLife, 'bodyClockState' | 'running'>, current: () => boolean): Promise<void>;
     private enqueue;
     private arm;
     private advanceRoom;
@@ -53,8 +55,12 @@ export declare class CompanionBehavior {
     private checked;
     private activity;
     private publicBehavior;
-    private presentHome;
+    private behaviorHome;
     private publish;
+    presentationVersion(): {
+        bootId: `${string}-${string}-${string}-${string}-${string}`;
+        revision: number;
+    };
     private currentBound;
     private refreshEmotion;
     promptLine(workspaceId: string): string;
@@ -66,6 +72,23 @@ export declare class CompanionBehavior {
     worldSnapshot(workspaceId: string): Promise<import("../../contracts/living.js").WorldSnapshot>;
     readonly worldCommands: Pick<WorldCommands, 'care'>;
     roomState(workspaceId: string): Promise<any>;
+    presentFeed<T>(workspaceId: string, interaction: RoomInteractionContext, presentationBlocked: () => T | undefined): Promise<{
+        admission: "replayed";
+        fact: import("../../contracts/interaction.js").CompanionFact;
+        blocked?: undefined;
+    } | {
+        admission: "presentation-blocked";
+        blocked: NonNullable<T>;
+        fact?: undefined;
+    } | {
+        admission: "blocked" | "already-presented";
+        fact?: undefined;
+        blocked?: undefined;
+    } | {
+        admission: "started";
+        fact: import("../../contracts/interaction.js").CompanionFact | undefined;
+        blocked?: undefined;
+    }>;
     roomAction(workspaceId: string, input: unknown, by?: string, interaction?: RoomInteractionContext, recordEffect?: RecordCommandEffect): Promise<{
         home: any;
         behavior: VersionedBehavior;
@@ -103,6 +126,16 @@ export declare class CompanionBehavior {
     confirmPlannedReading(workspaceId: string, operationId: string, receiptToken: string, validate?: () => void, recordEffect?: RecordCommandEffect): Promise<PlannedExecution>;
     startPlanned(workspaceId: string, input: PlannedActivity): Promise<PlannedExecution>;
     inspectPlanned(workspaceId: string, operationId: string): Promise<PlannedExecution | undefined>;
+    originalFood(workspaceId: string, operationId: string): {
+        execution: PlannedExecution;
+        operationId: string;
+        itemId: string | undefined;
+        requestId: string | undefined;
+        actor: CompanionFactActor | undefined;
+        applied: boolean;
+        declined: boolean;
+        settled: boolean;
+    } | undefined;
     pausePlanned(workspaceId: string, operationId: string): Promise<PlannedExecution>;
     resumePlanned(workspaceId: string, operationId: string): Promise<PlannedExecution>;
     cancelPlanned(workspaceId: string, operationId: string): Promise<PlannedExecution>;
@@ -113,9 +146,6 @@ export declare const inject: string[];
 declare module '@deepseek-ai/cordis' {
     interface Context {
         petBehavior: CompanionBehavior;
-    }
-    interface Events {
-        'pet/behavior.changed'(value: BehaviorChange): void;
     }
 }
 export declare function apply(ctx: Context): void;

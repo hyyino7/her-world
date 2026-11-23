@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { createDiaryReader } from '#dsh-world/life/diary';
 import { createPhotoStore, type PhotoStore } from '#dsh-world/life/photos';
 import { durableWrite } from '#dsh-world/life/lifeStore';
+import { sameHomeBinding } from './home-binding.js';
 import type { CoreWorkspace } from './workspace.js';
 import type { CoreNative } from './native/conversation.js';
 import type { ActivityReader, CompanionBinding } from './tables/companion-ports.js';
@@ -49,6 +50,7 @@ export type RecordOperation = 'dates' | 'journal' | 'album' | 'photo' | 'forgetP
 type NativeWorkspace = {path: string; sessionIds: readonly string[]};
 
 export class CoreRecords {
+  private closed = false;
   private current?: {id:string; root:string; library:CompanionRecordLibrary};
   private lookup: (id:string) => NativeWorkspace | undefined = () => undefined;
   readonly timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -74,9 +76,17 @@ export class CoreRecords {
     companionWritingFile({workspace:this.workspace}, scope, 'self.md');
     return {text:content ?? '', revision:bytesDigest(Buffer.from(content ?? '')), path:file};
   }
-  async saveSelf(workspaceId:string, expectedRevision:string, value:string) {
+  async saveSelf(workspaceId:string, expectedRevision:string, value:string, validate?: () => void) {
+    const home = this.workspace.homeScope();
+    const assertCurrent = () => {
+      validate?.();
+      if (this.closed || home?.workspaceId !== workspaceId || !sameHomeBinding(this.workspace.homeScope(), home))
+        throw {code:'STALE_BINDING'};
+    };
+    assertCurrent();
     check(typeof value === 'string' && Buffer.byteLength(value) <= 64 * 1024, 'Invalid self-description');
     const current = await this.readSelf(workspaceId);
+    assertCurrent();
     if (current.revision !== expectedRevision) throw {code:'STALE_REVISION'};
     const scope = this.scope(workspaceId), file = companionWritingFile({workspace:this.workspace}, scope, 'self.md');
     check(file === current.path, 'Companion writing binding changed');
@@ -97,6 +107,7 @@ export class CoreRecords {
       if (after.size !== stat.size || after.mtimeMs !== stat.mtimeMs) throw {code:'STALE_REVISION'};
     } finally {closeSync(fd);}
     if (bytesDigest(Buffer.from(latest)) !== expectedRevision) throw {code:'STALE_REVISION'};
+    assertCurrent();
     durableWrite(file, value);
     return {text:value, revision:bytesDigest(Buffer.from(value)), path:file};
   }
@@ -139,5 +150,5 @@ export class CoreRecords {
     if (!image) throw {code:'NOT_FOUND'};
     return {mediaType:image.ref.mediaType, data:Buffer.from(image.data).toString('base64')};
   }
-  close() {this.current?.library.close(); this.current=undefined;}
+  close() {this.closed=true; this.current?.library.close(); this.current=undefined;}
 }

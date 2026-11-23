@@ -2,7 +2,10 @@ import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import { bridgeRoute } from '#dsh-world/ecosystem/bridge/route';
 import type { Push } from '#dsh-world/ecosystem/shared/outlets';
+import type { WorldChanged } from '../contracts/living.js';
+import { type ConsoleOperation } from '../core/tables/console.js';
 import type { PetCoreHost } from '../core/index.js';
+import type { HomeBinding } from '../core/workspace.js';
 import { LocalBridge } from './bridge.js';
 import { createMessaging } from './messaging.js';
 interface Services {
@@ -19,10 +22,7 @@ interface Services {
         }>;
     };
 }
-type Binding = {
-    id: string;
-    path: string;
-    storageId: string;
+type Binding = HomeBinding & {
     bridge: LocalBridge;
     messaging: Awaited<ReturnType<typeof createMessaging>>;
 };
@@ -36,10 +36,10 @@ export declare class CompanionChannels {
     private queue;
     constructor(ctx: Context, host: PetCoreHost, services: Services, profileDir: string);
     private serial;
-    private target;
+    private scope;
     private current;
     private reconcile;
-    refresh(): Promise<Binding | undefined>;
+    refresh(change?: WorldChanged): Promise<Binding | undefined>;
     get local(): {
         start: () => void;
         stop: () => void;
@@ -49,10 +49,10 @@ export declare class CompanionChannels {
         checkToken: (value: string | undefined) => boolean;
         faults: () => string[];
     } | undefined;
-    qqConnection(): 'off' | 'online' | 'unavailable';
+    qqConnection(): ReturnType<Binding['messaging']['qqConnection']>;
     compact(): "生活会话或记忆整理未启用" | "当前没有待整理的已完成对话" | undefined;
     reach(workspaceId: string, push: Push): Promise<PromiseSettledResult<string>[]>;
-    request(id: string, operation: string, input: Record<string, unknown>): Promise<{
+    request(id: string, operation: string, input: Record<string, unknown>, validate?: () => void): Promise<{
         quota: {
             ok: boolean;
             message?: string;
@@ -171,6 +171,28 @@ export declare class CompanionChannels {
                     bufferSeconds: number;
                 };
             };
+            fields: {
+                qq: ({
+                    label: string;
+                    kind: "boolean" | "lines" | "number" | "text";
+                    key: string;
+                } | {
+                    label: string;
+                    kind: "select";
+                    options: Readonly<Record<string, string>>;
+                    key: string;
+                })[];
+                wechat: ({
+                    label: string;
+                    kind: "boolean" | "lines" | "number" | "text";
+                    key: string;
+                } | {
+                    label: string;
+                    kind: "select";
+                    options: Readonly<Record<string, string>>;
+                    key: string;
+                })[];
+            };
             qq: {
                 usage: {
                     requests: number;
@@ -217,6 +239,9 @@ export declare class CompanionChannels {
     }>;
     close(): Promise<Binding | undefined>;
 }
+export declare function channelsConsoleOperations(channels: Pick<CompanionChannels, 'request'>): {
+    operations: Record<string, ConsoleOperation>;
+};
 export declare const name = "60-Channels";
 export declare const inject: string[];
 export declare function apply(ctx: Context, config?: {

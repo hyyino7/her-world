@@ -4,6 +4,9 @@ import { join, relative, sep } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { PetCoreHost } from '../index.js';
+import {sameHomeBinding} from '../home-binding.js';
+import {reject} from '../storage.js';
+import type {HomeBinding} from '../workspace.js';
 
 interface Header { id: string; cwd?: string; [key: string]: unknown }
 interface Event { seq: number; type: string; [key: string]: unknown }
@@ -32,7 +35,7 @@ export class NativeTranscripts {
   private flushing?:Promise<void>;
   private closed=false;
   private timer?: NodeJS.Timeout;
-  private restored?: string;
+  private restored?: {key: string; scope: HomeBinding | undefined};
   private channels=new Map<string,ChannelScope>();
   private last?: {target:{id:string;path:string;title:string};sessionIds:string[];archived:string[]};
   constructor(private ctx: Context, private host: PetCoreHost) {}
@@ -142,53 +145,86 @@ export class NativeTranscripts {
     if(found && session.header.cwd===found.scope.directory && !session.header.parentSession
       && session.header.agentPreset==='chatpet-channel-guest')this.schedule(session.id);
   }
-  private async restoreCopy(copy:Copy,workspace:NativeWorkspace,path:string,registry:Registry) {
+  private async restoreCopy(copy:Copy,workspace:NativeWorkspace,path:string,registry:Registry,validate=()=>{}) {
+    validate();
     const native=this.native(),id=copy.header.id,wasAttached=workspace.sessionIds.includes(id);
     let existing:Handle|undefined,missing:Event[]=[];
     try {existing=await native.sessionPersistence.open(id,'read');}
     catch(error) {if(!/not.?found/i.test(String((error as Error).name)))throw error;}
     if(existing) {
       try {
+        validate();
         const current=(await existing.read()).events;
+        validate();
         const {cwd:_old,...expectedHeader}=copy.header,{cwd:_current,...currentHeader}=existing.header;
         if(existing.header.cwd!==path || !equal(expectedHeader,currentHeader)
           || !equal(current.slice(0,Math.min(current.length,copy.events.length)),copy.events.slice(0,Math.min(current.length,copy.events.length))))
           throw Error('Native session conflicts with portable copy: '+id);
         missing=copy.events.slice(current.length);
       } finally {await existing.close();}
+      validate();
       if(missing.length) {
         const writer=await native.sessionPersistence.open(id,'write');
         try {
+          validate();
           const current=(await writer.read()).events;
+          validate();
           if(!equal(current,copy.events.slice(0,current.length)))throw Error('Native log changed during restore: '+id);
-          await writer.append(copy.events.slice(current.length));await writer.flush();
+          await writer.append(copy.events.slice(current.length));
+          validate();
+          await writer.flush();
+          validate();
         } finally {await writer.close();}
       }
     } else {
+      validate();
       const writer=await native.sessionPersistence.create({...copy.header,cwd:path},copy.inheritedEventCount?{inheritedEventCount:copy.inheritedEventCount}:undefined);
-      try {await writer.append(copy.events);await writer.flush();}finally{await writer.close();}
+      try {
+        validate();
+        await writer.append(copy.events);
+        validate();
+        await writer.flush();
+        validate();
+      } finally {await writer.close();}
     }
-    if(!workspace.sessionIds.includes(id))await workspace.attachSession(id);
-    if(!wasAttached && copy.archived && !registry.archivedSessionIds.includes(id))await registry.archiveSession(id);
+    validate();
+    if(!workspace.sessionIds.includes(id)) {
+      await workspace.attachSession(id);
+      validate();
+    }
+    if(!wasAttached && copy.archived && !registry.archivedSessionIds.includes(id)) {
+      await registry.archiveSession(id);
+      validate();
+    }
   }
-  async restore(): Promise<void> {return this.enqueue(async()=>{
-    const {target,workspace,registry}=this.target();
-    const binding=target.id+'\n'+target.path;
-    if(this.restored===binding) return;
-    const directory=this.directory(target.path);
-    const config=this.host.workspace.runtime.config;
-    this.write(join(directory,'identity.json'),{schema:1,companionId:config.companionId,scopeId:config.scopeId,ownerActorId:config.ownerActorId,storageId:this.host.workspace.storageId()});
-    for(const name of readdirSync(directory).filter(name=>/^[a-f0-9]{64}\.json$/.test(name))) {
-      const copy=this.read(join(directory,name)),id=copy.header.id;
-      if(name!==key(id)) throw Error('Portable session filename mismatch');
-      if(copy.channel)continue;
-      await this.restoreCopy(copy,workspace,target.path,registry);
-    }
-    this.restored=binding;
-    // Also refresh copies when this device already owns a longer native log
-    // (for example, recovery after an abrupt previous shutdown).
-    for(const id of workspace.sessionIds) this.schedule(id);
-  });}
+  async restore(caller?: () => void): Promise<void> {
+    const scope = this.host.workspace.homeScope?.();
+    const validate = () => {
+      caller?.();
+      if (this.closed || !sameHomeBinding(this.host.workspace.homeScope?.(), scope))
+        reject('STALE_BINDING', 'Native transcript binding changed');
+    };
+    return this.enqueue(async () => {
+      validate();
+      const {target,workspace,registry}=this.target();
+      const binding=target.id+'\n'+target.path;
+      if (this.restored?.key === binding && sameHomeBinding(scope, this.restored.scope)) return;
+      const directory=this.directory(target.path);
+      const config=this.host.workspace.runtime.config;
+      this.write(join(directory,'identity.json'),{schema:1,companionId:config.companionId,scopeId:config.scopeId,ownerActorId:config.ownerActorId,storageId:this.host.workspace.storageId()});
+      for(const name of readdirSync(directory).filter(name=>/^[a-f0-9]{64}\.json$/.test(name))) {
+        const copy=this.read(join(directory,name)),id=copy.header.id;
+        if(name!==key(id)) throw Error('Portable session filename mismatch');
+        if(copy.channel)continue;
+        await this.restoreCopy(copy,workspace,target.path,registry,validate);
+        validate();
+      }
+      this.restored = {key: binding, scope};
+      // Also refresh copies when this device already owns a longer native log
+      // (for example, recovery after an abrupt previous shutdown).
+      for(const id of workspace.sessionIds) this.schedule(id);
+    });
+  }
   private exportScope(sessionId:string):ExportScope|undefined {
     const {target,workspace:ownerWorkspace,registry}=this.target(true);
     const channel=ownerWorkspace.sessionIds.includes(sessionId)?undefined:this.channelScope(sessionId,registry,target.path,true);

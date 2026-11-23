@@ -6,6 +6,8 @@ import { SourceAdapterTable } from '../tables/sources.js';
 import { RegistrationTable } from '../tables/registry.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts } from '../tables/companion-ports.js';
+import { VoiceTable } from '../tables/voice.js';
+import { ConsoleTable } from '../tables/console.js';
 export const OWNER_LIFE_TOOL_SOURCES = Object.freeze(COMPANION_TOOL_SOURCES.filter(source => source === 'owner' || source === 'life' || source === 'review'));
 export function matchesNativeScope(current, expected) {
     return !!current && current.workspaceId === expected.workspaceId && current.path === expected.path
@@ -45,6 +47,8 @@ export class CoreNative {
     toolTable = new CompanionToolTable();
     sourceTable = new SourceAdapterTable(this.toolTable);
     companionPorts = new CompanionPorts();
+    voiceTable = new VoiceTable();
+    consoleOperations = new ConsoleTable();
     playbackProviders = new RegistrationTable();
     reviewCompaction = new RegistrationTable();
     resolveNativeScope;
@@ -91,11 +95,14 @@ export class CoreNative {
         // The current component switch applies at the next turn, including retained chats.
         return this.memoryEnabled ? this.memory : undefined;
     }
-    registerReviewCompaction(request) {
-        return this.reviewCompaction.register('review', request);
+    registerReviewCompaction(request, hasPending) {
+        return this.reviewCompaction.register('review', { request, hasPending });
+    }
+    hasPendingReviewCompaction(sessionId) {
+        return this.reviewCompaction.get('review')?.value.hasPending?.(sessionId) ?? false;
     }
     requestReviewCompaction(sessionId) {
-        this.reviewCompaction.get('review')?.value(sessionId);
+        this.reviewCompaction.get('review')?.value.request(sessionId);
     }
     /** Native DSH owns the turn. Core retains only input references and selected policy metadata. */
     observeInputs(sessionId, turn, messages, scope = this.current(sessionId)) {

@@ -10,6 +10,7 @@ import type {CompanionFactActor} from '../../src/contracts/interaction.js';
 import {emptyHomeState} from '#feiyu-home';
 import {createGarden} from '#feiyu-garden';
 import {CompanionBehavior} from '../../src/living/body/plugin.js';
+import {LivingView} from '../../src/living/index.js';
 import {CompanionEconomy} from '../../src/living/economy/plugin.js';
 import {PersistentLifePlan} from '../../src/living/plan/plan.js';
 
@@ -30,7 +31,8 @@ function fixture(t:TestContext) {
   writeFileSync(join(directory,'home.json'),JSON.stringify(home));
   writeFileSync(join(directory,'garden.json'),JSON.stringify(garden));
   const metadata=new Map<string,unknown>(),events:{name:string;payload:unknown}[]=[];
-  const host={workspace:{status:()=>({state:'ready',target}),storageId:()=> 'storage',runtime:{
+  const host={workspace:{status:()=>({state:'ready',target}),storageId:()=> 'storage',
+    homeScope:()=>({workspaceId:target.id,path:target.path,storageId:'storage',bootId:'fixture',generation:0}),runtime:{
     config:{ownerActorId:'owner',companionId:'fish'},identity:()=>({companionId:'fish',displayName:'Fixture'}),
     store:{persisted:()=>true,meta:(key:string)=>metadata.get(key),setMeta:(key:string,value:unknown)=>metadata.set(key,value),
       transaction:(work:()=>unknown)=>work()},
@@ -39,7 +41,12 @@ function fixture(t:TestContext) {
   const ctx={get:(name:string)=>name==='petBehavior'?body:name==='petEconomy'?economy:undefined,
     on:()=>()=>{},emit:(name:string,payload:unknown)=>{events.push({name,payload});},logger:()=>({warn(){}})} as unknown as Context;
   const openEconomy=()=>{economy=new CompanionEconomy(ctx,host,{body:()=>body});economy.prepare(target);};
-  const start=()=>{openEconomy();body=new CompanionBehavior(ctx,host,{economy:()=>economy});};
+  const start=()=>{
+    openEconomy();
+    const view=new LivingView({economy:()=>economy},undefined,undefined,undefined,binding=>ctx.emit('world.changed',binding));
+    body=new CompanionBehavior(ctx,host,view);
+    body.activate();
+  };
   const plan=()=>new PersistentLifePlan(directory,'fish','storage','UTC');
   start();
   t.after(async()=>{await body.close();economy?.close();rmSync(root,{recursive:true,force:true});});
@@ -139,7 +146,7 @@ test('real reading survives plan pause/restart and confirms only its offered con
   assert.equal(offer.text,original.text.slice(0,1200));
   const reading=await f.body.roomState(id);
   assert.equal(reading.behavior.presentationKind,'read');assert.equal(reading.behavior.readingState,'offered');
-  assert.ok(f.events.slice(beforeOffer).some(event=>event.name==='pet/behavior.changed'),
+  assert.ok(f.events.slice(beforeOffer).some(event=>event.name==='world.changed'),
     'A committed actual-content offer invalidates the same body projection');
   assert.equal((await f.economy.snapshot(id)).bookmarks.length,0,'Receiving text is not confirmation or comprehension');
   await plan.control(plan.read().revision,'pause','Owner paused the reading',f.body,id);

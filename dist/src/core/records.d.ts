@@ -48,6 +48,7 @@ type NativeWorkspace = {
 export declare class CoreRecords {
     private workspace;
     private native;
+    private closed;
     private current?;
     private lookup;
     readonly timeZone: string;
@@ -60,7 +61,7 @@ export declare class CoreRecords {
         revision: string;
         path: string;
     }>;
-    saveSelf(workspaceId: string, expectedRevision: string, value: string): Promise<{
+    saveSelf(workspaceId: string, expectedRevision: string, value: string, validate?: () => void): Promise<{
         text: string;
         revision: string;
         path: string;

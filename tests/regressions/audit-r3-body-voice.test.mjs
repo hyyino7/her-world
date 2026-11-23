@@ -7,6 +7,7 @@ import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 import {emptyHomeState} from '#feiyu-home';
 import {CompanionBehavior} from '../../dist/src/living/body/plugin.js';
+import {LivingView} from '../../dist/src/living/index.js';
 import {CompanionVoice} from '../../dist/src/voice/plugin.js';
 import {canonical,digest} from '../../dist/src/core/storage.js';
 
@@ -26,11 +27,17 @@ test('R3: Body publication accepts a large retained history without weakening Co
   assert.ok(Buffer.byteLength(JSON.stringify(home))>4*1024*1024);assert.throws(()=>canonical(home),/Payload too large/);
   writeFileSync(join(directory,'home.json'),JSON.stringify(home));
   const target={id:'a',path:root},host={native:{},workspace:{status:()=>({state:'ready',target}),storageId:()=>'a',
+    homeScope:()=>({workspaceId:'a',path:root,storageId:'a',bootId:'fixture',generation:0}),
     runtime:{config:{ownerActorId:'owner',companionId:'fish'},store:{meta:()=>undefined},identity:()=>({displayName:'Fixture'})}}};
-  const changes=[],warnings=[];const ctx={on:()=>()=>{},get:()=>undefined,emit:(name,event)=>{if(name==='pet/behavior.changed')changes.push(event);},logger:{warn:(...args)=>warnings.push(args)}};
-  let behavior=new CompanionBehavior(ctx,host);
+  const changes=[],warnings=[];const ctx={on:()=>()=>{},get:()=>undefined,logger:{warn:(...args)=>warnings.push(args)}};
+  const start=()=>{
+    const body=new CompanionBehavior(ctx,host,new LivingView({},undefined,undefined,undefined,binding=>changes.push(binding)));
+    body.activate();
+    return body;
+  };
+  let behavior=start();
   t.after(async()=>{await behavior.close();rmSync(root,{recursive:true,force:true});});
-  const first=await behavior.snapshot('a');assert.equal(first.fault,null);assert.ok(changes.length>0);
+  const first=await behavior.snapshot('a');assert.equal(first.fault,null);assert.ok(first.revision>0);
   const published=changes.length;await behavior.snapshot('a');assert.equal(changes.length,published,'unchanged internal JSON does not create extra publications');
   const counts=structuredClone(behavior.binding.room.state.counts);
   await behavior.act('a','water','history-0');assert.deepEqual(behavior.binding.room.state.counts,counts,'a retained acknowledged request remains deduplicated');
@@ -39,7 +46,7 @@ test('R3: Body publication accepts a large retained history without weakening Co
   const saved=JSON.parse(readFileSync(join(directory,'home.json'),'utf8'));assert.equal(Object.keys(saved.interactionReceipts).length,12001);
   assert.equal(saved.interactionReceipts[digest('history-0')].acknowledged,true);assert.deepEqual(warnings,[]);
   assert.throws(()=>canonical(saved),/Payload too large/,'public Core input budget stays unchanged');
-  await behavior.close();behavior=new CompanionBehavior(ctx,host);
+  await behavior.close();behavior=start();
   await behavior.act('a','water','new-water');assert.equal((await behavior.snapshot('a')).fault,null);
   assert.equal(behavior.binding.room.state.counts.water,saved.counts.water,'reopening preserves the new interaction receipt without reapplying water');
 });
@@ -56,13 +63,14 @@ function synthesisFixture(t,{external=false,holdEvery=false}={}) {
     './registry.js':{BUILTIN_VOICE_ID:'fixture-builtin',activeVoiceProvider:()=>external?{id:'fixture-external',name:'Fixture',synthesize}:null},
     './voices.js':{DEFAULT_VOICE:'fixture-voice',VOICES:[],isKnownVoice:value=>value==='fixture-voice'},
   };
-  const source=readFileSync('dist/src/desktop/upstream/host/voice/speak.js','utf8');
+  const source=readFileSync('dist/src/voice/upstream/host/voice/speak.js','utf8');
   const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
   const exports={};runInNewContext(code,{exports,require:name=>{assert.ok(modules[name],name);return modules[name];},Date,AbortSignal,setTimeout,clearTimeout});
   const service=exports.createVoiceService({userRoot:'/fixture-root',synthesize});
-  const host={workspace:{status:()=>({state:'ready',target:{id:'a'}}),storageId:()=>'a'}};
+  const binding={workspaceId:'a',storageId:'a',path:'/fixture-root',bootId:'fixture',generation:0};
+  const host={workspace:{homeScope:()=>binding}};
   const voice=new CompanionVoice(host,'/unused-device-cache',()=>undefined);
-  voice.scope={id:'a',workspaceId:'a',tools:Promise.resolve({voice:service,speech:{}})};
+  voice.scope={binding,tools:Promise.resolve({voice:service,speech:{}})};
   t.after(()=>{for(const gate of pending)gate.resolve();voice.release();});
   const speak=(text,signal)=>{const work=voice.handle({rest:'voice/speak',method:'POST',body:JSON.stringify({text}),signal});void work.catch(()=>{});return work;};
   return {voice,service,speak,files,calls,pending,started,prunes:()=>pruneCount};
@@ -102,7 +110,7 @@ test('R3: the original builtin encoder cannot commit audio returned after caller
     'node:fs/promises':{writeFile:async(...args)=>{writes.push(args);},rename:async()=>{writes.push(['rename']);},rm:async()=>{}},
     '@andresaya/edge-tts':{EdgeTTS:class {async generate(){started.resolve();return finish.promise;}}},
   };
-  const source=readFileSync('dist/src/desktop/upstream/host/voice/edge.js','utf8'),exports={};
+  const source=readFileSync('dist/src/voice/upstream/host/voice/edge.js','utf8'),exports={};
   const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
   runInNewContext(code,{exports,require:name=>{assert.ok(modules[name],name);return modules[name];}});
   const controller=new AbortController(),pending=exports.synthesize({signal:controller.signal,text:'fixture',voice:'fixture',rate:'+0%',target:'/fixture-target'});

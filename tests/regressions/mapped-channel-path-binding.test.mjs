@@ -2,8 +2,8 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,realpathSync,readFileSync,existsSync,cpSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {join} from 'node:path';
+import {compiledURL} from '../fixtures/playback.mjs';
 import {syncBuiltinESMExports} from 'node:module';
 import childProcess from 'node:child_process';
 import net from 'node:net';
@@ -26,9 +26,9 @@ for(const [object,keys] of [[net,['connect','createConnection']],[net.Socket.pro
 syncBuiltinESMExports();
 after(()=>{for(const restore of restores.reverse())restore();syncBuiltinESMExports();assert.deepEqual(forbidden,[]);});
 
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {createCore}=await import(new URL('../../core/index.js',playbackURL));
-const {CompanionChannels}=await import(new URL('../../channels/plugin.js',playbackURL));
+const {createCore}=await import(compiledURL('core/index.js'));
+const {CompanionChannels,channelsConsoleOperations}=await import(compiledURL('channels/plugin.js'));
+const {settingsHandler}=await import(compiledURL('console/settings.js'));
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
 const value=result=>{assert.equal(result.ok,true,JSON.stringify(result));return result.value;};
 
@@ -125,7 +125,33 @@ test('late real group research cannot return sources from the old root after a p
   await checked;await f.channels.refresh();assert.equal(f.channels.bound.path,f.paths.b);
 });
 
-test('a real settings commit cannot acknowledge the replacement root during adapter restart',async t=>{
+test('queued world notice cannot reuse the same workspace after its binding generation changes',async t=>{
+  const entered=deferred(),result=deferred();
+  const f=await fixture(t,{search:()=>{entered.resolve();return result.promise;}});
+  await f.configure({qq:{accountId:'12345',allowGroups:['6789']}});
+  await f.channels.request('same-native-workspace','groupSlang',{
+    groupId:'6789',content:'fixtureword',status:'candidate',meaning:'',usage:''});
+  const waiting=f.channels.request('same-native-workspace','groupResearch',{groupId:'6789',content:'fixtureword'});
+  await entered.promise;
+  const rejected=assert.rejects(waiting,{code:'STALE_BINDING'});
+  const original=f.host.workspace.homeScope(), adapter=f.channels.bound;
+  const queued=f.channels.refresh(original);
+  await f.bind('b');
+  await f.bind('a');
+  const current=f.host.workspace.homeScope();
+  assert.equal(current.storageId,original.storageId);
+  assert.equal(current.path,original.path);
+  assert.notEqual(current.generation,original.generation);
+  result.resolve({sources:[]});
+  await rejected;
+  assert.equal(await queued,undefined);
+  const rebuilt=await f.channels.refresh(current);
+  assert.equal(rebuilt.path,f.paths.a);
+  assert.notEqual(rebuilt,adapter);
+});
+
+for (const [platform,preference,nextValue] of [['qq','autoReply',false],['wechat','bufferSeconds',8]]) test(
+ `a real settings commit cannot acknowledge the replacement root during adapter restart (${platform})`,async t=>{
   const f=await fixture(t);await f.channels.refresh();
   const expected=(await f.status()).messaging.config;
   f.copy('a','b');const beforeB=f.bytes('b'),saveB=await f.prepare('b');
@@ -138,11 +164,18 @@ test('a real settings commit cannot acknowledge the replacement root during adap
     return result;
   };
   syncBuiltinESMExports();t.after(()=>{fs.renameSync=rename;syncBuiltinESMExports();});
-  await assert.rejects(f.channels.request('same-native-workspace','messagingSettings',{
-    expected,next:{qq:{autoReply:false}}}),error=>error.code==='STALE_BINDING');
+  t.after(f.host.native.consoleOperations.register('channels',channelsConsoleOperations(f.channels)).revoke);
+  const signal=new AbortController().signal, handle=settingsHandler(()=>f.host,()=>undefined);
+  const reply=await handle('messagingSettings',{requestId:'channel-change-before-rebind',input:{
+    workspaceId:'same-native-workspace',expected,next:{[platform]:{[preference]:nextValue}},
+  }},signal,{principal:{kind:'owner'},signal});
+  assert.equal(reply.ok,false);
+  assert.equal(reply.error.code,'OUTCOME_UNKNOWN');
+  assert.equal(reply.error.effect,'unknown');
+  assert.equal(reply.error.retry,'reconcile');
   assert.ok(saved);value(await saved);value(await initialized);
   assert.equal(f.host.workspace.status().target.path,f.paths.b);
-  assert.equal(JSON.parse(f.bytes('a')).qq.autoReply,false,'The A write was accepted before the path moved');
+  assert.equal(JSON.parse(f.bytes('a'))[platform][preference],nextValue,'The A write was accepted before the path moved');
   assert.equal(f.bytes('b'),beforeB,'No A result is written or acknowledged as B policy');
   assert.equal((await f.channels.refresh()).path,f.paths.b);
 });

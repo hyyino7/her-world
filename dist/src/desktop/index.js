@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { createInterface } from 'node:readline';
+import { isDesktopSwitch } from '../core/companion-settings.js';
 import { workAnimationEligible } from '../emotion/index.js';
 import { Conversation, sameBinding } from './conversation.js';
 const desks = new WeakMap();
@@ -25,6 +26,7 @@ export class Desktop {
     clock;
     work;
     bodyBinding;
+    chatVoice = new Map();
     chat;
     features;
     constructor(native, host) {
@@ -188,7 +190,7 @@ export class Desktop {
     }
     async savePreference(data) {
         const key = data.key;
-        if (!['desktopClickSound', 'desktopReplyBubble', 'desktopWhisperEnabled', 'desktopBalanceEnabled', 'desktopFixed', 'desktopConfineToScreen'].includes(String(key)) || typeof data.value !== 'boolean')
+        if (!['desktopClickSound', 'desktopReplyBubble', 'desktopWhisperEnabled', 'desktopBalanceEnabled', 'desktopFixed', 'desktopConfineToScreen'].includes(String(key)) || !isDesktopSwitch(String(key), data.value))
             throw Error('无效桌宠设置');
         if (key !== 'desktopReplyBubble') {
             const presentation = this.native.getPresentation?.();
@@ -266,6 +268,8 @@ export class Desktop {
                 this.settingsChanged();
                 return;
             }
+            if (msg.type === 'voice-cancel')
+                this.chatVoice.get(msg.id)?.abort();
             if (msg.type === 'request')
                 void this.handle(msg);
         });
@@ -288,6 +292,7 @@ export class Desktop {
     }
     async handle(msg) {
         const child = this.child;
+        let voice;
         try {
             const target = this.target();
             if (!this.bodyCurrent()) {
@@ -302,7 +307,11 @@ export class Desktop {
             else if (msg.action === 'desktop-api') {
                 if (!this.features)
                     throw Error('桌宠功能尚未就绪');
-                result = await this.features.request(data);
+                if (msg.cancellableVoice) {
+                    voice = new AbortController();
+                    this.chatVoice.set(msg.id, voice);
+                }
+                result = await this.features.request(data, voice?.signal);
             }
             else if (msg.action === 'preferences') {
                 result = this.host.workspace.companionSettings();
@@ -329,10 +338,15 @@ export class Desktop {
             if (child === this.child)
                 this.push('response', { id: msg.id, ok: false, error: e instanceof Error ? e.message : '操作失败' });
         }
+        finally {
+            if (voice && this.chatVoice.get(msg.id) === voice)
+                this.chatVoice.delete(msg.id);
+        }
     }
-    async closeWindow() {
+    async closeWindow(validate) {
         this.closeChat();
-        await this.native.getPresentation?.()?.hide();
+        await this.native.getPresentation?.()?.hide(validate);
+        validate?.();
     }
     closeChat() {
         clearTimeout(this.tick);
@@ -342,6 +356,9 @@ export class Desktop {
         const child = this.child;
         this.child = undefined;
         this.bodyBinding = undefined;
+        for (const voice of this.chatVoice.values())
+            voice.abort();
+        this.chatVoice.clear();
         this.readyReject?.(Error('小窗已关闭，操作已取消'));
         this.readyReject = undefined;
         this.ready = undefined;
@@ -372,18 +389,16 @@ export class Desktop {
 }
 export function registerDesktop(ctx, host) {
     // Workspace/controller can arrive after Core; Cordis requires service lookup outside declared injections.
-    const context = ctx;
-    function service(key) {
-        const current = context.get(key);
+    function service(current, key) {
         if (!current)
             throw Error('DSH 服务暂不可用：' + key);
         return current;
     }
     const native = {
-        get workspaceRegistry() { return service('workspaceRegistry'); },
-        get sessionController() { return service('sessionController'); },
-        get agents() { return service('agents'); },
-        get sessions() { return service('sessions'); },
+        get workspaceRegistry() { return service(ctx.get('workspaceRegistry'), 'workspaceRegistry'); },
+        get sessionController() { return service(ctx.get('sessionController'), 'sessionController'); },
+        get agents() { return service(ctx.get('agents'), 'agents'); },
+        get sessions() { return service(ctx.get('sessions'), 'sessions'); },
         prepareWorkspace: async () => { await desk.features?.restoreImages(); await ctx.get('petTranscripts')?.restore(); },
         admitImage: image => {
             if (!desk.features)
@@ -393,7 +408,7 @@ export function registerDesktop(ctx, host) {
         getEmotion: () => ctx.get('petEmotion'),
         getPresentation: () => ctx.get('petPlatform'),
         isLifeHome: id => ctx.get('petLife')?.isHome(id) ?? false,
-        on: context.on.bind(ctx),
+        on: ctx.on.bind(ctx),
     };
     const desk = new Desktop(native, host);
     desk.features = new DesktopFeatures(ctx, host, (type, value) => {

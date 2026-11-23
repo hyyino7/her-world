@@ -6,10 +6,11 @@ import { createWechatModule } from '#dsh-world/adapters/wechat-scoped';
 import { createQqHome } from '#dsh-world/adapters/qq-home';
 import { conversationKey, speakerIdentity } from '#dsh-world/ecosystem/shared/identity';
 import { check, digest } from '../core/storage.js';
+import { isRunningLifeHome } from '../living/outlets.js';
 import { privateDeviceDirectory } from './bridge.js';
 import { channelUsage } from './usage.js';
 import { createChannelHomes } from './sessions.js';
-import { allowedIdentity, messagingPreferences, ownerIdentity } from './messaging-settings.js';
+import { allowedIdentity, editableMessagingFields, messagingPreferences, ownerIdentity } from './messaging-settings.js';
 import { createQzoneLedger } from './group-qzone.js';
 import { createGroupGameplay } from './group-material.js';
 import { openQQ } from './qq.js';
@@ -67,6 +68,7 @@ export async function createMessaging(ctx, host, options) {
         search: web ? query => web.search({ query, maxResults: 5 }) : undefined });
     const receipt = (id) => digest([options.storageId, id.channel, id.accountId, id.conversationType, id.conversationId, id.speakerId, id.platformMessageId]);
     let qq, qqHome, qqError = null;
+    let qqVoice;
     let wx, unregister, wxFile = null, wxError = null;
     async function qqStart() {
         if (!active() || !config.qq.enabled)
@@ -87,22 +89,28 @@ export async function createMessaging(ctx, host, options) {
                     homes.owns(session.id) });
             const home = qqHome;
             const qqAccount = config.qq.accountId;
-            const qqActive = () => active() && config.qq.enabled && config.qq.accountId === qqAccount;
+            const voiceLifetime = qqVoice = new AbortController();
+            const qqActive = () => active() && !voiceLifetime.signal.aborted && config.qq.enabled && config.qq.accountId === qqAccount;
             const inbox = createQQInbox({ store, storageId: options.storageId, active: qqActive, allowed, owner,
                 probe: submission => probeQQAdmission(ctx, submission, qqActive) });
             qq = openQQ({ settings: config.qq, qzone: createQzoneLedger(options.dataDirectory, qqAccount),
                 active: qqActive, allowed, owner, inbox, transport, async speak(text) {
-                    const voice = ctx.get('petVoice');
-                    check(voice && active(), '语音未启用');
+                    const voice = host.native.voiceTable.lookup(ctx, voiceLifetime.signal);
+                    check(voice && qqActive(), '语音未启用');
                     const response = await voice.handle({ rest: 'voice/speak', method: 'POST', body: JSON.stringify({ text }) });
+                    voice.assertCurrent();
+                    if (!qqActive())
+                        throw new DOMException('QQ 语音所属绑定已切换', 'AbortError');
                     check(response.kind === 'file' && response.contentType === 'audio/mpeg' && safeFile(response.file)
-                        && lstatSync(response.file).size <= 4 * 1024 * 1024 && active(), '合成音频不可用');
+                        && lstatSync(response.file).size <= 4 * 1024 * 1024 && qqActive(), '合成音频不可用');
                     return readFileSync(response.file);
                 }, groupQuote: id => groups.quoteTarget(id), decideGroup: (id, trigger, recovering) => groups.decision(id, trigger, recovering), groupResponse: (id, text, mode) => groups.response(id, text, mode),
                 observeGroup: (id, message, flags) => groups.receive(id, message, flags), ask: (text, id, history, mode, delivery) => home.ask(text, id, history, mode, delivery) });
             qqError = null;
         }
         catch (error) {
+            qqVoice?.abort();
+            qqVoice = undefined;
             qqHome?.stop();
             qqHome = undefined;
             qqError = error instanceof Error && error.message.includes('环境变量') ? 'QQ 凭据环境变量未设置' : 'QQ SDK 或本机 WebSocket 适配器不可用';
@@ -174,11 +182,12 @@ export async function createMessaging(ctx, host, options) {
                     store.put('channel-received', key, { state: 'started' });
                     try {
                         const answer = await ask();
+                        check(active(), 'Channel workspace changed');
                         store.put('channel-received', key, { state: 'done' });
                         return answer;
                     }
                     catch (error) {
-                        if (error instanceof Error && error.constructor.name === 'WechatHomeBusy')
+                        if (active() && error instanceof Error && error.constructor.name === 'WechatHomeBusy')
                             store.put('channel-received', key, null);
                         throw error;
                     }
@@ -201,39 +210,45 @@ export async function createMessaging(ctx, host, options) {
             wxError = '微信适配器接口启动失败，请检查设备目录和路由';
         }
     }
-    async function stopQQ() { groups.unbind(); qqHome?.stop(); qqHome = undefined; const prev = qq; qq = undefined; await prev?.close(); }
+    async function stopQQ() { qqVoice?.abort(); qqVoice = undefined; groups.unbind(); qqHome?.stop(); qqHome = undefined; const prev = qq; qq = undefined; await prev?.close(); }
     async function stopWechat() { unregister?.(); unregister = undefined; const prev = wx; wx = undefined; wxFile = null; await prev?.stop(); }
     await qqStart();
     wxStart();
     return {
+        cancelVoice() { qqVoice?.abort(); },
         qqConnection() {
             return !active() || !config.qq.enabled ? 'off' : qq?.status().connected ? 'online' : 'unavailable';
         },
         status() {
-            return { config: structuredClone(config), qq: { connected: false, state: config.qq.enabled ? 'unavailable' : 'off', error: qqError,
+            return { config: structuredClone(config), fields: editableMessagingFields(), qq: { connected: false, state: config.qq.enabled ? 'unavailable' : 'off', error: qqError,
                     sent: 0, failed: 0, blocked: 0, outbox: 0, voiceReceived: 0, voiceVerified: 0, voiceUncertain: 0, ...qq?.status(), usage: usage.read('qq', config.qq.accountId), credentialSet: !!config.qq.tokenEnv && !!process.env[config.qq.tokenEnv] },
                 wechat: { account: null, lastContactAt: null, chats: 0, pending: 0, uncertain: 0, ...wx?.status(), error: wxError, path: wxFile, presence: wx?.presence(new Date()) ?? null, usage: usage.read('wechat', config.wechat.accountId) } };
         },
-        async configure(patch) {
+        async configure(patch, validate, committed) {
             const next = messagingPreferences(config, patch);
             check(active(), 'Channel workspace changed');
             const updateQQ = !isDeepStrictEqual(next.qq, config.qq) || Boolean(qqError);
             const updateWX = !isDeepStrictEqual(next.wechat, config.wechat) || Boolean(wxError);
+            validate?.();
             persistence.save(next);
             config = next;
+            committed?.();
             if (updateQQ) {
                 await stopQQ();
+                validate?.();
                 qqError = null;
                 await qqStart();
+                validate?.();
             }
             if (updateWX) {
                 await stopWechat();
+                validate?.();
                 wxError = null;
                 wxStart();
             }
         },
         async reach(push, homeId) {
-            if (!active() || !homeId || !ctx.get('petLife')?.isHome(homeId) || host.workspace.runtime.policy().quiet ||
+            if (!active() || !homeId || !isRunningLifeHome(ctx, host, homeId) || host.workspace.runtime.policy().quiet ||
                 push.kind !== 'reach' || !push.deliveryId || !push.text.trim())
                 return [];
             const senders = ['qq', 'wechat'].filter(platform => {
@@ -255,11 +270,13 @@ export async function createMessaging(ctx, host, options) {
                     check(qq?.status().connected && (!config.qq.mutedUntil || Date.now() >= Date.parse(config.qq.mutedUntil)), '主人 QQ 已离线或处于静默时段');
                     store.put('channel-reach', entry, { state: 'uncertain' });
                     const messageId = await qq.reach(identity, push.text);
+                    check(active(), 'Channel workspace changed');
                     store.put('channel-reach', entry, { state: 'sent', messageId });
                     return 'QQ';
                 }
                 check(wx, '微信尚未接入');
                 await wx.reach(identity, homeId, push.text);
+                check(active(), 'Channel workspace changed');
                 return '微信';
             });
             return Promise.allSettled(senders);

@@ -3,6 +3,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent';
 import { type ToolDefinition } from '@deepseek-ai/dsh-tools';
 import { RoomWindow } from './window.js';
 import { RoomChat } from './chat.js';
+import { type ConsoleOperation } from '../core/tables/console.js';
 export declare const roomStateDeclaration: {
     name: string;
     sources: readonly ("life" | "owner" | "review")[];
@@ -27,6 +28,7 @@ export declare class Room {
     private ctx;
     readonly chat: RoomChat;
     private closed;
+    private readonly lifetime;
     private receipts;
     private subscriptions;
     readonly window: RoomWindow;
@@ -42,14 +44,20 @@ export declare class Room {
         ready: boolean;
         workspaceId: string | null;
     };
+    private binding;
     private assert;
-    request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, signal: AbortSignal): Promise<unknown>;
+    private admission;
+    request(workspaceId: string, endpoint: string, data: Record<string, unknown>, requestId: string, caller: AbortSignal): Promise<unknown>;
     watching(id: string): boolean;
     toolScope(agent?: Agent): string | undefined;
     private checked;
+    private toolAdmission;
     tools(): ToolDefinition[];
     close(): Promise<void>;
 }
+export declare function roomConsoleOperations(room: Pick<Room, 'open' | 'request'>): {
+    operations: Record<string, ConsoleOperation>;
+};
 export declare const name = "50-Room";
 export declare const inject: string[];
 declare module '@deepseek-ai/cordis' {

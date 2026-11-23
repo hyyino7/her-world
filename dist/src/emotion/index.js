@@ -1,10 +1,10 @@
+import { ROOM_MOOD_DIMENSIONS } from '../contracts/emotion.js';
 /** The same strict threshold applies on a timer, after dragging and after an animation ends. */
 export function workAnimationEligible(startedAt, now, delaySeconds) {
     return startedAt !== null && Number.isFinite(startedAt) && now - startedAt > delaySeconds * 1000;
 }
 /** Shared semantic vocabulary; optional Room scores remain a separate legacy representation. */
 export { COMPANION_FEELINGS } from '../contracts/emotion.js';
-const roomDimensions = ['happy', 'calm', 'sweet', 'heartache', 'worry', 'sad', 'jealous'];
 export function readRoomMood(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value))
         return;
@@ -16,7 +16,7 @@ export function readRoomMood(value) {
     if (raw.dims !== undefined) {
         if (!raw.dims || typeof raw.dims !== 'object' || Array.isArray(raw.dims))
             return;
-        for (const key of roomDimensions) {
+        for (const key of ROOM_MOOD_DIMENSIONS) {
             const dimension = raw.dims[key];
             if (dimension === undefined)
                 continue;

@@ -18,7 +18,7 @@ export interface CallOptions {
     signal?: AbortSignal;
     deadline?: Timestamp;
 }
-type RejectedCode = 'INVALID_ARGUMENT' | 'UNAUTHORIZED' | 'NOT_FOUND' | 'NOT_IMPLEMENTED' | 'DISABLED' | 'INCOMPATIBLE' | 'CONFLICT' | 'STALE_REVISION' | 'STALE_BINDING' | 'INELIGIBLE' | 'EXPIRED_USE' | 'LIMIT_REACHED';
+export type RejectedCode = 'INVALID_ARGUMENT' | 'UNAUTHORIZED' | 'NOT_FOUND' | 'NOT_IMPLEMENTED' | 'DISABLED' | 'INCOMPATIBLE' | 'CONFLICT' | 'STALE_REVISION' | 'STALE_BINDING' | 'INELIGIBLE' | 'EXPIRED_USE' | 'LIMIT_REACHED';
 export type ContractError = {
     message: string;
     operationId?: string;
@@ -44,6 +44,10 @@ export type ContractError = {
     effect: 'unknown';
     retry: 'reconcile';
 });
+type UnknownEffect = Extract<ContractError, {
+    effect: 'unknown';
+}>;
+export declare function unknownEffect(code: UnknownEffect['code'], message: string): UnknownEffect;
 export type Result<T> = {
     ok: true;
     value: T;

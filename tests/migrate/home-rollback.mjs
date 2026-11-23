@@ -9,6 +9,7 @@ import {createOfflineBackup, restoreOfflineBackup, verifyOfflineBackup} from '..
 import {inspectRepoBinding} from '../../scripts/lib/repo-storage.mjs';
 import {cordisFixture} from '../behavior-list/entries-lifecycle.test.mjs';
 import {cli, mockDsh, planFor, read} from './helpers.mjs';
+import {selectEconomyCli} from './migration-child.mjs';
 import {economyPaths} from './offline-helpers.mjs';
 
 const project = realpathSync(new URL('../..', import.meta.url));
@@ -35,6 +36,7 @@ test('真实 v0.2.0 回退后聊天、召回和共享 home 可用', {timeout:600
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'home-rollback-')));
   t.after(() => rmSync(root, {recursive:true, force:true}));
   mockDsh(t);
+  selectEconomyCli(t);
   const f = await generateSynthetic(join(root, 'old-installation'));
   const walletSnapshot = async host => {
     const economy = new CompanionEconomy({},host);

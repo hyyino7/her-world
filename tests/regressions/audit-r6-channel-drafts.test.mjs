@@ -3,16 +3,18 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {defaults,editableMessagingFields} from '../../dist/src/channels/messaging-settings.js';
+import {fixture as companionFixture,value} from '../behavior-list/fixture.mjs';
 
 const source=readFileSync(new URL('../../src/console/client.js',import.meta.url),'utf8');
 const parsed=ts.createSourceFile('client.js',source,ts.ScriptTarget.Latest,true);
 let component,roleBlock,settingsPage;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text==='ChannelsPage')component=node.getText(parsed);if(ts.isFunctionDeclaration(node)&&node.name?.text==='SettingsPage')settingsPage=node;if(ts.isIfStatement(node)&&node.expression.getText(parsed)==="active === 'role'")roleBlock=node.getText(parsed);ts.forEachChild(node,visit);}visit(parsed);assert.ok(component);assert.ok(roleBlock);assert.ok(settingsPage);
 const saveMethod=settingsPage.body.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='save').getText(parsed);
-const initial=()=>({bridge:{preferences:{enabled:false,outlets:[]}},messaging:{config:{
-  qq:{enabled:false,accountId:'',ownerSpeakerId:'old-qq',allowPrivate:[],allowGroups:[]},
-  wechat:{enabled:false,ownerSpeakerId:'old-wx',allowPrivate:[]}},qq:{state:'disabled'},wechat:{state:'disabled'}}});
+const initial=()=>({bridge:{preferences:{enabled:false,outlets:[]}},messaging:{fields:editableMessagingFields(),config:{
+  qq:{...defaults.qq,ownerSpeakerId:'old-qq'},
+  wechat:{...defaults.wechat,ownerSpeakerId:'old-wx'}},qq:{state:'disabled'},wechat:{state:'disabled'}}});
 const clone=value=>JSON.parse(JSON.stringify(value));
-function fixture(){
+function fixture(client=component,liveRequest){
   const states=[],refs=[],effects=[];let stateCursor=0,refCursor=0,mounted=false,disposed=false,lateWrites=0,tree;
   const requests=[],pending=[];let server=initial();
   const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity).filter(value=>value!==null&&value!==false&&value!==undefined)});
@@ -21,8 +23,9 @@ function fixture(){
     useState(value){const n=stateCursor++;if(!(n in states))states[n]=value;return [states[n],next=>{if(disposed)lateWrites++;states[n]=typeof next==='function'?next(states[n]):next;}];},
     useRef(value){const n=refCursor++;return refs[n]??={current:value};},React:{Fragment:'Fragment',useEffect(effect){if(!mounted)effects.push(effect);}},
   });
-  const Page=vm.runInContext('('+component+')',context);
+  const Page=vm.runInContext('('+client+')',context);
   const request=(operation,input,signal)=>{requests.push({operation,input:clone(input),signal});
+    if(liveRequest)return liveRequest(operation,input,signal);
     if(operation==='channelStatus')return Promise.resolve(clone(server));
     return new Promise((resolve,reject)=>pending.push({operation,input:clone(input),signal,resolve,reject}));};
   function render(){stateCursor=0;refCursor=0;tree=Page({workspaceId:'workspace-A',request});if(!mounted){for(const effect of effects){const stop=effect();if(stop)cleanup.push(stop);}mounted=true;}return tree;}
@@ -31,20 +34,53 @@ function fixture(){
   const text=node=>typeof node==='string'?node:node.children.map(text).join('');
   const section=name=>walk(tree).find(node=>node.type==='details'&&node.props.name===name);
   function button(label,part){const root=part?section(part):tree;assert.ok(root,part);const node=walk(root).find(node=>node.type==='button'&&text(node)===label);assert.ok(node,label);return node;}
-  function edit(part,label,value){const root=section(part);assert.ok(root,part);
+  function control(part,label){const root=section(part);assert.ok(root,part);
     const field=walk(root).find(node=>node.type==='label'&&text(node)===label);assert.ok(field,label);
     const input=field.children.find(node=>typeof node==='object'&&['input','textarea','select'].includes(node.type));assert.ok(input);
-    input.props.onChange({target:{value,checked:value}});render();}
+    return input;}
+  function edit(part,label,value){control(part,label).props.onChange({target:{value,checked:value}});render();}
   async function open(){render();await button('管理渠道').props.onClick();render();}
   function complete(){const item=pending.shift();assert.ok(item);
     if(item.operation==='messagingSettings')server.messaging.config={...server.messaging.config,...item.input.next};
     if(item.operation==='bridgeSettings')server.bridge.preferences=clone(item.input.next);
     item.resolve(clone(server));return item;}
-  return {open,render,states,requests,pending,edit,button,complete,
+  return {open,render,states,requests,pending,control,edit,button,complete,
     draft:()=>clone(states[1]),saved:()=>clone(states[0]),
     dispose(){for(const stop of cleanup)stop();disposed=true;},lateWrites:()=>lateWrites,
     setServer:value=>{server=clone(value);}};
 }
+
+test('生成的桌宠渠道设置从真实 Console 路由读取字段、校验并保存，重启后读回',async t=>{
+  const desktop=readFileSync(new URL('../../src/desktop/platform/client.js',import.meta.url),'utf8');
+  const client=desktop.slice(desktop.indexOf('function ChannelsPage('),desktop.indexOf('function CompanionArchive(')).trim();
+  assert.equal(client,component);
+  const host=await companionFixture(t,{console:true,channels:true,life:false,economy:false});
+  const request=async(operation,input)=>value(await host.settings(operation,{...input,workspaceId:'world'}));
+  const form=fixture(client,request);
+  await form.open();
+  const voiceRate='每分钟最多语音条数（0 不限制）',quiet='合并消息等待（毫秒）';
+  assert.equal(form.control('QQ',voiceRate).props.type,'number');
+  form.edit('QQ',voiceRate,'61');
+  await form.button('保存QQ设置','QQ').props.onClick();
+  assert.equal(form.saved().messaging.config.qq.voicePerMinute,2);
+  form.edit('QQ',voiceRate,'3');
+  form.edit('QQ',quiet,'250');
+  form.control('QQ','群聊触发方式提到我或使用唤醒词所有群消息').props.onChange({target:{value:'all'}});
+  form.render();
+  form.edit('QQ','允许的私聊账号（每行一个）',' 123 \n');
+  form.edit('QQ','QQ 语音收发',true);
+  await form.button('保存QQ设置','QQ').props.onClick();
+  form.edit('微信','媒体等待秒数','9');
+  await form.button('保存微信设置','微信').props.onClick();
+  await host.restart();
+  const reopened=fixture(client,request);
+  await reopened.open();
+  const {qq,wechat}=reopened.saved().messaging.config;
+  assert.deepEqual([qq.voicePerMinute,qq.batchQuietMs,qq.groupTrigger,qq.allowPrivate,qq.voiceEnabled,wechat.bufferSeconds],
+    [3,250,'all',['123'],true,9]);
+  assert.equal(reopened.control('QQ',quiet).props.value,250);
+  assert.equal(reopened.control('微信','媒体等待秒数').props.value,9);
+});
 
 test('R6-05: saving QQ preserves unsaved WeChat and bridge sections',async()=>{
   const f=fixture();await f.open();f.edit('微信','主人的账号 ID','new-unsaved-wx');f.edit('本地程序和推送','允许本机受信程序给生活会话发消息',true);

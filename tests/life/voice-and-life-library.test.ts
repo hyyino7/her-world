@@ -32,7 +32,7 @@ test('shared Pet speech resolves the selected native recognizer and reuses the s
   const root=mkdtempSync(join(tmpdir(),'fish-voice-'));
   t.after(()=>rmSync(root,{recursive:true,force:true}));
   let id='a', heard=0, spoken=0;
-  const host={workspace:{status:()=>({state:'ready',target:{id}}),storageId:()=>id}} as unknown as PetCoreHost;
+  const host={workspace:{homeScope:()=>({workspaceId:id,storageId:id,path:root,bootId:'fixture',generation:0})}} as unknown as PetCoreHost;
   const voice = new CompanionVoice(host,root,()=>({listProviders:()=>['local'],
     resolve:(value:unknown)=>value,transcribe:async(value:{audio:Uint8Array})=>{heard++;assert.deepEqual([...value.audio],[1,2]);return {text:'临时录音'};}}));
   const registryFile='../../src/desktop/upstream/host/voice/registry.js';
@@ -52,9 +52,9 @@ test('shared Pet speech resolves the selected native recognizer and reuses the s
 test('speech capability reflects enabled providers and binding changes reject in-flight results', async t=>{
   const root=mkdtempSync(join(tmpdir(),'fish-voice-cancel-'));
   t.after(()=>rmSync(root,{recursive:true,force:true}));
-  let id='a', enabled=false, ready!:()=>void, complete!:(value:{text:string})=>void;
+  let id='a', generation=0, enabled=false, ready!:()=>void, complete!:(value:{text:string})=>void;
   const started=new Promise<void>(resolve=>{ready=resolve;});
-  const host={workspace:{status:()=>({state:'ready',target:{id}}),storageId:()=>id}} as unknown as PetCoreHost;
+  const host={workspace:{homeScope:()=>({workspaceId:id,storageId:id,path:root,bootId:'fixture',generation})}} as unknown as PetCoreHost;
   const voice=new CompanionVoice(host,root,()=>({listProviders:()=>enabled?['fixture']:[],resolve:(value:unknown)=>value,
     transcribe:async()=>{ready();return new Promise<{text:string}>(resolve=>{complete=resolve;});}}));
   t.after(()=>voice.release());
@@ -65,6 +65,8 @@ test('speech capability reflects enabled providers and binding changes reject in
   assert.equal(voice.canTranscribe(),true);release();assert.equal(voice.canTranscribe(),false);
   enabled=true;assert.equal(voice.canTranscribe(),true);
   const pending=voice.handle({rest:'voice/hear',method:'POST',body:JSON.stringify({audio:'AQI='})});
-  await started;id='b';voice.refresh();complete({text:'old workspace text'});
+  await started;
+  id='b';generation++;
+  id='a';generation++;complete({text:'old workspace text'});
   await assert.rejects(pending,/abort/i);
 });

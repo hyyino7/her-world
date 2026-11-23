@@ -57,22 +57,23 @@
       "services": ["petBehavior","petLife","petEconomy"],
       "dependencies": ["core","memory","emotion","contracts","world","living"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion"],
-      "publishes": ["pet/behavior.changed","pet/economy.fact","pet/life.changed","world.changed"],
-      "subscribes": ["agent/disposed","agent/pre-step","internal/status","pet/behavior.changed","pet/core.changed","pet/economy.fact","pet/emotion.changed","pet/emotion.expression","pet/life.changed","session/event","tools/pre-execute","tools/result"],
+      "publishes": ["world.changed"],
+      "subscribes": ["agent/disposed","agent/pre-step","internal/status","pet/core.changed","pet/emotion.changed","pet/emotion.expression","session/event","tools/pre-execute","tools/result"],
       "generated": [
-        {"file":"src/living/body/animation-map.ts","sources":["scripts/build/build-animation-map.mjs","scripts/lib/webm-metadata.mjs"]}
+        {"file":"src/living/body/animation-slot-ids.ts","sources":["scripts/build/build-animation-map.mjs","scripts/lib/webm-metadata.mjs"]}
       ]
     },
     "desktop": {
       "layer": 3,
       "root": "src/desktop/",
       "services": ["petDesktop","petPlatform"],
-      "dependencies": ["core","memory","emotion","contracts","world","living","desktop"],
+      "dependencies": ["core","memory","emotion","contracts","world","living","desktop","presentation"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petDesktop","petPlatform"],
       "publishes": [],
-      "subscribes": ["agent/assistant-stream","pet/behavior.changed","pet/core.changed","pet/emotion.expression","pet/life.changed","session/event"],
+      "subscribes": ["agent/assistant-stream","agent/error","pet/core.changed","pet/emotion.expression","session/event","world.changed"],
       "generated": [
-        {"file":"src/desktop/platform/client.js","sources":["scripts/build/build-pet-platform.mjs","src/desktop/platform/browser-entry.js","src/console/client.js","scripts/lib/pet-hear-lifecycle.mjs","vendor/dsh-pet/platform/upstream/client.js","src/desktop/platform/playback-observer.js","src/desktop/platform/activity-playback.js","src/desktop/platform/presentation-lifecycle.js","src/living/body/playback.ts"]},
+        {"file":"src/desktop/assets/life-animations.json","sources":["scripts/build/build-life-media.mjs"]},
+        {"file":"src/desktop/platform/client.js","sources":["scripts/build/build-pet-platform.mjs","src/desktop/platform/browser-entry.js","src/console/client.js","scripts/lib/pet-hear-lifecycle.mjs","vendor/dsh-pet/platform/upstream/client.js","src/desktop/platform/playback-observer.js","src/desktop/platform/activity-playback.js","src/desktop/platform/presentation-lifecycle.js","src/presentation/playback.ts","src/presentation/room-transport.ts"]},
         {"file":"src/desktop/helper/upstream/constants.js","sources":["scripts/build/build-desktop-animation.mjs","vendor/dsh-pet/runtime/electron-helper/constants.js","scripts/lib/compact-voice-lifecycle.mjs"]},
         {"file":"src/desktop/helper/upstream/desktop-geometry.js","sources":["scripts/build/build-desktop-animation.mjs","vendor/dsh-pet/runtime/electron-helper/desktop-geometry.js","scripts/lib/compact-voice-lifecycle.mjs"]},
         {"file":"src/desktop/helper/upstream/events.js","sources":["scripts/build/build-desktop-animation.mjs","vendor/dsh-pet/runtime/electron-helper/events.js","scripts/lib/compact-voice-lifecycle.mjs"]},
@@ -94,20 +95,33 @@
       "layer": 3,
       "root": "src/room/",
       "services": ["petRoom"],
-      "dependencies": ["core","memory","emotion","contracts","world","living","room"],
+      "dependencies": ["core","memory","emotion","contracts","world","living","room","presentation"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petRoom"],
       "publishes": [],
-      "subscribes": ["pet/behavior.changed","pet/core.changed"],
+      "subscribes": ["pet/core.changed","world.changed"],
       "generated": []
+    },
+    "presentation": {
+      "layer": 3,
+      "root": "src/presentation/",
+      "sharedLeaf": true,
+      "services": [],
+      "dependencies": [],
+      "reads": [],
+      "publishes": [],
+      "subscribes": [],
+      "generated": [
+        {"file":"src/presentation/animation-map.ts","sources":["scripts/build/build-animation-map.mjs","scripts/lib/webm-metadata.mjs"]}
+      ]
     },
     "channels": {
       "layer": 3,
       "root": "src/channels/",
       "services": ["petChannels"],
       "dependencies": ["core","memory","emotion","contracts","world","living","channels"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petChannels"],
+      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petEconomy","petChannels"],
       "publishes": [],
-      "subscribes": ["agent/pre-step","pet/core.changed","pet/life.changed","session/event"],
+      "subscribes": ["agent/pre-step","pet/core.changed","session/event","world.changed"],
       "generated": []
     },
     "voice": {
@@ -124,8 +138,8 @@
       "layer": 3,
       "root": "src/console/",
       "services": [],
-      "dependencies": ["core","memory","emotion","contracts","world","living","console"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy"],
+      "dependencies": ["core","contracts","living","console","presentation"],
+      "reads": ["petCore","petWorld","petEconomy"],
       "publishes": [],
       "subscribes": [],
       "generated": []

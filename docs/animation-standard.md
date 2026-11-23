@@ -1,304 +1,166 @@
-# Animation and artwork standard
+# 动画与美术素材标准
 
-This is the proposed production standard for new or deliberately revised artwork.
-The **current baseline** and **compatibility constraints** describe the shipped
-source and media. **Authoring targets** are recommendations for owner review;
-they are not new runtime validation rules or acceptance of existing artwork.
-Adopting this document does not regenerate assets or change playback behavior.
+这份建议标准适用于新作或明确要修订的素材。**当前基线**与**兼容约束**记录随包交付的源码和媒体。**制作目标**供主人评审，现有运行时校验规则和素材验收状态沿用原口径。采用本文无需重新生成素材，播放行为沿用现状。
 
-## Scope and current baseline
+## 范围与当前基线
 
-The primary deliverable is a transparent 2D character clip shared by Desktop and
-Room. Stickers, posters, props and source artwork have separate roles. Room's 3D
-models have a separate contract below; a 2D clip does not provide a 3D action.
+主要交付物是桌宠和 Room 共用的透明二维角色动画。贴纸、海报、道具与制作源文件各有用途。Room 三维模型遵循文末的独立契约，二维动画仅提供二维动作。
 
-| Resource | Current baseline | Owning source |
+| 资源 | 当前基线 | 来源 |
 | --- | --- | --- |
-| Original character clips | 114 WebM files; 640 × 360; VP9; declared alpha; 24 fps | [Catalog](../src/desktop/assets/catalog.json), [pinned origins](../vendor/dsh-pet/origin.json) |
-| Supplementary Life clips | 8 WebM files; 640 × 360; VP9/alpha; 4 fps; 2 seconds | [Life media manifest](../src/desktop/assets/life-animations.json) |
-| Life production artwork | 8 RGBA PNG sheets; 1536 × 1024; six 512 × 512 cells in a 3-column, 2-row grid | [Source artwork and conversion](../art/life-animation-sources/README.md) |
-| Life posters | 8 RGBA PNG files; same presentation canvas as their clips | [Life media manifest](../src/desktop/assets/life-animations.json) |
-| Registered chat stickers | 27 RGB PNG files; width 384; heights 288–384; existing backgrounds are part of the artwork | [Catalog](../src/desktop/assets/catalog.json) |
-| Existing composited food props | Three 512 × 512 RGBA PNG files | [Prop allocation](../src/living/body/animation-allocation.json), [prop files](../vendor/dsh-pet/platform/assets/pic/baifan/) |
-| Room 3D models | Two GLB files; both have no skins or animation clips | [Model contract](../vendor/feiyu-room-template/public/room/assets/models/README.md) |
+| 原版角色动画 | 114 个 WebM，640 × 360，VP9，声明透明通道，24 fps | [目录](../src/desktop/assets/catalog.json)、[锁定的上游来源](../vendor/dsh-pet/origin.json) |
+| 生活补充动画 | 8 个 WebM，640 × 360，VP9/alpha，4 fps，时长 2 秒 | [生活媒体清单](../src/desktop/assets/life-animations.json) |
+| 生活制作素材 | 8 张 1536 × 1024 的 RGBA PNG 图集，每张三列两行，共六格，每格 512 × 512 | [源素材与转换流程](../art/life-animation-sources/README.md) |
+| 生活海报 | 8 张 RGBA PNG，画布与各自的动画相同 | [生活媒体清单](../src/desktop/assets/life-animations.json) |
+| 已登记聊天贴纸 | 27 张 RGB PNG，宽 384，高 288–384，已有背景属于原画 | [目录](../src/desktop/assets/catalog.json) |
+| 现有合成餐食道具 | 3 张 512 × 512 的 RGBA PNG | [道具分配](../src/presentation/animation-allocation.json)、[道具文件](../vendor/dsh-pet/platform/assets/pic/baifan/) |
+| Room 三维模型 | 2 个 GLB，均无蒙皮和动画片段 | [模型契约](../vendor/feiyu-room-template/public/room/assets/models/README.md) |
 
-The registered animation set contains 122 clips, approximately 60.46 MB in total.
-Container durations are 10.042 seconds for 110 clips, 5.125 seconds for three,
-4.917 seconds for one, and the Life duration above for eight. These are measured
-container values, not a requirement to make every new action ten seconds long.
+登记的动画共 122 个，总大小约 60.46 MB。实测容器时长为 110 个 10.042 秒、3 个 5.125 秒、1 个 4.917 秒，其余 8 个采用上表的生活动画时长。新动作的时长由制作需要决定。
 
-All containers declare alpha and contain a video track without audio. Declared
-alpha is not proof of clean decoded transparency. Sampled original clips had
-corner alpha of 1/255; sampled Life clips had zero corner alpha. The existing
-[alpha correction switch](../vendor/dsh-pet/src/shared/constants.ts) is disabled.
-New art should remove background residue at export instead of depending on it.
+所有容器都声明透明通道，仅有视频轨。透明质量要看解码后的像素。抽样的原版动画角落 alpha 为 1/255，生活补充动画为 0。现有[透明通道校正开关](../vendor/dsh-pet/src/shared/constants.ts)处于关闭状态。新素材应在导出时清除背景残留。
 
-The Life conversion uses a few held poses. It is a supported legacy profile,
-not the smooth-motion target. Some sampled Life standing poses also place the
-feet several pixels above the common ground line. Retention of these files
-does not certify their alignment, loop seams or artistic consistency.
+现有生活素材用少量姿势停帧，运行时保留支持。新作的流畅度按本文制作目标评审。抽样的部分生活站姿中，脚底比共用地线高出几个像素。这些文件的对齐、循环衔接和风格一致性仍需视觉验收。
 
-## Canvas, resolution and placement
+## 画布、分辨率和摆位
 
-### Compatibility constraints
+### 兼容约束
 
-| Property | Contract |
+| 属性 | 约定 |
 | --- | --- |
-| Production presentation canvas | 640 × 360 pixels, landscape 16:9, square pixels |
-| Coordinates | Origin at the top left; X increases rightward; Y increases downward |
-| Character root | Use the canvas center X = 320 and the standing ground line Y = 330 as authoring anchors |
-| Interaction rectangle | X = 200–440; Y = 50–335; the existing click/drag region is fixed relative to the canvas |
-| Desktop layout | Configured `size` is the whole canvas width in CSS pixels; height is `size × 9/16` |
-| Scaling | Preserve the complete canvas and its transparent margins across frames and clips |
+| 生产呈现画布 | 640 × 360 像素，横向 16:9，方形像素 |
+| 坐标 | 左上角是原点，X 向右递增，Y 向下递增 |
+| 角色根位置 | 以画布中线 X = 320 和站立地线 Y = 330 为制作锚点 |
+| 交互矩形 | X = 200–440、Y = 50–335，当前点按和拖拽区域固定在画布上的这段范围 |
+| 桌宠布局 | 配置的 `size` 是完整画布的 CSS 像素宽度，高度为 `size × 9/16` |
+| 缩放 | 所有帧及片段均保留完整画布和四周透明边距 |
 
-The ground line and hit rectangle come from the
-[shared geometry constants](../vendor/dsh-pet/src/shared/constants.ts). Desktop
-uses them in [sprite layout](../src/desktop/helper/upstream/sprite.js); Room has
-its own [sprite plane and ground placement](../vendor/feiyu-room-template/public/room/actor.js).
-The two surfaces can present the same pixels at different apparent sizes.
-Check both surfaces before accepting alignment.
+地线和命中区域取自[共用几何常量](../vendor/dsh-pet/src/shared/constants.ts)。桌宠在[角色精灵布局](../src/desktop/helper/upstream/sprite.js)中使用这些常量，Room 有自己的[精灵平面与地面定位](../vendor/feiyu-room-template/public/room/actor.js)。同一组像素在两端显示的大小可能不同，验收时两边都要看。
 
-### Authoring targets
+### 制作目标
 
-| Item | Recommended target for new artwork |
+| 项目 | 新素材推荐目标 |
 | --- | --- |
-| Editable master / rendered master frames | 1280 × 720 or larger at the same aspect ratio; retain vector or layered originals when available |
-| Runtime frames and matching poster | Export to the production presentation canvas; preserve the same root and framing |
-| Neutral standing body | Approximately 260–280 pixels tall; align with `idle.webm` before comparing special poses |
-| Body placement | Keep the main torso/head inside the interaction rectangle; tails, held tools and deliberate motion may extend outside it |
-| Edge clearance | Keep all visible artwork within X = 32–608 and Y = 18–342, including effects at their largest extent |
-| Unintended drift | At neutral transitions, aim for no more than 2 pixels of root/foot displacement; intentional jumps, sitting and lying are exempt |
-| Color | sRGB artwork; 8-bit RGBA PNG master frames with clean antialiased edges |
+| 可编辑母版或渲染母版帧 | 1280 × 720 或更大，保持同一宽高比，有矢量或分层原稿时保留原稿 |
+| 运行时帧与配套海报 | 导出到生产画布，沿用相同根位置和构图 |
+| 中性站姿 | 角色约高 260–280 像素，先和 `idle.webm` 对齐再比较特殊姿势 |
+| 角色摆位 | 躯干和头部主要留在交互矩形内，尾巴、手持物品和有意设计的动作可超出 |
+| 边缘留空 | 可见画面限制在 X = 32–608、Y = 18–342 内，特效在范围最大时也应留空 |
+| 非预期漂移 | 中性过渡的根或脚底位移尽量控制在 2 像素以内，有意的跳跃、坐下和躺卧除外 |
+| 色彩 | 使用 sRGB，8 位 RGBA PNG 母版帧保留干净的抗锯齿边缘 |
 
-Use a stable body root rather than recentering each frame's visible bounding
-box. A moving tail or extended watering can must not move the entire character.
-Do not tightly crop each frame, stretch a square pose to fill a widescreen
-canvas, or normalize a crouching pose to standing height.
+固定角色根位置。尾巴摆动、把浇水壶伸远时，角色整体位置保持原处。各帧沿用全画布，方形姿势保持原比例，蹲姿保留与站姿的身高差。
 
-The runtime canvas is not the character's visible width. Its transparent side
-margins support motion and interaction geometry. DPI/PPI metadata does not add
-on-screen detail. A larger master preserves edit quality, but downsampling it
-does not make the current runtime output native-resolution at every Retina
-display size. Higher-resolution runtime exports require separate compatibility
-and performance validation.
+画布宽度包含角色运动和交互所需的透明边距。屏幕细节取决于实际像素，DPI/PPI 元数据仅描述密度。较大的母版便于编辑。降采样后的运行时输出能否在 Retina 屏幕逐像素呈现，取决于显示尺寸。提高运行时输出分辨率须另验兼容性和性能。
 
-## Timing, motion and playback
+## 时序、动作与播放
 
-**New smooth animation target: constant 24 fps.** Preserve actual pose changes
-and motion timing. Repeating six poses in a 24 fps container does not turn them
-into smooth animation. A deliberate held-pose style or reduced frame rate is an
-explicit artistic exception, reviewed at the intended display size.
+**流畅动画的新作目标为恒定 24 fps。** 保留真实的姿势变化和运动时序。把六个姿势重复填进 24 fps 容器，仍会呈现停帧。故意停帧或降低帧率属于美术例外，按预期显示大小评审。
 
-| Clip role | Recommended starting point | Motion requirement |
+| 片段用途 | 建议起点 | 动作要求 |
 | --- | --- | --- |
-| Idle, breathing, quiet presence | 3–6 second loop | Small, readable motion; stable feet and body scale |
-| Repeating activity, such as reading or drinking | 2–6 second loop | Clear action and prop contact; no visible reset at the seam |
-| Touch reaction / expression | 1–3 second one-shot | Readable anticipation, reaction and recovery |
-| Finite action / celebration | 2–6 second one-shot | A meaningful final pose that can remain visible |
-| Sleep | Separate entry, loop and exit when the existing allocation uses them | Entry leads into the sleep pose; loop remains asleep; exit finishes awake |
-| Walking / running | Match the configured movement window | In-place gait; actual route translation belongs to the runtime |
+| 待机、呼吸、安静陪伴 | 3–6 秒循环 | 动作幅度小且易辨，脚底和角色比例稳定 |
+| 重复活动，如阅读或喝水 | 2–6 秒循环 | 动作及道具接触清晰可辨，首尾衔接看不出复位 |
+| 触摸反应或表情 | 1–3 秒单次播放 | 准备、反应和恢复动作都能看清 |
+| 有限动作或庆祝 | 2–6 秒单次播放 | 结束姿势能独立表达含义，适合留在屏幕上 |
+| 睡眠 | 现有分配需要时，分别提供入睡、睡眠循环和醒来片段 | 入睡接上睡姿，循环保持睡眠，退出时为清醒姿势 |
+| 走路或跑步 | 匹配已配置的移动时段 | 原地步态，路线位移由运行时执行 |
 
-These are authoring ranges, not replacements for current registered durations.
-Existing independent Desktop movement has configured `leadSec` and `tailSec`
-in [interaction settings](../src/desktop/assets/interaction.json). A replacement
-movement clip must leave positive travel time after both holds. Do not shorten
-it to a gait cycle without reviewing that movement profile.
+上表仅规定制作建议，当前登记时长沿用原值。桌宠自身的移动在[互动设置](../src/desktop/assets/interaction.json)里配置了 `leadSec` 和 `tailSec`。更换移动片段时，扣除首尾两段停留后须留出正数移动时间。要缩为单个步态周期，先复核该移动配置。
 
-Loop review includes the last-to-first transition: pose, velocity, eye state,
-props and effects should join naturally. Avoid an accidental freeze from
-duplicated endpoint frames. Planting, harvesting and other directional actions
-play forward; reversing frames must not visibly undo the action. For a finite
-action, make its final frame suitable for the runtime's end hold.
+检查循环的末帧到首帧，确认姿势、速度、眼部状态、道具和特效衔接自然。避免首尾重复帧带来意外停顿。播种、收获等有方向的动作正向播放，反序会让动作产生可见倒放。有限动作的最后一帧须适合运行时停留。
 
-Actual container timing is read by the
-[animation-map builder](../scripts/build/build-animation-map.mjs). The existing
-[shared playback contract](settings.md#desktop-interactions) owns activity progress,
-pause, cancellation and final-frame holds. Art does not complete a task, consume
-an item, read a page or settle a reward. Add entry/work/exit assets only for
-phases the approved allocation and actual activity can represent.
+[动画索引生成器](../scripts/build/build-animation-map.mjs)读取实际容器时序。[共用播放契约](settings.md#desktop-interactions)负责活动进度、暂停、取消和末帧保持。任务完成、物品消耗、阅读和奖励结算由业务执行。只为已批准的分配表与真实活动均可表达的阶段制作入场、执行或退场素材。
 
-Scene redraw rate is separate from media frame rate. Room's
-[presentation loop](../vendor/feiyu-room-template/public/room/app.js) currently
-selects 30 fps for active movement/input and 6 fps for a quiet populated scene;
-visibility also controls suspension. A 24 fps file does not imply every Room
-mode displays every frame. Validate actions in their actual presentation mode.
+场景重绘与媒体帧率独立。Room 的[呈现循环](../vendor/feiyu-room-template/public/room/app.js)目前在角色移动或接收输入时使用 30 fps，有角色的安静场景使用 6 fps，可见性也参与暂停控制。一个 24 fps 文件在不同 Room 模式下显示的帧可能不同。用实际呈现模式验收动作。
 
-## Character and art direction
+## 角色与美术方向
 
-Use the existing character, with one shared identity across all action sets:
-blue hair and eyes, side fins, fish/whale tail, maid headband, navy-and-white
-dress and apron, and the established small chibi proportions. Keep hair shape,
-tail design, accessory placement, outfit motifs and face proportions consistent.
+所有动作共用现有角色形象。保留蓝发蓝眼、侧鳍、鱼尾或鲸尾、女仆头饰、藏青白色裙装和围裙，以及现有小比例 Q 版体型。发型、尾巴样式、配饰位置、服装纹样与五官比例在片段间保持一致。
 
-| Reference | Purpose |
+| 参考 | 用途 |
 | --- | --- |
-| [Character front/side/back reference](../vendor/dsh-pet/platform/assets/main-character.png) | Identity, costume, silhouette and directional consistency |
-| [Idle animation](../src/desktop/assets/idle.webm) | Production scale, root placement, line weight and motion restraint |
-| [Existing cute illustration](../src/desktop/assets/cute.png) | Supplementary expression/style reference; its white background is not an animation background |
-| [Life source prompts](../art/life-animation-sources/prompts.json) | Existing action briefs and AI-generation provenance |
+| [角色正面、侧面和背面](../vendor/dsh-pet/platform/assets/main-character.png) | 核对身份、服装、剪影和各朝向一致性 |
+| [待机动画](../src/desktop/assets/idle.webm) | 参考生产比例、根位置、线条粗细和动作幅度 |
+| [现有插画](../src/desktop/assets/cute.png) | 补充参考表情和画风，动画背景仍使用透明画布 |
+| [生活源素材提示词](../art/life-animation-sources/prompts.json) | 查阅现有动作制作说明与 AI 生成来源 |
 
-The local character sheet is 1920 × 1072 and matches the upstream
-[`main-character.png`](https://github.com/PC2005-cloud/dsh-pet/blob/main/dsh-pet/assets/main-character.png)
-byte-for-byte. Additional original production resources are public:
+本地 1920 × 1072 角色设定图与上游 [`main-character.png`](https://github.com/PC2005-cloud/dsh-pet/blob/main/dsh-pet/assets/main-character.png) 逐字节相同。公开的原版制作资源还包括以下内容。
 
-- [Action prompts](https://github.com/PC2005-cloud/dsh-pet/tree/main/prompts), including the common reference-image, framing and per-second action instructions.
-- [Source-video release](https://github.com/PC2005-cloud/dsh-pet/releases/tag/assets-videos), containing an `assets-videos.zip` download of source MP4s; archive completeness has not been checked here.
-- [Original production guide](https://github.com/PC2005-cloud/dsh-pet/blob/main/MAKE-YOUR-OWN-PET.md): Doubao-generated continuous green-screen video, Premiere manual background removal, normalization and runtime encoding.
+- [动作提示词](https://github.com/PC2005-cloud/dsh-pet/tree/main/prompts)，含通用参考图、构图和每秒动作说明。
+- [源视频发布](https://github.com/PC2005-cloud/dsh-pet/releases/tag/assets-videos)，其中的 `assets-videos.zip` 包含源 MP4，压缩包完整性尚未检查。
+- [原版制作指南](https://github.com/PC2005-cloud/dsh-pet/blob/main/MAKE-YOUR-OWN-PET.md)，描述豆包生成连续绿幕视频、Premiere 手动去背景、规范化以及运行时编码。
 
-No PSD, layered animation project or Premiere project download was found in
-the checked public tree or release attachments. Original source videos and
-generation prompts are distinct from an editable rig or layered animation
-project. The supplementary Life sheets use a different production method;
-matching the original look requires visual review of identity and motion, not
-only matching output dimensions or increasing the container frame rate.
+已检查的公开源码和发布附件未找到 PSD、分层动画工程或 Premiere 工程下载。原始视频及生成提示词可用于溯源。可编辑绑定骨架和分层工程仍需相应源文件。生活补充图集采用另一种制作方式，要贴近原版风格，须实看角色形象与动作，尺寸和容器帧率仅作为技术参数核对。
 
-A sticker is an expression reference, not a replacement model sheet. Match the
-production idle clip when its proportions or shading differ from an illustration.
-Keep lighting and palette stable between clips. Avoid flickering embroidery,
-changing fingers, tool deformation, disappearing accessories, spontaneous outfit
-changes or a different face halfway through an action.
+贴纸用于参考表情。插画的比例或明暗与生产待机动画不同时，以待机动画为准。各片段的灯光和色板保持稳定。检查有无刺绣闪烁、手指变化、工具变形、配饰消失、换装或动作中途变脸。
 
-### RGB color control
+### RGB 色彩控制
 
-Use the production idle clip as the color reference, decoded in the target
-renderer. Record colors as 8-bit **sRGB** triples, together with the reference
-frame, sample rectangle and material. Keep separate shadow, base and highlight
-samples for blue hair, skin, white headwear/apron and navy clothing. A small
-patch median is a diagnostic reference, not a flat replacement color for all
-pixels of that material.
+以目标渲染器解码的生产待机片段为色彩参照。用 8 位 **sRGB** 三元组记录颜色，同时记下参考帧、取样矩形和材质。蓝发、皮肤、白色头饰和围裙以及藏青服装分别保留阴影、底色和高光样本。小块像素的中位数用于诊断，实际着色应保留材质层次。
 
-Compare equivalent neutral poses on the same background. Exclude outlines,
-antialiased edges, blush, embroidery and props from base-color samples. Match
-materials separately with one fixed correction throughout the clip; preserve
-their shading. A global brightness change cannot independently correct a purple
-white headband and dark skin. Review beginning, action midpoint and ending
-frames before exporting the complete clip, then watch the result for color
-flicker and accidental changes to props.
+在同一背景上比较相当的中性姿势。底色样本排除轮廓线、抗锯齿边缘、腮红、刺绣和道具。对每种材质分别选定一组修正并贯穿整段，保留该材质的明暗。头饰发紫、肤色偏暗时分别调整。导出全片前检查开头、动作中段和结尾，导出后观看整段，查找色彩闪烁和道具的意外变化。
 
-Make the RGB-to-video conversion explicit: source range/matrix assumptions,
-working sRGB space, output range, matrix, primaries and transfer function. For
-an sRGB WebM export, BT.709 primaries/matrix and the sRGB transfer function are
-a candidate profile; verify the actual supported host before adopting it.
-Changing metadata alone does not correct colors already changed in generation.
-See the [FFmpeg color-conversion controls](https://ffmpeg.org/ffmpeg-filters.html#colorspace).
+明确定义 RGB 转视频的输入范围和矩阵假设、工作 sRGB 空间、输出范围、矩阵、原色与传递函数。导出 sRGB WebM 可考虑 BT.709 原色与矩阵、sRGB 传递函数，采用前先在实际支持的宿主上验证。生成阶段已经偏色的像素需要直接调色。[FFmpeg 色彩转换选项](https://ffmpeg.org/ffmpeg-filters.html#colorspace)
 
-Measure the decoded final file as well as the master PNGs. Use a flat RGB test
-chart to distinguish color-conversion/playback errors from artwork differences,
-and record actual patch deviations after encoding. A recommended initial
-review tolerance is a median deviation of at most 5 levels per RGB channel for
-equivalent, opaque base-color patches. This is an authoring target, not an
-automatic acceptance gate or a guarantee of whole-character consistency.
+分别测量解码成品和母版 PNG。使用平涂 RGB 色卡区分转换、播放问题和绘制差异，记录编码后的色块实际偏差。初次评审建议同类、不透明底色色块的每个 RGB 通道中位偏差不超过 5 级。这项制作指标用于人工评审，整个人物的一致性仍需肉眼核对。
 
-Props must be readable at the final displayed size and stay in contact with the
-hand, mouth, soil or furniture as appropriate. Use representative book pages,
-food and crops where the current allocation has no exact object variant. Keep
-actual item identity, quantity, reading text and outcomes in their existing
-domain/UI owners. Do not bake invented balances, rewards or inventory counts
-into the illustration.
+道具在最终显示大小下须易辨，并在适当阶段接触手、嘴、泥土或家具。分配表无精确物品素材时，可以画具有代表性的书页、食物和作物。实际物品身份、数量、阅读文本和结果由既有业务区或界面管理，动画只画真实活动需要的外观。
 
-Deliver text-free body animation by default. The current renderer may mirror
-directional clips. Lettering, handed tools and asymmetric actions need an
-explicit mirror review and the applicable existing `noMirror`/slot configuration;
-a file name alone does not prevent mirroring.
+默认交付无文字的身体动画。当前渲染器可能镜像有方向的片段。有文字、分左右手的工具或非对称动作需执行镜像专项评审，使用现有 `noMirror` 或槽位配置控制镜像行为。
 
-## Artwork and handoff files
+## 美术与交接文件
 
-| Deliverable | Standard |
+| 交付物 | 标准 |
 | --- | --- |
-| Editable source | Current layered/vector/rig project when available, or lossless ordered RGBA frames; retain the reference and action brief |
-| Layer organization | Separate body, facial features, hair/tail, hands, props and effects where the authoring tool supports it; stable names and pivots |
-| Runtime clip | Flattened transparent WebM; the current renderer does not consume arbitrary source layers or sprite sheets |
-| Poster | Text-free RGBA PNG of a representative existing frame; same canvas and root as its clip |
-| New chat sticker | Recommend 384 × 384 PNG; keep the full silhouette/text within the canvas; decide whether a deliberate background belongs to the sticker |
-| Separate runtime prop | Use the existing composition route only when supported; keep alpha, scale and anchor consistent with the relevant composition |
-| Attribution | Origin, author/license reference, source reference and hashes; for AI-generated artwork retain the tool, reference and final prompt |
+| 可编辑源文件 | 优先提供当前分层、矢量或绑定工程，也可提供无损有序 RGBA 帧，一并保留参考图与动作说明 |
+| 图层组织 | 制作工具支持时，分别放置身体、五官、头发和尾巴、手、道具与特效，保持命名和枢轴稳定 |
+| 运行时片段 | 合成展平的透明 WebM，原始图层和精灵图集留在制作端 |
+| 海报 | 从片段选一帧制作无文字 RGBA PNG，使用片段的画布与根位置 |
+| 新聊天贴纸 | 建议 384 × 384 PNG，剪影和文字完整保留在画布内，按设计确定是否使用背景 |
+| 独立运行时道具 | 使用已支持的合成链路，透明通道、缩放和锚点与对应合成一致 |
+| 署名 | 记录来源、作者或许可证引用、原素材引用和哈希；AI 生成素材还要保留工具、参考和最终提示词 |
 
-For new separate stickers, prefer transparent backgrounds unless the sticker
-design intentionally includes a panel. Existing opaque stickers keep their
-current format. A sticker, logo or cursor image is not a body-animation frame.
+独立新贴纸优先使用透明背景，设计中需要背景面板的除外。已有不透明贴纸沿用当前格式。身体动画帧统一交付角色画面，贴纸、标志和光标保留各自用途。
 
-For the existing Life-sheet workflow, follow the exact source layout and
-conversion procedure in [its source README](../art/life-animation-sources/README.md).
-Its encoder does not generate new in-between poses. Changing that workflow's
-frame rate, layout or output format is separate implementation work.
+现有生活图集的源布局和转换流程按[制作说明](../art/life-animation-sources/README.md)执行。编码器只使用原有姿势。调整该流程的帧率、布局或输出格式需要独立实施。
 
-Each handoff records the action ID and label, intended role, source file,
-dimensions, fps, frame count, container duration, loop/one-shot intent, root and
-foot placement, mirror intent, poster, file sizes and provenance. Use existing
-manifest fields where they exist; keep additional authoring notes with the
-current source artwork rather than adding an unreviewed runtime schema.
+每次交接记录动作 ID 和名称、用途、源文件、分辨率、fps、帧数、容器时长、循环或单次播放意图、根和脚的摆位、镜像意图、海报、文件大小和来源。优先使用现有清单字段，其他制作备注随现用源素材保存。运行时字段变更另行评审。
 
-Use English kebab-case IDs for new files, such as `life-drink`, and distinct
-display labels. Preserve all existing IDs, labels and file names, including
-Chinese names. Keep reproducible current artwork under `art/`, shipped media
-under `src/desktop/assets/`, and temporary previews/intermediate exports outside
-the repository. Retain the layered original as an editable source, not as a
-collection of numbered drafts or backup exports.
+新文件的 ID 使用英语小写连字符格式，例如 `life-drink`，显示名称保持可区分。已有 ID、显示名称和文件名原样保留，包括中文文件名。可复现的现用作品保存在 `art/`，交付媒体在 `src/desktop/assets/`，预览和中间导出放在仓库外。分层原稿作为一份可编辑源保存，版本变更交给版本控制。
 
-## Encoding and size budget
+## 编码与大小预算
 
-The current production path is WebM with VP9 alpha, muted video and no audio
-track. The existing encoder uses `libvpx-vp9`, `yuva420p`, lossless encoding,
-`-b:v 0`, `-auto-alt-ref 0` and `alpha_mode=1`; see
-[the encoder](../scripts/build/build-life-media.mjs) for the actual recipe.
-Keep that alpha-preserving route when exporting comparable new frames, while
-using the intended timing profile. MP4, GIF, MOV and a loose sprite sheet are
-not interchangeable built-in runtime deliverables.
+生产格式为带 VP9 透明通道的 WebM，只含视频轨。现有编码器使用 `libvpx-vp9`、`yuva420p`、无损编码、`-b:v 0`、`-auto-alt-ref 0` 和 `alpha_mode=1`，完整命令见[编码器](../scripts/build/build-life-media.mjs)。同类新素材沿用这一透明通道链路，并采用该动作应有的时序。MP4、GIF、MOV 和独立图集须先按运行时格式转换。
 
-For new clips, aim for at most 1,000,000 bytes per file; review larger files for
-visual benefit and real decode cost. This is a proposed general budget, not an
-existing global gate. The Life verifier already enforces that byte limit for
-its own clips. Aim for posters/stickers below 300,000 bytes where quality allows.
-Source-master size is separate from runtime-package size.
+新片段建议每文件最多 1,000,000 字节。超过时评审视觉收益与实际解码成本。这个预算适用于新制作评审；生活动画校验器已按该上限检查自己的片段。质量允许时，海报和贴纸尽量低于 300,000 字节。母版体积单独计算。
 
-Keep the source/master at full quality. Optimize exported transparency and
-unnecessary detail before sacrificing silhouette or readability. Do not add
-multiple resolutions/codecs to the shipped package without a consumer and a
-reviewed need. Runtime frame dimensions, decoded memory and actual playback
-matter as well as compressed file size; these byte targets are not measured
-CPU/GPU guarantees.
+母版保持完整质量。先优化导出后的透明区域和多余细节，再考虑影响轮廓或辨识度的调整。只有存在消费方并经评审后才随包增加分辨率或编码格式。还要测运行时帧尺寸、解码内存和实际播放情况。文件字节预算仅约束压缩后体积，CPU/GPU 成本另测。
 
-A replacement must be previewed in the actual supported host. An alpha flag or
-successful decode alone does not establish that another browser preserves
-transparency. No extra browser codec or fallback is introduced by this standard.
+替换素材须在实际支持的宿主预览，并在相应浏览器确认解码后确实保留透明度。本标准沿用现有浏览器编码和兼容路径。
 
-## Registration and ownership
+## 登记与归属
 
-- Register shipped actions and stickers in the [catalog](../src/desktop/assets/catalog.json).
-- Keep Life hashes, poster metadata and source hashes in the [Life manifest](../src/desktop/assets/life-animations.json) when using that workflow.
-- Map approved action roles in the [allocation](../src/living/body/animation-allocation.json).
-  A name-based match is not proof that all required sub-actions exist visually.
-- Generate [the runtime index](../src/living/body/animation-map.ts) through the
-  existing build; do not edit it as a separate animation list.
-- Preserve [Room's shared asset route](../src/room/assets.ts). New shared clips
-  should use the canonical media, rather than creating another Room copy.
-- Keep upstream pins and notices intact. A visual revision needs its actual
-  provenance; do not simply replace a pinned upstream hash to hide the change.
-  Follow [third-party notices](../THIRD_PARTY_NOTICES.md) for each resource family.
+- 在[目录](../src/desktop/assets/catalog.json)登记交付的动作和贴纸。
+- 生活素材流程的成品哈希、海报元数据和源文件哈希保存在[生活媒体清单](../src/desktop/assets/life-animations.json)。
+- 在[分配表](../src/presentation/animation-allocation.json)映射已批准的动作角色。核对实际画面，确认按名称配对的片段包含所需子动作。
+- 通过现有构建生成[运行时索引](../src/presentation/animation-map.ts)，修改动画列表时编辑生成输入。
+- 保留 [Room 共用素材路由](../src/room/assets.ts)。新增共用片段引用同一份正式媒体。
+- 保留上游版本锁定和声明。修改画面时记录真实来源，继续保留原上游哈希作为溯源依据。各类资源按[第三方声明](../THIRD_PARTY_NOTICES.md)处理。
 
-## Acceptance
+## 验收
 
-For every new or revised clip, review the following before owner acceptance:
+每个新增或修订的片段在主人验收前完成以下检查。
 
-1. Decode the complete file. Confirm canvas, frame timing, duration, video codec,
-   alpha and absence of audio; distinguish declared metadata from decoded pixels.
-2. Composite against white, black, a mid-tone color and a checkerboard. Check
-   every edge for a rectangle, halo, clipped hair/tail, holes or background residue.
-   Empty background should export as alpha 0; retain intentional edge antialiasing.
-3. Compare the neutral pose to the production idle clip. Check the root, ground
-   line, apparent body size and hit region. Check the largest motion/prop extent.
-4. Watch at normal speed for at least three loops or three one-shot invocations.
-   Inspect the seam, transitions, endpoint hold, motion spacing and prop contact.
-5. Preview at canvas widths of approximately 232, 462 and 640 CSS pixels, and
-   on the target display scale. A clear large master can still blur when reduced.
-6. Exercise actual Desktop and Room presentation, left/right facing where
-   permitted, relevant sleep/activity transitions, pause/resume and interruption.
-   Confirm the image remains consistent with the actual activity and data.
-7. Confirm source files, poster, catalog pairing, provenance and byte budget.
-   Run the affected existing checks; these do not replace the visual review.
+1. 解码整个文件，确认画布、帧时序、时长、视频编码、透明度和无音轨。透明度分别核对容器声明和解码像素。
+2. 分别叠加在白色、黑色、中明度纯色和棋盘格上。检查矩形底、光晕、被截的头发或尾巴、空洞及背景残留。空白像素 alpha 应为 0，保留角色边缘有意的抗锯齿。
+3. 把中性姿势与生产待机片段比较，检查根位置、地线、角色显示大小和命中区域，观察动作和道具伸展到最大时的范围。
+4. 按正常速度观看至少三轮循环或三次单次播放。检查接缝、过渡、末帧停留、动作间距和道具接触。
+5. 在大约 232、462 与 640 CSS 像素的画布宽度及目标显示缩放下预览。母版缩小后仍要检查清晰度。
+6. 在实际桌宠和 Room 中试用。支持时分别向左和向右，测试相关睡眠和活动切换、暂停、恢复及中断。确认画面与真实活动和数据一致。
+7. 核对源文件、海报、目录配对、原始出处和字节预算。运行相关现有检查，并完成人工视觉验收。
 
-Existing source/package checks for an implemented media change, run from the
-repository directory, are:
+实施了媒体变化后，从仓库目录运行现有源码及包检查。
 
 ```sh
 node scripts/build/build-life-media.mjs --verify
@@ -306,28 +168,12 @@ pnpm run build
 node --test tests/regressions/animation-media-timing.test.mjs tests/life/life-media.test.mjs
 ```
 
-The first command checks the existing Life outputs without regenerating them.
-The build verifies pinned assets and generates the shared registry. The focused
-tests cover current timings, immutable media and carrier routing. They do not
-automatically test every decoded frame, pose quality or loop seam; media
-inventory changes may also require updating their existing fixtures. Ordinary
-documentation edits need only link, diff and scope checks as described in
-[development](development.md).
+第一条核对现有生活素材产出，文件保持原样。构建验证上游锁定资源并生成共用索引。快测覆盖当前时序、媒体完整性和各载体路由。解码帧、姿势和循环衔接仍需视觉检查。媒体清单变化时也可能需要更新既有测试夹具。普通文档修改按[开发说明](development.md)检查链接、diff 和改动范围。
 
-The baseline above was checked from all registered container headers, PNG
-headers, source conversion code and runtime geometry. Visual sampling decoded
-four frames each from idle, walk, sleep-loop, one click reaction, drink, read and
-watering in an isolated Electron session, composited against light/dark colors.
-It was not a full-motion review of every asset or installed owner acceptance.
+上面的基线来自登记容器头、PNG 文件头、源素材转换代码和运行时几何参数。视觉抽样在隔离 Electron 会话中，从待机、行走、睡眠循环、一个点按反应、喝水、阅读和浇水各解码四帧，叠加在浅色与深色背景上观察。逐项全动作验收和主人装包验收另行进行。
 
-## Room 3D boundary
+## Room 三维边界
 
-Follow the existing [model coordinate and license contract](../vendor/feiyu-room-template/public/room/assets/models/README.md)
-and [model renderer](../vendor/feiyu-room-template/public/room/model-actor.js).
-The retained GLBs are static models; procedural root/vertex motion does not
-provide authored skeletal actions such as grasping, page turning or planting.
+遵循现有的[模型坐标和许可证契约](../vendor/feiyu-room-template/public/room/assets/models/README.md)和[模型渲染器](../vendor/feiyu-room-template/public/room/model-actor.js)。随包保留的 GLB 是静态模型。程序控制根节点和顶点运动，抓握、翻页、播种等动作需单独制作骨骼动画。
 
-For a future rigged character, first agree on the skeleton, bone names, animation
-clip names, root-motion policy, textures/materials, polygon/texture budgets and
-runtime mapping. Those require a separate design and implementation review.
-Do not claim full 2D/3D action parity from the current model files or this standard.
+未来引入绑定角色时，先确认骨骼结构、骨骼名、动画片段名、根运动规则、纹理和材质、多边形和纹理预算，以及运行时映射。独立评审设计及实现后，再验证二维和三维的动作覆盖。

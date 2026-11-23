@@ -6,6 +6,8 @@ export function adaptCompactVoice(path,source) {
     source=source.replace(before,()=>after);
   };
   if(path==='src/shared/hear.ts') {
+    replace('signal?: AbortSignal): Promise<HearOutcome>', 'signal?: AbortSignal, fetchVoice: typeof fetch = fetch): Promise<HearOutcome>');
+    replace('const res = await fetch(url, {', 'const res = await fetchVoice(url, {');
     replace('export async function startRecording(): Promise<HearRecorder> {','export async function startRecording(signal?: AbortSignal): Promise<HearRecorder> {\n  signal?.throwIfAborted();');
     replace('  const ctx = new AudioContext({ sampleRate: HEAR_SAMPLE_RATE });\n  const source = ctx.createMediaStreamSource(stream);\n  const processor = ctx.createScriptProcessor(BLOCK_SAMPLES, 1, 1);',
       '  let ctx: AudioContext | undefined;\n  let source: MediaStreamAudioSourceNode | undefined;\n  let processor: ScriptProcessorNode | undefined;');
@@ -48,7 +50,7 @@ export function adaptCompactVoice(path,source) {
   }`);
   }
   if(path==='src/shared/chat/hear-control.ts') {
-    replace('  readonly hearUrl: string;', '  readonly hearUrl: string;\n  readonly active?: () => boolean;');
+    replace('  readonly hearUrl: string;', '  readonly hearUrl: string;\n  readonly active?: () => boolean;\n  readonly fetchVoice?: typeof fetch;');
     replace("  let hearState: HearState = 'idle';", `  let hearState: HearState = 'idle';
   let generation = 0;
   let controller: AbortController | undefined;
@@ -56,7 +58,7 @@ export function adaptCompactVoice(path,source) {
     && input.isConnected && !document.hidden && opts.active?.() !== false;`);
     replace('    const current = recorder;', '    const owner = generation, signal = controller?.signal;\n    const current = recorder;');
     replace('      const clip = await current.stop();','      const clip = await current.stop();\n      if (!live(owner)) return;');
-    replace('      const outcome = await hearAudio(hearUrl, toBase64(clip.wave));', '      const outcome = await hearAudio(hearUrl, toBase64(clip.wave), signal);');
+    replace('      const outcome = await hearAudio(hearUrl, toBase64(clip.wave));', '      const outcome = await hearAudio(hearUrl, toBase64(clip.wave), signal, opts.fetchVoice);');
     replace('      if (!input.isConnected) return; // 等结果的这会儿弹窗被关了','      if (!live(owner)) return;');
     replace('      if (!input.isConnected) return;','      if (!live(owner)) return;');
     replace("      hint.flash('录音出错：' + (e instanceof Error ? e.message : String(e)));", "      if (live(owner)) hint.flash('录音出错：' + (e instanceof Error ? e.message : String(e)));");
@@ -72,6 +74,30 @@ export function adaptCompactVoice(path,source) {
       controller = undefined;
       window.clearInterval(hearTimer);`);
     replace("      hearState = 'idle';\n    },", "      hearState = 'idle';\n      wasReleasedEarly = false;\n      paint();\n    },");
+  }
+  if(path==='src/shared/voice.ts') {
+    replace('let manualSeq = 0;', 'let manualSeq = 0;\nlet manualRequest: AbortController | undefined;');
+    replace('export function speakText(text: string, onPhase?: (phase: SpeakPhase) => void): void {',
+      'export function speakText(text: string, onPhase?: (phase: SpeakPhase) => void, fetchVoice: typeof fetch = fetch): void {');
+    replace('  void playManual(text, onPhase);', '  void playManual(text, onPhase, fetchVoice);');
+    replace('async function playManual(text: string, onPhase?: (phase: SpeakPhase) => void): Promise<void> {\n  const token = ++manualSeq;',
+      `async function playManual(text: string, onPhase: ((phase: SpeakPhase) => void) | undefined, fetchVoice: typeof fetch): Promise<void> {
+  const token = ++manualSeq;
+  manualRequest?.abort();
+  const controller = manualRequest = new AbortController();`);
+    const from = source.indexOf('async function playManual(');
+    if (from < 0) throw Error('Pinned manual speech source changed');
+    const start = source.slice(0, from);
+    source = source.slice(from);
+    replace("const response = await fetch(voiceBase + '/voice/speak', {", "const response = await fetchVoice(voiceBase + '/voice/speak', {");
+    replace('signal: speakSignal(),', 'signal: AbortSignal.any([speakSignal(), controller.signal]),');
+    replace("  if (manualAudio) {", "  if (token !== manualSeq) return;\n  if (manualAudio) {");
+    replace('  if (token !== manualSeq) return; // 等配置期间又被点了一次：这次直接让位\n', '');
+    replace('    const objectUrl = URL.createObjectURL(await response.blob());\n    if (token !== manualSeq) return;',
+      '    const blob = await response.blob();\n    if (token !== manualSeq) return;\n    const objectUrl = URL.createObjectURL(blob);');
+    replace("    if (token === manualSeq) onPhase?.('failed');\n  }",
+      "    if (token === manualSeq) onPhase?.('failed');\n  } finally {\n    if (manualRequest === controller) manualRequest = undefined;\n  }");
+    source = start + source;
   }
   if(path==='src/host/routes/voice.ts') {
     replace('    const result = await deps.voice.speak(parsed);', '    const result = await deps.voice.speak(parsed, signal);');

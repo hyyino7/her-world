@@ -7,7 +7,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {syncBuiltinESMExports} from 'node:module';
 import { createCore, type CoreConfig } from '../../src/core/index.js';
-import { ECONOMY_STORAGE_STEP, HOME_STORAGE_STEP, INITIAL_STORAGE_STEP, storageManifest } from '../../src/core/storage-migration.js';
+import { CONSOLE_WALLET_IMPORT_FILE, CONSOLE_WALLET_STEP, ECONOMY_STORAGE_STEP, freshWalletImportProof, HOME_STORAGE_STEP,
+  INITIAL_STORAGE_STEP, storageManifest } from '../../src/core/storage-migration.js';
 import type { Result } from '../../src/contracts/common.js';
 const unwrap = <T>(result: Result<T>): T => { if (!result.ok) assert.fail(JSON.stringify(result.error)); return result.value; };
 const fixture = () => {
@@ -31,16 +32,19 @@ test('new workspaces are initialized with the current storage version', async ()
     const initialized = unwrap(await host.services.workspace.initialize(request(), {expectedPreferencesRevision:bound.revision}));
     assert.equal(initialized.state, 'ready');
     assert.deepEqual(JSON.parse(readFileSync(join(f.repo, '.chatpet/data/storage-manifest.json'), 'utf8')),
-      storageManifest(f.config.companionId, ECONOMY_STORAGE_STEP.to));
+      storageManifest(f.config.companionId, CONSOLE_WALLET_STEP.to));
+    assert.deepEqual(JSON.parse(readFileSync(join(f.repo,'.chatpet/data',CONSOLE_WALLET_IMPORT_FILE),'utf8')),
+      freshWalletImportProof({companionId:f.config.companionId,storageId:host.workspace.storageId()}));
   } finally { await host.close(); rmSync(f.root, {recursive:true, force:true}); }
 });
 
-for (const state of ['absent', '0001', '0002', 'foreign', 'unfinished']) test(`workspace migration gate: ${state}`, async () => {
+for (const state of ['absent', '0001', '0002', '0003', 'foreign', 'unfinished', 'wallet-proof-absent']) test(`workspace migration gate: ${state}`, async () => {
   const f = fixture(); let host = createCore(f.config);
   const request = () => host.operator.request('migration-gate');
   const target = {id:'repo', path:f.repo, title:'Repo'};
   const manifest = join(f.repo, '.chatpet/data/storage-manifest.json'), journal = join(f.repo, '.chatpet/data/migrations.jsonl');
-  const current = JSON.stringify(storageManifest(f.config.companionId, ECONOMY_STORAGE_STEP.to));
+  const current = JSON.stringify(storageManifest(f.config.companionId, CONSOLE_WALLET_STEP.to));
+  const proof = join(f.repo,'.chatpet/data',CONSOLE_WALLET_IMPORT_FILE);
   try {
     const prefs = unwrap(await host.services.preferences.read(request(), {}));
     const bound = unwrap(await host.services.preferences.save(request(), {expectedRevision:prefs.revision, workspace:target, conversation:prefs.conversation}));
@@ -49,14 +53,17 @@ for (const state of ['absent', '0001', '0002', 'foreign', 'unfinished']) test(`w
     if (state === 'absent') rmSync(manifest, {force:true});
     else writeFileSync(manifest, state === '0001' ? JSON.stringify(storageManifest(f.config.companionId, INITIAL_STORAGE_STEP.to))
       : state === '0002' ? JSON.stringify(storageManifest(f.config.companionId, HOME_STORAGE_STEP.to))
-      : state === 'foreign' ? JSON.stringify(storageManifest('other-companion', ECONOMY_STORAGE_STEP.to)) : current);
+      : state === '0003' ? JSON.stringify(storageManifest(f.config.companionId, ECONOMY_STORAGE_STEP.to))
+      : state === 'foreign' ? JSON.stringify(storageManifest('other-companion', CONSOLE_WALLET_STEP.to)) : current);
+    const savedProof = readFileSync(proof);
+    if (state === 'wallet-proof-absent') rmSync(proof);
     if (state === 'unfinished') writeFileSync(journal, JSON.stringify({event:'migration', id:'unfinished', schema:2,
       backup:f.root, backupHash:'0'.repeat(64), binding:{storageId:target.id,repoHash:createHash('sha256').update(f.repo).digest('hex')},
       steps:[INITIAL_STORAGE_STEP, HOME_STORAGE_STEP]}) + '\n');
     host = createCore(f.config);
     const actual = unwrap(await host.services.workspace.inspect(request(), {}));
     assert.equal(actual.state, 'migration-required');
-    assert.equal(actual.migrationReason, state === 'foreign' ? 'manifest-mismatch' : state === 'unfinished'
+    assert.equal(actual.migrationReason, state === 'foreign' ? 'manifest-mismatch' : (state === 'unfinished' || state === 'wallet-proof-absent')
       ? 'migration-incomplete' : 'storage-version-outdated');
     const store = host.workspace.runtime.store;
     const before = store.db.prepare('SELECT * FROM requests').all();
@@ -69,6 +76,7 @@ for (const state of ['absent', '0001', '0002', 'foreign', 'unfinished']) test(`w
     assertRefused(await host.services.preferences.setQuiet(request(), {expectedRevision:1, quiet:true}));
     assert.deepEqual(store.db.prepare('SELECT * FROM requests').all(), before);
     writeFileSync(manifest, current); rmSync(journal, {force:true});
+    if (state === 'wallet-proof-absent') writeFileSync(proof,savedProof,{mode:0o600});
     assert.equal(host.workspace.status().state, 'migration-required', 'Only restart lifts the migration gate');
     await host.close(); host = createCore(f.config);
     assert.equal(host.workspace.status().state, 'ready');

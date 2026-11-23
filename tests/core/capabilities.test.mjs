@@ -129,7 +129,10 @@ async function pluginFixture(t) {
       ctx.provide('webServer', {getOrigin: () => 'http://fixture.invalid', register: () => () => {}});
       ctx.provide('petPlatform', {bodyStatus: () => ({running: desktopOpen})});
       ctx.provide('speechToText', {transcribe() {}, resolve() {}, listProviders: () => hear ? ['fixture'] : []});
-      ctx.provide('connection', {browserPeer: peer, fetch: {register: route => routes.set(route.path, route.fetch)}});
+      ctx.provide('connection', {browserPeer: peer, fetch: {register(route) {
+        routes.set(route.path, route.fetch);
+        return () => routes.delete(route.path);
+      }}});
     },
   });
   await install(SystemPrompt, {includeHarnessIdentity: false});

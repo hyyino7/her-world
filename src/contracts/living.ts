@@ -20,7 +20,17 @@ export interface WorldSnapshot {
 }
 
 /** Invalidate the previous snapshot. This signal is not a persistence receipt. */
-export type WorldChanged = Pick<WorldSnapshot, 'workspaceId' | 'storageId'>;
+export type WorldChanged = Pick<WorldSnapshot, 'workspaceId' | 'storageId'> & {
+  readonly bootId: string;
+  readonly generation: number;
+  readonly bodyOnly?: true;
+  readonly bodyObservation?: Readonly<{bootId: string; revision: Revision}>;
+};
+
+export function isWorldChangeFor(change: WorldChanged, binding: WorldChanged | undefined): boolean {
+  return !!binding && change.workspaceId === binding.workspaceId && change.storageId === binding.storageId &&
+    change.bootId === binding.bootId && change.generation === binding.generation;
+}
 
 export interface WorldCommandRequest {
   workspaceId: string;

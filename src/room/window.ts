@@ -5,19 +5,21 @@ import {createRequire} from 'node:module';
 import {dirname, join} from 'node:path';
 import {homedir} from 'node:os';
 import type {BehaviorChange} from '../contracts/behavior.js';
+import type {WorldChanged} from '../contracts/living.js';
+import type {HomeBinding} from '../core/workspace.js';
+import {sameHomeBinding} from '../living/index.js';
 
-export const ROOM_ENDPOINTS = ['roomState','roomAction','roomGarden','roomPlant','roomCare','roomChat','roomTelevision','roomHistory','roomVoice'] as const;
-interface Binding {workspaceId:string;storageId:string;path:string}
+import {isRoomEndpoint, type RoomEndpoint} from '../presentation/room-transport.js';
 interface Host {
-  binding():Binding|undefined;
+  binding():HomeBinding|undefined;
   origin():string|undefined;
-  request(workspaceId:string,endpoint:string,data:Record<string,unknown>,requestId:string,signal:AbortSignal):Promise<unknown>;
+  request(workspaceId:string,endpoint:RoomEndpoint,data:Record<string,unknown>,requestId:string,signal:AbortSignal):Promise<unknown>;
 }
 
 /** Presentation-only process. Owner state and every native turn stay in DSH. */
 export class RoomWindow {
   private child?:ChildProcessWithoutNullStreams;
-  private bound?:Binding;
+  private bound?:HomeBinding;
   private ready?:Promise<void>;
   private loaded=false;
   private lifetime?:AbortController;
@@ -26,18 +28,25 @@ export class RoomWindow {
   status(){return {running:!!this.child,ready:this.loaded,workspaceId:this.bound?.workspaceId??null};}
   reconcile(){
     const current=this.host.binding(),old=this.bound;
-    if(old&&(!current||current.workspaceId!==old.workspaceId||current.storageId!==old.storageId||current.path!==old.path))this.closeWindow();
+    if(old&&!sameHomeBinding(current,old))this.closeWindow();
   }
-  changed(change:BehaviorChange){
+  changed(change:WorldChanged,version:Pick<BehaviorChange,'bootId'|'revision'>){
     this.reconcile();
-    if(!this.child || this.bound?.workspaceId!==change.workspaceId)return;
-    this.send({type:'changed',change});
+    const bound=this.bound;
+    if(!this.child || !bound || bound.workspaceId!==change.workspaceId || bound.storageId!==change.storageId ||
+      bound.bootId!==change.bootId || bound.generation!==change.generation)return;
+    this.send({type:'changed',change:{workspaceId:bound.workspaceId,...version,reason:change.bodyOnly?'transition':'world'}});
   }
   async open(workspaceId:string){
     this.reconcile();
     const bound=this.host.binding();
     if(!bound||bound.workspaceId!==workspaceId)throw Error('房间工作区已切换');
-    if(this.child){await this.ready;this.send({type:'focus'});return this.status();}
+    const active=this.child;
+    if(active){
+      await this.ready;this.reconcile();
+      if(this.child!==active)throw Error('房间工作区已切换');
+      this.send({type:'focus'});return this.status();
+    }
     const origin=this.host.origin();
     if(!origin)throw Error('DSH房间页面服务尚未就绪');
     const base=new URL(origin);
@@ -78,17 +87,19 @@ export class RoomWindow {
     try{
       this.reconcile();
       if(this.child!==child||!this.bound||!this.lifetime)throw Error('房间窗口已失效');
-      if(typeof message.endpoint!=='string'||!ROOM_ENDPOINTS.includes(message.endpoint as typeof ROOM_ENDPOINTS[number])||
+      if(!isRoomEndpoint(message.endpoint)||
         typeof message.requestId!=='string'||!message.requestId||message.requestId.length>160||!message.data||typeof message.data!=='object'||Array.isArray(message.data))throw Error('无效的房间请求');
       if(this.requests.has(message.requestId))throw Error('房间请求仍在执行');
       const abort=new AbortController();this.requests.set(message.requestId,abort);
+      const signal=AbortSignal.any([abort.signal,this.lifetime.signal]);
       let value;
-      try{value=await this.host.request(this.bound.workspaceId,message.endpoint,message.data as Record<string,unknown>,message.requestId,
-        AbortSignal.any([abort.signal,this.lifetime.signal]));}
-      finally{this.requests.delete(message.requestId);}
+      try{
+        value=await this.host.request(this.bound.workspaceId,message.endpoint,message.data as Record<string,unknown>,message.requestId,signal);
+        signal.throwIfAborted();
+      }finally{if(this.requests.get(message.requestId)===abort)this.requests.delete(message.requestId);}
       this.reconcile();
       if(this.child===child)this.send({type:'response',id,ok:true,value});
-    }catch(error){if(this.child===child)this.send({type:'response',id,ok:false,error:error instanceof Error?error.message:'房间操作失败'});}
+    }catch(error){this.reconcile();if(this.child===child)this.send({type:'response',id,ok:false,error:error instanceof Error?error.message:'房间操作失败'});}
   }
   closeWindow(){
     const child=this.child;this.child=undefined;this.bound=undefined;this.loaded=false;

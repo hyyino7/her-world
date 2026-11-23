@@ -4,6 +4,7 @@ import { CoreWorkspace } from './workspace.js';
 import { createPreferences } from './preferences.js';
 import { CoreRuntime } from './runtime.js';
 import { CoreRecords } from './records.js';
+import { coreConsoleOperations } from './console-operations.js';
 import { initializeMemoryStorage } from '../memory/initialization.js';
 import { initializeRecentStorage } from '../emotion/recent.js';
 import { memoryDirectory } from '../memory/client.js';
@@ -33,7 +34,7 @@ export function createCore(config) {
             reason: !native.memoryEnabledForNewSessions() ? 'Memory is disabled for subsequent turns; native chat remains available' : ready ? 'Shared Bank available for native observation and recall' : `Memory provider ${lifecycle}; chat continues without recall on failure`,
             supportedOperations: ready ? ['observe', 'recall', 'correct', 'withdraw', 'validate'] : [] };
     };
-    return {
+    const host = {
         services: { core: Object.freeze(runtime.core), preferences: createPreferences(runtime), workspace: workspace.port },
         operator: { request: runtime.owner.request },
         observe: (observer) => { runtime.onChange = observer; },
@@ -53,5 +54,7 @@ export function createCore(config) {
             }
         },
     };
+    native.consoleOperations.register('core', coreConsoleOperations(host));
+    return host;
 }
 //# sourceMappingURL=index.js.map

@@ -1,3 +1,4 @@
+import { type ConsoleOperation } from '../../core/tables/console.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../../core/index.js';
 import type { HomeBinding } from '../../core/workspace.js';
@@ -29,6 +30,7 @@ export declare class CompanionLife {
     private fault?;
     private serial;
     private timer?;
+    private tickGuards;
     private subscriptions;
     private sourceRegistration?;
     readonly timeZone: string;
@@ -36,7 +38,9 @@ export declare class CompanionLife {
     activate(): void;
     registerSource(): void;
     /** Domain changes and native alarms wake Life; an idle world needs no pump. */
+    noticeDomainChange(scope: HomeBinding, sourceCurrent: () => boolean): void;
     private scheduleTick;
+    private notifyLife;
     private native;
     private isOpen;
     private assertOpen;
@@ -147,11 +151,11 @@ export declare class CompanionLife {
         plan: CurrentLifePlan | null;
     }>;
     private writeControl;
-    control(workspaceId: string, enabled: boolean): Promise<{
+    control(workspaceId: string, enabled: boolean, validate?: () => void): Promise<{
         enabled: boolean;
         running: boolean;
     }>;
-    act(workspaceId: string, action: string, requestId?: string, channel?: string): Promise<{
+    act(workspaceId: string, action: string, requestId?: string, channel?: string, validate?: () => void): Promise<{
         home: any;
         behavior: import("../../contracts/behavior.js").BehaviorActivity & {
             revision: number;
@@ -204,7 +208,7 @@ export declare class CompanionLife {
         };
         home?: any;
     }>;
-    settings(workspaceId: string, expected: unknown, next: unknown): Promise<{
+    settings(workspaceId: string, expected: unknown, next: unknown, validate?: () => void): Promise<{
         preferences: LifePreferences;
     }>;
     library(workspaceId: string, operation: RecordOperation, input?: unknown): Promise<string[] | {
@@ -259,8 +263,13 @@ declare module '@deepseek-ai/cordis' {
     interface Context {
         petLife: CompanionLife;
     }
-    interface Events {
-        'pet/life.changed'(): void;
-    }
 }
+export declare function lifeConsoleOperations(life: Pick<CompanionLife, 'snapshot' | 'control' | 'act' | 'settings'>): {
+    operations: {
+        lifeView: ConsoleOperation;
+        lifeControl: ConsoleOperation;
+        lifeAction: ConsoleOperation;
+        lifePreferences: ConsoleOperation;
+    };
+};
 export declare function apply(ctx: Context, config?: Config): void;

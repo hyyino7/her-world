@@ -2,10 +2,11 @@ import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {runInNewContext} from 'node:vm';
 
-export function renderEconomyPanel(request) {
-  const source = readFileSync(new URL('../../src/console/client.js', import.meta.url), 'utf8');
+export function renderEconomyPanel(request, workspaceId = 'world',
+  {sourceFile = new URL('../../src/console/client.js', import.meta.url), storage = new Map()} = {}) {
+  const source = readFileSync(sourceFile, 'utf8');
   const component = source.slice(source.indexOf('function EconomyPanel('), source.indexOf('function LifePage('));
-  const hooks = [], storage = new Map();
+  const hooks = [];
   let cursor, mount;
   const h = (type, props, ...children) => ({type, props, children});
   const EconomyPanel = runInNewContext(`(${component.trim()})`, {
@@ -31,7 +32,7 @@ export function renderEconomyPanel(request) {
     mount: () => mount(),
     render() {
       cursor = 0;
-      return EconomyPanel({workspaceId:'world', request});
+      return EconomyPanel({workspaceId, request});
     },
   };
 }

@@ -2,7 +2,8 @@ import { roomOverview, gardenOverview, stateViewParameter, factIdsParameter } fr
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { lstatSync, readFileSync } from 'node:fs';
 import { RoomWindow } from './window.js';
-import { digest } from '../core/storage.js';
+import { digest, reject } from '../core/storage.js';
+import { sameHomeBinding, withLivingCaller } from '../living/index.js';
 import { OWNER_LIFE_TOOL_SOURCES } from '../core/native/conversation.js';
 import { isHistoryObject } from '../core/native/history-maintenance.js';
 import { ROLE_ACTIONS } from '../contracts/behavior.js';
@@ -10,6 +11,15 @@ import { CONTRACT_VERSION } from '../contracts/version.js';
 import { RoomChat } from './chat.js';
 import { roomPhoto } from './photo.js';
 import { roomAsset, roomPrefix } from './assets.js';
+import { classifyActivity } from '../living/body/presentation.js';
+import { animationSlotAllowed } from '../living/body/animation-slots.js';
+import { withHomePlayback } from '../presentation/playback.js';
+const roomHomePlayback = (home) => withHomePlayback(home, animationSlotAllowed, classifyActivity);
+function roomPlaybackReply(result) {
+    return result.home ? { ...result, home: roomHomePlayback(result.home) } : result;
+}
+import { isRoomEndpoint, ROOM_ENDPOINTS, roomVoiceRoute } from '../presentation/room-transport.js';
+import { fail, object, requiredText } from '../core/tables/console.js';
 const output = { schema: { type: 'string' }, render: (_, text) => [{ type: 'text', text }] };
 export const roomStateDeclaration = {
     name: 'room_state', sources: OWNER_LIFE_TOOL_SOURCES,
@@ -32,6 +42,7 @@ export class Room {
     ctx;
     chat;
     closed = false;
+    lifetime = new AbortController();
     receipts = new Map();
     subscriptions = [];
     window;
@@ -39,49 +50,65 @@ export class Room {
         this.ctx = ctx;
         this.chat = new RoomChat(ctx);
         this.window = new RoomWindow({
-            binding: () => {
-                const status = ctx.petCore.workspace.status();
-                return !this.closed && status.state === 'ready' && status.target ? {
-                    workspaceId: status.target.id, path: status.target.path, storageId: ctx.petCore.workspace.storageId()
-                } : undefined;
-            },
+            binding: () => this.binding(),
             origin: () => ctx.get('webServer')?.getOrigin(),
             request: (...args) => this.request(...args),
         });
-        this.subscriptions.push(ctx.on('pet/core.changed', () => this.window.reconcile()));
-        this.subscriptions.push(ctx.on('pet/behavior.changed', change => this.window.changed(change)));
+        this.subscriptions.push(ctx.on('pet/core.changed', () => {
+            this.window.reconcile();
+            this.chat.reconcile();
+        }));
+        this.subscriptions.push(ctx.on('world.changed', change => {
+            const version = ctx.get('petBehavior')?.presentationVersion?.();
+            if (version)
+                this.window.changed(change, version);
+        }));
     }
     open(workspaceId) { this.assert(workspaceId); return this.window.open(workspaceId); }
     closeWindow() { this.window.closeWindow(); }
     status() { return this.window.status(); }
+    binding() { return this.closed ? undefined : this.ctx.petCore.workspace.homeScope(); }
     assert(workspaceId) {
-        const binding = this.ctx.petCore.workspace.status();
-        if (this.closed || binding.state !== 'ready' || binding.target?.id !== workspaceId)
-            throw Error('房间工作区已切换');
+        const binding = this.binding();
+        if (binding?.workspaceId !== workspaceId)
+            reject('STALE_BINDING', '房间工作区已切换');
+        return binding;
     }
-    async request(workspaceId, endpoint, data, requestId, signal) {
-        this.assert(workspaceId);
-        signal.throwIfAborted();
+    admission(workspaceId, signal) {
+        const binding = this.assert(workspaceId), behavior = this.ctx.get('petBehavior');
+        const validate = () => {
+            signal.throwIfAborted();
+            if (!sameHomeBinding(this.binding(), binding) || this.ctx.get('petBehavior') !== behavior)
+                reject('STALE_BINDING', '房间工作区或身体组件已切换');
+        };
+        validate();
+        return { binding, validate };
+    }
+    async request(workspaceId, endpoint, data, requestId, caller) {
+        const signal = AbortSignal.any([caller, this.lifetime.signal]);
+        const { binding, validate } = this.admission(workspaceId, signal);
+        if (!isRoomEndpoint(endpoint))
+            throw Error('未知的房间操作');
+        const reply = async (task) => { const value = await task; validate(); return value; };
+        const storageId = binding.storageId;
         const behavior = this.ctx.petBehavior;
         if (endpoint === 'roomState')
-            return behavior.roomState(workspaceId);
+            return reply(withLivingCaller(validate, () => behavior.roomState(workspaceId)).then(roomHomePlayback));
         if (endpoint === 'roomGarden')
-            return behavior.garden(workspaceId, 'state');
+            return reply(withLivingCaller(validate, () => behavior.garden(workspaceId, 'state')).then(roomPlaybackReply));
         if (endpoint === 'roomHistory')
-            return this.chat.history(workspaceId);
+            return reply(this.chat.history(workspaceId, validate));
         if (endpoint === 'roomVoice') {
-            const voice = this.ctx.get('petVoice'), storageId = this.ctx.petCore.workspace.storageId();
+            const host = this.ctx.petCore;
+            const voice = host.native.voiceTable.lookup(this.ctx, signal, validate);
             if (!voice)
                 throw Error('语音组件尚未启用');
-            const operation = data.operation;
-            if (!['hear', 'speak', 'voices'].includes(String(operation)))
+            const route = roomVoiceRoute(data.operation);
+            if (!route)
                 throw Error('无效的房间语音操作');
-            const response = await voice.handle({ rest: 'voice/' + operation, method: operation === 'voices' ? 'GET' : 'POST',
-                body: operation === 'voices' ? undefined : JSON.stringify(data.payload), signal });
-            this.assert(workspaceId);
-            signal.throwIfAborted();
-            if (this.ctx.get('petVoice') !== voice || this.ctx.petCore.workspace.storageId() !== storageId)
-                throw Error('房间语音工作区已切换');
+            const response = await voice.handle({ ...route, body: route.method === 'GET' ? undefined : JSON.stringify(data.payload) });
+            voice.assertCurrent();
+            validate();
             if (response.kind === 'json')
                 return response.obj;
             const stat = lstatSync(response.file);
@@ -90,23 +117,24 @@ export class Room {
             return { ok: true, audio: readFileSync(response.file).toString('base64'), mediaType: response.contentType };
         }
         if (endpoint === 'roomChat' || endpoint === 'roomTelevision')
-            return this.chat.reply(workspaceId, endpoint === 'roomTelevision', data, requestId, signal);
-        if (!['roomCare', 'roomPlant', 'roomAction'].includes(endpoint))
-            throw Error('未知的房间操作');
-        const key = digest([workspaceId, this.ctx.petCore.workspace.storageId(), endpoint, requestId]), fingerprint = digest(data);
+            return reply(this.chat.reply(workspaceId, endpoint === 'roomTelevision', data, requestId, signal, validate));
+        const key = digest([workspaceId, storageId, endpoint, requestId]), fingerprint = digest(data);
         const prior = this.receipts.get(key);
         if (prior) {
             if (prior.fingerprint !== fingerprint)
                 throw Error('同一房间请求的操作已变化');
             return prior.result;
         }
-        const result = await (endpoint === 'roomAction' ? behavior.roomAction(workspaceId, data, '主人', { requestId: key,
+        const careRequestId = ['pause', 'resume', 'cancel'].includes(String(data.type)) && typeof data.requestId === 'string' ? data.requestId : key;
+        const result = await withLivingCaller(validate, () => endpoint === 'roomAction' ? behavior.roomAction(workspaceId, data, '主人', { requestId: key,
             actor: { kind: 'owner', id: this.ctx.petCore.workspace.runtime?.config?.ownerActorId ?? 'owner', channel: 'room' } }) : endpoint === 'roomPlant' ? behavior.garden(workspaceId, 'act', { ...data, requestId: key }) :
-            behavior.garden(workspaceId, 'control', { ...data, requestId: ['pause', 'resume', 'cancel'].includes(String(data.type)) && typeof data.requestId === 'string' ? data.requestId : key }));
-        this.receipts.set(key, { fingerprint, result });
+            behavior.garden(workspaceId, 'control', { ...data, requestId: careRequestId }));
+        validate();
+        const projected = roomPlaybackReply(result);
+        this.receipts.set(key, { fingerprint, result: projected });
         if (this.receipts.size > 256)
             this.receipts.delete(this.receipts.keys().next().value);
-        return result;
+        return projected;
     }
     watching(id) { return this.chat.watching(id); }
     toolScope(agent) {
@@ -122,21 +150,27 @@ export class Room {
         this.ctx.petCore.native.validate(exec.agent.id);
         return id;
     }
+    toolAdmission(exec) {
+        const id = this.checked(exec), { validate: current } = this.admission(id, exec.signal);
+        const validate = () => { current(); if (this.checked(exec) !== id)
+            reject('STALE_BINDING', '房间会话已切换'); };
+        return { id, validate };
+    }
     tools() {
         const behavior = this.ctx.petBehavior;
         const state = defineTool({ name: roomStateDeclaration.name, description: '查看自己的真实房间状态、所在位置、身体需要和同一世界可去的房间/家具标识。', parameters: { view: stateViewParameter, factIds: factIdsParameter }, output,
             execute: async ({ view, factIds }, exec) => {
-                const id = this.checked(exec);
+                const { id, validate } = this.toolAdmission(exec);
                 if (factIds) {
                     if (factIds.length < 1 || factIds.length > 16)
                         throw Error('Expected 1–16 fact IDs');
-                    const facts = await behavior.readFacts(id, factIds);
-                    if (this.checked(exec) !== id)
-                        throw Error('Interaction workspace changed');
+                    const facts = await withLivingCaller(validate, () => behavior.readFacts(id, factIds));
+                    validate();
                     return JSON.stringify({ facts });
                 }
-                const state = await behavior.roomState(id);
-                return JSON.stringify((view ?? (exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id) ? 'overview' : 'full')) === 'overview' ? roomOverview(state) : state);
+                const state = await withLivingCaller(validate, () => behavior.roomState(id));
+                validate();
+                return JSON.stringify((view ?? (exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id) ? 'overview' : 'full')) === 'overview' ? roomOverview(state) : roomHomePlayback(state));
             } });
         const act = defineTool({ name: 'room_action', description: '在自己的房间移动到 room_state 里的 room/spot，或进行日常互动。睡着需先 wake，不舒服时不能移动。talk 的 text 是给房间的留言。', parameters: {
                 action: { type: 'string', enum: ROLE_ACTIONS, required: true }, room: { type: 'string' }, spot: { type: 'string' }, text: { type: 'string' }, on: { type: 'boolean' }
@@ -144,8 +178,10 @@ export class Room {
             execute: async (input, exec) => {
                 if (exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id))
                     throw Error('自主生活请通过 life_plan_update 提交持久活动；普通房间操作仍供主人交互使用');
-                const result = await behavior.roomAction(this.checked(exec), input, '大肥鱼', { requestId: digest([exec.agent.id, exec.callId]),
-                    actor: { kind: 'companion', id: this.ctx.petCore.workspace.runtime.config.companionId, channel: 'dsh', sessionId: exec.agent.id } });
+                const { id, validate } = this.toolAdmission(exec);
+                const result = await withLivingCaller(validate, () => behavior.roomAction(id, input, '大肥鱼', { requestId: digest([exec.agent.id, exec.callId]),
+                    actor: { kind: 'companion', id: this.ctx.petCore.workspace.runtime.config.companionId, channel: 'dsh', sessionId: exec.agent.id } }));
+                validate();
                 return JSON.stringify({ changed: result.changed, event: result.event, her: result.home.her, body: result.home.body });
             } });
         const garden = defineTool({ name: roomGardenDeclaration.name, description: '查看菜园，自己走去照料某块田或管理自主照料。state 返回作物、田块、库房和任务。control 按真实时间排队，读取结果确认是否完成。', parameters: {
@@ -156,30 +192,57 @@ export class Room {
             execute: async (input, exec) => {
                 if (input.type !== 'state' && exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id))
                     throw Error('自主园艺请通过 life_plan_update 安排明确步骤，不直接连派操作');
-                const id = this.checked(exec);
+                const { id, validate } = this.toolAdmission(exec);
                 const { view, ...operation } = input;
-                const state = input.type === 'state' ? await behavior.garden(id, 'state') : await behavior.garden(id, 'control', { ...operation, requestId: digest([exec.agent.id, exec.callId]) });
-                return JSON.stringify(input.type === 'state' && (view ?? (exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id) ? 'overview' : 'full')) === 'overview' ? gardenOverview(state) : state);
+                const state = await withLivingCaller(validate, () => input.type === 'state' ? behavior.garden(id, 'state') :
+                    behavior.garden(id, 'control', { ...operation, requestId: digest([exec.agent.id, exec.callId]) }));
+                validate();
+                return JSON.stringify(input.type === 'state' && (view ?? (exec.agent && this.ctx.petCore.native.isAutonomous(exec.agent.id) ? 'overview' : 'full')) === 'overview' ? gardenOverview(state) : roomPlaybackReply(state));
             } });
         const photo = defineTool({ name: 'room_photo', description: '拍下自己当前房间的真实画面。overview 是含自己的近景，eyes 是自己的第一视角。look 可向前或看向室内。返回会话内可查看的照片。', parameters: {
                 view: { type: 'string', enum: ['overview', 'eyes'] }, look: { type: 'string', enum: ['forward', 'room'] }
             },
             output: { schema: { type: 'string' }, render: (_, value) => [JSON.parse(value)] },
             execute: async ({ view = 'overview', look = 'forward' }, exec) => {
-                const id = this.checked(exec);
-                const home = await behavior.roomState(id), garden = await behavior.garden(id, 'state');
-                const image = await roomPhoto(home, garden, view, look, exec.signal);
-                if (this.checked(exec) !== id)
-                    throw Error('房间已切换');
-                const block = (await this.chat.images.admit(image)).find(part => part.type === 'image');
-                if (!block || this.checked(exec) !== id)
+                const { id, validate } = this.toolAdmission(exec);
+                const home = await withLivingCaller(validate, () => behavior.roomState(id));
+                const garden = await withLivingCaller(validate, () => behavior.garden(id, 'state'));
+                validate();
+                const image = await roomPhoto(roomHomePlayback(home), roomPlaybackReply(garden), view, look, exec.signal);
+                validate();
+                const block = (await this.chat.images.admit(image, validate)).find(part => part.type === 'image');
+                validate();
+                if (!block)
                     throw Error('当前房间的照片不可用');
                 return JSON.stringify(block);
             } });
         return [state, act, garden, photo];
     }
-    async close() { this.closed = true; for (const stop of this.subscriptions.splice(0))
+    async close() { this.closed = true; this.lifetime.abort(); for (const stop of this.subscriptions.splice(0))
         stop(); this.closeWindow(); this.receipts.clear(); await this.chat.close(); }
+}
+export function roomConsoleOperations(room) {
+    const operations = {
+        roomOpen(call) {
+            const input = object(call.input, ['workspaceId']);
+            const id = requiredText(input.workspaceId, 200);
+            call.checkBinding(id);
+            call.validate();
+            return room.open(id);
+        },
+    };
+    for (const endpoint of ROOM_ENDPOINTS)
+        operations[endpoint] = call => {
+            const input = object(call.input, ['workspaceId', 'data']);
+            const id = requiredText(input.workspaceId, 200);
+            call.checkBinding(id);
+            const { data } = input;
+            if (!data || typeof data !== 'object' || Array.isArray(data))
+                fail('INVALID_ARGUMENT');
+            call.validate();
+            return room.request(id, endpoint, data, call.requestId, call.signal);
+        };
+    return { operations };
 }
 export const name = '50-Room';
 export const inject = ['petCore', 'petWorld', 'petBehavior', 'agents', 'sessions', 'tools', 'workspaceRegistry', 'sessionController'];
@@ -187,6 +250,7 @@ export function apply(ctx) {
     const room = new Room(ctx);
     ctx.provide('petRoom', room);
     const host = ctx.petCore;
+    ctx.effect(() => host.native.consoleOperations.register('room', roomConsoleOperations(room), ctx).revoke);
     const tools = ctx.tools;
     for (const tool of room.tools()) {
         tools.register(tool, { when: ({ agent }) => !!room.toolScope(agent) });
@@ -197,9 +261,10 @@ export function apply(ctx) {
         const server = scope.webServer;
         scope.effect(() => server.register({ kind: 'prefix', path: roomPrefix, resource: roomAsset }));
     });
+    const ports = host.native.companionPorts;
+    ctx.effect(() => ports.registerRoomWindow(ctx, workspaceId => room.open(workspaceId)).revoke);
     ctx.effect(() => {
         const source = host.native.sourceTable.register(room.chat.sourceAdapter());
-        const ports = host.native.companionPorts;
         const television = ports.scopeFor(ctx, 'petRoom') && ports.register('watchingTelevision', id => room.watching(id));
         return async () => {
             try {

@@ -22,7 +22,7 @@ test('owner archive searches the bound Bank and rechecks corrected and forgotten
   const host = createCore({ dataDir: join(root, 'core'), ...scope, ownerActorId: 'owner',
     displayName: 'Fish', character: 'Fixture', memory: { python: resolve('.venv/bin/python'), dataDir: join(root, 'memory') } });
   const registry = { list: () => repos, get: id => repos.find(repo => id === repo.id) };
-  const handler = settingsHandler(() => host, () => registry, undefined, () => ['memory', 'archive', 'persona']);
+  const handler = settingsHandler(() => host, () => registry, () => ['memory', 'archive', 'persona']);
   const signal = new AbortController().signal;
   let requestId = 0;
   const call = (name, input) => handler(name, { requestId: String(++requestId), input }, signal, { principal: { kind: 'owner' }, signal });

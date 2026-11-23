@@ -1,6 +1,7 @@
 import { Context, type Fiber } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../core/index.js';
-import type { CompanionBinding } from '../core/tables/companion-ports.js';
+import { sameHomeBinding } from '../core/home-binding.js';
+import type { HomeBinding } from '../core/workspace.js';
 import type { CallOptions, ContractError, Result } from '../contracts/common.js';
 import { type CompanionFactSource } from '../contracts/interaction.js';
 import type { WorldChanged, WorldCommandRequest, WorldSnapshot } from '../contracts/living.js';
@@ -19,6 +20,7 @@ declare module '@deepseek-ai/cordis' {
         'world.changed'(value: WorldChanged): void;
     }
 }
+export { sameHomeBinding };
 export declare function serviceLabel(contextScope: Context, name: string): symbol;
 export interface AreaReference<T> {
     readonly value: T;
@@ -47,7 +49,7 @@ export declare class LivingWorld {
         lease: RegistrationLease;
     }) | undefined;
     bindingChanged(ctx: Context, host: PetCoreHost, valid: () => boolean): void;
-    changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: CompanionBinding): void;
+    changed(ctx: Context, host: PetCoreHost, valid: () => boolean, expected?: HomeBinding, bodyOnly?: boolean, bodyObservation?: WorldChanged['bodyObservation']): void;
 }
 type AreaPorts = {
     [K in Area]?: () => Areas[K] | undefined;
@@ -65,8 +67,8 @@ export declare class LivingView {
     readonly isCurrent: () => boolean;
     private readonly world?;
     readonly isLatestGeneration: () => boolean;
-    readonly changed: (binding: CompanionBinding) => void;
-    constructor(ports?: LivingPorts, isCurrent?: () => boolean, world?: LivingWorld | undefined, isLatestGeneration?: () => boolean, changed?: (binding: CompanionBinding) => void);
+    readonly changed: (binding: HomeBinding, bodyOnly?: boolean, bodyObservation?: WorldChanged['bodyObservation']) => void;
+    constructor(ports?: LivingPorts, isCurrent?: () => boolean, world?: LivingWorld | undefined, isLatestGeneration?: () => boolean, changed?: (binding: HomeBinding, bodyOnly?: boolean, bodyObservation?: WorldChanged['bodyObservation']) => void);
     lookup<K extends Area>(area: K): AreaReference<Areas[K]> | undefined;
     get<K extends Area>(area: K): Areas[K] | undefined;
     private boundScope;
@@ -85,4 +87,3 @@ export declare class InFlight {
     run<T>(start: () => Promise<T>): Promise<T>;
     settled(): Promise<void>;
 }
-export {};

@@ -5,6 +5,7 @@ import {economyOverview,economyPage} from '../../src/living/economy/tool-context
 import {planOverview} from '../../src/living/plan/tool-context.js';
 import {presentFacts} from '../../src/core/interaction-presentation.js';
 import {Room} from '../../src/room/plugin.js';
+import type {Context} from '@deepseek-ai/cordis';
 import {HOME_LAYOUT,emptyHomeState,homeView} from '#feiyu-home';
 import {createGarden,gardenView} from '#feiyu-garden';
 import {EconomyStore} from '../../src/living/economy/store.js';
@@ -23,16 +24,31 @@ test('room overview retains all exact navigation IDs, needs and restrictions wit
 test('native Room tools default to overview only for autonomous reads and preserve explicit full and mutations',async()=>{
   const home=homeView(emptyHomeState(Date.now()),Date.now());let autonomous=true;const controls:unknown[]=[];
   const receipt={id:'original-fact',domain:'body',result:{before:{thirst:.8},after:{thirst:.2}}};
-  const owner={ctx:{petCore:{native:{isAutonomous:()=>autonomous}},petBehavior:{roomState:async()=>home,readFacts:async(_id:string,ids:string[])=>{assert.deepEqual(ids,[receipt.id]);return [receipt];},
-    garden:async(_id:string,operation:string,args:any)=>{controls.push({operation,args});return {ok:true,garden:{plots:[],care:{receipts:[]}}};}}},checked:()=> 'workspace'};
-  const tools=Room.prototype.tools.call(owner as unknown as Room),state=tools.find(tool=>tool.name==='room_state')!,garden=tools.find(tool=>tool.name==='room_garden')!;
-  const exec={agent:{id:'home'},callId:'once'} as any;
+  const behavior = {roomState: async () => home, readFacts: async (_id: string, ids: string[]) => {
+    assert.deepEqual(ids, [receipt.id]);return [receipt];
+  }, garden: async (_id: string, operation: string, args: unknown) => {
+    controls.push({operation,args});return {ok:true,garden:{plots:[],care:{receipts:[]}}};
+  }};
+  const target = {id: 'workspace', path: '/fixture/home'};
+  const room = new Room({petCore:{workspace:{
+    status: () => ({state: 'ready', target}),
+    homeScope: () => ({workspaceId: target.id, path: target.path, storageId: target.id, bootId: 'fixture', generation: 0}),
+  }, native:{isAutonomous: () => autonomous, manages: (id: string) => id === 'home', validate() {}}},
+  petBehavior: behavior, petWorld:{sessionStatus: () => ({state: 'ready'})},
+  get: (name: string) => name === 'petBehavior' ? behavior : undefined, on: () => () => {}} as unknown as Context);
+  const tools=room.tools(),state=tools.find(tool=>tool.name==='room_state')!,garden=tools.find(tool=>tool.name==='room_garden')!;
+  const signal = new AbortController().signal;
+  const exec={agent:{id:'home', session: {}},callId:'once',signal} as any;
   assert.equal(JSON.parse(await state.execute({},exec) as string).view,'overview');
   assert.deepEqual(JSON.parse(await state.execute({factIds:[receipt.id]},exec) as string),{facts:[receipt]});
   await assert.rejects(state.execute({factIds:[]},exec),/fact IDs/);
-  assert.deepEqual(JSON.parse(await state.execute({view:'full'},exec) as string),home);
+  const full = JSON.parse(await state.execute({view:'full'},exec) as string);
+  const {playback, ...preservedHome} = full;
+  assert.deepEqual(preservedHome, home);
+  assert.equal(playback.version, 1);
+  assert.deepEqual(full, JSON.parse(JSON.stringify(await room.request(target.id, 'roomState', {}, 'room-full', signal))));
   await assert.rejects(garden.execute({type:'water',plotId:0},exec),/life_plan_update/);assert.equal(controls.length,0);
-  autonomous=false;assert.deepEqual(JSON.parse(await state.execute({},exec) as string),home);
+  autonomous=false;assert.deepEqual(JSON.parse(await state.execute({},exec) as string),full);
   await garden.execute({type:'water',plotId:0,view:'overview'},exec);
   assert.deepEqual((controls[0] as any).args,{type:'water',plotId:0,requestId:(controls[0] as any).args.requestId});
 });

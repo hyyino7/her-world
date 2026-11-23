@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import {readFileSync, readdirSync} from 'node:fs';
-import {join, relative} from 'node:path';
+import {dirname, extname, join, relative, resolve} from 'node:path';
 
 export {ts};
 export function walk(node, visit) { visit(node); ts.forEachChild(node, child => { walk(child, visit); }); }
@@ -57,6 +57,31 @@ export function project(root, paths) {
   const checker=program.getTypeChecker();
   const sources=paths.map(path=>({file:slash(relative(root,path)),source:program.getSourceFile(path)}));
   const declaration = node => {const symbol=checker.getSymbolAtLocation(node);return symbol?.valueDeclaration??symbol?.declarations?.[0];};
+  const sourcesByPath=new Map(paths.map(path=>[path,program.getSourceFile(path)]));
+  function staticConst(node) {
+    if(!ts.isIdentifier(node))return;
+    let symbol=checker.getSymbolAtLocation(node);
+    const specifier=symbol?.declarations?.[0];
+    if(specifier&&ts.isImportSpecifier(specifier)) {
+      const clause=specifier.parent.parent;
+      const name=key(clause.parent.moduleSpecifier);
+      if(specifier.isTypeOnly||clause.isTypeOnly||!/^\.\.?\//.test(name??''))return;
+      const path=resolve(dirname(node.getSourceFile().fileName),name);
+      const extension=extname(path);
+      const candidates=extension?(extension==='.js'?[path,path.slice(0,-3)+'.ts']:[path]):
+        [path+'.ts',path+'.js',join(path,'index.ts'),join(path,'index.js')];
+      const matches=candidates.map(candidate=>sourcesByPath.get(candidate)).filter(Boolean);
+      if(matches.length!==1)return;
+      const module=checker.getSymbolAtLocation(matches[0]);
+      symbol=module&&checker.getExportsOfModule(module).find(candidate=>candidate.name===key(specifier.propertyName??specifier.name));
+      const exported=symbol?.declarations?.[0];
+      if(exported&&ts.isExportSpecifier(exported)&&!exported.parent.parent.moduleSpecifier) {
+        symbol=checker.getExportSpecifierLocalTargetSymbol(exported);
+      }
+    }
+    const [decl,...others]=symbol?.declarations??[];
+    if(decl&&!others.length&&ts.isVariableDeclaration(decl)&&decl.initializer&&decl.parent.flags&ts.NodeFlags.Const)return decl;
+  }
   function binding(node, resolve, seen) {
     const decl=declaration(node);
     if(!decl || seen.has(decl))return;
@@ -127,6 +152,6 @@ export function project(root, paths) {
     }
     return [];
   }
-  return {sources,checker,strings,stringResult,pathsOf};
+  return {sources,checker,strings,stringResult,pathsOf,staticConst};
 }
 export function readJson(path) {return JSON.parse(readFileSync(path,'utf8'));}

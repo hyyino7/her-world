@@ -85,6 +85,7 @@ test('公开身体快照的忙碌状态与 Desktop 吃饭准入一致', async t 
     const {behavior} = await snapshot();
     assert.equal(behavior.busy, busy);
     assert.equal(receipt.behavior.busy, behavior.busy);
+    assert.deepEqual(receipt.behavior.interruptibility, behavior.interruptibility);
     if (hasHome) assert.equal(receipt.home.behavior.busy, behavior.busy);
     else assert.equal('home' in receipt, false);
   };
@@ -94,6 +95,7 @@ test('公开身体快照的忙碌状态与 Desktop 吃饭准入一致', async t 
     assert.equal(home.her.walking, walking);
     assert.equal(home.her.asleep, asleep);
     assert.equal(behavior.busy, busy);
+    assert.equal(behavior.interruptibility.feed, busy ? 'blocked' : 'start');
     assert.equal(home.behavior.busy, busy);
     assert.equal((await f.body.roomState('world')).behavior.busy, busy);
     const {status, obj} = await request('anim?pet=main&surface=web','POST',{name:'吃饭团',requestId:id});

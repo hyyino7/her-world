@@ -30,10 +30,10 @@ export async function checkMessaging({ctx,host,workspace,deviceDirectory,home,mo
   const voiceFile=join(deviceDirectory,'speech-fixture.mp3');
   writeFileSync(voiceFile,Buffer.from('ID3 synthetic fixture speech'));
   let spoken;
-  await ctx.plugin({apply(scope){scope.provide('petVoice',{async handle(request){
+  await ctx.plugin(scope=>scope.effect(()=>host.native.voiceTable.register(scope,{availability:()=>({speak:true,hear:false}),async handle(request){
     assert.equal(request.rest,'voice/speak');spoken=JSON.parse(request.body).text;
     return {kind:'file',file:voiceFile,contentType:'audio/mpeg'};
-  }});}});
+  }}).revoke));
   let client, msg, iterations=0;
   const actions=[];
   ws.on('connection',socket=>{

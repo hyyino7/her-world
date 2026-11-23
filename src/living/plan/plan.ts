@@ -4,7 +4,7 @@ import { createLifeStore, LIFE_STATE_MAX_BYTES, type LifeStore } from '#dsh-worl
 import type { CompanionBehavior } from '../body/plugin.js';
 import { PLAN_KINDS, isPlanKind, isPlanBodyAction, isPlanEconomyOperation, isPlanGardenOperation, isBodyMetric,
   PlannedAdmissionWaitError, type BodyMetric, type PlanKind, type PlannedActivity, type PlannedAdmissionWait } from '../../contracts/behavior.js';
-import { requirePresentationSlot } from '../body/playback.js';
+import { requirePresentationSlot } from '../body/animation-slots.js';
 import {gardenReceiptText} from '../body/garden-receipt.js';
 
 export type PlanStatus = 'active' | 'paused' | 'waiting' | 'completed' | 'cancelled';

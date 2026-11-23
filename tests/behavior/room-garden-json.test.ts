@@ -10,6 +10,8 @@ import {createGarden} from '#feiyu-garden';
 import {canonical} from '../../src/core/storage.js';
 import {CompanionBehavior} from '../../src/living/body/plugin.js';
 import {Room} from '../../src/room/plugin.js';
+import type {WorldChanged} from '../../src/contracts/living.js';
+import {livingNotifications} from '../fixtures/living-notifications.js';
 
 const jobs = [
   {action: {type: 'buySeed', cropId: 'tomato', quantity: 1}, plotId: null},
@@ -46,12 +48,14 @@ for (const {action, plotId} of jobs) test(`Room ${action.type} stays JSON-safe t
   writeFileSync(join(directory, 'garden.json'), JSON.stringify(garden));
   const target = {id: 'fixture', path: root, sessionIds: []};
   const host = {native: {}, workspace: {status: () => ({state: 'ready', target}), storageId: () => target.id,
+    homeScope: () => ({workspaceId:target.id,path:target.path,storageId:target.id,bootId:'fixture',generation:0}),
     runtime:{config:{ownerActorId:'owner',companionId:'fish'},identity:()=>({displayName:'Fixture'}),store:{meta:()=>undefined}}}} as unknown as PetCoreHost;
-  const events: unknown[] = [];
+  const events: WorldChanged[] = [];
   const ctx = {petCore: host, get petBehavior() {return behavior;},
     get: (name: string) => name === 'petBehavior' ? behavior : undefined,
-    on: () => () => {}, emit: (_name: string, value: unknown) => events.push(value)} as unknown as Context;
-  behavior = new CompanionBehavior(ctx, host);
+    on: () => () => {}, emit: (name: string, value: WorldChanged) => {if (name === 'world.changed') events.push(value);}} as unknown as Context;
+  behavior = new CompanionBehavior(ctx, host, livingNotifications(t, ctx, host, 'body'));
+  behavior.activate();
   room = new Room(ctx);
   const signal = new AbortController().signal;
   let sequence = 0;
@@ -79,7 +83,9 @@ for (const {action, plotId} of jobs) test(`Room ${action.type} stays JSON-safe t
   assert.equal(finished.garden.care.task, null);
   assert.equal(finished.garden.care.receipts.filter((row: any) => row.requestId === receiptId).length, 1);
   assert.equal(finished.garden.care.receipts.find((row: any) => row.requestId === receiptId).status, 'completed');
-  assert.ok(events.length > 0, 'The real Behavior publisher emits successful state changes');
+  assert.ok(events.some(event => event.workspaceId === target.id && event.storageId === target.id
+    && event.bootId === 'fixture' && event.generation === 0 && event.bodyOnly),
+  'The real Behavior publisher emits successful state changes for the active binding');
 });
 
 test('an older non-plot garden task projects an explicit null plot ID', () => {

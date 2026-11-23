@@ -9,12 +9,16 @@ import {setTimeout as wait} from 'node:timers/promises';
 import {isDeepStrictEqual} from 'node:util';
 import type {NativeSession} from '../conversation.js';
 import type {} from '../plugin.js';
-import {activityPresentation,eatingClips,physicalClips,sleepingClips,projectActivityConfig} from './activity.js';
+import {desktopHomePlayback,activityPresentation,eatingClips,physicalClips,sleepingClips,projectActivityConfig} from './activity.js';
 import {migratePresentation,resolvePresentationMigration,type PresentationMigrationReceipt} from './migration.js';
 import { companionFeelings } from '../../living/body/presentation.js';
 import type { PlaybackReceipt } from '../../emotion/index.js';
 import type { CompanionFactActor } from '../../contracts/interaction.js';
 import type { CareAction } from '../../contracts/behavior.js';
+import {isWorldChangeFor} from '../../contracts/living.js';
+import {fail, object, requiredText, type ConsoleOperation} from '../../core/tables/console.js';
+import type {HomeBinding} from '../../core/workspace.js';
+import { sameHomeBinding, withLivingCaller } from '../../living/index.js';
 
 const load = createRequire(import.meta.url);
 const root = dirname(load.resolve('her-world/package.json'));
@@ -74,6 +78,7 @@ function matches(value: string, token: string) {
 
 export class PetPlatform {
   private bound?: {id:string; path:string};
+  private homeBinding?: HomeBinding;
   private directory = '';
   private ownerToken = '';
   private toolToken = '';
@@ -95,6 +100,7 @@ export class PetPlatform {
   private behaviorRead?: {bound:{id:string;path:string};scope:AbortController;observation?:{bootId:string;revision:number}};
   private playbackKinds=new Map<string,PlaybackReceipt['kind']>();
   private playbackReported=new Map<string,string>();
+  private feedPlaybacks=new Map<string,Promise<string|undefined>>();
   private migration?:PresentationMigrationReceipt;
   private restartPresentation?:()=>void;
   private presentationStatus?:()=>{running:boolean;starting:boolean};
@@ -111,15 +117,16 @@ export class PetPlatform {
     for (const dispose of this.cleanup.splice(0).reverse()) dispose();
     this.setup?.playback.cancelAll();
     this.setup?.state.cancelAll();
-    this.bound=undefined; this.router=undefined; this.lookup=undefined; this.setup=undefined;
+    this.bound=undefined; this.homeBinding=undefined; this.router=undefined; this.lookup=undefined; this.setup=undefined;
     this.behavior=undefined;this.behaviorKey='';this.animationFeedbackKey='';this.identityKey='';this.expressionAction=undefined;
-    this.playbackKinds.clear();this.playbackReported.clear();
+    this.playbackKinds.clear();this.playbackReported.clear();this.feedPlaybacks.clear();
     this.migration=undefined;this.restartPresentation=undefined;this.presentationStatus=undefined;
     this.ownerToken=''; this.toolToken=''; this.mediaToken=''; this.providers=undefined;
   }
   sync() {
     const target=this.selected();
-    if (this.bound && (target?.id!==this.bound.id || target?.path!==this.bound.path)) this.close();
+    if (this.bound && (target?.id!==this.bound.id || target?.path!==this.bound.path ||
+      !sameHomeBinding(this.homeBinding,this.ctx.petCore.workspace.homeScope?.()))) this.close();
   }
   private ensure() {
     this.sync();
@@ -135,19 +142,33 @@ export class PetPlatform {
     this.migration=migratePresentation(this.directory,this.ctx.petCore.workspace.companionSettings());
     this.scope=new AbortController();
     this.bound={id:target.id,path:target.path};
+    const homeBinding=this.homeBinding=this.ctx.petCore.workspace.homeScope?.();
     this.ownerToken=randomBytes(32).toString('hex'); this.toolToken=randomBytes(32).toString('hex'); this.mediaToken=randomBytes(32).toString('hex');
     const scope = this.scope;
     try {
-      const host = this.ctx as any;
+      const ctx = this.ctx;
+      const {logger,connection,webServer} = ctx as Context & {connection:unknown;webServer:unknown};
       const bridge = {
-        logger: host.logger, connection: host.connection, webServer:host.webServer, get: (n:string)=>host.get(n,false),
+        logger, connection, webServer,
+        get: (name: 'standaloneAi' | 'attachments' | 'shutdownApp') => {
+          // 上游 setup 和路由只经 optionalService 读取这三项。
+          switch (name) {
+            case 'standaloneAi': return ctx.get('standaloneAi',false);
+            case 'attachments': return ctx.get('attachments',false);
+            case 'shutdownApp': return ctx.get('shutdownApp',false);
+          }
+        },
         provide: (_n:string,value:any)=>{this.providers=value;},
         effect: (setup:()=>Clean|void)=>{ const stop=setup(); if(stop)this.cleanup.push(stop); },
-        on: (event:string, receive:(session:any, data:any)=>void)=>host.on(event,(item:any,data:any)=>{
-          const session=item?.session ?? item;
-          if (!scope.signal.aborted && session?.header?.cwd===target.path &&
-            host.petCore.workspace.sessionStatus(session,host.get('workspaceRegistry',false))?.target?.id===target.id) receive(item,data);
-        }, {global:true}),
+        on: (event:'session/event'|'agent/error', receive:(session:any, data:any)=>void) => {
+          const forward = (item:any,data?:any) => {
+            const session=item?.session ?? item;
+            if (!scope.signal.aborted && session?.header?.cwd===target.path &&
+              ctx.petCore.workspace.sessionStatus(session,ctx.get('workspaceRegistry',false))?.target?.id===target.id) receive(item,data);
+          };
+          if(event==='session/event')return ctx.on('session/event',forward,{global:true});
+          return ctx.on('agent/error',forward,{global:true});
+        },
       };
       const setup=this.setup=upstream.createHostSetup(bridge,this.directory);
       const lookup=this.lookup=upstream.createPetLookup(setup);
@@ -219,15 +240,16 @@ export class PetPlatform {
       setup.menuRegistry.register({owner:'chatpet.room',labels:['进入房间'],target:'both'});
       setup.menuRegistry.register({owner:'chatpet.native-chat',labels:['原生流式聊天'],target:'both'});
       setup.state.writeSection('menu',{items:setup.menuRegistry.snapshot()});
-      this.cleanup.push(this.ctx.on('pet/behavior.changed',event=>{
-        if(event.workspaceId!==target.id || scope.signal.aborted)return;
+      this.cleanup.push(this.ctx.on('world.changed',event=>{
+        if(scope.signal.aborted || !isWorldChangeFor(event,homeBinding) ||
+          !sameHomeBinding(homeBinding,this.ctx.petCore.workspace.homeScope?.()))return;
         const reading=this.behaviorRead;
-        if(event.reason==='observation' && reading?.scope===scope && reading.bound===this.bound &&
-          typeof event.bootId==='string' && event.bootId && Number.isSafeInteger(event.revision) && event.revision>=0) {
+        const observation=event.bodyObservation;
+        if(observation && reading?.scope===scope && reading.bound===this.bound) {
           const previous=reading.observation;
-          if(previous && previous.bootId!==event.bootId)this.refreshAgain=true;
-          if(!previous || previous.bootId!==event.bootId || event.revision>previous.revision)
-            reading.observation={bootId:event.bootId,revision:event.revision};
+          if(previous && previous.bootId!==observation.bootId)this.refreshAgain=true;
+          if(!previous || previous.bootId!==observation.bootId || observation.revision>previous.revision)
+            reading.observation=observation;
           return;
         }
         void this.refreshBehavior();
@@ -313,12 +335,21 @@ export class PetPlatform {
     if(result.status>=400 || result.obj?.ok===false)throw Error(result.obj?.message || '桌宠暂时无法显示');
     return this.status();
   }
-  async hide() {
+  async hide(permit = () => {}) {
     if(!this.bound)return;
+    const workspace=this.ctx.petCore.workspace, binding=workspace.homeScope?.(), scope=this.scope;
+    const validate=()=>{
+      permit();
+      scope.signal.throwIfAborted();
+      if(!sameHomeBinding(this.homeBinding,binding) || !sameHomeBinding(workspace.homeScope?.(),binding))fail('STALE_BINDING');
+    };
+    validate();
     for(const pet of this.pets().filter(p=>p.display!=='none')) {
-      await this.handle(new URL(route+'/pet-display','http://localhost'),'POST',JSON.stringify({id:pet.id,display:'none'}),this.scope.signal);
+      await this.handle(new URL(route+'/pet-display','http://localhost'),'POST',JSON.stringify({id:pet.id,display:'none'}),scope.signal);
+      validate();
     }
     await this.ctx.petDesktop.features?.refresh();
+    validate();
   }
   private presentExpression(event:any) {
     if(!this.bound || event.workspaceId!==this.bound.id)return;
@@ -348,7 +379,10 @@ export class PetPlatform {
         if(scope.signal.aborted || this.scope!==scope)return;
         this.refreshAgain=false;await this.readBehavior();
       }while(this.refreshAgain && !scope.signal.aborted && this.scope===scope);
-    }).finally(()=>{
+    }).finally(async()=>{
+      // The world signal is queued after a Body commit. Let it claim a
+      // follow-up before releasing the refresh that was active at the commit.
+      await Promise.resolve();
       if(this.refreshing!==refresh)return;
       this.refreshing=undefined;
       // A domain event may arrive after the loop decides to exit but before
@@ -360,13 +394,16 @@ export class PetPlatform {
   private async readBehavior() {
     if(!this.bound || this.scope.signal.aborted)return;
     const bound=this.bound,scope=this.scope;
+    const current=()=>this.bound===bound && !scope.signal.aborted &&
+      sameHomeBinding(this.homeBinding,this.ctx.petCore?.workspace.homeScope?.());
+    if(!current())return;
     const reading:NonNullable<PetPlatform['behaviorRead']>={bound,scope};
     this.behaviorRead=reading;
     let next:any;
     try {
       const service=(this.ctx as any).get('petBehavior',false);
-      next=service ? await service.roomState(bound.id) : undefined;
-      if(this.bound!==bound || scope.signal.aborted)return;
+      next=service ? desktopHomePlayback(await service.roomState(bound.id)) : undefined;
+      if(!current())return;
       const prior=this.behavior;
       this.behavior=next;
       const emotion=(this.ctx as any).get('petEmotion',false);
@@ -411,7 +448,7 @@ export class PetPlatform {
         // A Body snapshot publishes its observation before resolving this very
         // read. Only an observation not covered by that result needs another
         // pass; external transitions and explicit refreshes retain their flag.
-        if(observed && this.bound===bound && !scope.signal.aborted &&
+        if(observed && current() &&
           !(received?.bootId===observed.bootId && Number.isSafeInteger(received.revision) && received.revision>=observed.revision))
           this.refreshAgain=true;
       }
@@ -576,6 +613,43 @@ export class PetPlatform {
     if(action==='sleep' && this.lookup.lock.locked(who.petId))return json({ok:false,reason:'locked',message:'这只桌宠正被占用，不能睡觉'});
     if(action==='pet')return this.lookup.lockBlocked(who.petId,params);
   }
+  private openRoom() {
+    const open=this.ctx.petCore.native.companionPorts.roomWindowFor(this.ctx);
+    if(!open)throw Error('房间模块未启用');
+    return open(this.bound!.id);
+  }
+  private async feedAnimation(url:URL,raw:string|undefined,caller:AbortSignal,requestId:string,actor:CompanionFactActor,
+    presentationBlocked:()=>ReturnType<typeof json>|undefined) {
+    const body=this.ctx.get('petBehavior',false);
+    if(!body)return presentationBlocked() ?? json({ok:false,reason:'body-unavailable',message:'共享身体暂不可用'},503);
+    const bound=this.bound!, workspace=this.ctx.petCore.workspace, binding=workspace.homeScope?.();
+    const signal=AbortSignal.any([caller,this.scope.signal]);
+    const validate=()=>{
+      signal.throwIfAborted();
+      if(this.bound!==bound || !sameHomeBinding(workspace.homeScope?.(),binding) || this.ctx.get('petBehavior',false)!==body)
+        throw Error('工作区或身体组件已切换');
+    };
+    const result=await withLivingCaller(validate,()=>body.presentFeed(bound.id,{requestId,actor},presentationBlocked));
+    validate();
+    if(result.admission==='presentation-blocked')return result.blocked;
+    if(result.admission==='blocked')return json({ok:false,reason:'activity-busy',message:'当前活动进行中，请先完成或结束该活动'},409);
+    const receipt={requestId,admission:result.admission,...(result.fact?{effect:result.fact.result.status}:{})};
+    if(result.admission==='replayed') {
+      const playbackId=await this.feedPlaybacks.get(requestId);
+      validate();
+      return json({ok:true,...receipt,...(playbackId && {playbackId})});
+    }
+    const pending=this.router!(url.pathname+url.search,'POST',raw,signal);
+    if(result.fact) {
+      // Body owns the durable fact. The playback ID lives with the upstream
+      // tracker, which is recreated when this presentation binding closes.
+      this.feedPlaybacks.set(requestId,pending.then(reply=>reply.obj?.playbackId,()=>undefined));
+      if(this.feedPlaybacks.size>512)this.feedPlaybacks.delete(this.feedPlaybacks.keys().next().value!);
+    }
+    const playback=await pending;
+    validate();
+    return playback.kind==='json' ? {...playback,obj:{...playback.obj,...receipt}} : playback;
+  }
   async handle(url:URL,method:string,raw:string|undefined,signal:AbortSignal,actorKind:'owner'|'companion'='owner') {
     this.ensure();
     const rest=decodeURIComponent(url.pathname.slice(route.length+1)), pet=url.searchParams.get('pet') || 'main';
@@ -586,7 +660,7 @@ export class PetPlatform {
       if(method!=='POST')return json({ok:false},405);
       const input=JSON.parse(raw || '{}');
       if(input.action==='show')return json(await this.show());
-      if(input.action==='hide'){await this.hide();return json(this.bodyStatus());}
+      if(input.action==='hide'){await this.hide(()=>signal.throwIfAborted());return json(this.bodyStatus());}
       return json({ok:false},400);
     }
     if(rest==='native-chat-window') {
@@ -595,16 +669,12 @@ export class PetPlatform {
     }
     if(rest==='room-window') {
       if(method!=='POST')return json({ok:false},405);
-      const room=(this.ctx as any).get('petRoom',false);
-      if(!room)throw Error('房间模块未启用');
-      return json(await room.open(this.bound!.id));
+      return json(await this.openRoom());
     }
     if(rest==='menu/click' && method==='POST') {
       const input=JSON.parse(raw || '{}');
       if(input.owner==='chatpet.room') {
-        const room=(this.ctx as any).get('petRoom',false);
-        if(!room)throw Error('房间模块未启用');
-        await room.open(this.bound!.id);return json({ok:true});
+        await this.openRoom();return json({ok:true});
       }
       if(input.owner==='chatpet.native-chat'){await this.ctx.petDesktop.openChat();return json({ok:true});}
     }
@@ -645,8 +715,11 @@ export class PetPlatform {
     if (rest==='chat') return this.nativeChat(pet,method,raw,signal);
     if (rest==='chat/memory') return json({ok:true,orphans:[]},method==='GET'?200:405);
     if (rest.startsWith('voice/')) {
-      const voice=(this.ctx as any).get('petVoice',false);
-      return voice ? voice.handle({rest,method,body:raw,signal}) : json({ok:false,message:'语音组件未启用'},503);
+      const voice=this.ctx.petCore.native.voiceTable.lookup(this.ctx,AbortSignal.any([signal,this.scope.signal]));
+      if (!voice) return json({ok:false,message:'语音组件未启用'},503);
+      const result=await voice.handle({rest,method,body:raw});
+      voice.assertCurrent();
+      return result;
     }
     if (rest==='sleep' || rest==='wake') {
       if(method!=='POST')return json({ok:false},405);
@@ -668,33 +741,33 @@ export class PetPlatform {
     const pathname=live ? route+'/config' : url.pathname;
     if(rest==='lock' && method==='POST' && this.behavior?.her?.asleep)return json({ok:false,reason:'sleeping',message:'请先叫醒，再开始互动'},409);
     if(rest==='anim' && method==='POST') {
-      const input=JSON.parse(raw || '{}'),requested=input.name;
+      const input=JSON.parse(raw || '{}');
       const requestId=typeof input.requestId==='string'?input.requestId:randomUUID();
-      const bodyAction=(action:string)=>this.ctx.petBehavior.roomAction(this.bound!.id,{action},actorKind==='owner'?'主人':'大肥鱼',{requestId,actor});
-      const cfg=upstream.readAllConfig(this.setup.configPaths);
-      const decision=upstream.decideAnim({cfg,requested:String(url.searchParams.get('pet') ?? ''),name:input.name,url:input.url,facing:input.facing});
+      const decide=(cfg:unknown)=>upstream.decideAnim({cfg,requested:String(url.searchParams.get('pet') ?? ''),name:input.name,url:input.url,facing:input.facing});
+      const rejectPresentation=(cfg:unknown,petId:string)=>
+        this.lookup.surfaceBlocked(cfg,petId,url.searchParams) || this.lookup.lockBlocked(petId,url.searchParams);
+      if(typeof input.name==='string' && eatingClips.has(input.name.trim()) && !(typeof input.url==='string' && input.url.trim())) {
+        return this.feedAnimation(url,raw,signal,requestId,actor,()=>{
+          const current=upstream.readAllConfig(this.setup.configPaths), fresh=decide(current);
+          return fresh.ok ? rejectPresentation(current,fresh.petId) : json({ok:false,reason:fresh.reason,message:fresh.message});
+        });
+      }
+      const cfg=upstream.readAllConfig(this.setup.configPaths), decision=decide(cfg);
       if(decision.ok) {
-        const blocked=this.lookup.surfaceBlocked(cfg,decision.petId,url.searchParams) || this.lookup.lockBlocked(decision.petId,url.searchParams);
+        const requested=decision.name;
+        const blocked=rejectPresentation(cfg,decision.petId);
         if(blocked)return blocked;
         await this.refreshBehavior();
-        const behavior=(this.ctx as any).get('petBehavior',false);
-        let her=this.behavior?.her;
-        const busy=this.behavior?.behavior?.busy;
-        if(behavior && (sleepingClips.has(requested) || requested==='睡觉-起来')) {
-          const result=await bodyAction(requested==='睡觉-起来' ? 'wake' : 'sleep');
-          await this.refreshBehavior();
-          return json({ok:true,accepted:true,home:result?.home,behavior:this.behavior?.behavior});
-        }
-        const eatingRequested=eatingClips.has(requested);
-        const isEating=()=>her?.kind==='eat';
-        let eating=isEating();
-        if(behavior && eatingRequested && !eating) {
-          if(busy)return json({ok:false,reason:'activity-busy',message:'当前活动进行中，请先完成或结束该活动'},409);
-          await bodyAction('feed');await this.refreshBehavior();her=this.behavior?.her;
-          eating=isEating();
-        } else if(behavior && physicalClips.has(requested) && !eatingRequested)return json({ok:false,reason:'activity-required',message:'请通过共享行为操作执行这项活动'},409);
-        if(her && requested!==this.activityAsset() && !(eating && eatingRequested))return json({ok:false,reason:'activity-busy',message:'桌宠正在呈现共享活动，请通过行为操作改变活动'},409);
         requestScope.signal.throwIfAborted();
+        signal.throwIfAborted();
+        const behavior=this.ctx.get('petBehavior',false);
+        if(behavior && (sleepingClips.has(requested) || requested==='睡觉-起来')) {
+          const result=await behavior.roomAction(this.bound!.id,{action:requested==='睡觉-起来'?'wake':'sleep'},actorKind==='owner'?'主人':'大肥鱼',{requestId,actor});
+          await this.refreshBehavior();
+          return json({ok:true,accepted:true,home:desktopHomePlayback(result?.home),behavior:this.behavior?.behavior});
+        }
+        if(behavior && physicalClips.has(requested))return json({ok:false,reason:'activity-required',message:'请通过共享行为操作执行这项活动'},409);
+        if(this.behavior?.her && requested!==this.activityAsset())return json({ok:false,reason:'activity-busy',message:'桌宠正在呈现共享活动，请通过行为操作改变活动'},409);
       }
     }
     const reserved=['GET','HEAD'].includes(method)?this.builtinLifeMedia(rest):undefined;
@@ -749,9 +822,42 @@ export class PetPlatform {
     } finally {res.off('close',stop);}
   }
 }
+export function platformConsoleOperations(platform: Pick<PetPlatform,
+  'ownerAccess' | 'controlAccess' | 'standaloneAccess' | 'saveTiming' | 'resolveMigration' | 'status'>) {
+  const access = (operation: (workspaceId: string) => unknown): ConsoleOperation => call => {
+    const {workspaceId} = object(call.input, ['workspaceId']);
+    call.checkBinding(workspaceId, true);
+    call.validate();
+    return operation(workspaceId as string);
+  };
+  const operations: Record<string, ConsoleOperation> = {
+    presentationTiming(call) {
+      const input = object(call.input, ['workspaceId', 'expected', 'eventsRefreshSec']);
+      const id = requiredText(input.workspaceId, 200);
+      call.checkBinding(id);
+      call.validate();
+      return platform.saveTiming(id, input.expected, input.eventsRefreshSec);
+    },
+    presentationMigration(call) {
+      const input = object(call.input, ['workspaceId', 'field', 'choice', 'expectedConfigHash']);
+      const id = requiredText(input.workspaceId, 200);
+      call.checkBinding(id);
+      if (input.choice !== 'legacy' && input.choice !== 'current') fail('INVALID_ARGUMENT');
+      const field = requiredText(input.field, 300), hash = requiredText(input.expectedConfigHash, 64);
+      call.validate();
+      return platform.resolveMigration(id, field, input.choice, hash);
+    },
+    petPlatformAccess: access(id => platform.ownerAccess(id)),
+    petControlAccess: access(id => platform.controlAccess(id)),
+    petStandaloneAccess: access(id => platform.standaloneAccess(id)),
+  };
+  return {operations, status: () => platform.status()};
+}
+
 export function apply(ctx:Context) {
   const platform=new PetPlatform(ctx);
   ctx.provide('petPlatform',platform);
+  ctx.effect(() => ctx.petCore.native.consoleOperations.register('platform', platformConsoleOperations(platform), ctx).revoke);
   const web=(ctx as any).webServer;
   ctx.effect(()=>web.register({kind:'prefix',path:route,handler:(req:IncomingMessage,res:ServerResponse)=>platform.http(req,res)}));
   const off=ctx.on('pet/core.changed',()=>platform.identityChanged());

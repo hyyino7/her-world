@@ -75,8 +75,8 @@ function readManualMetrics(root) {
 
 function collectMetrics(root) {
   const manual = readManualMetrics(root);
-  const result = scan(root);
   const baseline = readJson(join(root, 'arch/baseline/vocabulary.json'));
+  const result = scan(root, {objectTables: baseline.objectTables === true});
   const rules = Object.fromEntries(summarizeRules(result).map(({ rule, entries, callSites, violationEdges }) => [
     rule, { targets: entries.length, callSites, violationEdges },
   ]));

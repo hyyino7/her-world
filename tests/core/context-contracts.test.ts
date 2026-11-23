@@ -148,7 +148,7 @@ test('重启按目录和前缀恢复 guest 与 Room 且拒绝不匹配的 guest 
   assert.ok(external.sessionIds.includes(guest.id));
   // Most recent membership in the same directory is not sufficient on its own.
   await external.attachSession('unrelated-guest-session');
-  await room.reply(f.id,false,{text:'Room before restart'},'room-before',signal);
+  await room.reply(f.id,false,{text:'Room before restart'},'room-before',signal,()=>signal.throwIfAborted());
   const roomId=f.bound.sessionIds.find((id:string)=>id.startsWith('chatpet-room-'));
   assert.match(roomId,/^chatpet-room-[0-9a-f]{24}-1$/);
   assert.equal(f.saved(roomId).header.agentPreset,'standard');
@@ -162,7 +162,7 @@ test('重启按目录和前缀恢复 guest 与 Room 且拒绝不匹配的 guest 
     assert.equal(restored.session.header.cwd,directory);
     assert.equal(restored.session.header.agentPreset,GUEST_PRESET);
     assert.notEqual(await f.registry.create(directory),external,'工作区目录从磁盘重新加载');
-    assert.deepEqual((await room.history(f.id)).messages.map(row=>row.text),['Room before restart','Synthetic reply']);
+    assert.deepEqual((await room.history(f.id,()=>signal.throwIfAborted())).messages.map(row=>row.text),['Room before restart','Synthetic reply']);
     assert.deepEqual(f.bound.sessionIds.filter((id:string)=>id.startsWith('chatpet-room-')),[roomId]);
     const wrongPreset=t.mock.method(f.ctx.agentPresets,'composedPreset',()=> 'standard');
     try { await assert.rejects(channel.open(identity),/隔离预设不可用/); }

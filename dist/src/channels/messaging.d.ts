@@ -14,6 +14,7 @@ interface Options {
     qqTransport?(opts: QQOptions): QQTransport;
 }
 export declare function createMessaging(ctx: Context, host: PetCoreHost, options: Options): Promise<{
+    cancelVoice(): void;
     qqConnection(): "off" | "online" | "unavailable";
     status(): {
         config: {
@@ -46,6 +47,28 @@ export declare function createMessaging(ctx: Context, host: PetCoreHost, options
                 contextMessages: number;
                 bufferSeconds: number;
             };
+        };
+        fields: {
+            qq: ({
+                label: string;
+                kind: "boolean" | "lines" | "number" | "text";
+                key: string;
+            } | {
+                label: string;
+                kind: "select";
+                options: Readonly<Record<string, string>>;
+                key: string;
+            })[];
+            wechat: ({
+                label: string;
+                kind: "boolean" | "lines" | "number" | "text";
+                key: string;
+            } | {
+                label: string;
+                kind: "select";
+                options: Readonly<Record<string, string>>;
+                key: string;
+            })[];
         };
         qq: {
             usage: {
@@ -90,7 +113,7 @@ export declare function createMessaging(ctx: Context, host: PetCoreHost, options
             uncertain: number;
         };
     };
-    configure(patch: Parameters<typeof messagingPreferences>[1]): Promise<void>;
+    configure(patch: Parameters<typeof messagingPreferences>[1], validate?: () => void, committed?: () => void): Promise<void>;
     reach(push: Push & {
         deliveryId?: string;
     }, homeId?: string): Promise<PromiseSettledResult<string>[]>;

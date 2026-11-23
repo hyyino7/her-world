@@ -1,6 +1,8 @@
 import { Context } from '@deepseek-ai/cordis';
-import { RegistrationTable } from './registry.js';
+import { RegistrationTable, serviceIsolation } from './registry.js';
+const roomService = 'petRoom';
 export class CompanionPorts {
+    roomWindows = new Map();
     scope;
     slots = {
         bodyAvailable: new RegistrationTable(),
@@ -21,6 +23,26 @@ export class CompanionPorts {
         if (scope && scope.ctx.root === provider.root &&
             scope.ctx[Context.isolate][service] === provider[Context.isolate][service])
             return scope;
+    }
+    registerRoomWindow(scope, open) {
+        const label = serviceIsolation(scope, roomService);
+        let slot = this.roomWindows.get(label);
+        if (!slot)
+            this.roomWindows.set(label, slot = new RegistrationTable());
+        const registration = slot.register(roomService, { scope, open });
+        return {
+            revoke: () => {
+                if (registration.lease.isCurrent())
+                    this.roomWindows.delete(label);
+                return registration.revoke();
+            },
+        };
+    }
+    roomWindowFor(ctx) {
+        const entry = this.roomWindows.get(serviceIsolation(ctx, roomService))?.get(roomService);
+        if (entry?.lease.isCurrent() && entry.value.scope.root === ctx.root &&
+            entry.value.scope.fiber.state === 2 /* FiberState.ACTIVE */)
+            return entry.value.open;
     }
     register(name, port) { return this.slots[name].register(name, port); }
     get(name) {

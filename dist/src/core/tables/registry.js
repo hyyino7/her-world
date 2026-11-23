@@ -1,3 +1,8 @@
+import { Context } from '@deepseek-ai/cordis';
+export function serviceIsolation(contextScope, service) {
+    contextScope.root[Context.isolate][service] ??= Symbol(service);
+    return contextScope[Context.isolate][service];
+}
 export class RegistrationTable {
     ordering;
     registrations = new Map();

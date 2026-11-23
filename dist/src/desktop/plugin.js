@@ -1,4 +1,5 @@
 import { CONTRACT_VERSION } from '../contracts/version.js';
+import { object } from '../core/tables/console.js';
 import { registerLifeOutlet } from '../living/outlets.js';
 import { desktopFor, registerDesktop } from './index.js';
 export const name = '30-Desktop';
@@ -28,11 +29,29 @@ const desktopPolicies = [
         },
     },
 ];
+export function desktopConsoleOperations(desktop) {
+    const windowOperation = (open) => async (call) => {
+        const input = object(call.input, ['workspaceId']);
+        call.checkBinding(input.workspaceId, open);
+        call.validate();
+        if (open)
+            await desktop.start();
+        else
+            await desktop.closeWindow(call.validate);
+        call.validate();
+        return desktop.status();
+    };
+    return {
+        operations: { desktopOpen: windowOperation(true), desktopClose: windowOperation(false) },
+        status: () => desktop.status(),
+    };
+}
 export function apply(ctx) {
     const host = ctx.petCore;
     registerDesktop(ctx, host);
     const desktop = desktopFor(host);
     ctx.provide('petDesktop', desktop);
+    ctx.effect(() => host.native.consoleOperations.register('desktop', desktopConsoleOperations(desktop), ctx).revoke);
     ctx.effect(() => registerLifeOutlet(ctx, host, 'desktop', {
         pause: () => desktop.features?.pause(),
         restore: () => desktop.features?.restore(false),

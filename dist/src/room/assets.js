@@ -3,11 +3,17 @@ import { realpath, stat, readFile } from 'node:fs/promises';
 import { extname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { feelingLabels } from '../living/body/presentation.js';
-import { animationAssets, animationStickers, animationRoomAliases } from '../living/body/animation-map.js';
+import { animationAssets, animationStickers, animationRoomAliases } from '../presentation/animation-map.js';
+import { ROOM_BROWSER_ROUTES, ROOM_VOICE_OPERATIONS, ROOM_VOICE_PATH } from '../presentation/room-transport.js';
+export { ROOM_PHOTO_ENDPOINTS } from '../presentation/room-transport.js';
 export const roomPrefix = '/chatpet-room';
 const root = fileURLToPath(new URL('../../../vendor/feiyu-room-template/public/room/', import.meta.url));
-const sharedPlayback = fileURLToPath(new URL('../living/body/playback.js', import.meta.url));
-const sharedAnimationMap = fileURLToPath(new URL('../living/body/animation-map.js', import.meta.url));
+const sharedPlayback = fileURLToPath(new URL('../presentation/playback.js', import.meta.url));
+const sharedAnimationMap = fileURLToPath(new URL('../presentation/animation-map.js', import.meta.url));
+const sharedAnimationSlots = fileURLToPath(new URL('../living/body/animation-slots.js', import.meta.url));
+const sharedAnimationSlotIds = fileURLToPath(new URL('../living/body/animation-slot-ids.js', import.meta.url));
+const activityIntent = fileURLToPath(new URL('../living/body/presentation.js', import.meta.url));
+const emotionContract = fileURLToPath(new URL('../contracts/emotion.js', import.meta.url));
 const localVoice = fileURLToPath(new URL('../../../src/room/voice-client.js', import.meta.url));
 const localIdentity = fileURLToPath(new URL('../../../src/room/identity-client.js', import.meta.url));
 const sharedVoice = fileURLToPath(new URL('../../../src/desktop/helper/upstream/shared-core.js', import.meta.url));
@@ -61,12 +67,14 @@ let companionExpectedVersion = null;
 let companionAppliedVersion = null;
 function refreshCompanionRoom(change) {
   if (!change || typeof change.bootId !== 'string' || !Number.isSafeInteger(change.revision)) return;
-  if (companionAppliedVersion?.bootId === change.bootId && companionAppliedVersion.revision >= change.revision) return;
+  const forced = change.reason === 'world';
+  if (!forced && companionAppliedVersion?.bootId === change.bootId && companionAppliedVersion.revision >= change.revision) return;
   if (companionExpectedVersion?.bootId === change.bootId && companionExpectedVersion.revision > change.revision) return;
   companionExpectedVersion = {bootId:change.bootId,revision:change.revision};
-  if (requestInFlight) companionRefreshPending = true;
+  if (requestInFlight && forced) companionExplicitRefreshPending = true;
+  else if (requestInFlight) companionRefreshPending = true;
   else requestViewRefresh();
-  gardenController?.changed(change);
+  gardenController?.changed(forced ? undefined : change);
 }`);
     replace('function applyState(next) {\n  if (!next) return;', `function applyState(next) {
   if (!next) return;
@@ -94,11 +102,14 @@ function refreshCompanionRoom(change) {
 }
 /** Extend the existing owner RPC transport; no public audio/state HTTP route. */
 export function adaptRoomTransport(source) {
-    const marker = 'const endpoints = new Map([';
-    if (source.split(marker).length !== 2)
+    const table = /^const endpoints = new Map\(\[[\s\S]*?^\]\);/gm;
+    const lookup = '  const endpoint = endpoints.get(new URL(url, location.origin).pathname);';
+    const deadline = /\['roomTelevision','roomChat'\]\.includes\(endpoint\)\s*\?\s*310000\s*:\s*20000/g;
+    if ([...source.matchAll(table)].length !== 1 || source.split(lookup).length !== 2 || [...source.matchAll(deadline)].length !== 2)
         throw Error('Room transport source changed');
-    return source.replace(marker, marker + "\n  ['/api/room/voice','roomVoice'],")
-        .replaceAll("['roomTelevision','roomChat'].includes(endpoint)", "['roomTelevision','roomChat','roomVoice'].includes(endpoint)");
+    return source.replace(table, () => `const endpoints = new Map(${JSON.stringify(ROOM_BROWSER_ROUTES)});\nexport const roomVoiceOperations = new Set(${JSON.stringify(ROOM_VOICE_OPERATIONS)});\nexport const roomVoicePath = ${JSON.stringify(ROOM_VOICE_PATH)};`)
+        .replace(lookup, '  const route = endpoints.get(new URL(url, location.origin).pathname);\n  const endpoint = route?.endpoint;')
+        .replace(deadline, 'route.timeout');
 }
 /** The saved garden preference never claims a second autonomous planner. */
 export function adaptRoomGarden(source) {
@@ -152,9 +163,29 @@ export async function roomAsset(request) {
             blob = await openAsBlob(file, { type });
         }
         else if (name === 'activity-playback.js')
+            blob = new Blob([`
+      import {resolveActivityPlayback as resolve} from './media-playback.js';
+      import {animationSlotAllowed} from './animation-slots.js';
+      import {classifyActivity} from './activity-intent.js';
+      export const resolveActivityPlayback = home => resolve(home,animationSlotAllowed,classifyActivity);
+      export {sampleActivityPlayback} from './media-playback.js';
+    `], { type });
+        else if (name === 'media-playback.js')
             blob = await openAsBlob(sharedPlayback, { type });
         else if (name === 'animation-map.js')
             blob = await openAsBlob(sharedAnimationMap, { type });
+        else if (name === 'animation-slots.js')
+            blob = await openAsBlob(sharedAnimationSlots, { type });
+        else if (name === 'animation-slot-ids.js')
+            blob = await openAsBlob(sharedAnimationSlotIds, { type });
+        else if (name === 'activity-intent.js') {
+            const source = await readFile(activityIntent, 'utf8'), imported = '../../contracts/emotion.js';
+            if (source.split(imported).length !== 2)
+                throw Error('Room activity intent import changed');
+            blob = new Blob([source.replace(imported, './emotion-contract.js')], { type });
+        }
+        else if (name === 'emotion-contract.js')
+            blob = await openAsBlob(emotionContract, { type });
         else if (name === 'voice-client.js' || name === 'shared-core.js' || name === 'identity-client.js')
             blob = await openAsBlob(name === 'voice-client.js' ? localVoice : name === 'identity-client.js' ? localIdentity : sharedVoice, { type });
         else {

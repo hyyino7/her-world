@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, realpathSync, rmSync, readFileSync, cpSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, readFileSync, cpSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { content } from '../../scripts/fixtures/synthetic-companion.mjs';
 import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { generateSynthetic, value } from '../../scripts/fixtures/synthetic-companion.mjs';
 import { createCore } from '../../dist/src/core/index.js';
-import { backupPlan } from '../../scripts/lib/offline-backup.mjs';
+import { backupPlan, createOfflineBackup } from '../../scripts/lib/offline-backup.mjs';
+import { CONSOLE_WALLET_IMPORT_FILE } from '../../dist/src/core/storage-migration.js';
+import { sealWalletRollback, walletBinding } from '../../scripts/migrate/wallet-rollback.mjs';
 import { legacyEconomy } from './offline-helpers.mjs';
 
 export const variants = ['current','legacy'];
@@ -26,12 +29,26 @@ export async function fixture(t, variant, {keepStorageManifest = false} = {}) {
   const result = await generateSynthetic(join(root, 'installed'), variant);
   if (!keepStorageManifest) {
     rmSync(join(result.data, 'storage-manifest.json'));
+    rmSync(join(result.data, CONSOLE_WALLET_IMPORT_FILE),{force:true});
     legacyEconomy(result);
   }
   return result;
 }
 export function planFor(f) {
   return backupPlan({repo:f.repo,workspaceId:f.target.id,storageId:f.storageId,profileDir:f.profile,dshHome:f.home,config:f.config});
+}
+export function emptyWalletMigrationInputs(f) {
+  const plan = planFor(f), binding = walletBinding(plan), directory = join(f.out,'wallet-private');
+  mkdirSync(directory,{mode:0o700});
+  const walletExport = join(directory,'export.json'), walletRollback = join(directory,'rollback.json');
+  const sources = [{profile:f.profile,origin:'https://fixture.invalid',key:'chatpet:economy:pending:' + f.target.id,
+    raw:null,rawDigest:null}];
+  writeFileSync(walletExport,JSON.stringify({format:1,binding,round:randomUUID(),sources}) + '\n',{mode:0o600,flag:'wx'});
+  const backup = join(f.out,'wallet-rollback-backup');
+  createOfflineBackup(plan,backup);
+  sealWalletRollback({installation:f.installation,backup,walletExport,output:walletRollback});
+  writeFileSync(join(plan.installedPackage,'upgrade-marker.txt'),'SYNTHETIC_UPGRADE');
+  return {walletExport,walletRollback};
 }
 export const read = file => JSON.parse(readFileSync(file, 'utf8'));
 export async function coreReady(f) {

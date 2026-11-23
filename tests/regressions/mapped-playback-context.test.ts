@@ -10,7 +10,7 @@ import type {PlannedExecution} from '../../src/contracts/behavior.js';
 import {CompanionBehavior} from '../../src/living/body/plugin.js';
 import type {CompanionLife} from '../../src/living/plan/plugin.js';
 import {CompanionRoom} from '../../src/living/body/room.js';
-import {resolveActivityPlayback,sampleActivityPlayback} from '../../src/living/body/playback.js';
+import {resolveActivityPlayback,sampleActivityPlayback,withHomePlayback} from '../fixtures/playback.js';
 import {CompanionEconomy} from '../../src/living/economy/plugin.js';
 import {parsePlanDraft,PersistentLifePlan} from '../../src/living/plan/plan.js';
 import {emptyHomeState,applyHomeAction,applyCatalogFood} from '#feiyu-home';
@@ -59,7 +59,7 @@ async function behaviorFixture(t:TestContext,homeOverrides:Record<string,unknown
   let body=createBody();await body.roomState(target.id);
   t.after(async()=>{await body.close();rmSync(root,{recursive:true,force:true});});
   return {root,directory,target,get body(){return body;},saved:()=>JSON.parse(readFileSync(join(directory,'home.json'),'utf8')),
-    async reopen(){await body.close();body=createBody();return body.roomState(target.id);}};
+    async reopen(){await body.close();body=createBody();return body.roomState(target.id).then(withHomePlayback);}};
 }
 
 test('plan parsing admits only registered slots compatible with executable fields',()=>{
@@ -383,7 +383,7 @@ test('idle, ordinary reactions and an unbounded legacy nap still admit a visible
 test('actual Behavior begins sleep entry at arrival, with restart progress and one real sleep event',async t=>{
   const f=await behaviorFixture(t,{room:'garden',spot:'compost',pose:'stand'}),requested=Date.now(),input={operationId:'sleep-trip',kind:'body' as const,activity:'Sleep',action:'sleep' as const,presentationSlot:'sleep.full'};
   await f.body.startPlanned(f.target.id,input);
-  const route=structuredClone(f.saved().route),walking=await f.body.roomState(f.target.id);
+  const route=structuredClone(f.saved().route),walking=await f.body.roomState(f.target.id).then(withHomePlayback);
   assert.ok(route.arriveAt-requested>10040,'The accepted trip is longer than the sleep entry movie');
   assert.equal(walking.her.asleep,false);assert.equal(walking.playback!.kind,'walk');
   assert.equal(f.saved().sleepStartedAt,0);assert.equal(f.saved().lastEventAt.sleep,undefined);
@@ -391,7 +391,7 @@ test('actual Behavior begins sleep entry at arrival, with restart progress and o
   t.mock.timers.setTime(Math.floor((requested+route.arriveAt)/2));await f.reopen();
   assert.deepEqual(f.saved().route,route);assert.equal(f.saved().sleepStartedAt,0);
   t.mock.timers.setTime(Math.ceil(route.arriveAt)+300);
-  const asleep=await f.body.roomState(f.target.id);
+  const asleep=await f.body.roomState(f.target.id).then(withHomePlayback);
   assert.equal(asleep.her.asleep,true);assert.equal(asleep.behavior.startedAt,route.arriveAt);
   assert.equal(f.saved().sleepStartedAt,route.arriveAt);assert.equal(f.saved().lastEventAt.sleep,route.arriveAt);
   assert.equal(sampleActivityPlayback(asleep.playback!,Date.now())!.roomClip,'sleep_in');
@@ -410,14 +410,14 @@ test('actual Behavior begins sleep entry at arrival, with restart progress and o
 test('bedside sleep is immediate; rapid wake then sleep has a new phase despite event cooldown',async t=>{
   const f=await behaviorFixture(t,{room:'her_room',spot:'bed',pose:'lie'}),first=Date.now();
   await f.body.startPlanned(f.target.id,{operationId:'first-sleep',kind:'body',activity:'Sleep',action:'sleep',presentationSlot:'sleep.full'});
-  const firstView=await f.body.roomState(f.target.id);assert.equal(firstView.behavior.startedAt,first);
+  const firstView=await f.body.roomState(f.target.id).then(withHomePlayback);assert.equal(firstView.behavior.startedAt,first);
   assert.equal(sampleActivityPlayback(firstView.playback!,Date.now())!.roomClip,'sleep_in');
   assert.equal(sampleActivityPlayback(firstView.playback!,Date.now())!.offsetMs,0);
   t.mock.timers.setTime(first+1000);await f.body.roomAction(f.target.id,{action:'wake'},'主人',{requestId:'wake',actor:owner});
   assert.equal(f.saved().asleep,false);assert.equal(f.saved().sleepStartedAt,0);
   t.mock.timers.setTime(first+1700);
   const second={requestId:'second-sleep',actor:owner};
-  await f.body.roomAction(f.target.id,{action:'sleep'},'主人',second);const again=await f.body.roomState(f.target.id);
+  await f.body.roomAction(f.target.id,{action:'sleep'},'主人',second);const again=await f.body.roomState(f.target.id).then(withHomePlayback);
   assert.equal(again.her.asleep,true);assert.equal(again.behavior.startedAt,first+1700);
   assert.equal(f.saved().sleepStartedAt,first+1700);assert.equal(f.saved().lastEventAt.sleep,first);
   assert.equal(f.saved().eventLog.filter((event:any)=>event.type==='sleep').length,1,'The existing log cooldown remains independent of the real new phase');
@@ -429,7 +429,7 @@ test('bedside sleep is immediate; rapid wake then sleep has a new phase despite 
 test('an unknown historical sleep onset stays unknown through observations and restart',async t=>{
   const now=Date.parse('2026-11-14T04:00:00Z'),f=await behaviorFixture(t,{room:'her_room',spot:'bed',pose:'lie',asleep:true,
     kind:'sleep',sleepStartedAt:undefined,lastEventAt:{sleep:now-2000}});
-  const old=await f.body.roomState(f.target.id);assert.equal(old.behavior.startedAt,0);assert.equal(old.behavior.activityId,'sleep:unknown');
+  const old=await f.body.roomState(f.target.id).then(withHomePlayback);assert.equal(old.behavior.startedAt,0);assert.equal(old.behavior.activityId,'sleep:unknown');
   assert.equal(sampleActivityPlayback(old.playback!,Date.now())!.roomClip,'sleep_loop');
   t.mock.timers.setTime(now+5000);const resumed=await f.reopen();assert.equal(resumed.behavior.startedAt,0);
   assert.equal(f.saved().sleepStartedAt,0);assert.equal(sampleActivityPlayback(resumed.playback!,Date.now())!.roomClip,'sleep_loop');
@@ -441,11 +441,11 @@ for(const kind of ['hold','room'] as const)test(`Life ${kind} same-bed wait ends
   const original=structuredClone(f.saved().companionAction),plan=new PersistentLifePlan(f.directory,'fish','storage','UTC');
   await plan.commit(0,parsePlanDraft(draft({id:'keep-resting',kind,activity:'Continue resting',durationMinutes:1,presentationSlot:'rest.calm',
     ...(kind==='room'?{room:'her_room',spot:'bed'}:{})})));
-  await plan.advance(f.target.id,f.body);const until=f.saved().dwell.until,waiting=await f.body.roomState(f.target.id);
+  await plan.advance(f.target.id,f.body);const until=f.saved().dwell.until,waiting=await f.body.roomState(f.target.id).then(withHomePlayback);
   assert.equal(f.saved().dwell.target.preserveSleep,true);
   assert.equal(waiting.her.asleep,true);assert.equal(waiting.her.kind,'sleep');assert.equal(waiting.playback!.slotId,'sleep.nap');
   assert.equal(waiting.behavior.startedAt,sleepAt);assert.deepEqual(f.saved().companionAction,original);
-  t.mock.timers.setTime(until);await plan.advance(f.target.id,f.body);const done=await f.body.roomState(f.target.id);
+  t.mock.timers.setTime(until);await plan.advance(f.target.id,f.body);const done=await f.body.roomState(f.target.id).then(withHomePlayback);
   assert.equal(plan.read().plan!.cursor,1);assert.equal((plan.read().plan!.execution as PlannedExecution).status,'completed');
   assert.equal(f.saved().dwell,null);assert.equal(done.her.asleep,true);assert.equal(done.her.kind,'sleep');
   assert.equal(done.playback!.slotId,'sleep.nap');assert.equal(done.behavior.startedAt,sleepAt);
@@ -463,7 +463,7 @@ test('Life wait pause, restart, resume and cancel preserve sleep while its own d
   await plan.advance(f.target.id,f.body);
   t.mock.timers.setTime(sleepAt+10000);await plan.control(plan.read().revision,'pause','Fixture pause',f.body,f.target.id);
   assert.equal(f.saved().dwell,null);assert.equal(f.saved().asleep,true);assert.equal(f.saved().activity,'睡着了');
-  assert.equal((await f.body.roomState(f.target.id)).playback!.slotId,'sleep.nap');
+  assert.equal((await f.body.roomState(f.target.id).then(withHomePlayback)).playback!.slotId,'sleep.nap');
   t.mock.timers.setTime(sleepAt+20000);const paused=await f.reopen();assert.equal(paused.her.asleep,true);
   assert.equal(paused.behavior.startedAt,sleepAt);assert.equal(paused.playback!.slotId,'sleep.nap');
   assert.equal((await f.body.inspectPlanned(f.target.id,plan.read().plan!.operationId!))!.status,'paused');

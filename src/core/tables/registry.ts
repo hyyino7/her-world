@@ -1,5 +1,10 @@
-import type { Context } from '@deepseek-ai/cordis';
+import { Context } from '@deepseek-ai/cordis';
 import type { RegistrationLease, TableRegistration } from '../../contracts/tables.js';
+
+export function serviceIsolation(contextScope: Context, service: string) {
+  contextScope.root[Context.isolate][service] ??= Symbol(service);
+  return contextScope[Context.isolate][service];
+}
 
 interface Entry<Value> {
   readonly value: Value;

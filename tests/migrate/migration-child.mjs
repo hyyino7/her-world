@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { diagnostic } from '../../scripts/migrate/errors.mjs';
 
 const selector = new URL(import.meta.url).search;
-const selecting = ['?bootstrap-cli', '?home-cli'].includes(selector);
+const prefixes = new Map([['?bootstrap-cli',1],['?home-cli',2],['?economy-cli',3]]);
+const selecting = prefixes.has(selector);
 const cli = fileURLToPath(new URL('../../scripts/migrate/companion-migrate.mjs', import.meta.url));
 const runner = !selecting || process.argv[1] === cli ? await import('../../scripts/migrate/runner.mjs') : undefined;
 
@@ -13,6 +14,7 @@ export const bootstrapSteps = runner?.steps.slice(0,1);
 export const homeSteps = runner?.steps.slice(0,2);
 export const selectBootstrapCli = t => selectCli(t, 'bootstrap');
 export const selectHomeCli = t => selectCli(t, 'home');
+export const selectEconomyCli = t => selectCli(t, 'economy');
 function selectCli(t, suite) {
   const previous = process.env.NODE_OPTIONS;
   process.env.NODE_OPTIONS = [previous, `--import=${new URL(`?${suite}-cli`, import.meta.url).href}`].filter(Boolean).join(' ');
@@ -21,7 +23,7 @@ function selectCli(t, suite) {
     else process.env.NODE_OPTIONS = previous;
   });
 }
-if (selecting && runner) runner.steps.splice(selector === '?bootstrap-cli' ? 1 : 2);
+if (selecting && runner) runner.steps.splice(prefixes.get(selector));
 
 if (!selecting && process.argv[1] === fileURLToPath(import.meta.url)) {
   const {migrationStatus, runMigration, steps} = runner;

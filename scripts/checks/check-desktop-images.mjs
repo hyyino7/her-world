@@ -14,7 +14,7 @@ const {LocalAttachmentStore}=await import(require.resolve('@deepseek-ai/dsh-atta
 const root=realpathSync(mkdtempSync(join(tmpdir(),'pet-native-images-'))),ctx=new Context();
 const repo=join(root,'repo');mkdirSync(repo);mkdirSync(join(repo,'.chatpet'));
 let activeRepo=repo;
-const fakeHost={workspace:{status:()=>({state:'ready',target:{id:'repo',path:activeRepo}})}};
+const fakeHost={workspace:{homeScope:()=>({workspaceId:'repo',storageId:'repo',path:activeRepo,bootId:'fixture',generation:0})}};
 const image={mediaType:'image/png',data:readFileSync(new URL('../../src/desktop/assets/cute.png',import.meta.url)).toString('base64')};
 try {
   await ctx.plugin(LocalAttachmentStore,{dshHome:join(root,'device-one')});

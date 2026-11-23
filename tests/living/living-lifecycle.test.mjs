@@ -127,7 +127,7 @@ test('4 同名重挂后旧迎接回调不能改记录、镜像或通知', async 
   await eventually(()=>ports.get('applyHomeArrival') !== old, '同名 Plan 已换代');
   await f.life.snapshot(f.id);
   const record = homeRecord(f), bytes = readFileSync(mirrorFile(f)); let notifications = 0;
-  const unlisten = f.ctx.on('pet/life.changed',()=>{ notifications++; });
+  const unlisten = f.ctx.on('world.changed',()=>{ notifications++; });
   try {
     assert.equal(old(scope,home.id),false);
     assert.deepEqual(homeRecord(f),record);
@@ -224,6 +224,11 @@ test('3E 事实流按原编号跨区回读，缺区保留确认，原生日志�
   assert.deepEqual(await worldFacts.readFacts(f.id, ids), reordered);
 });
 
+function expectedWorldNotice(core, bodyOnly = false) {
+  const {workspaceId,storageId,bootId,generation}=core.workspace.homeScope();
+  return {workspaceId,storageId,bootId,generation,...(bodyOnly ? {bodyOnly:true} : {})};
+}
+
 test('3E 世界通知覆盖三区，合并同批交易，读快照和旧租约不产生回声', async t => {
   const f = await cordisFixture(t);
   const changes = [], read = () => f.economy.worldSnapshot(f.id);
@@ -231,7 +236,7 @@ test('3E 世界通知覆盖三区，合并同批交易，读快照和旧租约�
   await delay(15);
   const off = f.ctx.on('world.changed', change => changes.push(change));
   t.after(off);
-  const expected = {workspaceId:f.id,storageId:f.core.workspace.storageId()};
+  const expected = expectedWorldNotice(f.core);
   const before = await read();
   await Promise.all([f.ownerAction({kind:'grant',amount:7}, 'world-notice-7'),
     f.ownerAction({kind:'grant',amount:3}, 'world-notice-3')]);
@@ -242,7 +247,7 @@ test('3E 世界通知覆盖三区，合并同批交易，读快照和旧租约�
   assert.deepEqual(changes, []);
 
   await f.body.act(f.id, 'water', 'world-notice-water');
-  assert.deepEqual(changes.splice(0), [expected]);
+  assert.deepEqual(changes.splice(0), [expectedWorldNotice(f.core,true)]);
   assert.ok((await read()).body.snapshot.needs.thirst < before.body.snapshot.needs.thirst);
   const {revision} = await f.life.readPlan(f.id);
   await f.life.updatePlan(f.id, revision, {goal:'Rest',reason:'Fixture',steps:[],nextConsiderAt:null});
@@ -323,7 +328,7 @@ test('3E 生活区先装载后绑定，首次就绪只通知一次', async t => 
 
   await selectWorkspace(core, target);
   await delay(0);
-  assert.deepEqual(changes.splice(0), [{workspaceId:target.id,storageId:core.workspace.storageId()}]);
+  assert.deepEqual(changes.splice(0), [expectedWorldNotice(core)]);
   const snapshot = await read();
   assert.equal(snapshot.body.available, true);
   assert.equal((await read()).body.snapshot.revision, snapshot.body.snapshot.revision);
@@ -346,7 +351,7 @@ test('3E 生活区运行中切换绑定，只通知新工作区一次', async t 
   await delay(0);
   const storageId = core.workspace.storageId();
   assert.notEqual(storageId, prior.storageId);
-  assert.deepEqual(changes.splice(0), [{workspaceId:target.id,storageId}]);
+  assert.deepEqual(changes.splice(0), [expectedWorldNotice(core)]);
   await assert.rejects(read(first.id));
   const next = await read(target.id);
   assert.equal(next.workspaceId, target.id);
@@ -380,23 +385,21 @@ test('3E 同一 Repo 换 DSH 工作区 ID 后，复用钱包的提交通知新�
   assert.equal(purchased.balance, funded.balance - price);
   assert.equal(economy.prepare(next), store);
   assert.deepEqual((await economy.worldSnapshot(next.id)).wallet, purchased);
-  assert.deepEqual(changes, [{workspaceId:next.id,storageId}]);
+  assert.deepEqual(changes, [expectedWorldNotice(core)]);
 });
 
-test('3E 仅确认事实投递时，世界通知无回声且旧身体事件照常推进修订', async t => {
+test('3E 仅确认事实投递时，身体修订正常递增，世界通知无回声', async t => {
   const f = await cordisFixture(t, {order:['body']});
   await f.body.act(f.id, 'water', 'acknowledgement-water');
   const before = await f.body.snapshot(f.id);
   const facts = await f.body.worldFacts.pendingFacts(f.id);
   assert.equal(facts.length, 1);
-  const changes = [], behaviorChanges = [];
+  const changes = [];
   t.after(f.ctx.on('world.changed', event => changes.push(event)));
-  t.after(f.ctx.on('pet/behavior.changed', event => behaviorChanges.push(event)));
   await f.body.worldFacts.acknowledgeFacts(f.id, [facts[0].id]);
   const after = await f.body.snapshot(f.id);
   assert.deepEqual(await f.body.worldFacts.pendingFacts(f.id), []);
   assert.equal(after.revision, before.revision + 1);
-  assert.deepEqual(behaviorChanges, [{workspaceId:f.id,bootId:after.bootId,revision:after.revision,reason:'observation'}]);
   assert.deepEqual(changes, []);
 });
 
@@ -793,7 +796,7 @@ test('R6 旧 Plan 观察恢复后不得写盘或在新代之前发布', async t 
   await f.body.snapshot(f.id);
   await f.body.setAutonomy(f.id, true);
   const changes = [];
-  const stop = f.ctx.on('pet/behavior.changed', change => changes.push(change));
+  const stop = f.ctx.on('world.changed', change => {if(change.bodyOnly)changes.push(change);});
   const release = [Promise.withResolvers(), Promise.withResolvers()];
   let reads = 0;
   const emotion = await f.ctx.plugin({apply(ctx) {
@@ -806,7 +809,7 @@ test('R6 旧 Plan 观察恢复后不得写盘或在新代之前发布', async t 
     const home = join(f.directory, 'home.json');
     const saved = readFileSync(home, 'utf8');
     t.mock.timers.tick(60_000);
-    f.ctx.emit('pet/life.changed');
+    f.life.notifyLife(f.core.workspace.homeScope());
     await eventually(() => reads === 1, '旧 Plan 的观察已到达情绪读取');
     await f.unload('life');
     await f.load('life');
@@ -838,7 +841,7 @@ test('R6 卸载停掉实际身体计时、计划 tick、上游闹钟和各自订
   assert.equal(ownedHooks(f.ctx, fibers.body).length, 0);
   assert.ok(ownedHooks(f.ctx, fibers.life).length > 0);
   assert.ok(ownedHooks(f.ctx, fibers.economy).length > 0);
-  f.ctx.emit('pet/life.changed');
+  await f.ownerAction({kind:'grant',amount:1},'r6-schedule-from-fact');
   assert.ok(pending.tick.size > 0);
   await f.unload('life');
   assert.equal(pending.tick.size, 0);
@@ -851,9 +854,7 @@ test('R6 卸载停掉实际身体计时、计划 tick、上游闹钟和各自订
   const before = {...created};
   f.ctx.emit('pet/core.changed');
   f.ctx.emit('pet/emotion.changed', f.id);
-  f.ctx.emit('pet/life.changed');
-  f.ctx.emit('pet/behavior.changed', {workspaceId: f.id, reason: 'transition'});
-  f.ctx.emit('pet/economy.fact', f.id);
+  f.ctx.emit('world.changed', expectedWorldNotice(f.core));
   t.mock.timers.tick(3_600_000);
   await delay(10);
   assert.deepEqual(created, before);
@@ -1030,6 +1031,141 @@ async function runningHold(t) {
   }, '定时活动已取得 Body 运行回执');
   return {f, plan};
 }
+
+test('Body 和 Economy 提交可越过堵住的 Plan 队列，出队后合并推进', async t => {
+  const f = await cordisFixture(t);
+  await f.life.snapshot(f.id);
+  await delay(0);
+  const gate = Promise.withResolvers(), entered = Promise.withResolvers();
+  const blocked = f.life.enqueue(async () => { entered.resolve(); await gate.promise; });
+  await entered.promise;
+  const tick = t.mock.method(f.life, 'tick');
+  try {
+    const [care, wallet] = await Promise.race([
+      Promise.all([
+        f.body.act(f.id, 'water', 'queued-plan-water'),
+        f.ownerAction({kind:'grant',amount:12},'queued-plan-grant'),
+      ]),
+      delay(1000).then(() => { throw Error('生活三区通知阻塞了已提交的请求'); }),
+    ]);
+    assert.equal(care.fact.requestId,'queued-plan-water');
+    assert.equal(wallet.ledger[0].requestId,'queued-plan-grant');
+    assert.equal(tick.mock.callCount(),0);
+    await delay(0);
+  } finally { gate.resolve(); await blocked; }
+  await eventually(()=>tick.mock.callCount()===1,'Plan 出队后消费合并通知');
+  await delay(0);
+  assert.equal(tick.mock.callCount(),1);
+});
+
+test('Plan 常规落盘不等待 Body 同步，显式暂停等待 Body 原执行', async t => {
+  const {f, plan} = await runningHold(t);
+  const gate = Promise.withResolvers(), entered = Promise.withResolvers();
+  const refreshEmotion = f.body.refreshEmotion.bind(f.body);
+  const read = t.mock.method(f.body,'refreshEmotion',async id=>{
+    entered.resolve();
+    await gate.promise;
+    return refreshEmotion(id);
+  });
+  try {
+    const {revision} = await f.life.readPlan(f.id);
+    const kept = await f.life.keepPlan(f.id,revision,'Keep the accepted operation',null);
+    assert.equal(kept.plan.operationId,plan.operationId);
+    await entered.promise;
+    read.mock.restore();
+  } finally { gate.resolve(); }
+  const inspection = holdPauseInspection(t,f);
+  let finished = false;
+  const pausing = f.life.control(f.id,false).then(result=>{finished=true;return result;});
+  try {
+    await eventually(inspection.waiting,'Plan 在等待 Body 原执行回执');
+    assert.equal(finished,false);
+    assert.equal(f.life.bodyClockState(f.id).enabled,false);
+  } finally { inspection.release(); }
+  assert.deepEqual(await pausing,{enabled:false,running:false});
+  assert.equal((await f.body.inspectPlanned(f.id,plan.operationId)).status,'paused');
+  assert.equal((await f.body.snapshot(f.id)).autonomyEnabled,false);
+});
+
+test('显式关闭 Life 在计划读取失败时仍关闭 Body 自治',async t=>{
+  const {f}=await runningHold(t);
+  assert.equal((await f.body.snapshot(f.id)).autonomyEnabled,true);
+  const file=join(f.life.binding.directory,'life.json');
+  const original=readFileSync(file);
+  // Delay the ordinary background clock update so only explicit pause can stop Body.
+  const sync=f.body.syncLifeClock.bind(f.body), release=Promise.withResolvers();
+  const background=t.mock.method(f.body,'syncLifeClock',async(...args)=>{await release.promise;return sync(...args);});
+  writeFileSync(file,'{');
+  try {
+    await assert.rejects(f.life.control(f.id,false),/not valid JSON/);
+    assert.equal(f.life.bodyClockState(f.id).enabled,false);
+    assert.equal(f.life.running(),false);
+    assert.equal((await f.body.snapshot(f.id)).autonomyEnabled,false);
+  } finally {
+    writeFileSync(file,original);
+    background.mock.restore();
+    release.resolve();
+  }
+});
+
+test('Economy 的 Plan 通知失败后，新事实与请求回执仍能在重开后核对', async t => {
+  const f = await cordisFixture(t);
+  const notify = t.mock.method(f.life,'noticeDomainChange',()=>{throw Error('synthetic notice failure');});
+  const requestId='committed-before-plan-notice',action={kind:'grant',amount:17};
+  const first=await f.ownerAction(action,requestId);
+  const [fact]=await f.economy.pendingFacts(f.id);
+  assert.equal(fact.requestId,requestId);
+  assert.equal(notify.mock.callCount(),1);
+  const replay=await f.ownerAction(action,requestId);
+  assert.equal(replay.balance,first.balance);
+  assert.equal(notify.mock.callCount(),1,'原号回查不重复通知');
+  notify.mock.restore();
+  await f.unload('economy'); await f.load('economy');
+  assert.deepEqual(await f.economy.pendingFacts(f.id),[fact]);
+  assert.equal((await f.economy.snapshot(f.id)).balance,first.balance);
+});
+
+test('Body 或 Plan 缺席时，暂停和原执行保留，钱包提交仍可核对', async t => {
+  const {f, plan} = await runningHold(t);
+  const home = f.life.homeSessionId();
+  await f.unload('body');
+  await assert.rejects(f.life.control(f.id,false),/body must be available/);
+  assert.equal(f.life.running(),false);
+  assert.equal(f.life.bodyClockState(f.id).enabled,false);
+  assert.equal((await f.life.readPlan(f.id)).plan.operationId,plan.operationId);
+  assert.ok(f.cancellations.some(call=>call.sessionId===home));
+  await f.unload('life');
+  await f.ownerAction({kind:'grant',amount:9},'plan-absent-grant');
+  assert.ok((await f.economy.pendingFacts(f.id)).some(fact=>fact.requestId==='plan-absent-grant'));
+  await f.load('life');
+  assert.equal((await f.life.readPlan(f.id)).enabled,false);
+});
+
+test('绑定 A→B→A 后，旧代通知无法排进当前 Plan', async t => {
+  const f=await cordisFixture(t);
+  await f.life.snapshot(f.id);
+  await delay(0);
+  const gate=Promise.withResolvers(), entered=Promise.withResolvers();
+  const blocked=f.life.enqueue(async()=>{entered.resolve();await gate.promise;});
+  await entered.promise;
+  const saved=f.core.workspace.homeScope(), readScope=f.core.workspace.homeScope.bind(f.core.workspace);
+  let scope=saved;
+  const binding=t.mock.method(f.core.workspace,'homeScope',()=>scope);
+  const tick=t.mock.method(f.life,'tick');
+  try {
+    await f.ownerAction({kind:'grant',amount:1},'old-a-notice');
+    await delay(0); // Let the old timer enter the blocked serial queue.
+    scope={...saved,workspaceId:'foreign',generation:saved.generation+1};
+    scope={...saved,generation:saved.generation+2};
+    gate.resolve();
+    await blocked;
+    await delay(0);
+    assert.equal(tick.mock.callCount(),0);
+    await f.ownerAction({kind:'grant',amount:1},'current-a-notice');
+    await eventually(()=>tick.mock.callCount()===1,'当前代的钱包事实可以推进 Plan');
+  } finally { gate.resolve(); await blocked; binding.mock.restore(); }
+  assert.deepEqual(f.core.workspace.homeScope(),readScope());
+});
 
 function holdPauseInspection(t, {body, life}) {
   const gate = Promise.withResolvers();

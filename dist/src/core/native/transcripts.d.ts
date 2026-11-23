@@ -33,7 +33,7 @@ export declare class NativeTranscripts {
         };
     }): void;
     private restoreCopy;
-    restore(): Promise<void>;
+    restore(caller?: () => void): Promise<void>;
     private exportScope;
     private validateScope;
     private exportCaptured;

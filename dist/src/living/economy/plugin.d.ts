@@ -1,3 +1,4 @@
+import { type ConsoleOperations } from '../../core/tables/console.js';
 import { LivingView, type LivingPorts, type RecordCommandEffect } from '../index.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost, WorkspaceTarget } from '../../core/index.js';
@@ -6,12 +7,13 @@ import type { PlanTradeOperation } from '../../contracts/behavior.js';
 import type { WorldCommands } from '../../contracts/living.js';
 import type { RoomEconomyPort } from '../body/room.js';
 import { EconomyStore } from './store.js';
-import type { EconomyConfigurationPatch, ItemUse } from './types.js';
+import { type WalletState } from './console-requests.js';
+import type { EconomyConfigurationPatch, EconomySnapshot, ItemUse } from './types.js';
 import type { CompanionFact, CompanionFactActor } from '../../contracts/interaction.js';
 export declare const economyStateToolDeclaration: {
     name: string;
     sources: readonly ("life" | "owner" | "review")[];
-    historyOverview(_args: unknown, value: unknown): (Omit<import("./types.js").EconomySnapshot & {
+    historyOverview(_args: unknown, value: unknown): (Omit<EconomySnapshot & {
         ledger: import("./types.js").LedgerEntry[];
     }, "migration" | "ledger" | "configuration" | "inventory"> & {
         view: string;
@@ -35,6 +37,7 @@ export declare class CompanionEconomy {
     private closed;
     private readonly living;
     private readonly inFlight;
+    private readonly walletInFlight;
     constructor(ctx: Context, host: PetCoreHost, ports?: LivingPorts | LivingView);
     private assertOpen;
     protectedDirectory(): string | undefined;
@@ -55,6 +58,35 @@ export declare class CompanionEconomy {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
+        workspaceId: string;
+        ledger: import("./types.js").LedgerEntry[];
+        configurationVersion: string;
+        access: {
+            readonly mode: "bounded";
+            readonly detail: "余额与物品由程序结算。原生文件工具防误改；同一系统账户的命令和其他插件仍可访问文件。";
+        };
+        storageId: string;
+        companionId: string;
+        revision: number;
+        balance: number;
+        inventory: import("./types.js").InventoryItem[];
+        catalog: import("./types.js").CatalogItem[];
+        configuration: import("./types.js").EconomyConfiguration;
+        bookmarks: import("./types.js").ReadingBookmark[];
+        pendingUses: ItemUse[];
+        migration: {
+            kind: "new" | "legacy-garden";
+            sourcePath?: string;
+            sourceHash?: string;
+            importedAt: number;
+        };
+    } | {
+        writableKeys?: {
+            itemPrices: string[];
+            catalogEnabled: string[];
+        } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -78,6 +110,7 @@ export declare class CompanionEconomy {
             importedAt: number;
         };
     }>;
+    private walletSnapshot;
     walletView(workspaceId: string): import("../../contracts/living.js").WalletView;
     worldSnapshot(workspaceId: string): Promise<import("../../contracts/living.js").WorldSnapshot>;
     readonly worldCommands: Pick<WorldCommands, PlanTradeOperation>;
@@ -86,12 +119,52 @@ export declare class CompanionEconomy {
     readFacts(workspaceId: string, ids: readonly string[]): Promise<CompanionFact[]>;
     acknowledgeFacts(workspaceId: string, ids: readonly string[]): Promise<void>;
     private notifyFacts;
+    private openWallet;
+    private walletEvidence;
+    private walletUnknown;
+    consoleWrite(endpoint: string, input: unknown, id: string, signal: AbortSignal, validate: () => void): Promise<unknown>;
+    consoleRecover(endpoint: string, workspaceId: string, id: string, acceptNoEvidence: boolean, signal: AbortSignal, validate: () => void): Promise<Record<string, import("node:sqlite").SQLOutputValue>[] | {
+        readonly state: WalletState;
+    }>;
+    consoleOperations(): ConsoleOperations;
+    private finishWallet;
+    private dispatchWallet;
     ownerAction(workspaceId: string, action: any, requestId: string, signal: AbortSignal, validate?: () => void, trustedActor?: CompanionFactActor, recordEffect?: RecordCommandEffect): Promise<{
         execution?: import("../../contracts/behavior.js").PlannedExecution | undefined;
         writableKeys?: {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
+        workspaceId: string;
+        ledger: import("./types.js").LedgerEntry[];
+        configurationVersion: string;
+        access: {
+            readonly mode: "bounded";
+            readonly detail: "余额与物品由程序结算。原生文件工具防误改；同一系统账户的命令和其他插件仍可访问文件。";
+        };
+        storageId: string;
+        companionId: string;
+        revision: number;
+        balance: number;
+        inventory: import("./types.js").InventoryItem[];
+        catalog: import("./types.js").CatalogItem[];
+        configuration: import("./types.js").EconomyConfiguration;
+        bookmarks: import("./types.js").ReadingBookmark[];
+        pendingUses: ItemUse[];
+        migration: {
+            kind: "new" | "legacy-garden";
+            sourcePath?: string;
+            sourceHash?: string;
+            importedAt: number;
+        };
+    } | {
+        execution?: import("../../contracts/behavior.js").PlannedExecution | undefined;
+        writableKeys?: {
+            itemPrices: string[];
+            catalogEnabled: string[];
+        } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -115,11 +188,40 @@ export declare class CompanionEconomy {
             importedAt: number;
         };
     }>;
-    settings(workspaceId: string, expectedVersion: string, next: EconomyConfigurationPatch, requestId: string, signal: AbortSignal, validate?: () => void): Promise<{
+    settings(workspaceId: string, expectedVersion: string, next: EconomyConfigurationPatch, requestId: string, signal: AbortSignal, validate?: () => void, recordEffect?: RecordCommandEffect): Promise<{
         writableKeys?: {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
+        workspaceId: string;
+        ledger: import("./types.js").LedgerEntry[];
+        configurationVersion: string;
+        access: {
+            readonly mode: "bounded";
+            readonly detail: "余额与物品由程序结算。原生文件工具防误改；同一系统账户的命令和其他插件仍可访问文件。";
+        };
+        storageId: string;
+        companionId: string;
+        revision: number;
+        balance: number;
+        inventory: import("./types.js").InventoryItem[];
+        catalog: import("./types.js").CatalogItem[];
+        configuration: import("./types.js").EconomyConfiguration;
+        bookmarks: import("./types.js").ReadingBookmark[];
+        pendingUses: ItemUse[];
+        migration: {
+            kind: "new" | "legacy-garden";
+            sourcePath?: string;
+            sourceHash?: string;
+            importedAt: number;
+        };
+    } | {
+        writableKeys?: {
+            itemPrices: string[];
+            catalogEnabled: string[];
+        } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -152,9 +254,6 @@ export declare const inject: string[];
 declare module '@deepseek-ai/cordis' {
     interface Context {
         petEconomy: CompanionEconomy;
-    }
-    interface Events {
-        'pet/economy.fact'(workspaceId: string): void;
     }
 }
 export declare function apply(ctx: Context): void;

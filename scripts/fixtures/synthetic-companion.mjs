@@ -12,6 +12,7 @@ import { PersistentLifePlan } from '../../dist/src/living/plan/plan.js';
 import { EmotionFile } from '../../dist/src/emotion/state.js';
 import { RecentLedger } from '../../dist/src/emotion/recent.js';
 import { DesktopImages } from '../../dist/src/desktop/images.js';
+import { RoomImages } from '../../dist/src/room/images.js';
 import { NativeTranscripts } from '../../dist/src/core/native/transcripts.js';
 import { CompanionVoice } from '../../dist/src/voice/plugin.js';
 import { companionChannelDirectory } from '../../dist/src/channels/storage.js';
@@ -122,7 +123,7 @@ export async function generateSynthetic(out, variant = 'current') {
       sessions:{get:() => undefined},sessionPersistence:{open:async () => ({header:{id:'fixture-session',cwd:repo},read:async () => ({events:[{seq:1,type:'fixture',data:content.memory}]}),close:async () => {}})}}, host);
     try { await transcripts.save('fixture-session'); } finally { await transcripts.close(); }
     const attachments = {admitPromptContent:async rows => rows};
-    for (const component of ['desktop','room']) await new DesktopImages(host, () => attachments, component).admit({data:'AA==',mediaType:'image/png'});
+    for (const Images of [DesktopImages,RoomImages]) await new Images(host, () => attachments).admit({data:'AA==',mediaType:'image/png'});
     mkdirSync(backup.channelsDirectory, {recursive:true});
     const channelData = companionChannelDirectory(repo, backup.channelsDirectory);
     const messaging = messagingStorage(backup.channelsDirectory, channelData); messaging.save(messaging.current);

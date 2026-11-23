@@ -1,6 +1,8 @@
 import { check, integer } from './storage.js';
 import { parseDesktopAppearance } from '../desktop/appearance.js';
 
+export const desktopAppearanceDefaults = () => parseDesktopAppearance();
+
 export const DEFAULT_COMPANION_SETTINGS = Object.freeze({
   desktopSize: 232,
   desktopFixed: false,
@@ -41,8 +43,14 @@ export const EMPTY_COMPANION_CONFIGURATION: Readonly<CompanionConfiguration> = O
   Object.fromEntries(Object.keys(DEFAULT_COMPANION_SETTINGS).map(key => [key, null])) as CompanionConfiguration,
 );
 
-const BOOLEAN_KEYS = ['desktopClickSound', 'desktopReplyBubble', 'desktopWhisperEnabled', 'desktopWhisperImageEnabled',
-  'desktopWorkStatusEnabled', 'desktopTrayEnabled', 'desktopBalanceEnabled', 'desktopFixed', 'desktopConfineToScreen'] as const;
+type SettingKey = keyof CompanionSettings;
+const desktopSwitches = (Object.keys(DEFAULT_COMPANION_SETTINGS) as SettingKey[])
+  .filter(key => typeof DEFAULT_COMPANION_SETTINGS[key] === 'boolean');
+
+export function isDesktopSwitch(key: string, value: unknown): value is boolean {
+  return Object.hasOwn(DEFAULT_COMPANION_SETTINGS, key) && typeof DEFAULT_COMPANION_SETTINGS[key as SettingKey] === 'boolean' &&
+    typeof value === 'boolean';
+}
 const RANGES = {
   desktopSleepTalkSeconds: [1, 86400], desktopSize: [96, 512], desktopBalanceMinutes: [1, 1440],
   desktopWhisperMinutes: [1, 1440], desktopBubbleSeconds: [1, 300], workAnimationDelaySeconds: [0, 3600],
@@ -60,7 +68,7 @@ export function parseCompanionConfiguration(raw: unknown): CompanionConfiguratio
   // A retired, previously inert recall option is tolerated in old workspaces.
   if(memoryColdHours!==undefined&&memoryColdHours!==null)integer(memoryColdHours,'legacy memoryColdHours',1,720);
   const result = { ...EMPTY_COMPANION_CONFIGURATION, ...current } as CompanionConfiguration;
-  for (const key of BOOLEAN_KEYS) check(result[key] === null || typeof result[key] === 'boolean', 'Invalid Desktop switch');
+  for (const key of desktopSwitches) check(result[key] === null || isDesktopSwitch(key, result[key]), 'Invalid Desktop switch');
   for (const [key, range] of Object.entries(RANGES)) {
     const value = result[key as keyof CompanionConfiguration];
     if (value !== null) integer(value, key, range[0], range[1]);

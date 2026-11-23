@@ -21,7 +21,7 @@ for (const [path, hash] of Object.entries(origin.files)) {
   let code = ts.transpileModule(adaptCompactVoice(path,source), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   if (path === 'src/shared/voice.ts') {
     // The compact chat persists across hides and can be rebound to another session.
-    code += '\nexports.stopManualSpeech = () => { manualSeq++; if (manualAudio) { manualAudio.pause(); URL.revokeObjectURL(manualAudio.src); manualAudio = null; } };';
+    code += '\nexports.stopManualSpeech = () => { manualSeq++; manualRequest?.abort(); manualRequest = undefined; if (manualAudio) { manualAudio.pause(); URL.revokeObjectURL(manualAudio.src); manualAudio = null; } };';
   }
   code = code.replace(/require\("([^"\n]+)"\)/g, (_, name) => `require(${JSON.stringify(posix.normalize(posix.join(dirname(path), name)))})`);
   modules.push(`${JSON.stringify(path)}: function(exports, require) {\n${code}\n}`);
@@ -37,10 +37,23 @@ writeFileSync(resolve(import.meta.dirname, '../../src/desktop/helper/upstream/sh
 for (const [path, hash] of Object.entries(origin.nativeFiles ?? {})) {
   const source = readFileSync(resolve(root, path), 'utf8');
   if (createHash('sha256').update(source).digest('hex') !== hash) throw Error('Upstream source changed: ' + path);
-  const target = resolve(import.meta.dirname, '../../dist/src/desktop/upstream', path.replace(/^src\//, '').replace(/\.ts$/, '.js'));
+  const output = path.replace(/^src\//, '').replace(/\.ts$/, '.js');
+  const voice = path.startsWith('src/host/voice/') || path === 'src/host/routes/voice.ts';
+  const target = resolve(import.meta.dirname, voice ? '../../dist/src/voice/upstream' : '../../dist/src/desktop/upstream', output);
   mkdirSync(dirname(target), {recursive:true});
   const code = ts.transpileModule(adaptCompactVoice(path,source), {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
-  writeFileSync(target, code.replace(/(from\s+['"][^'"]+)\.ts(['"])/g, '$1.js$2'));
+  const compiled = code.replace(/(from\s+['"][^'"]+)\.ts(['"])/g, '$1.js$2');
+  writeFileSync(target, compiled);
+  if (voice) {
+    const legacy = resolve(import.meta.dirname, '../../dist/src/desktop/upstream', output);
+    mkdirSync(dirname(legacy), {recursive:true});
+    writeFileSync(legacy, `export * from '../../../../voice/upstream/${output}';\n`);
+  }
+  if (path === 'src/host/routes/result.ts') {
+    const voiceResult = resolve(import.meta.dirname, '../../dist/src/voice/upstream', output);
+    mkdirSync(dirname(voiceResult), {recursive:true});
+    writeFileSync(voiceResult, compiled);
+  }
 }
 for (const item of Object.values(origin.assets ?? {})) {
   const asset = readFileSync(resolve(import.meta.dirname, '../../src/desktop/assets', item.file));

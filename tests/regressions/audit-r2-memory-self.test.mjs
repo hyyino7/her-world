@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,readFileSync,realpathSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,readFileSync,readdirSync,realpathSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {MemoryConnection} from '../../dist/src/memory/client.js';
 import {MemoryProcessHost} from '../../vendor/mnemosyne/src/memory-process.js';
 import {MemoryClient} from '../../vendor/mnemosyne/src/memory-client.js';
 import {createCore} from '../../dist/src/core/index.js';
+import {settingsHandler} from '../../dist/src/console/settings.js';
 
 const scope={companionId:'fixture-fish',scopeId:'fixture-owner',workspaceId:'fixture-bank'};
 const memoryScope={companionId:scope.companionId,scopeId:scope.scopeId,bankId:scope.workspaceId};
@@ -127,3 +128,76 @@ test('R2-2: final comparison preserves stable UTF-8 BOM and empty-document revis
   const current=await f.host.records.readSelf('a');await f.host.records.saveSelf('a',current.revision,'');
   const empty=await f.host.records.readSelf('a');await f.host.records.saveSelf('a',empty.revision,'From empty');assert.equal(readFileSync(f.file,'utf8'),'From empty');
 });
+
+for (const interruption of ['ABA', 'cancel', 'unload']) {
+  test('self write checks '+interruption+' after reading and before writing',async t=>{
+    const f=await selfFixture(t),controller=new AbortController();
+    writeFileSync(f.file,'Original A');
+    const before=await f.host.records.readSelf('a');
+    const original=f.host.records.readSelf.bind(f.host.records),entered=deferred(),gate=deferred();
+    t.mock.method(f.host.records,'readSelf',async id=>{const result=await original(id);entered.resolve();await gate.promise;return result;});
+    let host=f.host;
+    const consoleCall=settingsHandler(()=>host,()=>undefined);
+    const saving=consoleCall('self',{requestId:'self-interrupted',input:{workspaceId:'a',expectedRevision:before.revision,text:'Late write'}},
+      controller.signal,{principal:{kind:'owner'},signal:new AbortController().signal});
+    await entered.promise;
+    if(interruption==='ABA'){
+      const b=join(f.root,'b');mkdirSync(b);await f.bind('b',b);await f.bind('a',f.repo);
+    }else if(interruption==='cancel')controller.abort();
+    else host=undefined;
+    gate.resolve();
+    const reply=await saving;
+    assert.equal(reply.ok,false);
+    assert.equal(reply.error.code,interruption==='cancel'?'CANCELLED':'STALE_BINDING');
+    assert.equal(reply.error.effect,'none');
+    assert.equal(readFileSync(f.file,'utf8'),'Original A');
+  });
+}
+
+test('cancelling initialization while waiting for Core persistence leaves the selected workspace uninitialized',async t=>{
+  const f=await selfFixture(t),target=join(f.root,'uninitialized');mkdirSync(target);
+  const request=name=>f.host.operator.request(name);
+  const before=value(await f.host.services.preferences.read(request('initial-config'),{}));
+  const configured=value(await f.host.services.preferences.save(request('new-target'),{
+    expectedRevision:before.revision,workspace:{id:'new',path:target,title:'New'},conversation:before.conversation,
+  }));
+  const store=f.host.workspace.runtime.store, original=store.ensurePersisted.bind(store), entered=deferred(), gate=deferred();
+  t.mock.method(store,'ensurePersisted',async()=>{await original();entered.resolve();await gate.promise;});
+  const controller=new AbortController();
+  const initializing=f.host.services.workspace.initialize(request('interrupted-initialization'),
+    {expectedPreferencesRevision:configured.revision},{signal:controller.signal});
+  await entered.promise;controller.abort();gate.resolve();
+  const reply=await initializing;
+  assert.equal(reply.ok,false);
+  assert.equal(reply.error.code,'CANCELLED');
+  assert.equal(reply.error.effect,'none');
+  assert.deepEqual(readdirSync(target),[]);
+});
+
+for (const replaced of ['Core provider', 'workspace registration']) {
+  test(`Console initialization writes nothing when its ${replaced} changes during persistence`, async t => {
+    const f = await selfFixture(t), target = join(f.root, 'uninitialized');
+    mkdirSync(target);
+    const prefs = f.host.services.preferences, request = name => f.host.operator.request(name);
+    const before = value(await prefs.read(request('initial-config'), {}));
+    const configured = value(await prefs.save(request('new-target'), {
+      expectedRevision: before.revision, workspace: {id:'new', path:target, title:'New'}, conversation: before.conversation,
+    }));
+    const store = f.host.workspace.runtime.store, original = store.ensurePersisted.bind(store);
+    const entered = deferred(), gate = deferred();
+    t.mock.method(store, 'ensurePersisted', async () => { await original(); entered.resolve(); await gate.promise; });
+    let provider = f.host, workspace = {id:'new', path:target, status:async () => 'ok'};
+    const consoleCall = settingsHandler(() => provider, () => ({get:id => id === 'new' ? workspace : undefined}));
+    const pending = consoleCall('initialize', {requestId:'init-after-replacement', input:{expectedPreferencesRevision:configured.revision}},
+      new AbortController().signal, {principal:{kind:'owner'}, signal:new AbortController().signal});
+    await entered.promise;
+    if (replaced === 'Core provider') provider = undefined;
+    else workspace = {...workspace};
+    gate.resolve();
+    const reply = await pending;
+    assert.deepEqual(readdirSync(target), []);
+    assert.equal(reply.ok, false);
+    assert.equal(reply.error.code, 'STALE_BINDING');
+    assert.equal(reply.error.effect, 'none');
+  });
+}

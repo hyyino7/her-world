@@ -9,6 +9,8 @@ import { type CompanionToolDeclaration, type SourceAdmission } from '../../contr
 import { SourceAdapterTable } from '../tables/sources.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts, type CompanionBinding } from '../tables/companion-ports.js';
+import { VoiceTable } from '../tables/voice.js';
+import { ConsoleTable } from '../tables/console.js';
 export declare const OWNER_LIFE_TOOL_SOURCES: readonly ("life" | "owner" | "review")[];
 export interface NativeScope extends CompanionBinding {
     guest: boolean;
@@ -36,6 +38,8 @@ export declare class CoreNative {
     readonly toolTable: CompanionToolTable;
     readonly sourceTable: SourceAdapterTable<NativeSourceContext>;
     readonly companionPorts: CompanionPorts;
+    readonly voiceTable: VoiceTable;
+    readonly consoleOperations: ConsoleTable;
     private readonly playbackProviders;
     private readonly reviewCompaction;
     resolveNativeScope?: (sessionId: string) => NativeScope | undefined;
@@ -52,7 +56,8 @@ export declare class CoreNative {
     setMemoryEnabledForNewSessions(enabled: boolean): void;
     memoryEnabledForNewSessions(): boolean;
     memoryFor(_sessionId: string): NativeMemory | undefined;
-    registerReviewCompaction(request: (sessionId: string) => void): import("../../contracts/tables.js").TableRegistration;
+    registerReviewCompaction(request: (sessionId: string) => void, hasPending?: (sessionId: string) => boolean): import("../../contracts/tables.js").TableRegistration;
+    hasPendingReviewCompaction(sessionId: string): boolean;
     requestReviewCompaction(sessionId: string): void;
     /** Native DSH owns the turn. Core retains only input references and selected policy metadata. */
     observeInputs(sessionId: string, turn: number, messages: readonly UserMessage[], scope?: NativeScope): string[];

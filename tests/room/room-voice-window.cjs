@@ -11,21 +11,26 @@ app.setPath('userData',join(temp,'profile'));
 app.commandLine.appendSwitch('use-fake-device-for-media-stream');
 app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
 app.commandLine.appendSwitch('autoplay-policy','no-user-gesture-required');
-let server,win,voice,releaseVoice;
+let server,win,voice,releaseVoice,voiceRegistration;
 const timeout=setTimeout(()=>{console.error('Room voice window timed out');app.exit(1);},35000);
 async function run(){
   const {CompanionVoice}=await import(pathToFileURL(join(root,'dist/src/voice/plugin.js')).href);
+  const {VoiceTable}=await import(pathToFileURL(join(root,'dist/src/core/tables/voice.js')).href);
+  const {Context}=await import('@deepseek-ai/cordis');
   const {Room}=await import(pathToFileURL(join(root,'dist/src/room/plugin.js')).href);
   const {roomAsset}=await import(pathToFileURL(join(root,'dist/src/room/assets.js')).href);
   const {registerVoiceProvider}=await import(pathToFileURL(join(root,'dist/src/desktop/upstream/host/voice/registry.js')).href);
   let heard=0,spoken=0;
-  const host={workspace:{status:()=>({state:'ready',target:{id:'fixture',path:temp}}),storageId:()=> 'fixture'},native:{}};
+  const scope=new Context(),voiceTable=new VoiceTable();
+  const host={workspace:{status:()=>({state:'ready',target:{id:'fixture',path:temp}}),storageId:()=> 'fixture',
+    homeScope:()=>({workspaceId:'fixture',storageId:'fixture',path:temp,bootId:'fixture',generation:0})},native:{voiceTable}};
   voice=new CompanionVoice(host,join(temp,'voice'),()=>({listProviders:()=>['synthetic'],resolve:value=>value,
     transcribe:async value=>{heard++;assert.equal(Buffer.from(value.audio).subarray(0,4).toString(),'RIFF');return {text:'测试语音输入'};}}));
   const wave=Buffer.alloc(44+3200);wave.write('RIFF');wave.writeUInt32LE(wave.length-8,4);wave.write('WAVEfmt ',8);wave.writeUInt32LE(16,16);
   wave.writeUInt16LE(1,20);wave.writeUInt16LE(1,22);wave.writeUInt32LE(16000,24);wave.writeUInt32LE(32000,28);wave.writeUInt16LE(2,32);wave.writeUInt16LE(16,34);wave.write('data',36);wave.writeUInt32LE(3200,40);
   releaseVoice=registerVoiceProvider({id:'synthetic',name:'synthetic',synthesize:async()=>{spoken++;return wave;}});
-  const room=new Room({petCore:host,on:()=>()=>{},get:name=>name==='petVoice'?voice:undefined});
+  voiceRegistration=voiceTable.register(scope,voice);
+  const room=new Room({petCore:host,on:()=>()=>{},get:name=>scope.get(name,false),root:scope,[Context.isolate]:scope[Context.isolate]});
   const pending=new Map();
   ipcMain.handle('fixture-room',(event,endpoint,data,requestId)=>{
     assert.equal(event.sender,win.webContents);assert.equal(endpoint,'roomVoice');
@@ -92,5 +97,5 @@ document.getElementById('chatForm').addEventListener('submit',e=>{e.preventDefau
   console.log(JSON.stringify({ok:true,delayedPermissionCancelled:true,lateTracksStopped:true,staleGenerationRejected:true,draftEditsPreserved:true,wrappersRestored:true,syntheticMicrophone:true,realMicrophone:false,heard,spoken,nativeChatComposer:true,mutedPlayback:true}));
 }
 app.whenReady().then(run).then(()=>app.quit(),error=>{console.error(error.stack);app.exitCode=1;app.quit();});
-app.on('before-quit',()=>{clearTimeout(timeout);voice?.release();releaseVoice?.();server?.close();});
+app.on('before-quit',()=>{clearTimeout(timeout);void voiceRegistration?.revoke();voice?.release();releaseVoice?.();server?.close();});
 app.on('quit',()=>{try{rmSync(temp,{recursive:true,force:true});}catch{}});

@@ -61,7 +61,7 @@ try {
     // native-room.js; browser imports resolve from that URL, not src/room/.
     const servedFrom=relative(root,from)==='src/room/voice-client.js'?join(root,'vendor/feiyu-room-template/public/room/voice-client.js'):from;
     const file=['./activity-playback.js','./animation-map.js'].includes(specifier) && ['vendor/feiyu-room-template/public/room/app.js','vendor/feiyu-room-template/public/room/actor.js'].includes(relative(root,from))
-      ? join(root,'dist/src/living/body',specifier==='./activity-playback.js'?'playback.js':'animation-map.js') : target(specifier,servedFrom);if(file){assert.ok(within(file),'Dependency escaped package');present(file,relative(root,from)+' -> '+specifier);references++;}
+      ? join(root,'dist/src/presentation',specifier==='./activity-playback.js'?'playback.js':'animation-map.js') : target(specifier,servedFrom);if(file){assert.ok(within(file),'Dependency escaped package');present(file,relative(root,from)+' -> '+specifier);references++;}
   };
   for(const file of files) {
     const local=relative(root,file);
@@ -70,7 +70,9 @@ try {
     }
     if(local.startsWith('dist/src/')) {
       const original=local.replace(/^dist\//,'').replace(/(?:\.d)?\.js$|\.d\.ts$/,'.ts');
-      if(!local.startsWith('dist/src/desktop/upstream/'))assert.ok(existsSync(join(checkout,original)),'Build output has no current source: '+local);
+      const generatedUpstream=local.startsWith('dist/src/desktop/upstream/') ||
+        /^dist\/src\/voice\/upstream\/host\/(voice\/[^/]+|routes\/(voice|result))\.js$/.test(local);
+      if(!generatedUpstream)assert.ok(existsSync(join(checkout,original)),'Build output has no current source: '+local);
       assert.equal(digest(file),digest(join(checkout,local)),'Stale packaged build: '+local);buildFiles++;
     }
     // Declaration files remain available for consumers; this pass checks the
@@ -155,13 +157,15 @@ try {
   const {PersistentLifePlan}=await import(pathToFileURL(join(root,'dist/src/living/plan/plan.js')));
   const {EconomyStore}=await import(pathToFileURL(join(root,'dist/src/living/economy/store.js')));
   const {roomAsset}=await import(pathToFileURL(join(root,'dist/src/room/assets.js')));
-  const {resolveActivityPlayback,sampleActivityPlayback}=await import(pathToFileURL(join(root,'dist/src/living/body/playback.js')));
-  const sleeping=resolveActivityPlayback({her:{kind:'sleep',asleep:true,spot:'bed'},behavior:{activityId:'sleep-fixture',phase:'sleeping',startedAt:1000}});
+  const {resolveActivityPlayback,sampleActivityPlayback}=await import(pathToFileURL(join(root,'dist/src/presentation/playback.js')));
+  const {animationSlotAllowed}=await import(pathToFileURL(join(root,'dist/src/living/body/animation-slots.js')));
+  const {classifyActivity}=await import(pathToFileURL(join(root,'dist/src/living/body/presentation.js')));
+  const sleeping=resolveActivityPlayback({her:{kind:'sleep',asleep:true,spot:'bed'},behavior:{activityId:'sleep-fixture',phase:'sleeping',startedAt:1000}},animationSlotAllowed,classifyActivity);
   assert.equal(sampleActivityPlayback(sleeping,1500).roomClip,'sleep_in');
   assert.equal(sampleActivityPlayback(sleeping,15000).roomClip,'sleep_loop');
-  const meal=resolveActivityPlayback({her:{kind:'eat'},behavior:{activityId:'meal',phase:'working'}});
+  const meal=resolveActivityPlayback({her:{kind:'eat'},behavior:{activityId:'meal',phase:'working'}},animationSlotAllowed,classifyActivity);
   assert.equal(sampleActivityPlayback(meal,15000).desktopClip,'吃白饭');
-  const sharedCode=await roomAsset(new Request('http://localhost/chatpet-room/activity-playback.js'));
+  const sharedCode=await roomAsset(new Request('http://localhost/chatpet-room/media-playback.js'));
   assert.equal(sharedCode.status,200);assert.match(await sharedCode.text(),/export function sampleActivityPlayback/);
 
   const {createCore}=await import(pathToFileURL(join(root,'dist/src/core/index.js')));

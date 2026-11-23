@@ -1,4 +1,4 @@
-import type { CapabilityStatus, ServiceCall } from '../contracts/common.js';
+import { type CallOptions, type CapabilityStatus, type ServiceCall } from '../contracts/common.js';
 import type { AttentionPolicy, CompanionIdentity, CoreService } from '../contracts/core.js';
 import type { CapabilityRegistration } from '../contracts/tables.js';
 import { CoreAuthority } from './authority.js';
@@ -6,6 +6,9 @@ import { type ConversationOptions } from './options.js';
 import { CoreStore } from './storage.js';
 import { CapabilityTable } from './tables/capabilities.js';
 import type { CoreWorkspace } from './workspace.js';
+export interface CoreCallOptions extends CallOptions {
+    validateInitialization?: () => void;
+}
 export interface CoreConfig {
     dataDir: string;
     companionId: string;
@@ -41,7 +44,7 @@ export declare class CoreRuntime {
     policy(): AttentionPolicy;
     get conversation(): Readonly<ConversationOptions>;
     /** Configuration API authority, compare-and-set and request deduplication. */
-    call<I, O>(name: string, write: boolean, fn: (input: I) => O): ServiceCall<I, O>;
+    call<I, O>(name: string, write: boolean, fn: (input: I) => O, preflight?: (input: I) => void): ServiceCall<I, O>;
     private registerBaseCapabilities;
     close(): void;
 }

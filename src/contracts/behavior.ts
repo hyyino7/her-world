@@ -149,6 +149,8 @@ export interface BehaviorAnimationContext {
   };
 }
 
+export type FeedAdmission = 'start' | 'already-presented' | 'blocked';
+
 /** Actual semantic activity is distinct from a surface's animation receipt. */
 export interface BehaviorActivity {
   activityId: CurrentActivityId;
@@ -158,6 +160,8 @@ export interface BehaviorActivity {
   phase: BodyPhase;
   /** 为真时桌宠不能发起一次新投喂。已经在吃饭时也为真，吃饭素材仍放行且不再投喂。 */
   busy: boolean;
+  /** 当前活动对已声明目标动作的准入。具体请求仍须在 Body 串行入口复核。 */
+  interruptibility: {feed: FeedAdmission};
   /** Derived from accepted execution and real content receipts, never activity prose. */
   presentationKind?: 'read' | 'reading-wait' | 'rest';
   readingState?: ReadingState;

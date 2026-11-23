@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { type PresentationMigrationReceipt } from './migration.js';
+import { type ConsoleOperation } from '../../core/tables/console.js';
 /** Playback reports are renderer-owned; a control token may only query/wait. */
 export declare function controlRouteAllowed(rest: string, method: string): boolean;
 declare module '@deepseek-ai/cordis' {
@@ -13,6 +14,7 @@ export declare const inject: string[];
 export declare class PetPlatform {
     private ctx;
     private bound?;
+    private homeBinding?;
     private directory;
     private ownerToken;
     private toolToken;
@@ -34,6 +36,7 @@ export declare class PetPlatform {
     private behaviorRead?;
     private playbackKinds;
     private playbackReported;
+    private feedPlaybacks;
     private migration?;
     private restartPresentation?;
     private presentationStatus?;
@@ -172,7 +175,7 @@ export declare class PetPlatform {
                 etaMs: any;
                 gardenWork: any;
             };
-            playback: import("../../living/body/playback.js").ActivityPlayback;
+            playback: import("../../presentation/playback.js").ActivityPlayback;
             notice: string | undefined;
         };
         packsDirectory: string;
@@ -221,7 +224,7 @@ export declare class PetPlatform {
                 etaMs: any;
                 gardenWork: any;
             };
-            playback: import("../../living/body/playback.js").ActivityPlayback;
+            playback: import("../../presentation/playback.js").ActivityPlayback;
             notice: string | undefined;
         };
         packsDirectory: string;
@@ -270,12 +273,12 @@ export declare class PetPlatform {
                 etaMs: any;
                 gardenWork: any;
             };
-            playback: import("../../living/body/playback.js").ActivityPlayback;
+            playback: import("../../presentation/playback.js").ActivityPlayback;
             notice: string | undefined;
         };
         packsDirectory: string;
     }>;
-    hide(): Promise<void>;
+    hide(permit?: () => void): Promise<void>;
     private presentExpression;
     private refreshBehavior;
     private readBehavior;
@@ -343,7 +346,7 @@ export declare class PetPlatform {
                 etaMs: any;
                 gardenWork: any;
             };
-            playback: import("../../living/body/playback.js").ActivityPlayback;
+            playback: import("../../presentation/playback.js").ActivityPlayback;
             notice: string | undefined;
         };
         packsDirectory: string;
@@ -355,7 +358,61 @@ export declare class PetPlatform {
     private builtinMedia;
     /** Keep the original sleep/wake and ordinary action lock admission. */
     private careBlocked;
+    private openRoom;
+    private feedAnimation;
     handle(url: URL, method: string, raw: string | undefined, signal: AbortSignal, actorKind?: 'owner' | 'companion'): Promise<any>;
     http(req: IncomingMessage, res: ServerResponse): Promise<any>;
 }
+export declare function platformConsoleOperations(platform: Pick<PetPlatform, 'ownerAccess' | 'controlAccess' | 'standaloneAccess' | 'saveTiming' | 'resolveMigration' | 'status'>): {
+    operations: Record<string, ConsoleOperation>;
+    status: () => {
+        path: string;
+        pets: never[];
+        running: boolean;
+        timing?: undefined;
+        migration?: undefined;
+        activity?: undefined;
+        representation?: undefined;
+        packsDirectory?: undefined;
+    } | {
+        path: string;
+        pets: {
+            id: any;
+            name: any;
+            display: any;
+            position: any;
+            assetRoot: any;
+        }[];
+        running: boolean;
+        timing: any;
+        migration: PresentationMigrationReceipt | undefined;
+        activity: any;
+        representation: {
+            packGaps: any[];
+            exclusive: boolean;
+            action: undefined;
+            notice: undefined;
+            gap: boolean;
+            activityId?: undefined;
+            phase?: undefined;
+            progress?: undefined;
+            playback?: undefined;
+        } | {
+            packGaps: any[];
+            exclusive: boolean;
+            action: string;
+            gap: boolean;
+            activityId: string | null;
+            phase: string;
+            progress: {
+                now: any;
+                etaMs: any;
+                gardenWork: any;
+            };
+            playback: import("../../presentation/playback.js").ActivityPlayback;
+            notice: string | undefined;
+        };
+        packsDirectory: string;
+    };
+};
 export declare function apply(ctx: Context): void;

@@ -1,11 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { CONTRACT_VERSION } from '../contracts/version.js';
-import type {} from '../desktop/plugin.js';
-import type {} from '../room/plugin.js';
-import type {} from '../channels/plugin.js';
 import type {} from '../living/economy/plugin.js';
-import type { PetPlatform } from '../desktop/platform/plugin.js';
-import { settingsHandler, type SettingsHandler, type SettingsWorkspaceRegistry } from './settings.js';
+import { settingsEndpoints, settingsHandler, type SettingsHandler, type SettingsWorkspaceRegistry } from './settings.js';
 
 export const name = 'her-world';
 export const inject = ['connection'];
@@ -18,28 +14,30 @@ export function apply(ctx: Context): void {
     };
     get(name: 'workspaceRegistry'): SettingsWorkspaceRegistry | undefined;
   };
+  const connection = native.connection;
   const handler = settingsHandler(
-    () => ctx.get('petCore'), () => native.get('workspaceRegistry'), () => ctx.get('petDesktop'),
-    () => Object.keys(ctx.get('petWorld')?.modules ?? {}), () => ctx.get('petEmotion'), () => ctx.get('petLife'),
-    () => ctx.get('petRoom'),
-    () => ctx.get('petChannels'),
-    () => (ctx as unknown as {get(key:'petPlatform'):PetPlatform|undefined}).get('petPlatform'),
-    () => ctx.get('petEconomy'),
+    () => ctx.get('petCore'), () => native.get('workspaceRegistry'),
+    () => Object.keys(ctx.get('petWorld')?.modules ?? {}), () => ctx.get('petEconomy'), ctx,
   );
-  for (const endpoint of ['economyView','economyAction','economySettings','presentationTiming','presentationMigration','foundation','self','emotionState','emotionUpdate','roomOpen','petPlatformAccess','petControlAccess','petStandaloneAccess','qzoneState','qzoneSettings','qzoneDraft','qzoneRemove','groupState','groupSettings','groupSlang','groupResearch','channelStatus','bridgeSettings','messagingSettings','roomState', 'roomAction', 'roomGarden', 'roomPlant', 'roomCare', 'roomChat', 'roomTelevision', 'roomHistory', 'roomVoice', 'lifeView', 'lifeControl', 'lifeAction', 'lifePreferences', 'lifeDates', 'lifeJournal', 'lifeAlbum', 'lifeSearch', 'lifePhoto', 'lifeForgetPhoto', 'snapshot', 'worldView', 'archiveFind', 'archiveRead', 'desktopOpen', 'desktopClose', 'desktopAppearance', 'companion', 'identity', 'quiet', 'preferences', 'initialize', 'profile']) {
-    native.connection.fetch.register({ path: `/api/chatpetSettings/${endpoint}`, methods: ['POST'], requestBody: 'buffered',
-      async fetch(request) {
-        // Connection authenticates the physical request and admits only owner Peers
-        // to exact routes. Reuse its browser RPC envelope and client correlation.
-        if (request.headers.get('content-type')?.split(';', 1)[0].trim() !== 'application/json')
-          return new Response('Expected JSON', { status: 415 });
-        let body: { type?: unknown; rpcId?: unknown; method?: unknown; payload?: unknown };
-        try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400 }); }
-        if (!body || body.type !== 'client-request' || typeof body.rpcId !== 'string' || body.rpcId.length > 160
-          || body.method !== `chatpetSettings/${endpoint}`) return new Response('Invalid request', { status: 400 });
-        const result = await handler(endpoint, body.payload, request.signal, native.connection.browserPeer);
-        return Response.json({ type: 'server-response', rpcId: body.rpcId, result }, { headers: { 'Cache-Control': 'no-store' } });
-      },
+  const lifetime = new AbortController();
+  for (const endpoint of settingsEndpoints) {
+    ctx.effect(() => {
+      const revoke = connection.fetch.register({
+        path: `/api/chatpetSettings/${endpoint}`, methods: ['POST'], requestBody: 'buffered',
+        async fetch(request) {
+          if (request.headers.get('content-type')?.split(';', 1)[0].trim() !== 'application/json')
+            return new Response('Expected JSON', {status: 415});
+          let body: {type?: unknown; rpcId?: unknown; method?: unknown; payload?: unknown};
+          try { body = await request.json(); } catch { return new Response('Invalid JSON', {status: 400}); }
+          if (!body || body.type !== 'client-request' || typeof body.rpcId !== 'string' || body.rpcId.length > 160
+            || body.method !== `chatpetSettings/${endpoint}`) return new Response('Invalid request', {status: 400});
+          if (lifetime.signal.aborted) return new Response(null, {status: 404});
+          const signal = AbortSignal.any([request.signal, lifetime.signal]);
+          const result = await handler(endpoint, body.payload, signal, connection.browserPeer);
+          return Response.json({type: 'server-response', rpcId: body.rpcId, result}, {headers: {'Cache-Control': 'no-store'}});
+        },
+      });
+      return () => revoke();
     });
   }
   ctx.inject(['petCore'], scope => {
@@ -48,4 +46,5 @@ export function apply(ctx: Context): void {
       status: () => ({state: 'unavailable', reason: 'Native component is not available', supportedOperations: []}),
     }).revoke);
   });
+  ctx.effect(() => () => lifetime.abort());
 }

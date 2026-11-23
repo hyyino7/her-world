@@ -3,13 +3,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createContext,runInContext,runInNewContext} from 'node:vm';
 import {resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {animationMapURL,loadPlayback} from '../fixtures/playback.mjs';
 import ts from 'typescript';
 
 const sourceOnly=process.env.CHATPET_ENDED_HOLD_SOURCE_ONLY==='1';
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {sampleActivityPlayback}=await import(playbackURL);
-const {animationAssets}=await import(new URL('./animation-map.js',playbackURL));
+const {sampleActivityPlayback}=await loadPlayback();
+const {animationAssets}=await import(animationMapURL);
 const native=readFileSync('vendor/dsh-pet/platform/runtime/electron-helper/events.js','utf8');
 const web=readFileSync('src/desktop/platform/client.js','utf8');
 function declaration(source,name) {

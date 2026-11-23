@@ -1,3 +1,6 @@
+export declare const desktopAppearanceDefaults: () => {
+    [x: string]: unknown;
+};
 export declare const DEFAULT_COMPANION_SETTINGS: Readonly<{
     desktopSize: 232;
     desktopFixed: false;
@@ -38,6 +41,7 @@ export type CompanionConfiguration = {
     [K in keyof CompanionSettings]: CompanionSettings[K] | null;
 };
 export declare const EMPTY_COMPANION_CONFIGURATION: Readonly<CompanionConfiguration>;
+export declare function isDesktopSwitch(key: string, value: unknown): value is boolean;
 export declare function parseCompanionConfiguration(raw: unknown): CompanionConfiguration;
 export declare function resolveCompanionSettings(configuration: CompanionConfiguration): CompanionSettings;
 /** Compatibility entry for native consumers that require complete mechanics. */

@@ -1,5 +1,6 @@
 import type { CompanionSettings } from '../core/companion-settings.js';
 import type { StreamChunk } from '@deepseek-ai/dsh-llm';
+import { type EmotionRoomMood } from '../contracts/emotion.js';
 /** The same strict threshold applies on a timer, after dragging and after an animation ends. */
 export declare function workAnimationEligible(startedAt: number | null, now: number, delaySeconds: number): boolean;
 export interface ExpressionAsset {
@@ -13,11 +14,7 @@ export interface ExpressionCatalog {
 }
 /** Shared semantic vocabulary; optional Room scores remain a separate legacy representation. */
 export { COMPANION_FEELINGS } from '../contracts/emotion.js';
-declare const roomDimensions: readonly ["happy", "calm", "sweet", "heartache", "worry", "sad", "jealous"];
-export interface RoomMood {
-    mood: number;
-    dims: Partial<Record<typeof roomDimensions[number], number>>;
-}
+export type RoomMood = EmotionRoomMood;
 export declare function readRoomMood(value: unknown): RoomMood | undefined;
 export interface ReplyIntent {
     action?: string;

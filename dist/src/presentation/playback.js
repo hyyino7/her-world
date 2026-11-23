@@ -1,111 +1,13 @@
 import { animationAssets, animationSlots, animationStickers } from './animation-map.js';
-const quietTalk = new Set(['talk.greet', 'talk.listen', 'talk.screen', 'talk.idle', 'talk.think', 'talk.praise']);
-const foodWorkflows = new Set(['food.await', 'food.choose', 'food.finish']);
-const foodDetails = new Set(['food.utensils']);
-const feelings = new Set(['happy', 'calm', 'sweet', 'heartache', 'worry', 'sad', 'jealous', 'anger', 'boredom']);
 // Single-clip movement rows identify the registered gaits. Combined rows may
 // describe several real phases, but cannot manufacture those phase changes.
 const movementClips = new Set(Object.values(animationSlots).filter(slot => slot.id.startsWith('move.') && slot.clips.length === 1).flatMap(slot => slot.clips));
-/** One admission rule shared by plan parsing, Body and item metadata. A slot is
- * cosmetic authority only; it cannot grant an item or a new business action. */
-export function animationSlotAllowed(value, input) {
-    if (typeof value !== 'string' || !animationSlots[value])
-        return false;
-    const context = typeof input === 'string' ? { kind: input } : input, kind = context.kind;
-    const food = value.startsWith('food.') && !foodWorkflows.has(value) && !foodDetails.has(value) && value !== 'food.caught';
-    if (kind === 'food-item')
-        return food;
-    if ((kind === 'room' || kind === 'move') && value.startsWith('move.'))
-        return true;
-    if (kind === 'hold' || kind === 'room' || kind === 'rest' || kind === 'idle' || kind === 'free')
-        return value.startsWith('rest.') || quietTalk.has(value) || value === 'leisure.balcony';
-    if (kind === 'read')
-        return value === 'read.main' || value === 'read.handling';
-    if (kind === 'body') {
-        if (context.action === 'water')
-            return value.startsWith('drink.');
-        if (context.action === 'feed')
-            return value === 'food.rice' || value === 'food.bowl' || value === 'food.utensils';
-        if (context.action === 'sleep')
-            return value === 'sleep.full' || value === 'sleep.nap';
-        if (context.action === 'wake')
-            return value === 'sleep.full' || value === 'sleep.stretch';
-        return false;
-    }
-    if (kind === 'economy') {
-        if (context.economy?.type === 'consume')
-            return food && (!context.foodSlot || value === context.foodSlot);
-        return context.economy?.type === 'buy' ? value.startsWith('trade.') && value !== 'trade.sell' : context.economy?.type === 'sell' ? value === 'trade.sell' || value === 'trade.inspect' : false;
-    }
-    if (kind === 'garden') {
-        const action = String(context.garden?.type ?? context.garden?.action ?? '');
-        if (action === 'sell')
-            return value === 'trade.sell' || value === 'trade.inspect';
-        if (action === 'buySeed')
-            return value === 'trade.buy-seed' || value === 'trade.inspect';
-        if (action === 'buyCompost')
-            return value === 'trade.buy-compost' || value === 'trade.inspect';
-        return action ? value === 'garden.' + action || action === 'harvest' && (value.startsWith('garden.harvest-') || value === 'garden.dig-harvest') : value.startsWith('garden.');
-    }
-    if (kind === 'walk')
-        return value.startsWith('move.');
-    if (kind === 'drink')
-        return value.startsWith('drink.');
-    if (kind === 'eat')
-        return food && (!context.foodSlot || value === context.foodSlot);
-    if (kind === 'sleep')
-        return value === 'sleep.full' || value === 'sleep.nap';
-    if (kind === 'wake')
-        return value === 'sleep.full' || value === 'sleep.stretch';
-    if (kind === 'nap')
-        return value === 'sleep.nap';
-    if (kind === 'desk')
-        return value === 'desk.code' || value === 'desk.tap';
-    if (kind === 'tv')
-        return value === 'leisure.tv';
-    if (kind === 'phone')
-        return value === 'leisure.phone';
-    if (kind === 'balcony')
-        return value === 'leisure.balcony' || value === 'leisure.cool';
-    if (kind === 'bath' || kind === 'toilet' || kind === 'laundry')
-        return value === 'hygiene.' + kind;
-    if (kind === 'touch')
-        return value.startsWith('touch.');
-    if (kind === 'garden_visit')
-        return value === 'garden.visit';
-    if (kind === 'garden_sell')
-        return value === 'trade.sell' || value === 'trade.inspect';
-    if (kind === 'garden_buySeed')
-        return value === 'trade.buy-seed' || value === 'trade.inspect';
-    if (kind === 'garden_buyCompost')
-        return value === 'trade.buy-compost' || value === 'trade.inspect';
-    if (kind.startsWith('garden_')) {
-        const action = kind.slice(7);
-        return value === 'garden.' + action || action === 'harvest' && (value.startsWith('garden.harvest-') || value === 'garden.dig-harvest');
-    }
-    return false;
-}
-export function requirePresentationSlot(value, context) {
-    if (!animationSlotAllowed(value, context))
-        throw Error('活动动画配对与当前实际活动不兼容');
-    return value;
-}
 function media(id, mode = 'loop', mirror = false) {
     const asset = animationAssets[id] ?? animationAssets.idle;
     return { roomClip: asset.roomClip, desktopClip: asset.desktopClip, durationMs: asset.durationMs, mode, ...(mirror ? { mirror: true } : {}) };
 }
-function currentKind(home) {
-    const her = home.her, activity = home.behavior ?? {}, planned = her.kind === 'planned' ? activity.presentationKind : undefined;
-    return her.asleep ? 'sleep' : her.walking || her.kind === 'walk' ? 'walk' : planned === 'read'
-        ? activity.readingState === 'offered' ? 'read' : 'reading-wait' : planned || (her.kind === 'read' ? 'reading-wait' : her.kind || 'idle');
-}
-function singleFeeling(home) {
-    const values = Array.isArray(home.emotion?.feelings) ? home.emotion.feelings : [];
-    const present = [...new Set(values.filter((value) => typeof value === 'string'))];
-    return present.length === 1 && feelings.has(present[0]) ? present[0] : undefined;
-}
 function onset(value) { return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0; }
-function primarySlot(kind, home, context) {
+function primarySlot({ kind, rest, feeling }, home, context) {
     if (kind === 'walk')
         return home.her.runStyle === 'hurry' ? 'move.hurry' : home.her.runStyle === 'happy' ? 'move.happy' : 'move.normal';
     if (kind === 'eat')
@@ -120,8 +22,8 @@ function primarySlot(kind, home, context) {
         return 'rest.calm';
     if (kind === 'drink')
         return 'drink.cup';
-    if (['rest', 'idle', 'free'].includes(kind))
-        return 'rest.' + (singleFeeling(home) ?? 'calm');
+    if (rest)
+        return 'rest.' + (feeling ?? 'calm');
     const normal = { nap: 'sleep.nap', desk: 'desk.code', tv: 'leisure.tv', phone: 'leisure.phone', balcony: 'leisure.balcony', bath: 'hygiene.bath', toilet: 'hygiene.toilet', laundry: 'hygiene.laundry', garden_visit: 'garden.visit', garden_sell: 'trade.sell', garden_buySeed: 'trade.buy-seed', garden_buyCompost: 'trade.buy-compost' };
     if (normal[kind])
         return normal[kind];
@@ -137,12 +39,11 @@ function liveInteraction(home, context) {
         return;
     return value;
 }
-function touchSlot(home, kind) {
+function touchSlot(kind, feeling) {
     if (kind === 'sleep')
         return 'touch.asleep';
     if (kind === 'react_scare')
         return 'touch.poke';
-    const feeling = singleFeeling(home);
     if (feeling)
         return 'touch.' + feeling;
     return kind === 'react_happy' ? 'touch.happy' : kind === 'react_shy' ? 'touch.sweet' : kind === 'react_pout' ? 'touch.anger' : 'touch.notice';
@@ -190,18 +91,19 @@ function clipsFor(slot, kind, foodSlot) {
         gap = true;
     return { ids, gap, match, uncovered };
 }
-export function resolveActivityPlayback(home) {
+export function resolveActivityPlayback(home, animationSlotAllowed, classify) {
     if (!home?.her)
         return;
     const her = home.her, activity = home.behavior ?? {}, context = activity.animationContext ?? {};
-    const kind = currentKind(home), interaction = liveInteraction(home, context);
-    let selected = primarySlot(kind, home, context), rejected = false;
+    const intent = classify(home), { kind, rest, touchFeeling, namedRestHint } = intent;
+    const interaction = liveInteraction(home, context);
+    let selected = primarySlot(intent, home, context), rejected = false;
     const moving = kind === 'walk', requested = context.slotId;
     // A future activity's portrayal may accompany its accepted route, but cannot
     // replace the route. Food identity is catalog-owned, never an activity phrase.
     if (requested) {
         let compatible = animationSlotAllowed(requested, { kind, foodSlot: context.foodSlot });
-        if (compatible && ['rest', 'idle', 'free'].includes(kind) && requested.startsWith('rest.') && feelings.has(requested.slice(5)))
+        if (compatible && namedRestHint)
             compatible = requested === selected;
         if (compatible && moving && ['move.happy', 'move.hurry'].includes(requested) && ['happy', 'hurry'].includes(her.runStyle))
             compatible = requested === 'move.' + her.runStyle;
@@ -213,13 +115,13 @@ export function resolveActivityPlayback(home) {
     const touch = interaction && ['pet', 'poke'].includes(interaction.action);
     const response = kind.startsWith('react_') || kind === 'idle_look';
     if (touch && response)
-        selected = interaction.action === 'poke' ? 'touch.poke' : touchSlot(home, kind);
+        selected = interaction.action === 'poke' ? 'touch.poke' : touchSlot(kind, touchFeeling);
     let startedAt = onset(activity.startedAt);
-    if (['rest', 'idle', 'free'].includes(kind))
+    if (rest)
         startedAt = Math.max(onset(context.startedAt), onset(home.emotion?.updatedAt), startedAt);
     if (touch && response)
         startedAt = interaction.at;
-    const freeze = context.presentationFreeze, pausedMs = ['rest', 'idle', 'free'].includes(kind) && startedAt > 0
+    const freeze = context.presentationFreeze, pausedMs = rest && startedAt > 0
         && freeze?.onsetAt === startedAt && Number.isSafeInteger(freeze.pausedMs) && freeze.pausedMs > 0 ? freeze.pausedMs : 0;
     const slot = selected ? animationSlots[selected] : undefined;
     let built = clipsFor(slot, kind, context.foodSlot), segments = [];
@@ -246,13 +148,19 @@ export function resolveActivityPlayback(home) {
         ...(pausedMs ? { pausedMs } : {}),
         ...(notice ? { notice } : {}), toolOwner: kind.startsWith('garden_') && kind !== 'garden_visit' ? 'clip' : 'none' };
     if (interaction) {
-        const feedbackSlot = touch ? animationSlots[interaction.action === 'poke' ? 'touch.poke' : touchSlot(home, kind)] : undefined;
+        const feedbackSlot = touch ? animationSlots[interaction.action === 'poke' ? 'touch.poke' : touchSlot(kind, touchFeeling)] : undefined;
         const sticker = feedbackSlot?.stickers.find(label => Boolean(animationStickers[label]));
         result.feedback = { id: interaction.id, at: interaction.at, until: interaction.until,
             ...(interaction.text || interaction.summary ? { text: interaction.text || interaction.summary } : {}),
             ...(sticker ? { sticker } : {}), ...(feedbackSlot ? { slotId: feedbackSlot.id, gap: feedbackSlot.match === 'proxy' || feedbackSlot.uncovered.length > 0 } : {}) };
     }
     return result;
+}
+/** Playback is attached by the carriers to their existing home response. */
+export function withHomePlayback(home, animationSlotAllowed, classify) {
+    if (!home?.her || home.playback)
+        return home;
+    return { ...home, playback: resolveActivityPlayback(home, animationSlotAllowed, classify) };
 }
 /** Self-contained for both generated carriers: no resolver/table is inlined.
  * Unknown starts skip historical one-shots; loops share a cosmetic clock. */

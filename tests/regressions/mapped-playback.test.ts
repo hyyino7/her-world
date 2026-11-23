@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {animationAssets,animationSlots,animationStickers,animationRoomAliases} from '../../src/living/body/animation-map.js';
-import {resolveActivityPlayback,sampleActivityPlayback,animationSlotAllowed,requirePresentationSlot} from '../../src/living/body/playback.js';
+import {COMPANION_FEELINGS} from '../../src/contracts/emotion.js';
+import {behaviorPresentation, classifyActivity} from '../../src/living/body/presentation.js';
+import {animationAllocation,animationAssets,animationSlots,animationStickers,animationRoomAliases} from '../fixtures/playback.js';
+import {resolveActivityPlayback,sampleActivityPlayback,animationSlotAllowed,requirePresentationSlot} from '../fixtures/playback.js';
 const home=(kind='idle',context:any={})=>({now:2000,her:{kind,activity:'Actual activity',spot:'sofa',pose:'stand'},behavior:{activityId:'accepted',phase:'working',startedAt:1000,animationContext:context},emotion:{feelings:[] as string[],updatedAt:0}});
 const clip=(s:any,at=2000)=>sampleActivityPlayback(resolveActivityPlayback(s)!,at)!;
 
 test('the generated runtime index covers the approved name map without extra assets',()=>{
-  const design=JSON.parse(readFileSync('src/living/body/animation-allocation.json','utf8'));
+  const design=JSON.parse(readFileSync(animationAllocation,'utf8'));
   assert.deepEqual(Object.keys(animationAssets),design.assets.map((row:any)=>row.id));
   assert.deepEqual(Object.keys(animationSlots),design.slots.map((row:any)=>row.id));
   assert.deepEqual(Object.keys(animationStickers),design.stickers.map((row:any)=>row.label));
@@ -135,20 +137,111 @@ test('a rest presentation hint follows the current companion feeling instead of 
   assert.equal(accepted.slotId,'rest.happy');assert.equal(accepted.gap,false);assert.equal(accepted.startedAt,1700);
   assert.equal(resolveActivityPlayback({...s,now:5000})!.key,accepted.key);
 });
-test('mixed or unknown feelings retain neutral rest even with a specific emotional hint',()=>{
-  for(const values of [['sad','happy'],['happy','sad'],[],['curious'],['sad','curious']]){
-    const s=home('idle',{slotId:'rest.happy'});s.emotion={feelings:values,updatedAt:1000};
-    const p=resolveActivityPlayback(s)!;assert.equal(p.slotId,'rest.calm');assert.equal(p.gap,true);assert.equal(clip(s).desktopClip,'待机呼吸休闲');
+test('all declared feelings keep their own rest slot and original display label',()=>{
+  const labels=['开心','平静','甜蜜','心疼','担心','难过','吃醋','生气','无聊'];
+  for(const [index,feeling] of COMPANION_FEELINGS.entries()){
+    const s=home('idle');s.emotion={feelings:[feeling],updatedAt:1000};
+    const intent=classifyActivity(s), playback=resolveActivityPlayback(s,intent)!;
+    const presentation=behaviorPresentation(s,undefined,intent);
+    assert.equal(presentation.action,'emotion/'+feeling);
+    assert.equal(presentation.emotionLabel,labels[index]);
+    assert.equal(playback.slotId,'rest.'+feeling);
   }
 });
-test('mixed feelings do not acquire an invented hard-coded emotion priority',()=>{
-  for(const values of [['sad','happy'],['happy','sad']]){const s=home('idle');s.emotion={feelings:values,updatedAt:1000};assert.equal(resolveActivityPlayback(s)!.slotId,'rest.calm');}
+
+test('mixed feelings share the same priority and sampled Room and Desktop frames',()=>{
+  const cases=[
+    {values:['anger','calm'],feeling:'anger',at:1000,room:'react_pout',desktop:'点击回应-傲娇生气'},
+    {values:['anger','boredom'],feeling:'anger',at:1000,room:'react_pout',desktop:'点击回应-傲娇生气'},
+    {values:['sad','boredom'],feeling:'boredom',at:12000,room:'idle_look',desktop:'东张西望'},
+    {values:['sad','happy'],feeling:'happy',at:12000,room:'idle_hum',desktop:'悠闲哼歌'},
+    {values:['sad','curious'],feeling:'sad',at:12000,room:'sick',desktop:'工作状态-垂头叹气冒汗'},
+    {values:['happy','calm'],feeling:'happy',at:12000,room:'idle_hum',desktop:'悠闲哼歌'},
+  ];
+  for(const {values,feeling,at,room,desktop} of cases){
+    const s=home('idle');
+    const variants=[values,[...values].reverse(),[...values,...values]];
+    const keys=variants.map(feelings=>{
+      s.emotion={feelings,updatedAt:1000};
+      const intent=classifyActivity(s), playback=resolveActivityPlayback(s,intent)!;
+      const presentation=behaviorPresentation(s,undefined,intent);
+      assert.equal(presentation.action,'emotion/'+feeling);
+      assert.deepEqual(presentation.feelings,feelings.filter(value=>value!=='curious'));
+      assert.equal(playback.slotId,'rest.'+feeling);
+      const frame=sampleActivityPlayback(playback,at)!;
+      assert.deepEqual([frame.roomClip,frame.desktopClip],[room,desktop]);
+      assert.equal(sampleActivityPlayback(playback,30000)?.roomClip,'idle');
+      return playback.key;
+    });
+    assert.equal(new Set(keys).size,1);
+  }
+  const s=home('idle');s.emotion={feelings:['calm','anger','curious'],updatedAt:1000};
+  assert.equal(behaviorPresentation(s).emotionLabel,'平静、生气');
+  assert.equal(behaviorPresentation(s).fallback,false);
+  s.emotion.feelings=['calm','sad'];
+  assert.equal(behaviorPresentation(s).fallback,true);
 });
+
+test('unknown feelings retain free text and a slot hint cannot invent emotion',()=>{
+  for(const feelings of [[],['curious']]){
+    const s={...home('idle',{slotId:'rest.happy'}),emotion:{feelings,updatedAt:1000,label:'好奇'}};
+    assert.equal(behaviorPresentation(s).action,'idle');
+    assert.equal(behaviorPresentation(s).emotionLabel,'好奇');
+    const p=resolveActivityPlayback(s)!;
+    assert.equal(p.slotId,'rest.calm');
+    assert.equal(p.gap,true);
+    assert.equal(clip(s).desktopClip,'待机呼吸休闲');
+  }
+});
+
+test('actual sleep, walking, eating, reading and garden outrank feelings',()=>{
+  const expression={sessionId:'fixture',turn:1,action:'spin',sticker:'wave'};
+  assert.equal(behaviorPresentation({emotion:{feelings:['anger']}}, expression).action,'idle');
+  assert.equal(resolveActivityPlayback({emotion:{feelings:['anger']}}),undefined);
+  const cases=[
+    {kind:'idle',body:{asleep:true},activity:{},actual:'sleep',action:'sleep'},
+    {kind:'planned',body:{walking:true},activity:{presentationKind:'read',readingState:'offered'},actual:'walk',action:'walk'},
+    {kind:'eat',body:{},activity:{},actual:'eat',action:'eat'},
+    {kind:'planned',body:{},activity:{presentationKind:'reading-wait',readingState:'unread',phase:'pending'},actual:'reading-wait',action:'activity'},
+    {kind:'planned',body:{},activity:{presentationKind:'reading-wait',phase:'working'},actual:'reading-wait',action:'activity'},
+    {kind:'planned',body:{},activity:{presentationKind:'read',readingState:'offered'},actual:'read',action:'activity'},
+    {kind:'garden_water',body:{},activity:{},actual:'garden_water',action:'activity'},
+  ];
+  for(const {kind,body,activity,actual,action} of cases) {
+    const s=home(kind);
+    Object.assign(s.her,body);Object.assign(s.behavior,activity);s.emotion.feelings=['anger','calm'];
+    const intent=classifyActivity(s), playback=resolveActivityPlayback(s,intent)!;
+    assert.equal(behaviorPresentation(s,expression,intent).action,action);
+    assert.equal(playback.kind,actual);
+    assert.equal(playback.activityId,'accepted');
+    assert.equal(playback.startedAt,1000);
+  }
+  const idle=home('idle');idle.emotion.feelings=['anger','calm'];
+  const intent=classifyActivity(idle), presentation=behaviorPresentation(idle,expression,intent);
+  assert.equal(presentation.action,'expression');
+  assert.deepEqual(presentation.expression,expression);
+  assert.equal(resolveActivityPlayback(idle,intent)?.slotId,'rest.anger');
+});
+
 test('unknown rest starts skip historical gestures when a window opens',()=>{
   const s=home('idle');s.behavior.startedAt=0;s.emotion={feelings:['happy'],updatedAt:0};
   const p=resolveActivityPlayback(s)!;assert.equal(p.startedAt,0);assert.equal(sampleActivityPlayback(p,2000)!.desktopClip,'待机呼吸休闲');
 });
 const pet=(id='owner-touch')=>({id,action:'pet',at:1500,until:5000,actor:{kind:'owner'},summary:'主人刚摸了摸你的头'});
+test('touch still requires a single distinct known feeling and a live owner fact',()=>{
+  for(const [feelings,slot] of [
+    [['sad','sad'],'touch.sad'],
+    [['sad','calm'],'touch.notice'],
+    [['sad','curious'],'touch.notice'],
+  ] as const){
+    const s=home('idle_look',{interaction:pet()});s.emotion={feelings:[...feelings],updatedAt:1000};
+    const playback=resolveActivityPlayback(s)!;
+    assert.equal(playback.slotId,slot);
+    assert.equal(playback.feedback?.slotId,slot);
+    assert.equal(playback.startedAt,1500);
+  }
+});
+
 test('busy touch uses CURRENT with fact feedback and does not restart actual reading',()=>{
   const s=home('planned');Object.assign(s.behavior,{presentationKind:'read',readingState:'offered'});s.emotion={feelings:['sweet'],updatedAt:1000};
   const before=resolveActivityPlayback(s)!;s.behavior.animationContext={interaction:pet()};const p=resolveActivityPlayback(s)!;

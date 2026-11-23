@@ -1,3 +1,4 @@
+import { type ConsoleOperation } from '../core/tables/console.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../core/index.js';
 import { type ExpressionEvent, type PlaybackReceipt, type ReplyIntent } from './index.js';
@@ -70,5 +71,19 @@ declare module '@deepseek-ai/cordis' {
         'pet/emotion.changed'(workspaceId: string, snapshot: EmotionSnapshot): void;
     }
 }
+export declare function emotionConsoleOperations(emotion: Pick<CompanionEmotion, 'current' | 'catalog' | 'read' | 'update'>): {
+    operations: {
+        emotionState: ConsoleOperation;
+        emotionUpdate: ConsoleOperation;
+    };
+    status(workspaceId: string): {
+        current: {
+            mood: string;
+            at: number;
+        } | null;
+        actions: string[];
+        stickers: string[];
+    };
+};
 export declare function apply(ctx: Context): void;
 export {};

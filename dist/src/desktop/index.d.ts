@@ -6,7 +6,7 @@ import { Conversation, type NativeDesktopHost, type NativeEvent, type NativeSess
 type HostServices = NativeDesktopHost & {
     getPresentation?(): {
         show(): Promise<unknown>;
-        hide(): Promise<unknown>;
+        hide(validate?: () => void): Promise<unknown>;
         bodyStatus(): {
             running: boolean;
         };
@@ -34,6 +34,7 @@ export declare class Desktop {
     private clock?;
     private work?;
     private bodyBinding?;
+    private readonly chatVoice;
     readonly chat: Conversation;
     features?: DesktopFeatures;
     constructor(native: HostServices, host: PetCoreHost);
@@ -64,7 +65,7 @@ export declare class Desktop {
     start(): Promise<void>;
     openChat(): Promise<void>;
     private handle;
-    closeWindow(): Promise<void>;
+    closeWindow(validate?: () => void): Promise<void>;
     closeChat(): void;
 }
 export declare function registerDesktop(ctx: Context, host: PetCoreHost): void;

@@ -112,7 +112,11 @@ export function openQQ(host:Host) {
         // not consume Room's conversation-specific audio quota.
         times.push(now);voiceTimes.set(targetKey,times);
         let bytes:Buffer|undefined;
-        try {bytes=await host.speak(spoken);} catch {voiceTimes.set(targetKey,(voiceTimes.get(targetKey)??[]).filter(t=>t!==now));error='语音合成不可用，已改用文字';}
+        try {bytes=await host.speak(spoken);} catch (failure) {
+          voiceTimes.set(targetKey,(voiceTimes.get(targetKey)??[]).filter(t=>t!==now));
+          if(!allowed(last.identity)||muted() || failure instanceof Error && failure.name==='AbortError')return;
+          error='语音合成不可用，已改用文字';
+        }
         if(!allowed(last.identity)||muted())return;
         if(bytes) {
           try {

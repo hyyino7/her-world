@@ -7,6 +7,8 @@ import { createCore, type CoreConfig } from '../../src/core/index.js';
 import {NativeMemory} from '../../src/core/native/memory.js';
 import { settingsHandler } from '../../src/console/settings.js';
 import { reject } from '../../src/core/storage.js';
+import { emotionConsoleOperations } from '../../src/emotion/plugin.js';
+import { lifeConsoleOperations } from '../../src/living/plan/plugin.js';
 import type { Result } from '../../src/contracts/common.js';
 import { estimateTokens } from '#dsh-world/console/snapshot';
 const unwrap = <T>(value: Result<T>): T => { if (!value.ok) assert.fail(value.error.code); return value.value; };
@@ -115,7 +117,7 @@ test('native settings RPC rejects forged authority and unknown workspaces; indep
   const target = { id: 'native-workspace', path: f.directory, title: 'Native workspace', status: async () => 'ok' as const };
   let worldModules = ['persona', 'archive'];
   const handler = settingsHandler(() => host, () => ({ list: () => [target], get: id => id === target.id ? target : undefined }),
-    undefined, () => worldModules);
+    () => worldModules);
   const signal = new AbortController().signal;
   const peer = { principal: { kind: 'owner' }, signal };
   const call = (endpoint: string, input: unknown, requestId = endpoint) => handler(endpoint, { requestId, input }, signal, peer);
@@ -172,9 +174,11 @@ test('World view projects only the current bound workspace and loaded module own
     current: (workspaceId: string) => workspaceId === a.id
       ? { mood: '轻快', at: 17, reason: 'private reason', memories: ['private memory'] } : undefined,
     catalog: { actions: [{ name: 'wave', label: '挥手', description: 'action' }], stickers: [{ name: 'sleep', description: 'sticker' }] },
+    read() { assert.fail('World view does not read the full Emotion snapshot'); },
+    update() { assert.fail('World view does not change Emotion'); },
   };
-  let emotionLoaded = true;
-  const handler = settingsHandler(() => host, () => registry, undefined, () => world, () => emotionLoaded ? emotion : undefined);
+  const registration = host.native.consoleOperations.register('emotion', emotionConsoleOperations(emotion));
+  const handler = settingsHandler(() => host, () => registry, () => world);
   const signal = new AbortController().signal;
   let seq = 0;
   const call = (endpoint: string, input: unknown, kind = 'owner') =>
@@ -253,7 +257,7 @@ test('World view projects only the current bound workspace and loaded module own
     world = modules;
     a.status = async () => { await bind(b); return 'ok'; };
     assert.equal((await view(a.id)).ok, false, 'binding changed during directory inspection');
-    emotionLoaded = false;
+    await registration.revoke();
     const second = await view(b.id);
     assert.ok(second.ok);
     const currentProfile = host.native.context();
@@ -315,7 +319,8 @@ test('Life settings require owner, current binding and finite actions before inv
     unwrap(await host.services.workspace.initialize(host.operator.request('life-init'), {expectedPreferencesRevision:saved.revision}));
     const calls: string[] = [];
     const life = {snapshot:async () => {calls.push('read');return {};}, control:async () => {calls.push('control');return {};}, act:async () => {calls.push('act');return {};}};
-    const handler = settingsHandler(() => host, () => undefined, undefined, undefined, undefined, () => life as never);
+    host.native.consoleOperations.register('life', lifeConsoleOperations(life as never));
+    const handler = settingsHandler(() => host, () => undefined);
     const run = (endpoint: string, input: object, kind='owner') => handler(endpoint, {requestId:Math.random().toString(),input}, signal, {principal:{kind},signal});
     for (const result of [await run('lifeControl',{workspaceId:'life-repo',enabled:true},'guest'),
       await run('lifeAction',{workspaceId:'other',action:'water'}), await run('lifeAction',{workspaceId:'life-repo',action:'run-shell'}),

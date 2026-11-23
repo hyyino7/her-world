@@ -3,18 +3,17 @@ import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,mkdirSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {compiledURL,loadPlayback} from '../fixtures/playback.mjs';
 import {createRequire} from 'node:module';
 import {createContext,runInContext} from 'node:vm';
 import ts from 'typescript';
 
-const playbackURL=pathToFileURL(process.env.CHATPET_PLAYBACK_TEST_MODULE||resolve('dist/src/living/body/playback.js'));
-const {resolveActivityPlayback,sampleActivityPlayback}=await import(playbackURL);
-const {CompanionRoom}=await import(new URL('./room.js',playbackURL));
-const {CompanionBehavior}=await import(new URL('./plugin.js',playbackURL));
-const {PetPlatform}=await import(new URL('../../desktop/platform/plugin.js',playbackURL));
-const {DesktopFeatures}=await import(new URL('../../desktop/features.js',playbackURL));
-const {DEFAULT_COMPANION_SETTINGS}=await import(new URL('../../core/companion-settings.js',playbackURL));
+const {resolveActivityPlayback,sampleActivityPlayback}=await loadPlayback();
+const {CompanionRoom}=await import(compiledURL('living/body/room.js'));
+const {CompanionBehavior}=await import(compiledURL('living/body/plugin.js'));
+const {PetPlatform}=await import(compiledURL('desktop/platform/plugin.js'));
+const {DesktopFeatures}=await import(compiledURL('desktop/features.js'));
+const {DEFAULT_COMPANION_SETTINGS}=await import(compiledURL('core/companion-settings.js'));
 const upstream=createRequire(import.meta.url)(resolve('vendor/dsh-pet/platform/runtime.mjs'));
 const native=readFileSync('vendor/dsh-pet/platform/runtime/electron-helper/events.js','utf8');
 const web=readFileSync('src/desktop/platform/client.js','utf8');
@@ -143,7 +142,10 @@ function integration(t,feeling='sweet',activityKind='hold') {
   const frames=[],writes=[],calls=[],binding={id:'fixture',path:dir,storageId:'fixture'};
   const projection=Object.create(CompanionBehavior.prototype);
   Object.assign(projection,{binding:{room},bootId:'fixture-body',revision:0});
-  const snapshot=()=>projection.presentHome(room.view(Date.now()));
+  const snapshot=()=>{
+    const home=room.view(Date.now());
+    return {...home,behavior:projection.publicBehavior(home.her)};
+  };
   const behavior={roomState:async()=>snapshot(),restState:()=>({sleeping:room.state.asleep,pending:room.state.sleepPending}),
     roomAction:async(id,input,by,interaction)=>{calls.push({id,input,by,interaction});return room.act(input,by,Date.now(),interaction);}};
   const host={workspace:{status:()=>({state:'ready',target:binding}),storageId:()=>binding.storageId,companionSettings:()=>DEFAULT_COMPANION_SETTINGS,

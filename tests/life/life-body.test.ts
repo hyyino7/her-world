@@ -13,6 +13,8 @@ import { CompanionBehavior } from '../../src/living/body/plugin.js';
 import { CompanionRoom } from '../../src/living/body/room.js';
 import { CompanionRecordLibrary } from '../../src/core/records.js';
 import type { RoomMood } from '../../src/emotion/index.js';
+import type {WorldChanged} from '../../src/contracts/living.js';
+import {livingNotifications} from '../fixtures/living-notifications.js';
 
 test('visits and ordinary care preserve an autonomous trip and its current position', t => {
   const directory = mkdtempSync(join(tmpdir(), 'companion-autonomous-motion-'));
@@ -62,7 +64,7 @@ test('the desktop and room use one saved body through pending sleep, arrival, ca
   const base = mkdtempSync(join(tmpdir(), 'companion-body-'));
   t.after(() => rmSync(base, {recursive: true, force: true}));
   const workspaces = ['a', 'b'].map(id => ({id, path: join(base, id), sessionIds: [] as string[]}));
-  let target = workspaces[0];
+  let target = workspaces[0], generation = 0;
   const now = new Date(2026, 10, 11, 12, 10).getTime();
   t.mock.timers.enable({apis: ['Date'], now});
   for (const workspace of workspaces) {
@@ -78,6 +80,7 @@ test('the desktop and room use one saved body through pending sleep, arrival, ca
   }
   const registry = {get: (id: string) => workspaces.find(w => w.id === id)};
   const host = {native: {}, workspace: {status: () => ({state: 'ready', target}), storageId: () => target.id,
+    homeScope: () => ({workspaceId: target.id, path: target.path, storageId: target.id, bootId: 'fixture', generation}),
     runtime:{config:{ownerActorId:'owner',companionId:'fish'},identity:()=>({displayName:'Fixture'}),store:{meta:()=>undefined}}}} as unknown as PetCoreHost;
   const frames: {type: string; value: any}[] = [];
   let mood: RoomMood | undefined = {mood: 78, dims: {happy: 35}};
@@ -95,7 +98,8 @@ test('the desktop and room use one saved body through pending sleep, arrival, ca
   } as unknown as Context;
   features = new DesktopFeatures(context, host, (type, value) => frames.push({type, value}), () => true, () => false);
   life = new CompanionLife(context, host, 'standard', {body:()=>behavior});
-  behavior = new CompanionBehavior(context, host, {plan:()=>life});
+  behavior = new CompanionBehavior(context, host, livingNotifications(t, context, host, 'body', {plan:()=>life}));
+  behavior.activate();
   await behavior.setAutonomy(target.id, true);
   t.after(async () => {await life.close(); await behavior.close(); await features.close();});
   const desktop = (path: string) => features.request({path, method: 'POST'});
@@ -147,10 +151,10 @@ test('the desktop and room use one saved body through pending sleep, arrival, ca
   const control = {type: 'auto', enabled: false, requestId: 'once'};
   assert.ok((await life.garden(target.id, 'control', control)).ok);
   assert.equal((await life.garden(target.id, 'control', control)).garden.care.receipts.filter((r: {requestId: string}) => r.requestId === 'once').length, 1);
-  target = workspaces[1];
+  target = workspaces[1]; generation++;
   await assert.rejects(life.roomAction('a', note), /切换/);
   assert.equal((await life.roomState(target.id)).room.notes.length, 0);
-  target = workspaces[0];
+  target = workspaces[0]; generation++;
   assert.deepEqual((await life.roomState(target.id)).room.notes.map((n: {text: string}) => n.text), [note.text, 'Later']);
 });
 
@@ -169,11 +173,13 @@ test('paused or absent Life permits explicit body and garden work without passiv
     homeScope(){return {workspaceId:target.id,path:target.path,storageId:this.storageId(),bootId:'fixture-boot',generation:0};},
     readCompanionHome:()=>undefined,
     runtime:{config:{ownerActorId:'owner',companionId:'fish'},identity:()=>({displayName:'Fixture',companionId:'fish'}),store:{meta:()=>undefined}}}} as unknown as PetCoreHost;
-  const changes: unknown[]=[];
+  const changes: WorldChanged[] = [];
   let behavior:CompanionBehavior;
   const ctx = {get:(name:string)=>name==='petBehavior'?behavior:name==='workspaceRegistry'?{get:()=>({...target,sessionIds:[]})}:undefined,
-    emit:(_name:string,change:unknown)=>changes.push(change),tools:{register(){}},on:()=>()=>{},effect:()=>()=>{}} as unknown as Context;
-  behavior = new CompanionBehavior(ctx,host); t.after(()=>behavior.close());
+    emit:(name:string,change:WorldChanged)=>{if (name === 'world.changed') changes.push(change);},
+    tools:{register(){}},on:()=>()=>{},effect:()=>()=>{}} as unknown as Context;
+  behavior = new CompanionBehavior(ctx, host, livingNotifications(t, ctx, host, 'body'));
+  behavior.activate(); t.after(()=>behavior.close());
   const initial = await behavior.snapshot(target.id);
   const originalNeeds = {...initial.home.body};
   const originalGarden = (await behavior.garden(target.id,'state')).garden;
@@ -217,5 +223,5 @@ test('paused or absent Life permits explicit body and garden work without passiv
   const life=new CompanionLife(ctx,host,'standard',{body:()=>behavior});
   await life.control(target.id,false);await life.close();
   assert.ok((await behavior.act(target.id,'pet')).changed,'Unloading the actual Life owner leaves the body service operational');
-  assert.ok(changes.length);
+  assert.ok(changes.some(change => change.workspaceId === target.id && change.bodyOnly));
 });

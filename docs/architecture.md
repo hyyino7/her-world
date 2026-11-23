@@ -57,7 +57,7 @@
 | `contracts/` | 268 | 拆成三份，各层一份 | 接口跟着拥有者走 |
 | `living/body/` + `living/plan/` + `living/economy/` | 6430（0.1.8 时三个旧目录合计） | 第二层 | 2a 已合并成 `src/living/` 和一个常驻实例，见 2.3 与第 6 节 |
 | `desktop/` | 21380（大头是生成文件） | 第三层 | 生成文件改生成器，不手改 |
-| `room/` | 989 | 第三层 | 不再引用 `desktop/images` |
+| `room/` | 989 | 第三层 | 拥有房间窗口、交互接线和图片副本 |
 | `channels/` | 1818 | 第三层 | 不再往 Core 数据库的 `records` 表写自己的记录 |
 | `voice/` | 71 | 第三层 | 通过第一层声明的「语音接口」使用，见 5.4 |
 | `console/` | 1674 | 第三层 | 通过「运维操作表」操作其他模块，见 5.5 |
@@ -78,11 +78,12 @@
 | **提示词与历史投影** | 各模块登记提示词片段；工具结果在历史里怎么瘦身 | 历史瘦身已由工具声明的 `historyOverview` 派生（`core/tables/tools.ts`），Core 不再 import 各模块的投影函数。提示词片段继续用 `registerWorldPrompt`（`core/native/prompt.ts:99`）在模块入口登记，动态段退休照旧（`core/native/prompt.ts:27-63`）；段声明表和状态快照退休表**不做**（阶段 1 缩小） |
 | **来源适配表** | 一种「原生输入来源」登记一整套适配：准入、工具限制、守卫、历史投影、图片恢复 | 已落地：`core/tables/sources.ts`，挂在 `host.native.sourceTable`。Core 登记主人原生输入，Life、Room、Channels 各自登记适配器，Desktop 登记首步前的图片恢复和第 7、9 行声明（5.8）。判定分 `unclaimed / rejected / accepted / failed`，另有只读分类供历史投影。登记完成屏障未实现，见下面的契约 |
 | **能力状态表** | 各模块登记自己的状态行（只有状态和操作名，不能被调用） | 已落地：`core/tables/capabilities.ts`。Core 只登记会话和记忆两行，其余由提供它的模块在入口登记、卸载时撤销；模块缺席即无行，设置页对这类拥有者显示「不可用」 |
-| **运维操作表** | 设置页要执行的操作（开房间、授权访问、改平台设置、操作 Channels）由各模块登记，控制台只调用这张表 | 未做（阶段 3）：控制台直接认识 Desktop、Room、Life、Emotion、Economy、Channels |
+| **语音调用表** | 载体查询可用性并调用合成、识别和音色列表 | `host.native.voiceTable` 按 Core 实例和 Cordis 服务隔离标签解析 Voice 登记。每次调用捕获登记租约，提供方卸载或调用方取消时中止并丢弃迟到结果。 |
+| **运维操作表** | 设置页要执行的操作（开房间、授权访问、改平台设置、操作 Channels）由各模块登记，控制台只调用这张表 | Core 的 `host.native.consoleOperations` 按拥有者登记，并沿用 Cordis 服务隔离。调用捕获登记租约、工作区绑定和请求号；Console 虽可独立装卸，仍统一负责 Connection 路由的撤销。两个旧钱包写入口保留原路径，由 Economy 统一持久登记和派发 |
 
 另有伙伴工具声明表（`core/tables/tools.ts`，挂在 `host.native.toolTable`）：各模块在工具定义旁声明可用来源和可选的历史概览，Life 名单和历史瘦身由它派生。三个登记口共用 `core/tables/registry.ts` 的登记表。
 
-另有伙伴判定登记口（`core/tables/companion-ports.ts`，挂在 `host.native.companionPorts`），复用同一个登记表，让第一层不再读生活服务：Body 登记「身体可用」，Plan 登记「此会话由 Life 自带相册」和「仍是运行中的 Life home」，Room 登记「此会话正在看电视」，`LivingWorld` 在首个可见区挂载时登记活动只读接口（`living/plan/activity-reader.ts`）。生产方只在挂载时按 Cordis 根和隔离标签判断对 Core 是否可见，读取时核对租约；读不到登记时等同服务不在。Memory 另提供向下调用的 `host.native.requestReviewCompaction(sessionId)`，由 Life 回顾完成和 Bridge 整理调用。
+另有伙伴判定登记口（`core/tables/companion-ports.ts`，挂在 `host.native.companionPorts`），复用同一个登记表，让第一层不再读生活服务：Body 登记「身体可用」，Plan 登记「此会话由 Life 自带相册」和「仍是运行中的 Life home」，Room 登记「此会话正在看电视」和「打开 Room 窗口」，`LivingWorld` 在首个可见区挂载时登记活动只读接口（`living/plan/activity-reader.ts`）。生产方只在挂载时按 Cordis 根和隔离标签判断对 Core 是否可见，读取时核对租约；读不到登记时等同服务不在。Memory 另提供向下调用的 `host.native.requestReviewCompaction(sessionId)`，由 Life 回顾完成和 Bridge 整理调用。
 
 **每张表的契约（契约测试在 `tests/core/tables*.test.ts`）：**
 
@@ -106,7 +107,7 @@
 
 - **一个常驻实例**：`LivingWorld`（`living/index.ts`）按 Cordis 根、Core 实例和服务隔离标签分组，三个生活入口里先加载的那个创建，最后一个卸载时释放；每个区仍留在自己入口的作用域里，卸载哪个入口只停哪个区（6.2）。
 - 对外四样（世界快照、命令、事实流、`world.changed`）的定义在 5.2。
-- 三个区之间经实例查找，不再通过 Cordis 服务名互相查找；区之间仍互发的三个旧事件（Life 订阅 `pet/behavior.changed`、`pet/economy.fact`，Body 订阅 `pet/life.changed`）改成直接调用，归阶段 3，和第三层改用 `world.changed`、退掉旧事件一起做。
+- 三个区之间经实例查找。Body 的实际转场和 Economy 新提交的事实给当前 Plan 排队。Plan 在控制和启停边界安排 Body 串行同步，显式暂停会等待在场的 Body 停下原计划与自治。通知核对工作区绑定代次和双方租约。外部呈现订阅 `world.changed`。
 - **合并目录不等于合并事务。** 身体文件和经济数据库仍然分开提交，「身体效果已生效、库存结算失败后重启补结算」的现有协议原样保留，不改。
 
 ### 2.4 第三层「呈现与连接」管什么
@@ -116,7 +117,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 1. **只往下依赖，同层不互相引用。** 需要别的同层模块的能力时，经第一层的接口或登记表。
 2. **只存自己的数据，不往第一层、第二层的存储里写。**
 
-现在违反的：`room/chat.ts` 引用 `desktop/images`；Channels 把 5 类记录（kind）写进 Core 数据库的通用 `records` 表；Desktop 把会话映射 `desktop-session` 写进 Core 数据库（`desktop/index.ts:44`）；Desktop 读多个上层服务。
+Desktop 仍读多个上层服务。Channels 的五类记录及桌宠会话映射按[状态拥有者表](#4-状态拥有者表)留在 Core。
 
 ---
 
@@ -143,7 +144,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 - 状态拥有者表（第 4 节）登记每份持久数据的路径或表名、拥有者、**唯一写入协议**。
 - （目标，未实现，随阶段 3 的数据搬迁方案再定）第一层提供**按拥有者划分的存储句柄**：句柄只暴露拥有者自己的表和行，别的模块拿不到。拼 `.chatpet/data/…` 路径的代码只允许在第一层的存储模块里。
-- Core 的 SQLite 里**不许出现别的模块的表，也不许出现别的模块的记录 kind**。Core 的 `records` 表按 `kind` 区分记录，Channels 的 5 类记录和 Desktop 的会话映射就是这样混进来的。拥有者边界覆盖**记录 kind 和写入端口**，不只是建表。
+- Core 的 SQLite 只放 Core 拥有的表、记录 kind 和[拥有者表](#4-状态拥有者表)批准的原位例外。拥有者边界覆盖**记录 kind 和写入端口**。
 - **局限**：脚本只能查到「哪个模块创建了哪个文件、哪张表、写了哪个记录 kind」，查不到「对已有文件的某一行的越权更新」。后者靠「句柄只暴露自己的数据」从设计上堵，再用一个运行时写入追踪测试在一次性数据目录里核对实际产生的文件和表。
 
 **R7 要覆盖：**
@@ -174,8 +175,9 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | --- | --- | --- | --- |
 | `.chatpet/{manifest.json, SOUL.md, USER.md, COMPANION.md, core.json}` | 第一层·身份与绑定 | Core 初始化和设置 | 不变 |
 | Core 数据库：身份、设置、请求去重、原生消息映射、记忆待处理/确认 | 第一层 | Core、NativeMemory、Memory batch | 不变 |
-| Core 数据库：`channel-received / channel-reach / life-outlet-delivery / channel-usage / channel-usage-event` | **第三层·Channels** | Channels 直接写 | **搬出**到 Channels 自己的数据库（随 Channels 重写）；`life-outlet-delivery` 的归属另议，它连接生活与渠道 |
-| Core 数据库：`desktop-session` | **第三层·Desktop** | Desktop 直接写 | **搬出**到 Desktop 自己的存储（随 Desktop 重写） |
+| Core 数据库：`channel-received / channel-reach / life-outlet-delivery / channel-usage / channel-usage-event` | **第三层·Channels** | Channels 直接写 | **原位例外**，沿用 CoreStore 记录协议及[离线恢复](#72-回退)对当前渠道记录的保护 |
+| Core 数据库：`desktop-session` | **第三层·Desktop** | Desktop 直接写 | **原位例外**，会话映射随选中的 Core 备份恢复 |
+| 钱包导入独立证明 `data/console-wallet-import.json` | 第一层·绑定与迁移 | Core 初始化、离线步骤 `0004-console-wallet` | 全新安装标记无旧来源。未采用钱包的副本零条导入时原子记录绑定与来源摘要，未来采用钱包保留此历史凭证 |
 | 钱包「已采用」证据：`economy.sqlite` 的 `meta.economy.initialized` 和独立文件 `data/living/economy-adoption.json`（都是 `{storageId, companionId}`） | 第二层·钱包区 | Economy | 原来放在 Core `meta` 的 `economy.initialized:<storageId>`，已由离线迁移步骤 `0003-economy-marker` 搬走：先在钱包库里写标记并提交，再原子写独立证据，两者都落盘后才删 Core 旧键（`scripts/migrate/steps/0003-economy-marker.mjs:101-121`）。首次建库时先验旧菜园，在钱包租约下先落独立证据，再在同一个事务里建表、导入旧菜园、写库内标记，提交后补 `storage.json`（`living/economy/store.ts:75-125`）。运行时认五种采用证据：独立证据、库内标记、`storage.json`、身体检查点的 `economyGardenAuthority`，以及同一 `storageId` 的迁移日志里含 `0003` 且记了 `economyAdopted:true` 的段（`living/economy/adoption.ts:31-73,85-106`）。任一成立而库缺失，就拒绝钱包，不建空库、不导入旧菜园，免费照料照常；钱包目录和 `data/living/` 同时丢失时，迁移日志这一条仍然挡住重建。日志缺失或损坏按没有这条证据处理，不影响工作区；所以钱包目录、`data/living/` 和迁移日志三处同时丢失或损坏时，运行时认不出曾经采用过，这是已知边界。证据文件内容坏了只拒绝钱包，工作区清单只看文件在不在。独立证据已落盘、库还没提交时拒绝自动补建，钱包能力状态行 `life.economy` 给出证据路径和处理办法 |
 | Core 数据库：`native-memory-view / native-memory-action` | 第一层（只保留） | 无：旧版本写入，当前 `src/` 不读不写 | 原样保留，是否清理另议；登记后盘点不再报未知 kind |
 | Mnemosyne 记忆库 `data/memory/data/memory.db` 等 | 第一层·记忆 | Mnemosyne 服务、Pet 接口 | 不变 |
@@ -183,15 +185,16 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 共享 home 会话身份记录：`core.sqlite` 的 `companion-home` 记录（`{sessionId, arrivalPending?}`，按 `storageId` 一条） | 第一层·身份与绑定 | Core | 共享 home 身份和待交接标记归第一层，Core 按绑定写 `companion-home`（`core/workspace.ts:156-169`）。前台和计划区建 home 都走同一个串行入口 `ensureCompanionHomeSession`（`core/companion-foundation.ts:88-108`），先写 Core 再返回。离线迁移步骤 `0002-home-identity` 从旧镜像复制 ID，不删 `life.json` 的字段 |
 | 身体 `data/behavior/home.json`（或 `data/life/home.json`） | 第二层·身体区 | Behavior | 不变 |
 | 旧菜园 `garden.json` | 第二层·钱包区（只作迁移来源） | 尚未采用 Economy 的存档由旧存储写 | 不再作为运行路径，只作尚未采用存档的一次性迁移来源 |
-| 钱包背包 `data/economy/*` | 第二层·钱包区 | Economy | 不变；只用 `mode=rw` 打开已存在的库，库存在就必须有同绑定的库内标记，空壳库拒绝 |
+| 钱包背包 `data/economy/*` | 第二层·钱包区 | Economy | 不变；只用 `mode=rw` 打开已存在的库，库存在就必须有同绑定的库内标记，空壳库拒绝。`console_wallet_requests` 保存 Console 原请求号和规范指纹，待办保留重试所需输入，结清后清除输入。余额、配置和库存仍由原交易、库存回执和 Body 检查点证明。查证读原号，显式重试续做，存在待办时拒绝新的 Console 钱包写入。已采用钱包的导入和 `meta.console.wallet-import` 摘要在同一事务提交 |
 | `data/life/control.json`、`life.json`（计划部分）、`data/life/life/wakes.jsonl`、`activity/*`、`compactions.jsonl` | 第二层·计划区 | Life | 计划区独占 `life.json` 的 home ID 镜像和待迎接 `greeting`（上游运行时要读，经 `living/plan/home-store.ts:12-57,63-76` 包装的 store 访问，以 Core 记录为准）。Core 置了 `arrivalPending` 时，计划区先把迎接写盘，再请 Core 清除这个标记；交接以镜像落盘为准，计划区不在时标记留着，下次装载时补交接（`living/plan/plugin.ts:193-213`）。记录库的日期、日记和搜索按当前存储绑定读取第二层登记的只读活动接口（`core/records.ts:103-132`、`living/plan/activity-reader.ts:17-43`）。任一区对 Core 可见时可读历史活动，三区都缺席时日期和正文由日记提供。查询缺失的活动目录返回空结果。`control.json` 的可选字段 `pauses`（暂停区间 `{from, to|null}` 的有序列表，缺省等于没有区间记录、沿用旧开关）只由 Life 改开关时维护，按 Economy 已提交的菜园时钟清理已经扣过的区间；Body、Economy 推进菜园时只读它，Life 服务不在时用 `living/plan/control-file.ts:25-51` 的 `readLifeControl` 读 |
 | 日记、自述、历史 | 第一层·记录库 | 主人设置、DSH 原生 `write/edit` 工具、Life/World 回顾复制 | **唯一写入协议待定**：原生工具仍可直接写文件，需要决定经记录库守卫还是保留现状；路径要同时支持新位置 `.chatpet/{self.md, self.history/, diary/}` 和旧位置 `data/life/` |
 | 相册 `data/core/photos/album.sqlite`（或旧位置 `data/life/photos/`） | 第一层·记录库 | Core 和 Life 通过记录库写入 | Core 的带前缀相册工具与 Life 的原生相册使用同一个受限句柄，提供 `keep`、`list`、`forget`（`core/records.ts:24-35`）。会话门控见 5.8.3。 |
 | 原生会话副本 `data/core/native-sessions/*` | 第一层 | NativeTranscripts | 不变 |
-| Desktop 待办、图片 `data/desktop/*`；`data/room/images/*` | 第三层·Desktop / Room | Desktop；Room 借用 Desktop 的图片组件 | 图片准入抽成共用小包（5.4） |
+| Desktop 待办 `data/desktop/*` | 第三层·Desktop | Desktop | 沿用原写入协议 |
+| 图片 `data/desktop/images/*`、`data/room/images/*` | 第三层·Desktop、Room 各拥有自己的目录 | `desktop/images.ts`、`room/images.ts` | 复用原生附件准入和原子副本流程（5.4），各拥有人按当前绑定读写 |
 | `data/pet-platform/*` | 第三层·PetPlatform | PetPlatform、迁移器 | 不变 |
 | `data/channels/*`；profile 下连接设置、令牌、语音缓存 | 第三层·Channels / Voice | Channels、Voice | 不变，设备相关 |
-| 浏览器 localStorage：`chatpet:economy:pending:*`、Room 的 `home-*` | 第二层·钱包区 / 第三层·Room | 控制台和 Room 前端 | 经济待确认请求迁入钱包区持久存储，迁移顺序见 7.3 |
+| 浏览器 localStorage：`chatpet:economy:pending:*`、Room 的 `home-*` | 第二层·钱包区 / 第三层·Room | 控制台和 Room 前端 | 钱包旧键仅作迁移来源，新 Console 读取钱包待办；Room 本地存储沿用原协议 |
 
 下面两类文件不进 `storage.json`，盘点把它们列在 `differences.extra` 里属于预期。它们只在部分安装里存在，登进去会让没有它们的安装报「缺失」：
 
@@ -213,12 +216,13 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 ### 5.2 第二层对外
 
-四样契约的类型在 `contracts/living.ts`，经 `./contracts` 导出，挂在已有的三个门面服务上，不新增服务名。旧服务名的其余成员和三个旧事件（`pet/behavior.changed`、`pet/life.changed`、`pet/economy.fact`）是阶段性兼容入口，第三层改用四样归阶段 3。
+四样契约的类型在 `contracts/living.ts`，经 `./contracts` 导出，挂在已有的三个门面服务上。旧服务名的其余成员用于仍依赖现有门面的入口。
 
 - **世界快照** `WorldSnapshot`：`petBehavior.worldSnapshot(workspaceId)` 为主入口，`petEconomy.worldSnapshot` 委托同一实现，只挂 Economy 时也能读钱包、身体部分为 `{available:false}`。内容是身体投影（`BehaviorSnapshot`）加钱包只读视图 `WalletView`（余额、库存、持有读物和书签），返回独立副本。
 - **命令** `WorldCommands`：照料（`petBehavior`）、执行计划步骤和阅读确认（`petLife`）、购买和出售（`petEconomy`），各门面的 `worldCommands` 只挂本区的命令；每条带请求 ID，复用原入口的准入、绑定复核和去重。错误语义沿用 `ContractError`：`effect` 有三种（`none / partial / unknown`），`retry` 有四种（`never / refresh / same_request / reconcile`）。
 - **事实流**：`CompanionFactSource`，`petBehavior.worldFacts` 聚合身体和钱包的事实。事实的准备、验证、确认在第二层的 `living/prompt-context.ts`，仍在 Core 的原生作用域登记两段、调用第一层的 `acknowledgePromptFacts`；「原生日志落盘之后才确认事实」的顺序不变，确认前复核绑定、三区租约和准备结果。
-- **变更信号**：一个事件 `world.changed`（`{workspaceId, storageId}`），只表示「去读快照」。三区可见状态实际变化、首次绑定和切换绑定时发，同一轮微任务内按绑定合并，卸载后的旧租约不发。它不是落盘回执（Cordis 的 `emit` 不等待返回），订阅方自己处理异步错误；目前 `src/` 里还没有订阅方。
+- **变更信号**：`world.changed` 携带 `workspaceId/storageId` 和 `homeScope()` 的 `bootId/generation`。三区可见状态变化、首次绑定和切换绑定时发，同一微任务内按绑定代次合并，出队时复核原绑定与产出区租约。Room 按代次刷新，IPC 继续使用 Body 的 `bootId/revision` 拦住落后画面；仅 Body 变化的通知可由已覆盖的快照吸收。此事件只通知刷新，Cordis 的 `emit` 不等待订阅者或返回业务回执。
+- Channels 按同一绑定代次刷新适配器。Plan 的 home 写入、启动、暂停和卸载都进入同一通知流。Channels 用按 Cordis 隔离标签查询的运行中 home 窄口；Bridge 整理通过 Memory 的压缩登记判断是否有待办。
 - **生活出口**：`living/outlets.ts` 的 `registerLifeOutlet`。Desktop 登记暂停、恢复、呈现，Channels 登记主动消息送达，各自在入口登记、卸载时撤销；Life 在启动、休息和通知时用 `lookupLifeOutlet` 按租约取当前的出口，没有登记就跳过，和原来缺服务时一样。呈现出错时记原样警告，照样试 Channels。登记复用 `RegistrationTable`，按提供方的隔离标签区分。
 - **启用意图读口**：同一文件的 `readLifeEnabled`，Desktop 判断「Life 是否接管自主」时读它：有 Plan 时读持久的生活开关（`bodyClockState`），读不到再看 Plan 是否在运行；没有 Plan 就当作未接管，桌宠恢复自主，`control.json` 不变。
 
@@ -230,13 +234,15 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 | 共用物 | 现在 | 新 |
 | --- | --- | --- |
-| 图片准入（`DesktopImages`，Room 在用） | `desktop/images.ts` | 抽成第三层的共用小包（目录在阶段 3 方案里定），Desktop 和 Room 都依赖它，彼此不依赖 |
-| **语音**（Desktop、Room、Channels 都用） | 多处直接读 `petVoice` | **第一层的 contracts 声明一个「语音接口」**（说、听、取消、可用性），Voice 登记为实现，使用者通过第一层取得这个接口；接口撤销时，在途调用按 2.2 的契约失效。不用能力状态行，因为它不能被调用，也没有取消和失效约定 |
+| 图片准入与便携副本 | `presentation/images.ts` | Desktop 和 Room 各自执行磁盘操作。桌宠保留 1 MiB 编码上限，Room 电视帧保留 2.5 MiB 原始字节上限，房间照片与附件副本按 Room 编码上限校验 |
+| 活动播放 | `presentation/playback.ts` 映射素材并采样，素材索引和分配也由该目录管理 | Room、桌宠、拍照和 Console 在回包边界附上原有 `home.playback`，共享活动身份和时间 |
+| Room 传输 | `presentation/room-transport.ts` 声明九个端点、超时和只读拍照子集 | 构建生成原生窗口与 Console 使用的子集；浏览器和拍照通过现有 Room 路径加载。各入口保留自己的身份和窗口准入 |
+| **语音**（Desktop、Room、Channels 都用） | 通过 2.2 的语音调用表获得 `contracts/voice.ts` 接口。Voice 保留 `petVoice` 兼容服务，识别缺能力时仍可合成。 | Her World 活动语音闭包放在 `dist/src/voice/upstream/`，旧 Desktop 深路径转发到同一实现。识别和合成各自共享一份登记表。 |
 | 房间模型 `CompanionRoom` | `living/body/room.ts`，属第二层·身体区 | Room 只读快照 |
 
 ### 5.5 控制台
 
-控制台的**外观先不动**，**架构定位现在就定**：它是第三层里唯一允许「操作别的第三层模块」的模块，操作通过**运维操作表**进行；读数据通过第二层快照和第一层服务。这样同层禁止依赖和控制台的实际职责不矛盾。
+Console 通过运维操作表调用同层拥有者，通过第二层快照和第一层服务组装设置视图。旧 Connection 端点名继续可用，拥有者缺席时返回不可用。入口统一核对 owner、请求号、绑定和取消。设置错误沿用 `code/message/details`，有契约错误时保留 `effect/retry`。
 
 ### 5.6 细粒度接口准则和概念表
 
@@ -273,7 +279,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 
 | 定义处 | 取值 | 转换点及损失 | 同名不同义 |
 | --- | --- | --- | --- |
-| 六种照料动作，1 份。`contracts/behavior.ts:10-21` 基础表的 `care` 标记（带序号和按钮文案）派生 `CARE_ACTIONS` 和守卫 `isCareAction`（`:44,49-51`） | `feed / water / pet / play / sleep / wake`（按钮顺序） | Console → `life.act` → `behavior.act` → `roomAction({action}, …)`，动作值沿用，补请求标识及主人身份。设置页、Life `act`、World `care`、Body `act` 四个入口各自调用 `isCareAction`，报错各自保留（`console/settings.ts:229`、`living/plan/plugin.ts:655-657`、`living/body/plugin.ts:324,360-362`）。设置页按钮按 `lifeView.careActions` 渲染（`console/settings.ts:236-239`、`console/client.js:656`）。 | 这是简化照料入口。`pet` 在此集合内，计划身体动作集没有 `pet`。Desktop 自己开放的 `sleep / wake / pet` 是桌宠入口的子集，只受 `CareAction` 类型约束（`desktop/platform/plugin.ts:631`、`desktop/features.ts:165-166`）。 |
+| 六种照料动作，1 份。`contracts/behavior.ts:10-21` 基础表的 `care` 标记（带序号和按钮文案）派生 `CARE_ACTIONS` 和守卫 `isCareAction`（`:44,49-51`） | `feed / water / pet / play / sleep / wake`（按钮顺序） | Console → `life.act` → `behavior.act` → `roomAction({action}, …)`，动作值沿用，补请求标识及主人身份。设置页、Life `act`、World `care`、Body `act` 四个入口各自调用 `isCareAction`，报错各自保留（`living/plan/plugin.ts:687-690,765-770`、`living/body/plugin.ts:324,360-362`）。设置页按钮按 `lifeView.careActions` 渲染（`console/settings.ts:271-274`、`console/client.js:656`）。 | 这是简化照料入口。`pet` 在此集合内，计划身体动作集没有 `pet`。Desktop 自己开放的 `sleep / wake / pet` 是桌宠入口的子集，只受 `CareAction` 类型约束（`desktop/platform/plugin.ts:631`、`desktop/features.ts:165-166`）。 |
 | 十种角色房间动作，1 份。基础表的 `role` 序号派生 `ROLE_ACTIONS`（`contracts/behavior.ts:45`），用于 `room_action` 枚举和 Body 角色白名单（`room/plugin.ts:122`、`living/body/room.ts:85,995-1003`） | `command / pet / poke / feed / water / play / talk / sleep / wake / lamp` | 工具传动作和参数，Body 再按上游 `HOME_ACTIONS` 和角色白名单核验。`talk` 文本修剪为最多 120 字符后传给实际动作（`living/body/room.ts:992-1003,1022-1032`）。 | 上游 `HOME_ACTIONS` 另含 `visit / go / place / sick / heal`（`vendor/feiyu-room-template/home-state.js:23-25`）。 |
 | 五种计划身体动作，1 份。基础表的 `plan` 序号派生 `PlanBodyAction`、`PLAN_BODY_ACTIONS` 和 `isPlanBodyAction`（`contracts/behavior.ts:46,53-55`），用于计划类型、计划 schema、Life 校验和 Body 校验（`contracts/behavior.ts:112`、`living/plan/plan-tools.ts:104`、`living/plan/plan.ts:95`、`living/body/room.ts:612`） | `sleep / wake / water / feed / play` | `LifeStep.action` 经 `PlannedActivity` 转到上游 `applyHomeAction`。执行器按原回执处理，计划中的 `feed` 是免费基础餐食（`living/plan/plan.ts:397-400`、`living/body/room.ts:529-547`、`living/plan/plan-tools.ts:103`）。Life 草稿校验用 `String(value.action)` 比对，非字符串的 `['feed']` 也会被接受并原样保留；工具 schema 只收字符串（`living/plan/plan.ts:94-97`、`living/plan/plan-tools.ts:101-104`，2B1-04 固定）。 | 库存 `feed` 从经济入口转为 `consumeFood`。身体存档写 `catalog-food`，互动事实仍可用 `type:'feed'`（`living/economy/plugin.ts:264-272`、`living/body/room.ts:454-465`）。 |
 | 表达意图、呈现分类及桌面素材。`emotion/index.ts:7-10,32-47`、`contracts/behavior.ts:35-39`、`desktop/platform/plugin.ts:671-690` | footer `action` 是目录名字符串。`BehaviorPresentation.action` 是 `sleep / walk / activity / expression / emotion/...` 等分类。桌面选择素材用名称或 URL。 | Emotion 按目录保留可识别的动作，未知动作不进入事件。Body 把状态和表情投影成展示分类。Desktop 的特定睡眠、起床、吃饭素材转换为 `sleep / wake / feed`，命令不带原素材选择（`emotion/index.ts:54-64`、`living/body/presentation.ts:12-23`、`desktop/platform/plugin.ts:671-689`）。「睡觉-起来」默认只出现在睡觉序列的 `sleep.end` 里，不在动画池中，所以 `/anim` 默认返回 `unknown-animation`；配置把它加进动画池后，才会派发 `wake`（`vendor/dsh-pet/platform/assets/config.jsonc:387-392`、`desktop/platform/plugin.ts:681-682`，2B1-08 固定）。 | 同名 `action` 分别可能是身体命令、表达选择、素材名或展示分类。 |
@@ -285,7 +291,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 定义处 | 取值 | 转换点及损失 | 同名不同义 |
 | --- | --- | --- | --- |
 | `living/body/room.ts:89-90,105-115`、`vendor/feiyu-room-template/home-state.js:489,1704-1722` | 上游 JS 状态，本地 `state:any`。含路线、停留、睡眠、身体需要和 `kind`。 | 上游 `homeView` 将持久状态投影为当前画面，位置按当前时间求值。Body 公布的 `home` 保留 `any`，另提供原精度 `needs`（`BehaviorSnapshot.needs`，以 `BodyMetric` 为键）。 | `her.kind` 描述此刻身体状态，`PlannedActivity.kind` 描述要执行的操作类别。 |
-| `BehaviorActivity`（`contracts/behavior.ts:153`）及忙碌判定 `companionBusy`（`living/body/activity.ts:17`） | `activityId`、开放 `kind`、`BodyPhase`、`busy`，附呈现和阅读提示。 | 所有公开的 `behavior` 由 Body 的 `publicBehavior(her)` 一处组装（`living/body/plugin.ts:234-237`），快照、`roomState()`、`act`、`roomAction`、`garden` 回执的 `busy` 都用同一份画面里的 `her` 算（2B4-01 固定）。`behaviorPresentation` 和 `resolveActivityPlayback` 仍各自再分类（已知问题 4，阶段 3）。 | `busy` 只回答「能不能发起一次新投喂」：睡着、走路、或 `kind` 不在七项空闲白名单（`activity.ts:8`）里为真；正在吃饭时为真，但吃饭素材仍放行、不再投喂。它和呈现分类器的白名单不同，后者管画面选什么分类。「能否被打断」按动作而异，没有统一输出，留到阶段 3。 |
+| `BehaviorActivity`（`contracts/behavior.ts`）及吃饭准入 `feedAdmission`（`living/body/activity.ts`） | `activityId`、开放 `kind`、`BodyPhase`、`busy`、`interruptibility.feed`，附呈现和阅读提示。 | Body 的 `publicBehavior(her)` 给快照和公开回执组装同一份投影。发起吃饭由 Body 在串行队列中用同一规则重新判断。 | 睡眠、移动与忙碌拒绝新投喂。正在吃饭时允许重复播放。空闲且符合原插入条件时允许开始。呈现分类器另负责选择画面。 |
 
 **拥有者**第二层。**统一方式**：第三层读 `behavior.busy`，不再解释原始 `her.kind` 判断忙碌（`desktop/platform/plugin.ts:682`）；上游 `any` 留在 Body 适配器里，公开快照仍带 `home:any`，第三层其余读取归阶段 3。
 
@@ -304,9 +310,9 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | --- | --- | --- | --- |
 | 身体 `BodyPhase`（`contracts/behavior.ts:125`） | `idle / pending / moving / working / sleeping / completed` | 运行中计划经 `bodyPhaseOf`（`living/body/activity.ts:4`）投影：`moving / working` 照搬，`pending / waiting / completed` 都变成 `pending`。无运行中计划时，从路线、睡眠、等候、停留、反应及任务回执推导（`living/body/plugin.ts:209-230`）。 | 身体的 `completed` 来自 `task.completedAt`，计划、库存投喂和角色动作都会产生任务；不能单凭它判断计划或经济成功。 |
 | 执行 `ExecutionPhase / ExecutionStatus`（`contracts/behavior.ts:130-131`）及计划 `PlanStatus`（`living/plan/plan.ts`） | 执行阶段 `pending / moving / working / waiting / completed`，执行状态 `running / paused / completed / cancelled / interrupted / failed`。计划状态 `active / paused / waiting / completed / cancelled`。 | Body 暂停写 `paused/waiting`，取消写 `cancelled/completed`。Body 把原始身体或上游菜园状态投影成执行阶段的几处留在 `room.ts` 原处，只引用 `ExecutionPhase`。设置页的执行阶段标签由契约测试与 `ExecutionPhase` 对齐（`tests/life/life-execution-labels.test.mjs`）。 | `waiting` 可以是仍在运行的执行阶段，也可以是计划自己的状态。执行 `phase:completed` 包含失败或取消终态；终态以 `status` 为准，旧存档有 `running + completed`，菜园失败会写 `failed + waiting`。 |
-| `ActivityClip.mode`、`ActivityPlayback.phase`（`living/body/playback.ts:4-22`），工作区 `Binding.phase`（`core/workspace.ts:45`） | 播放 `loop / once / static`。播放描述另带身体阶段字符串。绑定 `ready / inactive`。 | 播放描述复制身体阶段并按片段次序、一次性动作和素材可用性选 `mode`。模式不携带业务完成信息。解绑写 `inactive`，公共状态另投影为 `unbound/pending/...`（`living/body/playback.ts:184-201`、`core/workspace.ts:142,435-437,464,585-603`）。 | `ActivityPlayback.phase` 和 clip `mode` 是两个字段。绑定阶段和前两套状态机独立。 |
+| `ActivityClip.mode`、`ActivityPlayback.phase`（`presentation/playback.ts`），工作区 `Binding.phase`（`core/workspace.ts:45`） | 播放 `loop / once / static`。播放描述另带身体阶段字符串。绑定 `ready / inactive`。 | 播放描述复制身体阶段并按片段次序、一次性动作和素材可用性选 `mode`。模式不携带业务完成信息。解绑写 `inactive`，公共状态另投影为 `unbound/pending/...`（`presentation/playback.ts:sampleActivityPlayback`、`core/workspace.ts:142,435-437,464,585-603`）。 | `ActivityPlayback.phase` 和 clip `mode` 是两个字段。绑定阶段和前两套状态机独立。 |
 
-**拥有者**第二层身体与执行、第三层播放、第一层绑定。**统一方式**：`BodyPhase / ExecutionPhase` 已各自命名，有损转换集中在 `bodyPhaseOf`。`PlaybackMode / BindingPhase` 的命名和 clip 类型搬出第二层归阶段 3；clip 类型仍位于 `living/body/`，播放 `phase` 仍是裸字符串（`living/body/playback.ts:4-22`）。
+**拥有者**第二层身体与执行、第三层播放、第一层绑定。**统一方式**：`BodyPhase / ExecutionPhase` 已各自命名，有损转换集中在 `bodyPhaseOf`。`ActivityClip` 和 `ActivityPlayback` 由第三层定义（`presentation/playback.ts`），播放 `phase` 沿用兼容回包里的字符串。
 
 ##### 命令与请求
 
@@ -315,7 +321,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 七种计划 `kind`，1 份。`PLAN_KINDS` 表（`contracts/behavior.ts:57-65`）带 `target`（要指定房间位置）和 `executable`（依据真实回执结束、不接受时长）两项属性，派生 `PlanKind` 和守卫 `isPlanKind` | `hold / room / move / garden / body / economy / read` | 工具 schema 由 `Record<PlanKind, 分支>` 生成（`living/plan/plan-tools.ts:66-104`），注册结果与 2b 前逐字节相同；Life 草稿校验和 Body 执行校验各有一张 `Record<PlanKind, 校验函数>`（`living/plan/plan.ts:74`、`living/body/room.ts:78`），每一步只判断一次 kind，报错文案和先后不变。Life 用 `String(value.kind)` 宽松准入，数组形式的 kind 会被放行并跳过位置校验（2B1-04 固定）。 | `room` 是到目标后持续活动，`move` 是到达即结束，`hold` 是原地持续。 |
 | 阅读状态，1 份。`READING_STATES`（`contracts/behavior.ts:100`）派生 `ReadingState`；Economy 存储行用 `Exclude<ReadingState,'unread'>`（`living/economy/store.ts:362`） | `unread / offered / confirmed`。存储行只含 `offered / confirmed`，无行时合成 `unread`。 | 取文生成耐久 `receiptToken`，确认推进原内容版本的书签。Body 根据状态投影 `read/reading-wait`，不携带正文、token 或书签偏移。确认会同步完成执行并清掉阅读投影，公开快照从 `offered` 直接回到空闲；`confirmed` 的呈现分支在公开路径上走不到（2B1-06 固定）。 | `confirmed` 是原文字片段的回执，不表示读懂。`reading-wait` 是呈现类别。 |
 | 计划控制与经济操作。计划经济操作 `PLAN_ECONOMY_OPERATIONS`、计划菜园操作 `PLAN_GARDEN_OPERATIONS`（`contracts/behavior.ts:73-98`，菜园表记每个操作所属的 schema 分支和分支内序号）；计划控制在 `living/plan/plan-tools.ts`、`living/plan/plan.ts`；主人经济在 `living/economy/plugin.ts`；Room 菜园工具在 `room/plugin.ts` | 计划控制 `pause / resume / cancel`。计划经济 `buy / sell / consume`。主人经济 `buy / sell / grant / gift / importReading / feed`。Room 菜园另有 `state / visit / careNow / auto / till / plant / water / fertilize / harvest / sell / buySeed / buyCompost`。 | 计划经济按 `operationId` 调用购买、出售或库存食用。直接主人操作保留请求和来源，投喂转为稳定身体执行编号（`living/economy/plugin.ts:162-173,233-277`、`living/body/room.ts:417-465`）。 | `cancel` 可指持久计划、菜园作业或原生对话。`feed` 可指基础照料或库存餐食（`living/body/room.ts:873-879,1071-1081`、`living/plan/plugin.ts:386-398`、`living/economy/plugin.ts:264-272`）。 |
-| 请求身份。`core/authority.ts:9-29`、`console/settings.ts:74-85,100-102`、`room/plugin.ts:86-95,123-126`、`living/body/room.ts:1004-1012` | Core `RequestContext`、入口 `requestId`、领域 `operationId`、版本 `expectedRevision` 分别承担授权、去重、执行关联、并发控制。 | Core 从宿主授权能力签发请求上下文。Room 用绑定、入口、请求号生成去重键，Body 对同键核对输入和 actor 指纹，重复请求返回原事实（`core/authority.ts:12-28`、`room/plugin.ts:86-95`、`living/body/room.ts:1004-1012`）。Economy 重试则从 `requests.result` 返回首次事务的视图，不返回原事实；事实只在首次事务里写入（`living/economy/store.ts:182-187`，2B1-09 固定）。 | DSH `rpcId` 是会话投递去重键，和身体执行编号分开（`desktop/conversation.ts:171-182`、`room/chat.ts:164-172`）。 |
+| 请求身份。`core/authority.ts:9-29`、`console/settings.ts:105-132,236-265`、`room/plugin.ts:87-121`、`living/body/room.ts:1004-1012` | Core `RequestContext`、入口 `requestId`、领域 `operationId`、版本 `expectedRevision` 分别承担授权、去重、执行关联、并发控制。 | Core 从宿主授权能力签发请求上下文。Room 用绑定、入口、请求号生成去重键，Body 对同键核对输入和 actor 指纹，重复请求返回原事实（`core/authority.ts:12-28`、`room/plugin.ts:86-95`、`living/body/room.ts:1004-1012`）。Economy 重试则从 `requests.result` 返回首次事务的视图，不返回原事实；事实只在首次事务里写入（`living/economy/store.ts:182-187`，2B1-09 固定）。 | DSH `rpcId` 是会话投递去重键，和身体执行编号分开（`desktop/conversation.ts:171-182`、`room/chat.ts:164-172`）。 |
 
 **拥有者**第二层拥有生活命令及执行请求。Core 另拥有授权上下文，Desktop/Room 另拥有入口投递身份。**统一方式**：计划 kind、经济操作、菜园操作、阅读状态各一份，schema 和入口校验从它派生；计划控制 `pause / resume / cancel` 和 Room 菜园工具的 12 个操作（含 `state / auto / careNow` 等非计划操作）仍是各自入口的词表。PLAN_ECONOMY_OPERATIONS、READING_STATES 是布尔表，R8 看不见。
 
@@ -341,9 +347,9 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 **第二层拥有**：
 
 - **命令与执行。** `BodyAction` 是一份基础表（`contracts/behavior.ts:10`）；执行统一到 `PlannedActivity → PlannedExecution → BehaviorActivity`，`ActivityLabel / OperationId / CurrentActivityId` 三种职责用类型别名标明。照料、计划、阅读等各自的词表一份，工具 schema、入口校验、设置页白名单和按钮都从它派生。
-- **身体状态契约。** 2b 已落地「忙不忙、当前活动」和有损的阶段转换：`companionBusy`、`bodyPhaseOf`（`living/body/activity.ts`），所有公开回执的 `behavior.busy` 一处组装，Desktop 的吃饭守卫只读这个结果。「能否被打断」现在按动作而异、没有消费方，留到阶段 3 和第三层改读一起定；`room/assets.ts` 仍按 `playback.kind` 显示提示文字，归阶段 3。
-- **表现意图。** 语义，不含任何素材名：活动、阶段、情绪、是否独占。情绪与活动在这里合并，**合并规则只写一处**，取代现在 `living/body/presentation.ts` 和 `living/body/playback.ts` 里两套对同一情绪给出不同结果的分类器。
-- **语义许可表。** 「哪种活动允许哪些语义槽」写成声明式的表，取代 `animationSlotAllowed()` 里约 40 行 `if` 链。计划里的「呈现提示」（`presentationSlot`）仍由第二层接受，但取值是语义槽，不含文件名。
+- **身体状态契约。** Body 统一组装 `behavior.busy`、当前活动与阶段，并以 `behavior.interruptibility.feed` 说明目标为吃饭时可开始、已呈现或拒绝。桌宠吃饭入口在 Body 串行执行中复核请求绑定、取消、呈现准入和原编号。已提交的同号请求返回原回执。
+- **表现意图。** `living/body/presentation.ts` 的 `classifyActivity` 从活动、阶段和情绪派生两端共用的意图。休息按 `anger`、`boredom`、其余声明顺序选择情绪，保留输入次序和自由文字。触摸继续依据有效的主人互动和单一已知情绪。
+- **语义许可。** `living/body/animation-slots.ts` 用现有活动许可规则校验 `presentationSlot`。构建从同一份素材分配生成槽 ID 集合和第三层的素材索引，第二层只读取槽 ID。
 
 **第三层拥有**：
 
@@ -508,7 +514,8 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 新增输入来源 | 在模块里写一个来源适配器（准入、分支、`turnKind`、工具策略、记忆观察、情绪更新、历史投影、会话策略行），在入口登记到 `host.native.sourceTable`；新的 `source.kind` 在 DSH 的 `MessageSourceMap` 声明，新的工具来源用 `toolTable.registerSource` 登记（M2 已落地） | 入队和首步准入、工具限制、记忆观察、情绪 footer、历史投影、会话策略一行 |
 | 新增上下文段 | 在模块入口用 `registerWorldPrompt` 登记（缩小后不做段声明，5.9） | 无；顺序、可见性由登记处自己写 |
 | 新增设置项 | 一份字段声明（阶段 3，按收益再评估） | 页面控件、保存键集合、校验、实际消费的接线 |
-| 新增设置页操作 | 运维操作表的一条登记（阶段 3） | 路由清单、处理分支、客户端调用 |
+| 新增 QQ／微信设置项 | `channels/messaging-settings.ts` 声明可编辑字段并维护缺省值及校验 | Console 与生成的桌宠客户端从 Channels 的状态响应读取控件和保存键。Channels 按字段的设备归属落盘 |
+| 新增设置页操作 | 拥有者声明校验和执行并登记到 `host.native.consoleOperations` | Console 用公开端点名映射到登记，入口统一管理准入和撤销 |
 | 新增照料动作 | 第二层的 `BodyAction` 基础表（`contracts/behavior.ts:10`），每个动作在照料、角色、计划、反馈各集合里记序号 | 主人入口、角色工具枚举、计划类型与校验、计划 schema、设置页白名单和按钮（`lifeView.careActions`）。动作的执行和事实标签仍在 Body 里写 |
 | 新增事实领域 | `contracts/interaction.ts` 的 `FACT_DOMAINS` | 读写类型、领域清单（Core 准入、World、Life、提示词段）。领域提供者要另写；Python 元组要跟着改，契约测试会失败提醒；上游 Life 的 `FactRef` 领域封闭、vendor 不能改，要经 Life 的回读适配 |
 
@@ -534,7 +541,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 旧动作 | 现在的表现 | 待取证项的结论 | 证据测试 |
 | --- | --- | --- | --- |
 | 卸载 `40-Life` | **身体**：Behavior 仍接收显式操作，撤掉运行时自治准入并保存检查点。**计划与回顾**：撤销来源登记，停调度和回顾，若运行时已有 home 则向 DSH 取消该会话并等 Life 的投递收尾。**钱包背包菜园**：Economy 保留，已启用的作物时钟意图保留（`living/body/plugin.ts:85-114,361-364`、`living/body/room.ts:229-235,271-281`、`living/plan/plugin.ts:364-400,700-712`）。 | 取消对象是原生 home 会话，`close()` 调用的是无参的 `stopRuntime()`，不会调用计划 `pause/cancel` 或改写 `control.json`。正在执行的身体活动可留下原回执，`stopAutomatic` 跳过已接受的身体、菜园和计划工作。真实 `40-Life` 卸载时同时有原生轮次和在途持久计划：取消原生轮次，在途身体计划重挂后按原编号恢复（2A1A-11）。 | `tests/life/life-body.test.ts:217-221`（真实 Life 对象关闭后身体可用）<br>`tests/life/life-source-adapter.test.mjs:68-89`（关闭后拒绝尚未派发的回顾读写）<br>`tests/behavior/garden-clock-continuity.test.ts:114-131,138-141`（Cordis 撤掉 Life **服务替身**，原已启用作物时钟继续） |
-| 显式暂停生活 | **身体**：先持久化 `enabled:false`，有 Body 时停止被动推进，显式照料仍可用。**计划与回顾**：匹配当前绑定时，主动暂停 `active/waiting` 计划，标记重启用时恢复，停止 Life 运行时和取消 home。**钱包背包菜园**：Economy 保持在线，手工经济和菜园操作仍可执行（`console/settings.ts:221-234`、`living/plan/plugin.ts:364-400,631-655`、`living/body/room.ts:237-270`、`living/economy/store.ts:473-479,501-509`）。 | 暂停先结算已启用区间，暂停区间不长作物，恢复只从新启用时继续。计划保留原 `operationId`，相对时长可冻结，绝对截止时间仍有效。如果已分配执行编号却无 Body，暂停该计划会报错，但开关已落盘，运行时仍走停止路径。暂停区间记在 `control.json` 的 `pauses`，菜园每次推进（Body 读取、照料、手工动作、旧 JSON，Economy 读取、动作、改配置）都按区间扣，所以暂停或恢复时 Body、Economy 不在场，暂停时间也不长；有区间记录时只按区间算，没有记录（旧存档）才沿用开关。区间文件无效时只有菜园报「生活开关文件无效」，身体照常（`living/plan/plugin.ts:618-655`、`living/plan/control-file.ts:25-51`、`living/economy/garden-clock.ts:41-55`、`living/body/room.ts:171-186,237-250`、`living/economy/plugin.ts:133-143,150-161,279-295`）。 | `tests/behavior-list/families.test.mjs:36-59`（暂停、重启、恢复后的作物）<br>`tests/regressions/audit-r5-garden-clock.test.mjs:96,157`（只扣暂停区间及暂停时手工交易）<br>`tests/behavior/garden-clock-continuity.test.ts:106-112`（Body 缺席时设置遵守暂停意图）<br>`tests/life/life-clock-intent.test.ts:72-80`（原编号恢复，Body 替身）<br>`tests/behavior-list/entries-lifecycle.test.mjs`（2A1A-12、2A1A-13 和 `G3-GARDEN-*`：组件缺席跨暂停、Life 卸载后读区间、区间无效、清理） |
+| 显式暂停生活 | **身体**：先持久化 `enabled:false`，有 Body 时停止被动推进，显式照料仍可用。**计划与回顾**：匹配当前绑定时，主动暂停 `active/waiting` 计划，标记重启用时恢复，停止 Life 运行时和取消 home。**钱包背包菜园**：Economy 保持在线，手工经济和菜园操作仍可执行（`living/plan/plugin.ts:759-764`、`living/plan/plugin.ts:364-400,631-655`、`living/body/room.ts:237-270`、`living/economy/store.ts:473-479,501-509`）。 | 暂停先结算已启用区间，暂停区间不长作物，恢复只从新启用时继续。计划保留原 `operationId`，相对时长可冻结，绝对截止时间仍有效。如果已分配执行编号却无 Body，暂停该计划会报错，但开关已落盘，运行时仍走停止路径。暂停区间记在 `control.json` 的 `pauses`，菜园每次推进（Body 读取、照料、手工动作、旧 JSON，Economy 读取、动作、改配置）都按区间扣，所以暂停或恢复时 Body、Economy 不在场，暂停时间也不长；有区间记录时只按区间算，没有记录（旧存档）才沿用开关。区间文件无效时只有菜园报「生活开关文件无效」，身体照常（`living/plan/plugin.ts:618-655`、`living/plan/control-file.ts:25-51`、`living/economy/garden-clock.ts:41-55`、`living/body/room.ts:171-186,237-250`、`living/economy/plugin.ts:133-143,150-161,279-295`）。 | `tests/behavior-list/families.test.mjs:36-59`（暂停、重启、恢复后的作物）<br>`tests/regressions/audit-r5-garden-clock.test.mjs:96,157`（只扣暂停区间及暂停时手工交易）<br>`tests/behavior/garden-clock-continuity.test.ts:106-112`（Body 缺席时设置遵守暂停意图）<br>`tests/life/life-clock-intent.test.ts:72-80`（原编号恢复，Body 替身）<br>`tests/behavior-list/entries-lifecycle.test.mjs`（2A1A-12、2A1A-13 和 `G3-GARDEN-*`：组件缺席跨暂停、Life 卸载后读区间、区间无效、清理） |
 | 卸载 `25-Behavior` | **身体**：清定时器、退订、保存检查点并释放绑定。**计划与回顾**：Life 可继续运行，缺 Body 时跳过身体计划推进，回顾仍由独立运行时调度。**钱包背包菜园**：Economy 及数据库仍在，钱包操作可直接进账，库存投喂和 Body 代办的菜园工作缺执行器（`living/body/plugin.ts:430-445`、`living/plan/plugin.ts:402-421,723-726`、`living/economy/plugin.ts:133-143,233-295,315-325`）。 | `suspendAutonomy()` 保存已推进的作物检查点且保留时钟意图。Economy 设置在无 Body 时先读 Life 的持久时钟意图，缺少已知意图时继续计时。单独卸载 `25-Behavior` 后，Life 回顾照常调度并写原日期日记（2A1A-14），跨暂停再启用时作物按区间结算（2A1A-12）。 | `tests/behavior/garden-clock-continuity.test.ts:114-143`（真实 Body 入口卸载和替换，Life/Economy 用服务夹具）<br>`tests/regressions/audit-r5-garden-clock.test.mjs:176-181`（无 Body 的 Economy 设置） |
 | 卸载 `22-Economy` | **身体**：仍能执行免费照料和独立身体活动。对已采用 Economy 的存档，权威菜园拒绝读写，原钱包、库存与作物保留。**计划与回顾**：Life 仍在，依赖 Economy 的在途 `garden/economy/read` 执行可停在 `running/waiting`，保留原编号等待恢复。**钱包背包菜园**：Economy 关库，已采用的存档不会重新启用旧 JSON 钱包。尚未采用且无权威标记的存档仍有旧菜园路径（`living/body/plugin.ts:181-190,361-364`、`living/body/room.ts:139-222`、`living/economy/plugin.ts:297-299,353-357`、`living/economy/store.ts:510`）。 | 卸载没有计划取消语义。经济恢复后按原编号和原钱包继续，已有身体效果和未结算库存靠原回执核对。关闭 Economy 不写 Life 或 Body 的时钟开关。Economy 卸载期间跨过的暂停，恢复后按 `control.json` 的区间扣（2A1A-13）。 | `tests/life/life-domain-integration.test.ts:171-194`（真实领域对象、服务替换夹具，原执行和钱包恢复、免费照料、旧菜园未写）<br>`tests/behavior-list/domains.test.mjs:103`（缺库拒绝创建替代钱包） |
 
@@ -547,7 +554,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 卸载 `22-Economy` | 开，免费照料可用（`tests/life/life-domain-integration.test.ts:181-184`） | 开，经济步骤保留原编号等恢复（`tests/life/life-domain-integration.test.ts:177-191`）。回顾照常调度（2A1A-15） | 权威服务关闭，旧账和菜园保留（`living/economy/plugin.ts:297-299,353-357`、`tests/life/life-domain-integration.test.ts:185-191`） | `petEconomy` 否，`petBehavior`、`petLife` 是（各自 `provide`）。真实入口卸载见 2A1A-13、2A1A-15。 |
 | 卸载 `25-Behavior` | 关闭并保存（`living/body/plugin.ts:430-445`、`tests/behavior/garden-clock-continuity.test.ts:126-143`） | 服务保留，缺执行器时不推进身体计划（`living/plan/plugin.ts:402-421,723-726`）。单入口卸载后回顾照常（2A1A-14）。 | 服务保留，Body 代办暂不可用（`living/economy/plugin.ts:264-295,325`、`tests/regressions/audit-r5-garden-clock.test.mjs:176-181`） | `petBehavior` 否，`petEconomy`、`petLife` 是（各自 `provide`）。Body 实际卸载见 `tests/behavior/garden-clock-continuity.test.ts:126-143`，其余服务是夹具。 |
 | 卸载 `40-Life` | 开。撤掉运行时自治，保留显式操作（`living/body/plugin.ts:85-95,361-364`、`tests/life/life-body.test.ts:217-221`） | 停止调度和回顾，撤销来源（`living/plan/plugin.ts:386-400,700-712`、`tests/life/life-source-adapter.test.mjs:68-89`）。持久在途计划按原编号恢复（2A1A-11）。 | 服务保留，原启用的作物时钟可继续（`living/body/room.ts:229-235,271-281`、`tests/behavior/garden-clock-continuity.test.ts:114-131,138-141`） | `petLife` 否，`petBehavior`、`petEconomy` 是（各自 `provide`）。服务移除的门禁证据使用 Life 替身（`tests/behavior/garden-clock-continuity.test.ts:115-131`）。 |
-| 显式暂停生活 | 开，被动变化暂停，显式操作可用（`living/body/room.ts:237-270`、`tests/life/life-body.test.ts:175-205`） | 服务在，调度和回顾停，已接收计划条件性暂停（`living/plan/plugin.ts:364-400,631-655`、`tests/living/living-lifecycle.test.mjs:1049-1086`）。暂停取消回顾轮次，但同一回顾收尾前原文件授权仍可复核（2A1A-16）。 | 服务在，作物暂停被动增长，手工交易可用（`tests/behavior-list/families.test.mjs:49-58`、`tests/regressions/audit-r5-garden-clock.test.mjs:157`） | 三者都在。暂停仅调用 `petLife.control(false)`，测试随后通过同一 `petLife` 重新启用，并继续用 Body/Economy 观察原菜园（`console/settings.ts:221-234`、`tests/behavior-list/families.test.mjs:49-58`）。 |
+| 显式暂停生活 | 开，被动变化暂停，显式操作可用（`living/body/room.ts:237-270`、`tests/life/life-body.test.ts:175-205`） | 服务在，调度和回顾停，已接收计划条件性暂停（`living/plan/plugin.ts:364-400,631-655`、`tests/living/living-lifecycle.test.mjs:1049-1086`）。暂停取消回顾轮次，但同一回顾收尾前原文件授权仍可复核（2A1A-16）。 | 服务在，作物暂停被动增长，手工交易可用（`tests/behavior-list/families.test.mjs:49-58`、`tests/regressions/audit-r5-garden-clock.test.mjs:157`） | 三者都在。暂停仅调用 `petLife.control(false)`，测试随后通过同一 `petLife` 重新启用，并继续用 Body/Economy 观察原菜园（`living/plan/plugin.ts:759-764`、`tests/behavior-list/families.test.mjs:49-58`）。 |
 | 三个生活入口全卸载 | 关 | 关 | 关 | 三个旧服务都不在，`LivingWorld` 释放。普通聊天、相册和日记照常；`chatpet.environment`、`chatpet.interactions` 两段随第二层一起消失，重开原会话也退休旧快照（2A1A-17、2A1A-19，拍板点 8） |
 
 **三个入口的装载依赖**
@@ -579,15 +586,13 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 - 回退 = 恢复安全备份 + 换回旧版安装包。现有恢复器要求**安装包文件指纹完全一致**，同机同路径，所以回退验收包含「旧代码、旧数据、旧绑定一起恢复」。
 - 因此有两份用途不同的备份（拍板点 6）：**回退备份**在换包前、旧版本下用 `companion-backup` 做，记录旧包指纹，只用于换回旧版；**同包续做备份**由迁移器每轮另建，只用于同一个新包下的续做。一份备份满足不了两种指纹。完整顺序见 [development.md](development.md)。
 - **新版运行期间新增的聊天，回退后旧版看不到。** 恢复器会把原生日志目录和会话登记恢复成备份时的样子（`scripts/lib/offline-backup.mjs:432-437,445-451`，对应测试 `tests/infrastructure/offline-backup.test.mjs:51-79`）；新版期间的聊天只保留在「回退前自动做的安全备份」里。要让它们重新出现，需要一个额外的、可选的恢复步骤，不在现有恢复器的范围内。
-- 同理，**已送达的消息和已消耗的额度**是不可回退的状态；Channels 账本搬出后，现有恢复器也不会把新版的送达、去重和额度记录转回旧 Core。恢复契约要明确列出这类**不可回退状态**。
+- **已送达的消息和已消耗的额度**是不可回退的状态，恢复时保留当前的渠道记录。
 - 外部状态也要进恢复契约：DSH 工作区登记、原生日志、投影缓存、共享附件、工作区 `AGENTS.md`、设备配置引用。
 - 现有恢复器不是纯回滚：恢复前，它把当前的渠道日志、Core 里受保护的送达、去重、额度记录和 Life 花费带进待恢复的数据（`scripts/lib/offline-backup.mjs:409-420`，受保护的 kind 列在 `:309`）。备份里有、当前却缺的受保护记录会让它拒绝恢复（`:354`），共享附件字节冲突也拒绝（`:426`）。回退验收按这些真实行为断言，不比较整个目录和备份是否逐字节相同。
 
 ### 7.3 经济待确认请求的迁移顺序
 
-1. 先把浏览器 localStorage 里的待确认请求**原样导出**，保留原请求 ID、输入、绑定，并纳入备份。
-2. 再导入钱包区的持久存储，核对数量和内容一致。
-3. 核对通过后，才清除浏览器里的副本。
+每个授权来源保留原值及摘要。相同绑定、原号和规范指纹可合并登记，仍逐源核对和清除。旧包备份与同包续做备份分别锚定同一私有导出。钱包登记与导入摘要同事务提交，清源和回插按逐源意图续做。停写、换包与回退步骤见[开发文档](development.md#console-wallet-migration)。
 
 ### 7.4 第一次迁移的定位
 
@@ -630,7 +635,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | P2b | 来源适配表和工具声明表：把 Life 一类原生输入的整套适配（准入、工具限制、回顾守卫、历史投影）迁出第一层；`host.native.xxxAdmission` 赋值消失（已完成） |
 | P2c | 取消。事件改调用（Memory 不再订阅 `pet/life.review`）、记录库改读第二层只读接口并入 P3；提示词段表砍掉；共享 home 身份记录的归属已定（第 4 节） |
 | P3 | **已完成**：2a 合并（0.3.0）、2b 概念统一（0.4.0）。合并第二层（先合并、行为不变，概念统一随后逐步）：5.9 隐含契约的契约测试先行；第一层里属于第二层的 18 条违规搬走；共享 home 身份记录迁移、常驻实例、旧入口语义表落实、事实准备和确认搬入、旧服务名门面、`economy.initialized` 搬出 |
-| P4 | 第三层原地治理，不重写模块：图片准入抽共用；语音接口落地；运维操作表；浏览器里的经济待确认请求迁入持久存储；Channels 账本暂留 Core 数据库，`desktop-session` 搬出为可选 |
+| P4 | 第三层原地治理，不重写模块：图片准入抽共用；语音接口落地；运维操作表；浏览器里的经济待确认请求迁入持久存储；Core 保留[批准的原位例外](#4-状态拥有者表) |
 | P5 | 收尾：删已不用的旧适配（以已安装配置核实为前提）、更新本文、按 G8 复核长期例外 |
 
 每步结束都要：行为清单全绿、门禁通过、能发一个版本、更新「典型修改前后对比」。

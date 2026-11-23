@@ -3,10 +3,76 @@ import assert from 'node:assert/strict';
 import {cpSync,readFileSync,mkdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {setTimeout as pause} from 'node:timers/promises';
+import {setImmediate as drain} from 'node:timers/promises';
+import {LocalBridge} from '../../dist/src/channels/bridge.js';
+import {resolveCompanionHome} from '../../dist/tests/behavior-list/entries.js';
+import {cordisFixture,eventually} from './entries-lifecycle.test.mjs';
 import {fixture,until,value} from './fixture.mjs';
 import {prepareMemory} from './policy-evidence.mjs';
 
 import {qqTransport} from './qq-transport.mjs';
+
+test('Channels 只刷新当前绑定并跟随 home 写入、运行、暂停和卸载',async t=>{
+  const f=await cordisFixture(t,{order:['life','channels']});
+  const channels=f.ctx.petChannels;
+  const sync=t.mock.method(LocalBridge.prototype,'sync');
+  await f.life.snapshot(f.id);
+  await channels.refresh();
+  const {workspaceId,storageId,bootId,generation}=f.core.workspace.homeScope();
+  const scope={workspaceId,storageId,bootId,generation};
+  const observations=[];
+  t.after(f.ctx.on('world.changed',change=>observations.push({
+    change,home:f.ctx.get('petLife')?.homeSessionId(),loaded:!!f.ctx.get('petLife'),
+  })));
+
+  const before=sync.mock.callCount();
+  f.ctx.emit('pet/life.changed');
+  f.ctx.emit('world.changed',{...scope,generation:generation+1});
+  f.ctx.emit('world.changed',{...scope,bootId:'another-boot'});
+  f.ctx.emit('world.changed',{...scope,storageId:'another-store'});
+  f.ctx.emit('world.changed',{...scope,workspaceId:'another-workspace'});
+  await drain();
+  assert.equal(sync.mock.callCount(),before);
+  observations.length=0;
+
+  const home=await resolveCompanionHome(f.ctx,f.core);
+  await eventually(()=>observations.some(({change,home})=>!change.bodyOnly&&!home) && sync.mock.callCount()>before,
+    '暂停中的 home 写入也通知 Channels');
+  assert.deepEqual(observations.at(-1).change,scope);
+  observations.length=0;
+  await f.enable();
+  await eventually(()=>observations.some(row=>row.home===home.id),'运行时 home 对 Channels 可见');
+  observations.length=0;
+  await f.life.control(f.id,false);
+  await eventually(()=>observations.some(row=>row.loaded&&!row.home),'暂停后运行时 home 消失');
+  assert.deepEqual(await channels.reach(f.id,{kind:'reach',text:'Paused fixture',deliveryId:'paused'}),[]);
+  await f.enable();
+  observations.length=0;
+  await f.unload('life');
+  await eventually(()=>observations.some(row=>!row.loaded&&!row.home),'Life 卸载也通知 Channels');
+  assert.deepEqual(await channels.reach(f.id,{kind:'reach',text:'Unloaded fixture',deliveryId:'unloaded'}),[]);
+});
+
+test('钱包的 world.changed 刷新不发送 QQ 主动消息',async t=>{
+  const transport=qqTransport(t);
+  const f=await cordisFixture(t,{order:['economy','life','channels']});
+  const channels=f.ctx.petChannels;
+  const {messaging}=await channels.request(f.id,'channelStatus',{});
+  await channels.request(f.id,'messagingSettings',{expected:messaging.config,
+    next:{qq:{enabled:true,ownerReach:true,accountId:'100',ownerSpeakerId:'200',allowPrivate:['200']}}});
+  assert.equal(channels.qqConnection(),'online');
+  await f.enable();
+  await (await f.agent(f.life.homeSessionId())).whenIdle();
+  const sync=t.mock.method(LocalBridge.prototype,'sync');
+  const original=transport.sent.length;
+  await f.ownerAction({kind:'grant',amount:1},'channels-wallet-grant');
+  await eventually(()=>sync.mock.callCount()>0,'钱包通知确实刷新 Channels');
+  assert.equal(transport.sent.length,original);
+  const push={kind:'reach',text:'Explicit fixture delivery',deliveryId:'channels-then-reach'};
+  assert.deepEqual(await channels.reach(f.id,push),[{status:'fulfilled',value:'QQ'}]);
+  assert.deepEqual(await channels.reach(f.id,push),[{status:'fulfilled',value:'QQ'}]);
+  assert.deepEqual(transport.sent.slice(original),[{id:'200',text:push.text}]);
+});
 
 test('3C Bridge 整理保留路由拒绝和忙时排队，空闲后处理已完成轮次',async t=>{
   const calls=[];

@@ -35,7 +35,7 @@ export async function eventually(check, label) {
 // Cordis owns every plugin and subscription. The host supplies a scripted loop,
 // workspace registry, and disk-backed session persistence in a disposable directory.
 export async function cordisFixture(t, {crop = false, now = new Date(2026,10,15,22,59), legacyGarden = false,
-  order = Object.keys(livingEntries), io = {}, existing} = {}) {
+  order = Object.keys(livingEntries), io = {}, existing, memory = false} = {}) {
   t.mock.timers.enable({apis:['Date'], now:Number(now)});
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'her-world-entries-')));
   const repo = existing?.repo ?? join(root, 'workspace'), id = existing?.target.id ?? 'world';
@@ -64,13 +64,14 @@ export async function cordisFixture(t, {crop = false, now = new Date(2026,10,15,
     const persist = ()=>writeFileSync(registryFile,JSON.stringify({workspaces:[...workspaces.values()],archived:registry.archivedSessionIds}));
     function workspace(workspaceId,path,sessionIds=[]) {
       const entry = {id:workspaceId,path,title:'Synthetic workspace',sessionIds,
+        async status() { return existsSync(path) ? 'ok' : 'missing-dir'; },
         async attachSession(sessionId) { if (!sessionIds.includes(sessionId)) { sessionIds.push(sessionId);persist(); } }};
       workspaces.set(workspaceId,entry);
       return entry;
     }
     for (const row of saved.workspaces) workspace(row.id,row.path,row.sessionIds);
     if (!workspaces.has(id)) workspace(id,repo);
-    registry = {get:key=>workspaces.get(key),archivedSessionIds:saved.archived,
+    registry = {get:key=>workspaces.get(key),list:()=>[...workspaces.values()],archivedSessionIds:saved.archived,
       async create(path) {
         const previous = [...workspaces.values()].find(row=>row.path===path);
         if (previous) return previous;
@@ -217,7 +218,8 @@ export async function cordisFixture(t, {crop = false, now = new Date(2026,10,15,
       scope.on('session/flush',session=>writeFileSync(logFile(session.id),JSON.stringify({header:session.header,events:session.snapshotEvents()})));
     }});
     const config = existing?.config ?? {dataDir:join(root,'core'),companionId:'fish',scopeId:'owner',ownerActorId:'owner',
-      displayName:'Fixture',character:'Synthetic companion'};
+      displayName:'Fixture',character:'Synthetic companion',
+      ...(memory?{memory:{python:resolve('.venv/bin/python'),dataDir:join(repo,'.chatpet/data/memory')}}:{})};
     await ctx.plugin(existing?.corePlugin ?? corePlugin,config);
     const core = ctx.petCore, request = label=>core.operator.request(label);
     if (!existing && core.workspace.status().state!=='ready') {
@@ -680,7 +682,7 @@ if (process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1]))
     const f = await clockFixture(t);
     t.mock.timers.tick(2*hour);
     let published = false;
-    const dispose = f.ctx.on('pet/life.changed',()=>{
+    const dispose = f.ctx.on('world.changed',()=>{
       if (!published && JSON.parse(readControl(f)).enabled===false) {
         published = true;
         t.mock.timers.tick(hour);

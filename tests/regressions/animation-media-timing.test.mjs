@@ -2,12 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {dirname,join,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {join} from 'node:path';
+import {animationMapURL} from '../fixtures/playback.mjs';
 
-const base=process.env.CHATPET_PLAYBACK_TEST_MODULE
-  ? dirname(resolve(process.env.CHATPET_PLAYBACK_TEST_MODULE)) : resolve('dist/src/living/body');
-const {animationAssets}=await import(pathToFileURL(join(base,'animation-map.js')));
+const {animationAssets}=await import(animationMapURL);
 const read=file=>JSON.parse(readFileSync(file,'utf8'));
 const catalog=read('src/desktop/assets/catalog.json');
 const original=Object.values(read('vendor/dsh-pet/origin.json').assets);

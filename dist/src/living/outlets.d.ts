@@ -19,4 +19,6 @@ export declare function registerLifeOutlet<K extends Slot>(ctx: Context, host: P
 };
 export declare function lookupLifeOutlet<K extends Slot>(ctx: Context, host: PetCoreHost, slot: K): LifeOutlets[K] | undefined;
 export declare function readLifeEnabled(ctx: Context, host: PetCoreHost, workspaceId: string): boolean;
+export declare function readRunningLifeHome(ctx: Context, host: PetCoreHost): string | undefined;
+export declare function isRunningLifeHome(ctx: Context, host: PetCoreHost, sessionId: string): boolean;
 export {};

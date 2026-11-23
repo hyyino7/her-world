@@ -5,17 +5,17 @@ import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {fileHashes} from '../../scripts/lib/repo-storage.mjs';
 import {loadInstallation} from '../../scripts/migrate/context.mjs';
-import {ECONOMY_STORAGE_STEP, storageManifest} from '../../dist/src/core/storage-migration.js';
+import {CONSOLE_WALLET_IMPORT_FILE, CONSOLE_WALLET_STEP, freshWalletImportProof, storageManifest} from '../../dist/src/core/storage-migration.js';
 import homeStep from '../../scripts/migrate/steps/0002-home-identity.mjs';
 import {content} from '../../scripts/fixtures/synthetic-companion.mjs';
 import {settingsHandler} from '../../dist/src/console/settings.js';
 import {resolveCompanionHome} from '../../dist/src/core/companion-foundation.js';
 import {cordisFixture} from '../behavior-list/entries-lifecycle.test.mjs';
-import {cli, fixture, mockDsh, read} from './helpers.mjs';
+import {cli, fixture, mockDsh, read, emptyWalletMigrationInputs} from './helpers.mjs';
 import {economyPaths, offlineFixture} from './offline-helpers.mjs';
 
-const completed = ['0001-storage-manifest', '0002-home-identity', '0003-economy-marker'].map(id => ({id,state:'complete'}));
-const assertCurrent = f => assert.deepEqual(read(join(f.data,'storage-manifest.json')), storageManifest(f.config.companionId, ECONOMY_STORAGE_STEP.to));
+const completed = ['0001-storage-manifest', '0002-home-identity', '0003-economy-marker', CONSOLE_WALLET_STEP.id].map(id => ({id,state:'complete'}));
+const assertCurrent = f => assert.deepEqual(read(join(f.data,'storage-manifest.json')), storageManifest(f.config.companionId, CONSOLE_WALLET_STEP.to));
 
 test('旧存档只开普通 DSH 聊天，离线迁移后恢复原 home、聊天和 Bank', {timeout:60000}, async t => {
   const f = await fixture(t,'current');
@@ -78,7 +78,10 @@ test('旧存档只开普通 DSH 聊天，离线迁移后恢复原 home、聊天�
   assert.deepEqual(managedFiles(),files);
 
   await running.restart(() => {
-    const migrated = cli(f,['run','--installation',f.installation,'--backup',join(f.out,'upgrade-backup')]);
+    mockDsh(t);
+    const {walletExport,walletRollback} = emptyWalletMigrationInputs(f);
+    const migrated = cli(f,['run','--installation',f.installation,'--backup',join(f.out,'upgrade-backup'),
+      '--wallet-export',walletExport,'--wallet-rollback',walletRollback]);
     assert.equal(migrated.status,0,migrated.stderr);
     assert.deepEqual(JSON.parse(migrated.stdout).steps,completed);
     assertCurrent(f);
@@ -97,7 +100,7 @@ test('旧存档只开普通 DSH 聊天，离线迁移后恢复原 home、聊天�
 });
 
 for (const [label, mirror] of [['没有镜像 ID', {version:1}], ['镜像 ID 滞后', {version:1, homeSessionId:'old-home'}]]) {
-  for (const adopted of [false, true]) test(`新装由前台开 home 后，${label}且${adopted ? '已' : '未'}采用钱包时完成三步`, async t => {
+  for (const adopted of [false, true]) test(`新装由前台开 home 后，${label}且${adopted ? '已' : '未'}采用钱包时仍无旧浏览器来源`, async t => {
     const f = await offlineFixture(t, false, {keepStorageManifest:true});
     const registry = {workspaces:[{...f.target, sessionIds:[]}], archived:[]};
     const running = await cordisFixture(t, {existing:{...f, registry}, order:adopted ? ['economy'] : []});
@@ -118,9 +121,10 @@ for (const [label, mirror] of [['没有镜像 ID', {version:1}], ['镜像 ID 滞
       assert.deepEqual(execute('plan'), []);
       assert.deepEqual(execute('run', '--backup', join(f.out, 'new-init-backup')), completed);
       assert.deepEqual(execute('status'), completed);
-      const [header,...events] = readFileSync(join(f.data,'migrations.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
-      assert.equal(header.economyAdopted,adopted);
-      assert.deepEqual(events.map(({event,step}) => [event,step]),completed.map(({id}) => ['skip',id]));
+      assert.equal(existsSync(join(f.out,'new-init-backup')),false);
+      assert.equal(existsSync(join(f.data,'migrations.jsonl')),false);
+      assert.deepEqual(read(join(f.data,CONSOLE_WALLET_IMPORT_FILE)),
+        freshWalletImportProof({storageId:f.storageId,companionId:f.config.companionId}));
       assert.equal(existsSync(database),adopted);
       assert.equal(existsSync(adoption),adopted);
       assertCurrent(f);

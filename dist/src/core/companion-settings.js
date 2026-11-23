@@ -1,5 +1,6 @@
 import { check, integer } from './storage.js';
 import { parseDesktopAppearance } from '../desktop/appearance.js';
+export const desktopAppearanceDefaults = () => parseDesktopAppearance();
 export const DEFAULT_COMPANION_SETTINGS = Object.freeze({
     desktopSize: 232,
     desktopFixed: false,
@@ -32,8 +33,12 @@ export const DEFAULT_COMPANION_SETTINGS = Object.freeze({
     offlineEnergyFloorPercent: 35,
 });
 export const EMPTY_COMPANION_CONFIGURATION = Object.freeze(Object.fromEntries(Object.keys(DEFAULT_COMPANION_SETTINGS).map(key => [key, null])));
-const BOOLEAN_KEYS = ['desktopClickSound', 'desktopReplyBubble', 'desktopWhisperEnabled', 'desktopWhisperImageEnabled',
-    'desktopWorkStatusEnabled', 'desktopTrayEnabled', 'desktopBalanceEnabled', 'desktopFixed', 'desktopConfineToScreen'];
+const desktopSwitches = Object.keys(DEFAULT_COMPANION_SETTINGS)
+    .filter(key => typeof DEFAULT_COMPANION_SETTINGS[key] === 'boolean');
+export function isDesktopSwitch(key, value) {
+    return Object.hasOwn(DEFAULT_COMPANION_SETTINGS, key) && typeof DEFAULT_COMPANION_SETTINGS[key] === 'boolean' &&
+        typeof value === 'boolean';
+}
 const RANGES = {
     desktopSleepTalkSeconds: [1, 86400], desktopSize: [96, 512], desktopBalanceMinutes: [1, 1440],
     desktopWhisperMinutes: [1, 1440], desktopBubbleSeconds: [1, 300], workAnimationDelaySeconds: [0, 3600],
@@ -51,8 +56,8 @@ export function parseCompanionConfiguration(raw) {
     if (memoryColdHours !== undefined && memoryColdHours !== null)
         integer(memoryColdHours, 'legacy memoryColdHours', 1, 720);
     const result = { ...EMPTY_COMPANION_CONFIGURATION, ...current };
-    for (const key of BOOLEAN_KEYS)
-        check(result[key] === null || typeof result[key] === 'boolean', 'Invalid Desktop switch');
+    for (const key of desktopSwitches)
+        check(result[key] === null || isDesktopSwitch(key, result[key]), 'Invalid Desktop switch');
     for (const [key, range] of Object.entries(RANGES)) {
         const value = result[key];
         if (value !== null)

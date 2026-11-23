@@ -15,6 +15,10 @@ export const INITIAL_STORAGE_STEP = Object.freeze({ id: '0001-storage-manifest',
 export const HOME_STORAGE_STEP = Object.freeze({ id: '0002-home-identity', from: INITIAL_STORAGE_VERSIONS, to: HOME_STORAGE_VERSIONS });
 export const ECONOMY_STORAGE_STEP = Object.freeze({ id: '0003-economy-marker', from: HOME_STORAGE_STEP.to,
     to: Object.freeze({ ...HOME_STORAGE_STEP.to, core: 3, living: 3 }) });
+export const CONSOLE_WALLET_STEP = Object.freeze({ id: '0004-console-wallet', from: ECONOMY_STORAGE_STEP.to,
+    to: Object.freeze({ ...ECONOMY_STORAGE_STEP.to, living: 4 }) });
+export const CONSOLE_WALLET_IMPORT_FILE = 'console-wallet-import.json';
+export const freshWalletImportProof = (binding) => ({ format: 1, mode: 'fresh', binding });
 export function storageManifest(companionId, modules) {
     return { schemaVersion: 1, companionId, modules };
 }
@@ -42,6 +46,23 @@ export function validateMigrationContract(contract) {
 const stepEvents = new Set(['start', 'skip', 'done', 'failed']);
 const otherEvents = new Set(['lock-takeover', 'journal-repaired']);
 const digest = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+export function isWalletImportProof(value, storageId) {
+    if (!value || typeof value !== 'object')
+        return false;
+    const proof = value;
+    return proof.format === 1 && proof.mode === 'import' && proof.binding?.storageId === storageId
+        && typeof proof.binding.companionId === 'string' && !!proof.binding.companionId
+        && (proof.wallet === 'adopted' || proof.wallet === 'absent' && proof.requestCount === 0)
+        && typeof proof.round === 'string' && !!proof.round
+        && Number.isSafeInteger(proof.sourceCount) && proof.sourceCount > 0
+        && Number.isSafeInteger(proof.requestCount) && proof.requestCount >= 0 && proof.requestCount <= proof.sourceCount
+        && digest(proof.sourceDigest) && digest(proof.requestDigest) && digest(proof.exportDigest);
+}
+function validWalletImportJournal(row, storageId) {
+    return typeof row.exportFile === 'string' && isAbsolute(row.exportFile)
+        && typeof row.rollbackFile === 'string' && isAbsolute(row.rollbackFile)
+        && digest(row.rollbackDigest) && digest(row.codeFingerprint) && isWalletImportProof(row.proof, storageId);
+}
 export class MigrationBindingChanged extends Error {
 }
 export const settled = (segment) => segment.header.steps.every(step => isStepSettled(segment.states.get(step.id)));
@@ -59,11 +80,11 @@ export function decodeMigrationJournal(journal, storageId) {
         assert.ok(value && typeof value === 'object' && !Array.isArray(value));
         const row = value;
         if (row.event === 'migration') {
-            const { id, backup, schema, steps, binding, backupHash, manifestHash, economyAdopted } = row;
+            const { id, backup, schema, steps, binding, backupHash, manifestHash, economyAdopted, walletImport } = row;
             assert.ok(typeof id === 'string' && id && !ids.has(id) && typeof backup === 'string' && isAbsolute(backup));
             let header;
             if (schema === undefined && steps === undefined && binding === undefined && backupHash === undefined) {
-                assert.ok(!last && digest(manifestHash) && economyAdopted === undefined);
+                assert.ok(!last && digest(manifestHash) && economyAdopted === undefined && walletImport === undefined);
                 header = { ...row, id, backup, steps: [INITIAL_STORAGE_STEP], backupHash: manifestHash };
             }
             else {
@@ -72,6 +93,8 @@ export function decodeMigrationJournal(journal, storageId) {
                 assert.ok(economyAdopted === undefined || typeof economyAdopted === 'boolean' && steps.some(step => step.id === ECONOMY_STORAGE_STEP.id));
                 if (binding.storageId !== storageId)
                     throw new MigrationBindingChanged();
+                const walletStep = steps.some(step => step.id === CONSOLE_WALLET_STEP.id);
+                assert.ok(walletStep ? walletImport && validWalletImportJournal(walletImport, storageId) : walletImport === undefined);
                 if (last) {
                     const prior = last.header.steps;
                     assert.ok(settled(last) && steps.length > prior.length && isDeepStrictEqual(steps.slice(0, prior.length), prior));

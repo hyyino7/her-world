@@ -1,3 +1,5 @@
+import {Context} from '@deepseek-ai/cordis';
+import {LivingView, LivingWorld} from '../../dist/src/living/index.js';
 // The actual Room process, preload, scene and Behavior share only a disposable
 // workspace. The native event path has no periodic Room poll.
 import {createServer} from 'node:http';
@@ -19,7 +21,8 @@ let target={id:'fixture',path:temporary,sessionIds:[]},origin,behavior,room,read
 let emotion={label:'初始心情',feelings:['calm'],updatedAt:1};
 const events=new Map(),views=[];
 const emit=(name,...args)=>{for(const listener of events.get(name) ?? [])listener(...args);};
-const host={native:{},workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,runtime:{config:{companionId:'fixture'},identity:()=>({displayName:'Fixture'}),store:{meta:()=>undefined}}}};
+const host={native:{},workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,
+ homeScope:()=>({workspaceId:target.id,path:target.path,storageId:target.id,bootId:'fixture',generation:0}),runtime:{config:{companionId:'fixture'},identity:()=>({displayName:'Fixture'}),store:{meta:()=>undefined}}}};
 const registry={get:id=>id===target.id?target:undefined,archivedSessionIds:[]};
 const ctx={petCore:host,workspaceRegistry:registry,
   get(name){return name==='petBehavior'?behavior:name==='petEmotion'?{read:async()=>{},roomSnapshot:()=>emotion}:name==='webServer'?{getOrigin:()=>origin}:undefined;},
@@ -47,11 +50,18 @@ const server=createServer(async(req,res)=>{
   res.writeHead(response.status,headers);res.end(body);
  }catch(error){res.writeHead(500);res.end(String(error));}
 });
+const {world, release: releaseWorld}=LivingWorld.retain(new Context(),host,'body');
+function mountBody(){
+ const next=new CompanionBehavior(ctx,host,new LivingView({},undefined,undefined,undefined,
+   (scope,bodyOnly,observation)=>world.changed(ctx,host,()=>behavior===next,scope,bodyOnly,observation)));
+ next.activate();
+ return next;
+}
 let held=false,heldReady,releaseHeld;
 try{
  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
  origin='http://127.0.0.1:'+server.address().port;
- behavior=new CompanionBehavior(ctx,host);room=new Room(ctx);
+ behavior=mountBody();room=new Room(ctx);
  const request=room.request.bind(room);
  room.request=async(...args)=>{
    const value=await request(...args);if(args[1]==='roomState'){reads++;if(held){held=false;heldReady();await new Promise(resolve=>{releaseHeld=resolve;});}}
@@ -59,7 +69,7 @@ try{
  };
  await room.open(target.id);await until(()=>ready && reads>=1,'initial snapshot, native subscription and scene');
  await delay(50);const before=reads;
- room.window.changed({workspaceId:'another-workspace',bootId:behavior.bootId,revision:1000});
+ emit('world.changed',{...host.workspace.homeScope(),workspaceId:'another-workspace'});
  await delay(70);assert.equal(reads,before,'unrelated workspace changes do not wake this Room');
  const started=Date.now(),result=await behavior.act(target.id,'feed');
  await until(()=>views.some(view=>view.at>=started && view.activity.includes(result.home.her.activity)),'body event appears through native notification',1000);
@@ -79,13 +89,16 @@ try{
  held=true;const oldBootCaptured=new Promise(resolve=>{heldReady=resolve;});
  emotion={label:'旧一代状态',feelings:['worry'],updatedAt:4};emit('pet/emotion.changed',target.id,{});
  await oldBootCaptured;await behavior.close();
- emotion={label:'新一代状态',feelings:['calm'],updatedAt:5};behavior=new CompanionBehavior(ctx,host);
- await behavior.snapshot(target.id);releaseHeld();
+ emotion={label:'新一代状态',feelings:['calm'],updatedAt:5};behavior=mountBody();
+ await behavior.snapshot(target.id);
+ // Match the native area activation notification after the replacement is ready.
+ world.changed(ctx,host,()=>!!behavior);
+ releaseHeld();
  await until(()=>views.some(view=>view.emotion.includes('新一代状态')),'replacement Behavior generation');
  assert.ok(!views.some(view=>view.emotion.includes('旧一代状态')),'old generation never overwrites replacement');
  console.log(JSON.stringify({ok:true,nativeWindow:true,preloadBridge:true,bodyMirrorMs:latency,nativeEventRefresh:true,
    wrongWorkspaceIgnored:true,staleRevisionRejected:true,oldBootRejected:true,reads,modelCalls:0,personalProfile:false}));
 }finally{
- releaseHeld?.();await room?.close();await behavior?.close();server.closeAllConnections();
+ releaseHeld?.();await room?.close();await behavior?.close();releaseWorld();server.closeAllConnections();
  if(server.listening)await new Promise(resolve=>server.close(resolve));rmSync(temporary,{recursive:true,force:true});
 }
