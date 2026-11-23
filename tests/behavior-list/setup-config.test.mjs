@@ -121,9 +121,10 @@ export function profileFixture(t) {
       assert.equal(result.status, 0, result.error?.message ?? result.stderr);
       return JSON.parse(result.stdout);
     },
-    installFixture(config, {enabled = true, version = '0.1.8', spec = 'file:legacy.tgz'} = {}) {
+    installFixture(config, {enabled = true, version = '0.5.0', spec = version} = {}) {
       mkdirSync(installed, {recursive: true});
-      writeFileSync(bundlePatch, dump([{insert: [{...rows[0].insert[0], ...(config ? {config} : {})}]}]));
+      writeFileSync(bundlePatch, dump(rows));
+      if (config) writeFileSync(patchPath, dump([{id: '00-Core', config}]));
       writeJson(join(installed, 'package.json'), {name:'her-world',version,dsh:{bundle:{patch:'./cordis.patch.yml'}}});
       writeJson(manifest, {dependencies:{'her-world':spec},dsh:{profile:{bundles:enabled ? ['her-world'] : []}}});
     },

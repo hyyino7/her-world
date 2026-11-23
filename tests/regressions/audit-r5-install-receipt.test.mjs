@@ -16,13 +16,13 @@ function fixture(t, {fresh = false, runtime = false} = {}) {
   const old = {status:'installed', packageInstalled:true, profileDir: f.profileDir, config: oldConfig,
     actualPaths:{coreDataDir: oldConfig.dataDir, memoryDataDir: memory?.dataDir ?? null, memoryPython: memory?.python ?? null}};
   const oldBytes = JSON.stringify(old, null, 2) + '\n';
-  const patch = '# retain owner patch\n[]\n';
-  fs.writeFileSync(f.patchPath, patch);
+  const patch = '# retain owner patch\n' + (fresh ? '[]\n' : f.dump([{id: '00-Core', config: oldConfig}]));
   if (!fresh) {
-    f.installFixture(oldConfig);
+    f.installFixture();
     fs.mkdirSync(f.receiptDir, {recursive: true});
     fs.writeFileSync(f.receiptPath, oldBytes);
   }
+  fs.writeFileSync(f.patchPath, patch);
   return {...f, repo, config, oldConfig, oldBytes, patch,
     args: ['--data-dir', config.dataDir, '--no-backup']};
 }

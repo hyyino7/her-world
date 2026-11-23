@@ -175,8 +175,8 @@
 
 - 决定（已知问题 8）：
   - `dafeiyu-setup --apply` 用 DSH 自带的插件命令安装 npm 上的 `her-world`：默认装稳定版，`--version <版本>` 可以指定；不再接受 `--archive`。完整的 `00-Core` 配置写进 profile 的 `cordis.patch.yml` 覆盖，读回核对一致后才发布 `installation.json` 回执。
-  - 已装机器用 `dafeiyu-setup migrate-core-config`：默认只核对，加 `--apply` 才搬配置或补回执；输出只给状态、路径和固定原因码。
-  - 包里的配置已经丢了、只剩一份已完成回执时，只有当前包、profile、Core 库和存储绑定全部交叉核对通过，才允许据此恢复。
+  - 现用 npm profile 可离线运行 `dafeiyu-setup repair-core-config`。默认只核对，加 `--apply` 才补写缺失的安装回执或恢复丢失的 profile Core 覆盖。输出只给状态、路径和固定原因码。
+  - profile Core 覆盖丢失时，只有已完成回执与当前包、profile、Core 库和存储绑定交叉核对通过，才允许据此恢复。
   - 半途失败时，脚本只自动回滚能证明安全的 profile 补丁和回执；包或数据状态不明，就保留 `applying` 和快照，交给主人走 DSH 和离线恢复。即使用 `--no-backup` 也保留这两份快照。
   - 测试用和本机 DSH 同版本的 `@deepseek-ai/cordis-plugin-include` 作为开发依赖，跑上游真实的补丁算法；运行时仍用 DSH 应用自带的。
 - 为什么：
