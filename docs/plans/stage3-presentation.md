@@ -201,7 +201,98 @@
 5. **核对及清源**。确认 `segment=settled`、原号、余额、库存和 Body，并验克隆新页面。主人确认后用同轮私有日志逐源清旧键。中断后继续用原日志。发现冲突则保留现场和日志并停止放行，交主人核对。全源复查通过后只打开新版业务页面。
 6. **回退**。放行前继续停写，换回 v0.4.0，验锚并恢复旧备份。核对恢复证明后用单独的同轮日志按原值回插。中断继续用原日志，冲突则保持停写。原号、余额、库存和 Body 核对通过才解除停写。私有导出和同目录暂存件留至主人关闭回退窗口。
 
+### 审查返工
+
+1. **Channels**。请求、通知和适配器均用入口的 `homeScope()`。A→B→A 回归验证旧检索报 `STALE_BINDING`、旧通知失效、当前代次重建适配器。旧 QQ 合成在查询仍占着队列时即取消，按实际传输记录核对零文字送达；普通合成失败仍可降级。
+2. **旧钱包写入口**。在登记可用性等待前捕获绑定代次，恢复后及钱包登记、写入前复核。保持持久修订相同的 A→B→A 测试确认两条旧 RPC 都报 `STALE_BINDING`，余额无变化。
+3. **钱包恢复入口**。四条 RPC 走 Economy 的 Console 运维登记和同一代次检查。上述测试同时覆盖四条旧请求和原号无新证据，当前代次仍能查询。
+4. **Room 会话和录音**。私聊和电视在旧代次取消原生轮次，恢复排队及落盘前检查原绑定；Voice 在调用提供方前复核。回归分别检查原生取消、零后续 flush、替换目录零恢复文件、录音提供方零调用。
+5. **关闭桌宠**。捕获原绑定和生命周期，逐笔派发前及返回后复核。A→B／A→B→A 时保留 B 和新 A 后续同 ID 的配置。另在合成副本卡住上游 `setPetDisplay` 的异步建目录并换绑，已派发的首笔仍在原路径完成。该上游写盘位置无取消接口，首笔待对齐上游方案。
+6. **Core 自述和初始化**。`self.md` 异步读后及落盘前复核代次、取消和所属 Core。初始化等待 SQLite 后复核调用状态、代次、编辑范围与原登记。回归检查 A→B→A、取消或卸载后自述原文不变，取消初始化或替换 Core／工作区登记后目标目录仍为空。
+7. **Room 门禁夹具**。`life-body` 补动态 `homeScope()` 代次，`context-overview` 接实际 `toolAdmission()`。保留跨工作区身体状态和 Room 工具视图断言。
+8. **九条 Desktop 门禁红项**。
+   - `room-garden-json` 五条（买种、出售、买肥、到访、浇水）从退役事件切到 `world.changed`，逐条保留接受、走路、工作、完成与 JSON 回包断言，并核对变更通知的绑定。
+   - `economy-recovery` 将故障注入切到真实 `world.changed` 监听器，仍要求监听器抛错、事实已提交且换绑后无法确认旧事实。
+   - `life-body` 暂停或无 Life 的显式照料订阅 `world.changed`，保留照料、菜园、暂停时钟断言，通知必须来自当前工作区且为 `bodyOnly`。
+   - `room-refresh` 的到期用例复现实际漏发。Body 到期且状态修订变化时发过渡通知，读取造成的可见变化仍带 observation 版本，普通重复读不额外通知。
+   - `room-refresh` 的覆盖版本用例改用 LivingWorld → RoomWindow → 读取端，保留覆盖版本抑制、新版本、显式及恢复触发刷新断言。
+9. **编辑绑定错误优先级**。受影响的身份及资料写入先核编辑范围。用真实替换存储复现旧表单应报 `STALE_BINDING`，当前表单仍受 `migration-required` 门禁约束，两个文档原字节不变。
+10. **Room 验收夹具**。Node 复现两条由红转绿。录音夹具补 `ctx.get()`，刷新夹具给替换后的 Body 接同一 LivingWorld，并保持新旧版本断言。真实 Room Voice 启动在沙箱内 `SIGABRT`，Room 刷新窗口启动后即退出，均待沙箱外运行 `pnpm run test:room-voice`、`pnpm run test:room-refresh`。
+11. **出售原号查证**。摘要使用钱包所有者的 `sell`。真实交易后可按原号查证，待办已清，同号重放只到账一次。
+12. **钱包明确拒绝**。有零效果证据的余额不足和配置修订过期结束待办，保留终态编号。随后新操作可继续，余额恢复也不能让旧号执行。
+13. **丢回包后重开钱包**。设置页显示近期已提交编号，并可输入原号查证。合成断回包、重启及重开设置页后可查到已提交，余额只变化一次。
+14. **清源及回插同轮**。拿到冻结租约后复读导出摘要，导入和回退证明核同一摘要。清源及回插的换轮测试均报冲突，浏览器原值和日志保持未动。
+15. **Memory 停写**。浏览器离线入口及冻结复查复用现有停写检查，覆盖配置已移除但仍运行的 Repo 内保留 Bank。合成运行标记挡住入口，停写后可继续。
+16. **已写后丢答复**。QQ 和微信配置的真实 Settings 入口在重连期间换绑，保留原落盘并报 `unknown/reconcile`。钱包已到账后取消或换绑也保留这个效果与恢复口径，原号查证为已提交、账本只记一次；拒绝检查点丢回包的断言同样核对效果。
+17. **原生菜园播放形状**。`room_garden` 工具复用窗口的回包投影。测试用真实 Body 进入走路阶段并逐项比对 `home.playback`。
+18. **停留准入**。主人指定位置后的 `idle + busy` 拒绝新投喂。两笔异号均为 `activity-busy`，Body 无投喂事实。
+19. **显式关闭 Life**。计划读取损坏仍关停 Body 自治和原生 Life，保留原读取错误。回归延后背景同步，验证关停来自显式操作。
+20. **Room 开窗隔离**。两个桌宠入口按 Cordis scope 查询 Room 登记，覆盖隔离拒绝、同 scope 开窗和撤销后拒绝。
+21. **桌宠投喂原号**。先查 Body 回执，仍在呈现代次内的近期原号复用已有 `playbackId`。移除桌宠或素材后旧号仍可查，两个新号均被拒且零新投喂。播放编号缓存随呈现绑定关闭清空，Body 持久回执仍可查证。报告中的失败用例补齐 Body 替身的准入回调，保留零投喂断言并核对 `unknown-pet`。
+22. **Compact 语音取消，待沙箱外验证**。开始与取消经 renderer IPC 传同一编号，停止朗读、会话切换和窗口隐藏都终止对应请求。旧生成脚本的停止朗读用例复现未取消，Node 回归通过。真实 Electron 启动在沙箱内 `SIGABRT`；沙箱外执行 `env -u ELECTRON_RUN_AS_NODE "${DSH_CHATBOT_ELECTRON_PATH:-${DSH_HOME:-$HOME/.dsh}/electron/Electron.app/Contents/MacOS/Electron}" tests/desktop/compact-voice-window.cjs`，用合成麦克风及宿主回执夹具核对三种取消。
+
+- `pnpm run build`、`pnpm run check:arch` 通过，规则 9、词表 590，新增均为 0。受影响快测 212/212，行为索引 11/11，行为清单 170/170。用 HEAD 产物与返工产物对照，第 1–6 条所选的 13 个回归用例全部由红转绿。
+- `pnpm run verify` 的 Node 阶段通过 1776/1777，桌宠原红项通过。唯一失败为 `tests/memory/memory-process.test.mjs:81` 的沙箱 `spawnSync /bin/ps EPERM`，未跳过。门禁因此中止，后续的 Python 22/22、发布元数据及本地打包检查另跑通过。实际窗口、生产 DSH 与真数据验收待完成。
+- 补丁按功能拆分，`dist/src/**` 产物随对应补丁，按项目约定免计提交尺寸。
+
 ## 审查结论
+
+两层审查：Codex 按批只读审查（各批相对上一批的增量），Claude 复核。标「已核实」的由 Claude 读代码或实跑确认；标「待复现」的是 Codex 读代码确认、Claude 未逐条复跑，返工时先写会失败的测试复现，复现不了就在执行结果里说明理由、不改代码。
+
+**门禁**　`pnpm run verify` 在 `codex/stage3-console-data`（`f2e2975c`）跑一次，1748 条中 12 条失败，均为本阶段引入（同 6 个文件在 `main`、安全网、Voice 上全过；Room 起 2 条，Desktop 起 11 条，数据细批起 12 条），不是回环或沙箱问题。
+
+### 必须修
+
+**跨批 · 绑定代次（同一不变量多处失守）**　A→B→A 后同一工作区的 id、路径、存储 ID 和持久修订都可以相同，只有 `homeScope().generation` 能区分。以下入口仍只比前几项，按方案第三、四批「复用 `homeScope()` 的绑定代次」统一改为持有并复核起步代次：
+
+1. 已核实 · Channels：`src/channels/plugin.ts:38` 的 `current()` 不比代次，旧群检索在回到 A 后成功回包、新通知复用旧适配器；`tests/regressions/mapped-channel-path-binding.test.mjs:127` 反而要求旧请求成功，应改为断言 `STALE_BINDING` 并重建适配器。连带 Voice 审查指出 QQ 合成被代次取消后降级为文字发出（`src/channels/qq.ts:115`），取消不应走文字降级。
+2. 已核实 · Console 旧钱包写：`src/console/settings.ts:116–128` 的 `validate()` 只比路径和修订。
+3. 待复现 · 数据细批新增的四个钱包恢复 RPC 直接调 Economy，未走运维登记和代次校验（`src/console/settings.ts:115`、`src/living/economy/plugin.ts:459`）。
+4. 待复现 · Room 聊天：私聊或电视观后感轮次在 A→B→A 后继续执行，`restore()` 排队期间可能写入 B 的恢复文件（`src/room/chat.ts:122,176`、`src/core/native/conversation.ts:22`）；Voice 审查另指 Room 录音在入场检查后、提供方开始前换代仍被接收（`src/core/tables/voice.ts:62`、`src/room/plugin.ts:73`）。
+5. 待复现 · Console `desktopClose`：关闭多只桌宠途中换绑，后续循环在 B 的配置上隐藏同 ID 桌宠并写盘（`src/desktop/plugin.ts:40`、`src/desktop/platform/plugin.ts:337`）。
+6. 待复现 · `self.md` 保存在异步读盘后只核路径和文件版本，取消、卸载或 A→B→A 后仍落盘；初始化等 SQLite 恢复后同样不复核（`src/core/console-operations.ts:54`、`src/core/records.ts:77`、`src/core/runtime.ts:102`）。
+
+**门禁红项**
+
+7. 已核实 · Room 批：`tests/life/life-body.test.ts:80` 夹具缺 `homeScope()`，`tests/life/context-overview.test.ts:26` 夹具缺 `toolAdmission()`，进入断言前抛 `TypeError`。
+8. 已核实 · Desktop 批再起 9 条：`dist/tests/behavior/room-garden-json.test.js:19`（5 条，「real Behavior publisher emits successful state changes」）、`dist/tests/economy/economy-recovery.test.js:134`、`dist/tests/life/life-body.test.js:154`、`tests/regressions/room-refresh.test.mjs:21,30`。多为退役三路旧事件后断言仍等旧通知；逐条判断是改测试跟新信号，还是行为真的丢了，不能为过而放宽断言。
+9. 已核实 · 数据细批：`dist/tests/regressions/audit-r6-binding.test.js:165` 期望 `STALE_BINDING`，实得 `migration-required`。
+10. 待复现 · Room 批：`tests/room/room-voice-window.cjs:33` 缺 `ctx.get()`，`tests/manual/room-refresh-window.mjs:56,85` 只给首个 Body 接 `world.changed`，这两条是方案指定的验收夹具。
+
+**行为与兼容**
+
+11. 已核实 · 数据细批：出售回执存 `operation:'sell'`（`src/living/economy/store.ts:276`），查证按 `'sale'` 算摘要（`src/living/economy/console-requests.ts:16`），任何一次成功出售都会被判成同号异内容，待办无法重试或放弃，并持续拦住新的 Console 钱包写入。
+12. 待复现 · 数据细批：余额不足、配置修订过期等明确拒绝也留下待办，锁住钱包（`src/living/economy/plugin.ts:298,352`）。
+13. 待复现 · 数据细批：提交成功但回包丢失时，服务端已置终态，待办列表不再返回该号，重开设置页后没有原号查证入口（`src/living/economy/plugin.ts:352`、`console-requests.ts:133`、`src/console/client.js:582`），与方案「关页面或重启后仍能用原号看结果」不符。
+14. 待复现 · 数据细批：清源和回插先读导出、后取冻结租约，期间换成另一轮导出时，校验和执行用的不是同一轮（`scripts/migrate/browser-wallet.mjs:98`、`runner.mjs:153`）。
+15. 待复现 · 数据细批：Memory 配置移除后浏览器离线入口跳过 Memory 检查，仍在运行的保留 Bank 不被拦（`scripts/migrate/context.mjs:35`；对照备份器 `scripts/lib/offline-backup.mjs:163`）。
+16. 待复现 · Console 批：已落盘的操作（QQ／微信配置保存后等重连时换绑、钱包写入后取消）被标成 `effect: none`（`src/console/settings.ts:79,130`、`src/channels/messaging.ts:193`）；`tests/regressions/mapped-sleeping-inventory.test.mjs:163` 只断言 `ok:false`，应断言 `effect`。
+17. 待复现 · Room 批：原生 `room_garden` 工具直接序列化 Body 回执，丢了旧回包的 `home.playback`（`src/room/plugin.ts:121,170`），违反拍板 11「保留旧播放形状」。
+18. 待复现 · Desktop 批：主人指定位置后伙伴停留时 `kind:'idle'`、`busy:true`，新准入只看 `kind`，两次不同编号的吃饭会各投喂一次（`src/living/body/activity.ts:17`），违反「只投喂一次」。
+19. 待复现 · Desktop 批：计划读取失败时显式关闭 Life，`Body.setAutonomy(false)` 被同一错误跳过，Body 继续自治（`src/living/plan/plugin.ts:403,670`）。
+20. 待复现 · Desktop 批：两个 Room 开窗入口改读 Core 单槽登记后丢了 PetPlatform 的 Cordis 隔离（`src/desktop/platform/plugin.ts:605`、`src/room/plugin.ts:212`、`src/core/tables/companion-ports.ts:46`）。
+21. 待复现 · Desktop 批：`/anim` 同号重试省略原 `playbackId`；桌宠或素材移除后配置校验先于回执查询，已提交投喂无法按原号核对（`src/desktop/platform/plugin.ts:626,724`）。
+22. 待复现 · Voice 批：Compact 依赖 `req.signal`，Electron 自定义协议重建 `Request` 后取消到不了宿主；「停止朗读」不取消已发出的合成（`src/desktop/helper/main.cjs:239`、`src/desktop/helper/chat.js:21`）；新增测试自构 `Request` 绕过了断点。需在真实 Electron 里复现。
+
+### 需主人知道的限制（上游 vendor 禁改，不在本阶段修）
+
+- 上游桌宠 bridge 只转发 URL、方法和正文，不带单次取消：桌宠气泡关闭后转写继续（Voice），投喂排队未提交时渲染端放弃或超时仍会投喂（Desktop）。见 `vendor/dsh-pet/platform/runtime/electron-helper/main/bridge.js:28,99`。
+- 上游 `postAction` 只回布尔，桌宠网页的 `requestId` 每次点击新生成（`src/desktop/platform/browser-entry.js:37`），回包丢失后网页侧拿不到原号；进食结束后重点可再投喂一餐。若要守住「凭原号核对」，需把原号留在 `browser-entry.js` 的重试里，或主人接受此限制。
+
+### 建议修（不阻断合并）
+
+- 安全网：Room 断回包和取消只走 Console HTTP 夹具，没走真实窗口 IPC；Console 复现用同步 `Set` 夹具而非宿主 Connection（`tests/behavior-list/presentation-r7-fixture.mjs:14,47`）。R8 漏 `keyof typeof T.child` 写法（`scripts/arch/lib/vocabulary.mjs:47`、`ast.mjs:61`），误收 `CONFIG[("k")]`；共用叶子持久写漏 `prepare()` 存变量后 `.run()` 和 `locations[].containerOwner`（`scripts/arch/lib/storage.mjs:58`、`scan.mjs:30`）；一次性核准只比规范键和重数（主人已按此核准，记录即可）。计划续行用例的 `inspectPlanned()` 会主动推进计划。
+- 同步读盘：Room、Channels、Desktop、Console 一次请求里多次调 `homeScope()`／`status()`，每次同步读文档和清单；Channels 纯身体通知也触发五次 `status()`。建议合并为一次取值。
+- Channels 生命周期用例没断言启动、暂停、卸载后的刷新；越界设置用例没断言 `INVALID_ARGUMENT`（`tests/regressions/audit-r6-channel-drafts.test.mjs:63`）。
+- Console：`roomOpen` 等待子进程期间取消仍聚焦；`lifeView` 旧错误优先级变了（`STALE_BINDING`→`UNAVAILABLE`）；`scripts/checks/check-native-portability.mjs:55` 仍按旧签名传 `getDesktop`；Channels 登记丢弃 `requestId`，`qzoneDraft` 同号可落盘两条。
+- 数据细批：盘点把已采用钱包缺独立证明文件报成缺失（`arch/storage.json:42`，兼容测试把误报写进预期）；旧 RPC 同号重放混合两个时点；Body 每次 tick 为已结清投喂做同步 I/O（`src/living/body/room.ts:969`）；`room.ts:734` 不可达分支；`docs/development.md:96,139` 与旧键写入者登记需随入口更新。
+- Room：生成关系未登记 Room 窗口脚本和 Console 客户端的内联协议表、`animation-allocation.json` 输入（`arch/layers.json:101,144`）；`src/desktop/images.ts` 与 `src/room/images.ts` 逐行重复。
+- 文档与证据：典型修改 2、3、7 的执行结果没给补丁或提交位置，无法复核文件数；`arch/storage.json` 多处证据行号失准（Voice、Channels）；安全网执行结果与 `docs/architecture.md` 的 R8 口径、共用叶子规则滞后；Voice「立即中止旧 QQ 合成」应写明只结束调用方等待；Desktop 的 `bodyObservation` 版本语义和吃饭准入说明（`docs/architecture.md:223,295`）待补。
+
+### 未验证
+
+- 真实 Electron 窗口、生产 DSH 设置窗、实机 QQ／微信、隔离安装包和 RC／正式包激活均未做；Claude 没有手动操作界面。
+- 已知 `main` 上就失败的 `test:room-refresh`、`check-standalone-window.mjs`、`tests/manual/companion-settings-window.cjs` 未复跑。
 
 <a id="concepts"></a>
 ## 附录 · 第二批概念表与扩展检查
