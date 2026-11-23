@@ -35,7 +35,7 @@ test('shared Pet speech resolves the selected native recognizer and reuses the s
   const host={workspace:{homeScope:()=>({workspaceId:id,storageId:id,path:root,bootId:'fixture',generation:0})}} as unknown as PetCoreHost;
   const voice = new CompanionVoice(host,root,()=>({listProviders:()=>['local'],
     resolve:(value:unknown)=>value,transcribe:async(value:{audio:Uint8Array})=>{heard++;assert.deepEqual([...value.audio],[1,2]);return {text:'临时录音'};}}));
-  const registryFile='../../src/desktop/upstream/host/voice/registry.js';
+  const registryFile='../../src/voice/upstream/host/voice/registry.js';
   const {registerVoiceProvider} = await import(registryFile);
   const release = registerVoiceProvider({id:'fixture',name:'fixture',synthesize:async()=>{spoken++;return Buffer.from('audio-fixture');}});
   t.after(()=>{release(); voice.release();});
@@ -59,7 +59,7 @@ test('speech capability reflects enabled providers and binding changes reject in
     transcribe:async()=>{ready();return new Promise<{text:string}>(resolve=>{complete=resolve;});}}));
   t.after(()=>voice.release());
   assert.equal(voice.canTranscribe(),false);
-  const registryFile='../../src/desktop/upstream/host/voice/speech-registry.js';
+  const registryFile='../../src/voice/upstream/host/voice/speech-registry.js';
   const {registerSpeechProvider}=await import(registryFile);
   const release=registerSpeechProvider({id:'fixture-external',name:'fixture-external',transcribe:async()=> 'external text'});
   assert.equal(voice.canTranscribe(),true);release();assert.equal(voice.canTranscribe(),false);

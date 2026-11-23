@@ -38,6 +38,7 @@ function createFixturePage() {
 }
 
 async function check() {
+  const { Context } = await import('@deepseek-ai/cordis');
   const { createCore } = await import('../../dist/src/core/index.js');
   const { settingsHandler } = await import('../../dist/src/console/settings.js');
   const { CompanionEmotion, emotionConsoleOperations } = await import('../../dist/src/emotion/plugin.js');
@@ -98,7 +99,17 @@ async function check() {
   let openedRooms=0;const room={open:async workspaceId=>({workspaceId,open:++openedRooms}),status:()=>({running:false})};
   const {PetPlatform,platformConsoleOperations}=await import('../../dist/src/desktop/platform/plugin.js');
   let address;
-  const nativeCtx={get:()=>undefined,logger:console,connection:{broadcast(){},authenticatedUrl:url=>url},on:()=>()=>{},petDesktop:{chat:{id:'fixture-chat',snapshot:()=>({messages:[],sessionId:'fixture-chat',workspaceId:'fixture',generating:false})}},webServer:{getOrigin:()=>address},petCore:host};
+  const webServer = { getOrigin: () => address };
+  const nativeCtx = new Context();
+  await nativeCtx.plugin(scope => {
+    scope.provide('logger', console);
+    scope.provide('connection', { broadcast() {}, authenticatedUrl: url => url });
+    scope.provide('petDesktop', { chat: { id: 'fixture-chat', snapshot: () => ({
+      messages: [], sessionId: 'fixture-chat', workspaceId: workspace.id, generating: false,
+    }) } });
+    scope.provide('webServer', webServer);
+    scope.provide('petCore', host);
+  });
   const platform=new PetPlatform(nativeCtx);
   let desktopStatus={running:false,requested:false,starting:false},desktopCloses=0;
   const desktop={status:()=>({...desktopStatus}),start:async()=>{desktopStatus={running:false,requested:true,starting:true};},
@@ -147,7 +158,6 @@ async function check() {
     });
   });
 
-  createFixturePage();
   const server=createServer((req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(url.pathname.startsWith('/chatpet-presentation/')) {
@@ -160,11 +170,17 @@ async function check() {
     res.setHeader('Content-Type',name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':name.endsWith('.html')?'text/html':'application/octet-stream');
     res.end(fs.readFileSync(file));
   });
-  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  address='http://127.0.0.1:'+server.address().port;nativeCtx.webServer.port=server.address().port;
-  const win = new BrowserWindow({ width: 800, height: 900, useContentSize: true, show: false,
-    webPreferences: { preload: join(root, 'preload.cjs'), backgroundThrottling: false } });
+  let win;
   try {
+    createFixturePage();
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    webServer.port = server.address().port;
+    address = 'http://127.0.0.1:' + webServer.port;
+    win = new BrowserWindow({ width: 800, height: 900, useContentSize: true, show: false,
+      webPreferences: { preload: join(root, 'preload.cjs'), backgroundThrottling: false } });
     const evaluate = (func, ...args) => win.webContents.executeJavaScript(
       '(' + func.toString() + ')(' + args.map(arg => JSON.stringify(arg)).join(',') + ')');
     async function waitFor(func, ...args) {
@@ -258,6 +274,27 @@ async function check() {
     await call('initialize',{expectedPreferencesRevision:preferences.revision});
     await click('刷新设置'); await waitFor(() => document.querySelector('#fixture [role=tabpanel]')?.innerText.includes('蓝鱼小屋'));
     platform.ownerAccess('fixture');
+    const voiceUrl = new URL('/chatpet-presentation/voice/voices', address);
+    const listVoices = () => platform.handle(voiceUrl, 'GET', undefined, signal);
+    const unavailable = { kind: 'json', status: 503, obj: { ok: false, message: '语音组件未启用' } };
+    assert.deepEqual(await listVoices(), unavailable);
+    const voices = [{ id: 'fixture', name: '合成语音夹具' }];
+    const voiceScope = await nativeCtx.plugin(scope => {
+      scope.effect(() => host.native.voiceTable.register(scope, {
+        availability: () => ({ speak: true, hear: false }),
+        async handle({ rest, method }) {
+          assert.equal(rest, 'voice/voices');
+          assert.equal(method, 'GET');
+          return { kind: 'json', status: 200, obj: { ok: true, voices } };
+        },
+      }).revoke);
+    });
+    try {
+      assert.deepEqual(await listVoices(), { kind: 'json', status: 200, obj: { ok: true, voices } });
+    } finally {
+      await voiceScope.dispose();
+    }
+    assert.deepEqual(await listVoices(), unavailable);
     await screenshot(process.env.CP_VISUAL_PHASE||'after');
     {
       for (const label of ['角色','情绪','记忆与档案','桌宠','生活','连接','工作区']) {await click(label,'[role=tab]'); await pause(200); await screenshot('after-' + label);}
@@ -306,7 +343,23 @@ async function check() {
       console.log({foundationSaved:true,emotionSaved:true,roomOpen:openedRooms,nativeEditorInputs:nativeInputs.length,nativePersonaModelHidden:true,canonicalTiming:true,pausedCareEnabled:true,crossPageDrafts:true,appearanceDraftPreserved:true,desktopReadiness:true,desktopCancelRetry:true});
       console.log(await evaluate(() => ({tabs:[...document.querySelectorAll('[role=tab]')].map(e=>e.textContent),iframes:document.querySelectorAll('iframe').length,overflow:document.documentElement.scrollWidth>innerWidth})));
     }
-  } finally {ipcMain.removeHandler('fixture:settings');ipcMain.removeHandler('fixture:platform');await win.webContents.executeJavaScript('window.stopNative?.()');platform.close();await host.close();win.destroy();server.closeAllConnections();server.close();}
+  } finally {
+    ipcMain.removeHandler('fixture:settings');
+    ipcMain.removeHandler('fixture:platform');
+    try {
+      if (win && !win.isDestroyed()) await win.webContents.executeJavaScript('window.stopNative?.()');
+    } finally {
+      if (win && !win.isDestroyed()) win.destroy();
+      server.closeAllConnections();
+      if (server.listening) await new Promise(resolve => server.close(resolve));
+      platform.close();
+      try {
+        await nativeCtx.fiber.dispose();
+      } finally {
+        await host.close();
+      }
+    }
+  }
 }
 app.on('window-all-closed',()=>{});
 app.whenReady().then(check).then(()=>app.exit(0)).catch(error=>{console.error(error);app.exit(1)});

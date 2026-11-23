@@ -74,7 +74,6 @@ export function apply(ctx: Context, config: {deviceDirectory?:string} = {}) {
   const host = ctx.petCore;
   const voice = new CompanionVoice(host, config.deviceDirectory ?? join(services.profileContext.dir,'chatpet-voice'),
     () => services.get('speechToText'));
-  ctx.provide('petVoice',voice);
   ctx.on('pet/core.changed',() => voice.refresh());
   ctx.effect(() => {
     const registration = host.native.voiceTable.register(ctx, voice);
@@ -94,4 +93,3 @@ export function apply(ctx: Context, config: {deviceDirectory?:string} = {}) {
     },
   }).revoke);
 }
-declare module '@deepseek-ai/cordis' {interface Context {petVoice: CompanionVoice}}

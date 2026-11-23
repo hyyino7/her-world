@@ -10,7 +10,8 @@ import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {Desktop} from '../../dist/src/desktop/index.js';
 import {adaptRoomApp,roomAsset} from '../../dist/src/room/assets.js';
-import {behaviorPresentation,companionFeelings,feelingLabels} from '../../dist/src/living/body/presentation.js';
+import {behaviorPresentation,feelingLabels} from '../../dist/src/living/body/presentation.js';
+import {COMPANION_FEELINGS} from '../../dist/src/contracts/emotion.js';
 
 export function fixture(root,getOrigin=()=> 'http://127.0.0.1',services={}) {
   let target={id:'a',path:root}, turns=[], requests=0;
@@ -69,6 +70,8 @@ test('bound platform runs original config, media, controls, animation and native
   assert.equal((await request('state')).obj.pets.second.anim.data.name,'螃蟹走路');
   assert.equal((await request('chat?pet=second','POST',{text:'和同一个伙伴聊天'})).obj.text,'native reply');
   assert.equal((await request('chat?pet=main')).obj.messages.at(-1).content,'native reply');
+  assert.equal((await request('chat/memory')).status,404);
+  assert.equal((await request('chat/memory','DELETE')).status,404);
   assert.equal(requests(),1);
   const {file}=platform.standaloneAccess('a');
   assert.equal(statSync(file).mode&0o777,0o600);
@@ -263,7 +266,7 @@ test('all nine feelings preserve actual activity and Room displays text without 
  const render=new Function('state','$','companionLabel',chipSource);
  const renderChip=state=>render(state,()=>chip,()=> '大肥鱼');
  const chip={textContent:'',title:'',classList:{toggle(){}}};
- for(const feeling of companionFeelings){
+ for(const feeling of COMPANION_FEELINGS){
   renderChip({emotion:{feelings:[feeling]}});
   assert.equal(chip.textContent,'心情 · '+feelingLabels[feeling]);
   assert.equal(behaviorPresentation({her:{kind:'eat',activity:'正在吃饭'},emotion:{feelings:[feeling]}}).action,'eat');

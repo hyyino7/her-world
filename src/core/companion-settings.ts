@@ -1,8 +1,6 @@
 import { check, integer } from './storage.js';
 import { parseDesktopAppearance } from '../desktop/appearance.js';
 
-export const desktopAppearanceDefaults = () => parseDesktopAppearance();
-
 export const DEFAULT_COMPANION_SETTINGS = Object.freeze({
   desktopSize: 232,
   desktopFixed: false,

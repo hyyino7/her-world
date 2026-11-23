@@ -25,8 +25,3 @@ export declare const inject: string[];
 export declare function apply(ctx: Context, config?: {
     deviceDirectory?: string;
 }): void;
-declare module '@deepseek-ai/cordis' {
-    interface Context {
-        petVoice: CompanionVoice;
-    }
-}

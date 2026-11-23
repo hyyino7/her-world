@@ -2,7 +2,6 @@ import { defineTool } from '@deepseek-ai/dsh-tools';
 import { fileURLToPath } from 'node:url';
 import { check } from '../../core/storage.js';
 import { OWNER_LIFE_TOOL_SOURCES } from '../../core/native/conversation.js';
-export { readLifeWriting } from './review-writing.js';
 // Only the daily review section is adapted. World supplies the original alarm
 // text and fallback for every other section.
 export const REVIEW_ALARM_FILE = fileURLToPath(new URL('../../../../locale/life/review-alarm.md', import.meta.url));

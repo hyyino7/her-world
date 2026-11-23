@@ -14,7 +14,7 @@ import { ensureCompanionHomeSession, resolveCompanionHome, resolveHomeAgent } fr
 import type { HomeBinding } from '../../core/workspace.js';
 import { createHomeStore } from './home-store.js';
 import { defaultLifePreferences, parseLifePreferences, type LifePreferences } from './library.js';
-import type { CompanionRecordLibrary, RecordOperation } from '../../core/records.js';
+import type { CompanionRecordLibrary } from '../../core/records.js';
 import { companionRecordPaths } from '../../core/record-paths.js';
 import { installLifeReview, REVIEW_ALARM_FILE } from './review.js';
 import type {CompanionBehavior} from '../body/plugin.js';
@@ -714,10 +714,6 @@ export class CompanionLife {
       if (before.wake !== preferences.wake || before.review !== preferences.review) this.runtime?.reschedule();
       return {preferences};
     });
-  }
-  library(workspaceId: string, operation: RecordOperation, input?: unknown) {
-    this.assertOpen();
-    return this.inFlight.run(()=>this.host.records.library(workspaceId,operation,input));
   }
   close(): Promise<void> {
     if(this.closing)return this.closing;

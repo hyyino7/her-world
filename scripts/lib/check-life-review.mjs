@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {keepSelfCopy} from '#dsh-world/self';
 import {createLifeStore} from '#dsh-world/life/lifeStore';
 import {formatLocalTime} from '#dsh-world/timeContext';
-import {readLifeWriting} from '../../dist/src/living/plan/review-writing.js';
+import {readCompanionWriting} from '../../dist/src/core/companion-writing.js';
 import {call, say} from '../checks/lib/native-conversation-scenarios.mjs';
 
 export async function checkLifeReview({ctx, host, workspace, root, life, until, setProgram}) {
@@ -85,10 +85,10 @@ export async function checkLifeReview({ctx, host, workspace, root, life, until, 
   assert.ok(reviewPage?.items.length);
   assert.equal(existsSync(join(root,'outside-review-scope.md')),false);
   assert.equal(readFileSync(join(directory,'self.md'),'utf8').trim(), self);
-  assert.ok(await readLifeWriting(host,scope(),'diary/'+day+'.md'));
-  assert.equal((await readLifeWriting(host,scope(),'self.md'))?.trim(), self);
+  assert.ok(await readCompanionWriting(host,scope(),'diary/'+day+'.md'));
+  assert.equal((await readCompanionWriting(host,scope(),'self.md'))?.trim(), self);
   keepSelfCopy(join(directory,'self.md'),day);
-  assert.equal((await readLifeWriting(host,scope(),'self.history/'+day+'.md'))?.trim(), self);
+  assert.equal((await readCompanionWriting(host,scope(),'self.history/'+day+'.md'))?.trim(), self);
   // A direct owner request in the native home is distinct from an autonomous
   // review. Exercise both Core's ordinary permissions and World's diary guard.
   const priorDay=formatLocalTime(new Date(Date.now()-86400000),life.timeZone).slice(0,10);
@@ -130,9 +130,9 @@ export async function checkLifeReview({ctx, host, workspace, root, life, until, 
     content: revision, sources:[{id:inputId,revision:'1'}], evidence_quotes:[revision]});
   const revised = await host.native.memory.dialogueForDay(workspaceId, workspace.sessionIds, {day,timeZone:life.timeZone});
   assert.ok(!revised.items.some(row=>row.text===shop) && revised.items.some(row=>row.text===revision), 'Correction replaces readable evidence');
-  assert.equal((await readLifeWriting(host,scope(),'self.md'))?.trim(),self);
-  assert.equal((await readLifeWriting(host,scope(),'diary/'+day+'.md'))?.trim(),'Today I noticed the lighthouse.');
-  assert.equal((await readLifeWriting(host,scope(),'self.history/'+day+'.md'))?.trim(),self);
+  assert.equal((await readCompanionWriting(host,scope(),'self.md'))?.trim(),self);
+  assert.equal((await readCompanionWriting(host,scope(),'diary/'+day+'.md'))?.trim(),'Today I noticed the lighthouse.');
+  assert.equal((await readCompanionWriting(host,scope(),'self.history/'+day+'.md'))?.trim(),self);
   await host.native.memory.connection.call('withdraw', {memory_id:fact.memory.id, expected_version:corrected.version});
   const withdrawn = await host.native.memory.dialogueForDay(workspaceId,workspace.sessionIds,{day,timeZone:life.timeZone});
   assert.ok(!withdrawn.items.some(row=>row.text===revision));

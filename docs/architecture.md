@@ -237,7 +237,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | 图片准入与便携副本 | `presentation/images.ts` | Desktop 和 Room 各自执行磁盘操作。桌宠保留 1 MiB 编码上限，Room 电视帧保留 2.5 MiB 原始字节上限，房间照片与附件副本按 Room 编码上限校验 |
 | 活动播放 | `presentation/playback.ts` 映射素材并采样，素材索引和分配也由该目录管理 | Room、桌宠、拍照和 Console 在回包边界附上原有 `home.playback`，共享活动身份和时间 |
 | Room 传输 | `presentation/room-transport.ts` 声明九个端点、超时和只读拍照子集 | 构建生成原生窗口与 Console 使用的子集；浏览器和拍照通过现有 Room 路径加载。各入口保留自己的身份和窗口准入 |
-| **语音**（Desktop、Room、Channels 都用） | 通过 2.2 的语音调用表获得 `contracts/voice.ts` 接口。Voice 保留 `petVoice` 兼容服务，识别缺能力时仍可合成。 | Her World 活动语音闭包放在 `dist/src/voice/upstream/`，旧 Desktop 深路径转发到同一实现。识别和合成各自共享一份登记表。 |
+| **语音**（Desktop、Room、Channels 都用） | 通过 2.2 的语音调用表获得 `contracts/voice.ts` 接口。`70-Voice` 用 `petVoice` 作为调用表的隔离键，缺识别能力时仍可合成。 | 语音实现放在 `dist/src/voice/upstream/host/`。识别和合成各自共享一份登记表。 |
 | 房间模型 `CompanionRoom` | `living/body/room.ts`，属第二层·身体区 | Room 只读快照 |
 
 ### 5.5 控制台
@@ -529,7 +529,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 - 包名 `her-world`、Bundle 激活身份、旧 entry ID。
 - 包入口：`./core`、`./contracts`、`./world`、`./client`、`./00-Core` 到 `./70-Voice`、`./channel-guest`、`./locale/*`。
-- 旧 Cordis 服务名：`petCore / petWorld / petMemory / petEmotion / petEconomy / petBehavior / petLife / petRoom / petDesktop / petPlatform / petChannels / petVoice`，以及 `chatpet-channel-preset / chatpet-channel-guest / chatpet-settings`。整个重构期间都保留，阶段 4 删除前以已安装环境的配置实际不再引用为条件。
+- 旧 Cordis 服务名：`petCore / petWorld / petMemory / petEmotion / petEconomy / petBehavior / petLife / petRoom / petDesktop / petPlatform / petChannels`，以及 `chatpet-channel-preset / chatpet-channel-guest / chatpet-settings`。整个重构期间都保留，阶段 4 删除前以已安装环境的配置实际不再引用为条件。
 - 配置项和便携设置字段（含 `null = 未配置`）；Life 的 `agentPreset`；Channels、Voice 的 `deviceDirectory`。
 - Python 服务入口、打包资源、相对路径。
 - **可观察行为**：工具名、错误和重试语义、提示词段的名字、历史投影的方式、「原生日志落盘后才确认事实」的顺序。这些要变成**行为清单**里的条目，不能只靠门禁通过。
@@ -625,7 +625,7 @@ Core 依据冻结的 0.5.0 步骤表校验历史日志，接受已完成的绑�
 
 ## 9. 重写顺序
 
-第一层不能作为一个整体独立完成：Core 原先写 `life.json` 里的共享 home 身份（2a 第 4 批已迁到 Core 的 `companion-home` 记录）；Memory 订阅 `pet/life.review`、记录库读 Life 活动记录已在 2a 3C 改为向下调用和登记口。所以把它拆成几个**每步自己能完成、不破坏旧功能**的小单位。各步对应的里程碑和完成标准见 [product.md](product.md) 的「阶段」。阶段 1 缩小后（[decisions.md](decisions.md)「阶段 1 缩小」），第一层停在 P2b，P2c 取消，其中属于第二层的部分并入 P3。
+第一层分步完成。共享 home 身份由 Core 的 `companion-home` 记录持有，Life 回顾完成时向下调用 Memory，记录库经登记口读取 Life 活动。各步对应的里程碑和完成标准见 [product.md](product.md) 的「阶段」。阶段 1 缩小后（[decisions.md](decisions.md)「阶段 1 缩小」），第一层停在 P2b，P2c 取消，其中属于第二层的部分并入 P3。
 
 | 步 | 做什么 |
 | --- | --- |
@@ -633,7 +633,7 @@ Core 依据冻结的 0.5.0 步骤表校验历史日志，接受已完成的绑�
 | P1 | 迁移骨架：存储清单版本号、迁移日志、备份与回退串联、真实数据副本演练（7.4 的边界） |
 | P2a | 能力状态表：Core 不再读上层服务拼状态（已完成）。原定的初始化表缩小后不做 |
 | P2b | 来源适配表和工具声明表：把 Life 一类原生输入的整套适配（准入、工具限制、回顾守卫、历史投影）迁出第一层；`host.native.xxxAdmission` 赋值消失（已完成） |
-| P2c | 取消。事件改调用（Memory 不再订阅 `pet/life.review`）、记录库改读第二层只读接口并入 P3；提示词段表砍掉；共享 home 身份记录的归属已定（第 4 节） |
+| P2c | 取消。Life 向下调用 Memory、记录库改读第二层只读接口并入 P3；提示词段表砍掉；共享 home 身份记录的归属已定（第 4 节） |
 | P3 | **已完成**：2a 合并（0.3.0）、2b 概念统一（0.4.0）。合并第二层（先合并、行为不变，概念统一随后逐步）：5.9 隐含契约的契约测试先行；第一层里属于第二层的 18 条违规搬走；共享 home 身份记录迁移、常驻实例、旧入口语义表落实、事实准备和确认搬入、旧服务名门面、`economy.initialized` 搬出 |
 | P4 | 第三层原地治理，不重写模块：图片准入抽共用；语音接口落地；运维操作表；浏览器里的经济待确认请求迁入持久存储；Core 保留[批准的原位例外](#4-状态拥有者表) |
 | P5 | 收尾：删已不用的旧适配（以已安装配置核实为前提）、更新本文、按 G8 复核长期例外 |

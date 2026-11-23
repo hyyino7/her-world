@@ -98,11 +98,16 @@ test('语音插件关闭取消识别并拒绝晚到音频和结果',async t=>{
   assert.ok(from>=0&&to>from);
   let grant,finishRecording,intervals=0;
   const input={isConnected:true,value:'',selectionStart:0,selectionEnd:0,focus(){},blur(){},setSelectionRange(){}};
-  const voice=f.service('petVoice');
+  const voiceTable=f.host.native.voiceTable, scope=f.agent('home').ctx.root;
   const factory=vm.runInNewContext(source.slice(from,to)+'\ncreateHearControl',{
     AbortController,document:{activeElement:null},window:{setInterval(){intervals++;return 1;},clearInterval(){intervals=0;}},canRecord:()=>true,
     startRecording:()=>new Promise(resolve=>{grant=()=>resolve({elapsedMs:()=>500,cancel(){},stop:()=>new Promise(ok=>{finishRecording=ok;})});}),
-    hearAudio:async(_url,_audio,signal)=>{const result=await voice.handle({rest:'voice/hear',method:'POST',body:JSON.stringify({audio:'AQI='}),signal});return result.obj;},
+    hearAudio:async(_url,_audio,signal)=>{
+      const voice=voiceTable.lookup(scope,signal);
+      assert.ok(voice);
+      const result=await voice.handle({rest:'voice/hear',method:'POST',body:JSON.stringify({audio:'AQI='})});
+      return result.obj;
+    },
     toBase64:()=> 'AQI=',MIN_RECORD_MS:100,MAX_RECORD_MS:24000,SILENCE_PEAK:.1});
   const control=()=>factory({micBtn:{dataset:{},addEventListener(){}},input,hint:{show(){},hide(){},flash(){}},resizeInput(){},hearUrl:'fixture://voice'});
   const first=control();first.start();grant();await pause(1);first.stop();finishRecording({peak:1,wave:new ArrayBuffer(0)});

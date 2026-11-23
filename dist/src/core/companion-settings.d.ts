@@ -1,6 +1,3 @@
-export declare const desktopAppearanceDefaults: () => {
-    [x: string]: unknown;
-};
 export declare const DEFAULT_COMPANION_SETTINGS: Readonly<{
     desktopSize: 232;
     desktopFixed: false;

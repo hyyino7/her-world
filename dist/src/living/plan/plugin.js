@@ -846,10 +846,6 @@ export class CompanionLife {
             return { preferences };
         });
     }
-    library(workspaceId, operation, input) {
-        this.assertOpen();
-        return this.inFlight.run(() => this.host.records.library(workspaceId, operation, input));
-    }
     close() {
         if (this.closing)
             return this.closing;

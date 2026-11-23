@@ -25,9 +25,7 @@ type Source = {
     summary?: string;
 };
 interface Options {
-    dataDirectory?: string;
-    /** Legacy helper alias. Production always supplies the bound Repo root. */
-    deviceDirectory?: string;
+    dataDirectory: string;
     active(): boolean;
     allowed(identity: SpeakerIdentity): boolean;
     companionName?(): string;

@@ -127,9 +127,9 @@
     "voice": {
       "layer": 3,
       "root": "src/voice/",
-      "services": ["petVoice"],
+      "services": [],
       "dependencies": ["core","memory","emotion","contracts","world","living","voice"],
-      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy","petVoice"],
+      "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion","petBehavior","petLife","petEconomy"],
       "publishes": [],
       "subscribes": ["pet/core.changed"],
       "generated": []

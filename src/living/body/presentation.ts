@@ -1,8 +1,6 @@
 import type { BehaviorPresentation, CompanionExpression } from '../../contracts/behavior.js';
 import { COMPANION_FEELINGS, isCompanionFeeling, type CompanionFeeling } from '../../contracts/emotion.js';
 
-/** Shared semantic names; displays choose their own existing assets. */
-export const companionFeelings = COMPANION_FEELINGS;
 export const feelingLabels: Record<CompanionFeeling, string> = {
   happy:'开心',calm:'平静',sweet:'甜蜜',heartache:'心疼',worry:'担心',sad:'难过',jealous:'吃醋',anger:'生气',boredom:'无聊',
 };
@@ -19,7 +17,7 @@ export function classifyActivity(home: any) {
   const values: unknown[] = Array.isArray(home?.emotion?.feelings) ? home.emotion.feelings : [];
   const feelings = values.filter(isCompanionFeeling);
   const feeling = feelings.includes('anger') ? 'anger' : feelings.includes('boredom') ? 'boredom'
-    : companionFeelings.find(value => feelings.includes(value));
+    : COMPANION_FEELINGS.find(value => feelings.includes(value));
   const distinct = [...new Set(values.filter(value => typeof value === 'string'))];
   const touchFeeling = distinct.length === 1 && isCompanionFeeling(distinct[0]) ? distinct[0] : undefined;
   const requested = behavior?.animationContext?.slotId;
