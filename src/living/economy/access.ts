@@ -6,13 +6,6 @@ import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import {InFlight, settleCleanup} from '../index.js';
 
-/** This is a native file-tool guard, not an operating-system security boundary.
- * Installed DSH 0.2.2-rc.2 exposes whole-workspace write grants, without excluded roots.
- * Arbitrary process execution and other plugin capabilities can bypass it. */
-export const economyAccessBoundary = {
-  mode: 'bounded' as const,
-  detail: '原生文件工具会保护账本目录和采用证据。通用命令和其他插件仍沿用 DSH 权限。',
-};
 interface FileSystem {
   resolve(path: string, options: {cwd?: string; signal: AbortSignal}): Promise<unknown>;
   processPath(target: unknown): string;
