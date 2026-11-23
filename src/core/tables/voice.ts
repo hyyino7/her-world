@@ -30,7 +30,7 @@ export class VoiceTable {
     };
   }
 
-  lookup(ctx: Context, callerSignal?: AbortSignal): VoiceCall | undefined {
+  lookup(ctx: Context, callerSignal?: AbortSignal, validate?: () => void): VoiceCall | undefined {
     const entry = this.slots.get(serviceIsolation(ctx, service))?.get(service);
     if (!entry?.lease.isCurrent()) return;
     const {provider, scope, signal: lifetime} = entry.value;
@@ -38,6 +38,7 @@ export class VoiceTable {
     const signal = callerSignal ? AbortSignal.any([lifetime, callerSignal]) : lifetime;
     const assertCurrent = () => {
       signal.throwIfAborted();
+      validate?.();
       entry.lease.assertCurrent();
       if (scope.fiber.state !== FiberState.ACTIVE) throw new DOMException('语音组件已撤销', 'AbortError');
     };

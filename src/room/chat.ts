@@ -47,7 +47,7 @@ export function roomHistory(events: readonly SessionEvent[]) {
 export class RoomChat {
   readonly images: RoomImages;
   private readonly admission = new Map<string, string>();
-  private active?: {workspaceId: string; sessionId: string; agent: Agent; messageId: string};
+  private active?: {sessionId: string; agent: Agent; messageId: string; validate(): void; abort(reason: unknown): void};
   private busy = false;
   private titles = new Map<string,string>();
   private readonly stopping = new AbortController();
@@ -76,7 +76,7 @@ export class RoomChat {
   allows(id: string, message: UserMessage) {
     const current = this.active;
     if (message.source.kind !== 'chatpet-room-tv' || !current || current.messageId !== message.id || current.sessionId !== id) return false;
-    try {return this.isRoom(id) && this.admission.get(id) === message.id;} catch {return false;}
+    try {current.validate();return this.isRoom(id) && this.admission.get(id) === message.id;} catch {return false;}
   }
   watching(id: string) {return this.admission.has(id);}
   sourceAdapter(): SourceAdapter<TelevisionSourceContext> {
@@ -119,7 +119,7 @@ export class RoomChat {
   }
   private async agent(workspaceId: string, create: boolean, validate:()=>void) {
     this.binding(workspaceId);
-    await this.ctx.get('petTranscripts')?.restore();
+    await this.ctx.get('petTranscripts')?.restore(validate);
     validate();
     await this.images.restore(validate);
     validate();
@@ -151,7 +151,8 @@ export class RoomChat {
   async reply(workspaceId: string, television: boolean, data: Record<string,unknown>, requestId: string, caller: AbortSignal, current:()=>void) {
     if (this.busy) throw Error('她还在想上一句，稍等一下');
     this.busy = true;
-    const signal = AbortSignal.any([this.stopping.signal, caller, AbortSignal.timeout(300000)]);
+    const binding = new AbortController();
+    const signal = AbortSignal.any([this.stopping.signal, caller, binding.signal, AbortSignal.timeout(300000)]);
     const validate=()=>{signal.throwIfAborted();current();};
     try {
       validate();
@@ -173,15 +174,23 @@ export class RoomChat {
       const message = prior ?? createUserMessage({content, source: television ? {kind:'chatpet-room-tv', rpcId} : {kind:'user', rpcId}});
       if (!prior) {
         if (agent.status !== 'idle') throw Error('房间原生会话正在忙，请稍后再试');
-        this.active = {workspaceId, agent, sessionId:agent.id, messageId: message.id};
+        this.active = {agent, sessionId:agent.id, messageId:message.id, validate, abort:reason=>binding.abort(reason)};
         if (television) this.admission.set(agent.id, message.id);
         const cancel = () => agent.cancel({kind:'user'});
         signal.addEventListener('abort', cancel, {once:true});
         try {
+          validate();
           agent.followup(message);
           await this.ctx.sessions.flush(agent.session);
+          validate();
           await agent.whenIdle();
-          if (!await this.ctx.sessions.flush(agent.session)) throw Error('房间会话暂未保存');
+          validate();
+          const saved = await this.ctx.sessions.flush(agent.session);
+          validate();
+          if (!saved) throw Error('房间会话暂未保存');
+        } catch (error) {
+          this.reconcile();
+          throw error;
         } finally { signal.removeEventListener('abort', cancel); }
       }
       validate();
@@ -190,6 +199,13 @@ export class RoomChat {
       if (result.state !== 'completed' || !result.text.trim()) throw Error(result.reason ?? '这次房间回复尚未完成');
       return {ok:true, reply:result.text};
     } finally {this.admission.clear(); this.active = undefined; this.busy = false;}
+  }
+  reconcile() {
+    const active = this.active;
+    if (active) {
+      try {active.validate();}
+      catch (error) {active.abort(error);}
+    }
   }
   async close() {
     this.stopping.abort();

@@ -48,6 +48,7 @@ export declare class RoomChat {
         ok: boolean;
         reply: string;
     }>;
+    reconcile(): void;
     close(): Promise<void>;
 }
 export {};

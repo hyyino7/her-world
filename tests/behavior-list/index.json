@@ -1804,6 +1804,42 @@
       ]
     },
     {
+      "id": "3-ROOM-CHAT-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "a late Room transcript restore cannot create recovery data in the replacement workspace",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-CHAT-02",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "roomChat cancels the active turn and stops flushing when its binding generation changes",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-CHAT-03",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "roomTelevision cancels the active turn and stops flushing when its binding generation changes",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "3-ROOM-VOICE-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/room/room-binding.test.mjs",
+      "name": "a Room voice request checks the original binding at provider admission",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-CONSOLE-07",
       "categories": [],
       "level": "L2",

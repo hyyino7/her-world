@@ -54,7 +54,10 @@ export class Room {
             origin: () => ctx.get('webServer')?.getOrigin(),
             request: (...args) => this.request(...args),
         });
-        this.subscriptions.push(ctx.on('pet/core.changed', () => this.window.reconcile()));
+        this.subscriptions.push(ctx.on('pet/core.changed', () => {
+            this.window.reconcile();
+            this.chat.reconcile();
+        }));
         this.subscriptions.push(ctx.on('world.changed', change => {
             const version = ctx.get('petBehavior')?.presentationVersion?.();
             if (version)
@@ -97,7 +100,7 @@ export class Room {
             return reply(this.chat.history(workspaceId, validate));
         if (endpoint === 'roomVoice') {
             const host = this.ctx.petCore;
-            const voice = host.native.voiceTable.lookup(this.ctx, signal);
+            const voice = host.native.voiceTable.lookup(this.ctx, signal, validate);
             if (!voice)
                 throw Error('语音组件尚未启用');
             const route = roomVoiceRoute(data.operation);

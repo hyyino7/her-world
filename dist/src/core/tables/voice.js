@@ -22,7 +22,7 @@ export class VoiceTable {
             },
         };
     }
-    lookup(ctx, callerSignal) {
+    lookup(ctx, callerSignal, validate) {
         const entry = this.slots.get(serviceIsolation(ctx, service))?.get(service);
         if (!entry?.lease.isCurrent())
             return;
@@ -32,6 +32,7 @@ export class VoiceTable {
         const signal = callerSignal ? AbortSignal.any([lifetime, callerSignal]) : lifetime;
         const assertCurrent = () => {
             signal.throwIfAborted();
+            validate?.();
             entry.lease.assertCurrent();
             if (scope.fiber.state !== 2 /* FiberState.ACTIVE */)
                 throw new DOMException('语音组件已撤销', 'AbortError');

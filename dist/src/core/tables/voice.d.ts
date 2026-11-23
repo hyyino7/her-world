@@ -6,5 +6,5 @@ export declare class VoiceTable {
         lease: import("../../contracts/tables.js").RegistrationLease;
         revoke: () => Promise<void>;
     };
-    lookup(ctx: Context, callerSignal?: AbortSignal): VoiceCall | undefined;
+    lookup(ctx: Context, callerSignal?: AbortSignal, validate?: () => void): VoiceCall | undefined;
 }
