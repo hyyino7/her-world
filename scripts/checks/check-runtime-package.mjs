@@ -19,11 +19,7 @@ const sourceOnly=[
   'vendor/feiyu-room-template/public/room/garden-showcase.html',
   'vendor/mnemosyne/requirements-test.lock','vendor/mnemosyne/service/README.md','vendor/mnemosyne/service/pyproject.toml',
 ];
-const retiredCore=['core','execution','history','dsh-driver','maintenance','resources','workbench','matters','upstream/serial-delivery'];
-const retiredContracts=['execution','resources','maintenance','events','services','life','memory','desktop','channels','bilibili','console'];
-const omitted=file=>file.startsWith('vendor/feiyu-room-template/public/room/assets/pet/')&&file.endsWith('.webm')||sourceOnly.includes(file)||file.startsWith('vendor/dsh-pet/platform/upstream/')||file.endsWith('.js.map')
-  ||retiredCore.some(name=>file===`dist/src/core/${name}.js`||file===`dist/src/core/${name}.d.ts`)
-  ||retiredContracts.some(name=>file===`dist/src/contracts/${name}.js`||file===`dist/src/contracts/${name}.d.ts`);
+const omitted=file=>file.startsWith('vendor/feiyu-room-template/public/room/assets/pet/')&&file.endsWith('.webm')||sourceOnly.includes(file)||file.startsWith('vendor/dsh-pet/platform/upstream/')||file.endsWith('.js.map');
 const tar=args=>{const result=spawnSync('/usr/bin/tar',args,{encoding:'utf8',env:{...process.env,COPYFILE_DISABLE:'1'},maxBuffer:32*1024*1024});assert.equal(result.status,0,result.stderr);return result.stdout;};
 const walk=root=>readdirSync(root,{withFileTypes:true}).flatMap(row=>row.isDirectory()?walk(join(root,row.name)):row.isFile()?[join(root,row.name)]:[]);
 try {
