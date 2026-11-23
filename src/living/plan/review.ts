@@ -2,18 +2,17 @@ import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools';
 import { fileURLToPath } from 'node:url';
+import type { CompanionWritingScope } from '../../core/companion-writing.js';
 import type { PetCoreHost } from '../../core/index.js';
 import { check } from '../../core/storage.js';
 import { OWNER_LIFE_TOOL_SOURCES } from '../../core/native/conversation.js';
-import type { ReviewScope } from './review-writing.js';
 import type { InFlight } from '../index.js';
-export { readLifeWriting, type ReviewScope } from './review-writing.js';
 
 // Only the daily review section is adapted. World supplies the original alarm
 // text and fallback for every other section.
 export const REVIEW_ALARM_FILE = fileURLToPath(new URL('../../../../locale/life/review-alarm.md', import.meta.url));
 
-export function installLifeReview(ctx: Context, host: PetCoreHost, getScope: () => ReviewScope | undefined, inFlight: InFlight) {
+export function installLifeReview(ctx: Context, host: PetCoreHost, getScope: () => CompanionWritingScope | undefined, inFlight: InFlight) {
   // Core installs self-description and guarded writing even without Life.
   // Life owns only the scheduled review and its home-only dialogue reader.
   const tool = defineTool({
