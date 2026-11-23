@@ -22,19 +22,26 @@ test('Voice 与 Room 分别撤销时，旧录音结束且重载后只接受新�
   }));
   await f.mount('room');
   await f.mount('voice');
+  const voiceFor = () => f.core.native.voiceTable.lookup(f.ctx);
   for (const owner of ['voice','room']) {
     const entered=Promise.withResolvers(), late=Promise.withResolvers();
     t.after(()=>late.resolve({text:'released during cleanup'}));
     recognition=signal=>{entered.resolve(signal);return late.promise;};
-    const oldRoom=f.ctx.petRoom, oldCompatibility=f.ctx.petVoice, caller=signal();
+    const oldRoom=f.ctx.petRoom, oldVoice=voiceFor(), caller=signal();
+    assert.ok(oldVoice);
     const cancelled=assert.rejects(hear(oldRoom,f.id,caller),{name:'AbortError'});
     const providerSignal=await entered.promise;
     await f.unmount(owner);
     await cancelled;
     assert.equal(providerSignal.aborted,true);
     assert.equal(caller.aborted,false);
-    if (owner==='room') assert.equal(f.ctx.petVoice,oldCompatibility);
-    else await assert.rejects(oldCompatibility.handle({rest:'voice/voices',method:'GET'}),{name:'AbortError'});
+    if (owner==='room') {
+      assert.ok(voiceFor());
+      oldVoice.assertCurrent();
+    } else {
+      assert.equal(voiceFor(),undefined);
+      await assert.rejects(oldVoice.handle({rest:'voice/voices',method:'GET'}),{name:'AbortError'});
+    }
 
     await f.mount(owner);
     recognition=async()=>({text:'current recording'});

@@ -10,7 +10,7 @@ import {eventually,submitPlan} from './entries-lifecycle.test.mjs';
 import {interactionFacts} from './native-facts.mjs';
 import {peripherals,presentationFixture,readRpcResult,selectHome} from './presentation-r7-fixture.mjs';
 
-const services={desktop:'petDesktop',platform:'petPlatform',room:'petRoom',channels:'petChannels',voice:'petVoice'};
+const services={desktop:'petDesktop',platform:'petPlatform',room:'petRoom',channels:'petChannels'};
 const routes={platform:['/chatpet-presentation'],room:['/chatpet-room'],
   channels:['/chatpet-connect/bridge/say','/chatpet-connect/bridge/compact']};
 const capabilities={desktop:['desktop.presentation','desktop.body'],room:['desktop.room'],
@@ -18,6 +18,7 @@ const capabilities={desktop:['desktop.presentation','desktop.body'],room:['deskt
 
 function resources(f,active) {
   for(const [key,service] of Object.entries(services))assert.equal(Boolean(f.ctx.get(service)),active.has(key),service);
+  assert.equal(Boolean(f.core.native.voiceTable.lookup(f.ctx)),active.has('voice'),'VoiceTable');
   const registrations=f.core.workspace.runtime.capabilityTable.list();
   for(const [key,ids] of Object.entries(capabilities))for(const id of ids) {
     assert.equal(registrations.filter(row=>row.id===id).length,active.has(key)?1:0,id);
