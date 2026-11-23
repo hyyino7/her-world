@@ -40,7 +40,7 @@ const STORAGE_MANIFEST = 'storage-manifest.json', MIGRATION_JOURNAL = 'migration
 const READABLE_FILES = new Set<string>([...REQUIRED, STORAGE_MANIFEST, MIGRATION_JOURNAL, CONSOLE_WALLET_IMPORT_FILE, INITIALIZING]);
 const STORAGE_STEPS = [INITIAL_STORAGE_STEP, HOME_STORAGE_STEP, ECONOMY_STORAGE_STEP, CONSOLE_WALLET_STEP];
 const BOOTSTRAP_FILES = new Set(['core.sqlite', 'core.sqlite-wal', 'core.sqlite-shm', 'core.sqlite-journal', 'core.lock']);
-interface MigrationBlock { reason: MigrationReason; olderMigrationJournal?: true }
+interface MigrationBlock { reason: MigrationReason }
 interface Manifest { schemaVersion: 1 | 2 | 3; companionId: string; files: readonly string[] }
 interface FileConfig { schemaVersion: 1; quiet: boolean | null; conversation: CorePreferences['conversation'] | null; companion?: CompanionConfiguration }
 interface Binding { revision: number; target: WorkspaceTarget; phase: 'ready' | 'inactive'; hashes: Record<string, string>; initializedAt: string }
@@ -51,7 +51,6 @@ export interface WorkspaceStatus {
   target: WorkspaceTarget | null; files: readonly string[]; error: string | null;
   sourceRevision: string | null;
   migrationReason?: MigrationReason;
-  olderMigrationJournal?: true;
 }
 type NativeSessionScope = { id: string; header: { cwd?: string; parentSession?: unknown; origin?: string; agentPreset?: string } };
 type NativeWorkspaceRegistry = { get(id: string): { path: string; sessionIds: readonly string[] } | undefined };
@@ -223,8 +222,7 @@ export class CoreWorkspace {
           return {reason:MIGRATION_REASON.journalStepMismatch};
         if (last && !settled(last)) {
           if (last.header.binding && last.header.binding.repoHash !== bytesDigest(Buffer.from(target.path)).slice(7)) return {reason:MIGRATION_REASON.bindingChanged};
-          return {reason:MIGRATION_REASON.migrationIncomplete,
-            olderMigrationJournal:last.header.steps.length < STORAGE_STEPS.length ? true : undefined};
+          return {reason:MIGRATION_REASON.migrationIncomplete};
         }
         const importProof = last?.header.walletImport?.proof;
         if (importProof && importProof.binding.companionId !== companionId) return {reason:MIGRATION_REASON.bindingChanged};
@@ -280,8 +278,7 @@ export class CoreWorkspace {
   }
   private migrationBlock(): MigrationBlock | undefined {
     const blocked = this.migrationBlocked;
-    // A restart still clears a completed migration gate, but its advice
-    // depends on whether the binding can be opened by the offline tool now.
+    // Keep the process gate until restart while the recorded binding is available.
     if (blocked && this.offlineBindingReady(blocked.target)) return blocked.block;
     const store = this.runtime.store, saved = store.get<Binding>('workspace-binding', 'current');
     const selected = preferences(this.runtime).workspace, portable = dirname(dirname(dirname(store.directory)));
@@ -604,7 +601,7 @@ export class CoreWorkspace {
     const target = preferences(this.runtime).workspace, binding = this.binding();
     const block = this.migrationBlock();
     if (block) return {state:'migration-required', revision:binding?.revision ?? null, target, files:[],
-      error:'migration-required', migrationReason:block.reason, olderMigrationJournal:block.olderMigrationJournal, sourceRevision:null};
+      error:'migration-required', migrationReason:block.reason, sourceRevision:null};
     if (!target) return { state: 'unbound', revision: null, target: null, files: [], error: null, sourceRevision: null };
     if (!binding) return { state: 'pending', revision: null, target, files: [], error: null, sourceRevision: null };
     try {

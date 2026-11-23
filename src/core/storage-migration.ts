@@ -10,6 +10,7 @@ export const MIGRATION_REASON = {
 } as const;
 export type MigrationReason = typeof MIGRATION_REASON[keyof typeof MIGRATION_REASON];
 
+// Frozen on-disk contracts for checking 0.5.0 storage and its historical journals.
 export const INITIAL_STORAGE_VERSIONS = Object.freeze({
   behavior:1, channels:1, core:1, desktop:1, economy:1, emotion:1, life:1, memory:1, room:1, voice:1,
 });

@@ -1,14 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createCore} from '../../dist/src/core/index.js';
-import {HOME_STORAGE_STEP, storageManifest} from '../../dist/src/core/storage-migration.js';
+import {CONSOLE_WALLET_IMPORT_FILE, CONSOLE_WALLET_STEP, freshWalletImportProof, HOME_STORAGE_STEP, storageManifest} from '../../dist/src/core/storage-migration.js';
 import {settingsHandler} from '../../dist/src/console/settings.js';
 import {inspectRepoBinding} from '../../scripts/lib/repo-storage.mjs';
-import {offlineFixture} from './offline-helpers.mjs';
-import {read, refusedCli} from './helpers.mjs';
+import {resolveCompanionHome} from '../../dist/src/core/companion-foundation.js';
+import {cordisFixture} from '../behavior-list/entries-lifecycle.test.mjs';
+import {economyPaths, offlineFixture} from './offline-helpers.mjs';
+import {read} from './helpers.mjs';
 
 async function initialize(t, {portable = false} = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'migration-binding-')));
@@ -42,7 +44,7 @@ async function assertRepairHint(host) {
   const {workspace, migrationHelp} = await snapshot(host);
   assert.equal(workspace.state, 'migration-required');
   assert.equal(workspace.migrationReason, 'binding-not-migratable');
-  assert.equal(migrationHelp, '在版本页换回 0.2.0，把工作区选择和初始化理顺后再升级。');
+  assert.match(migrationHelp, /工作区选择和绑定.*v0\.5\.0 tag/);
 }
 
 test('旧版选了 B，初始化留在 A，设置指向原版本修复绑定', async t => {
@@ -163,15 +165,59 @@ test('同一组待升级的合成形状，运行时可迁移与 inspectRepoBindi
   });
 });
 
-test('旧步骤集未完成时，设置引导用原包和源码续做或回退', async t => {
+for (const [scenario, reason] of [
+  ['旧存储', 'storage-version-outdated'],
+  ['旧轮次未完成', 'migration-incomplete'],
+  ['日志损坏', 'journal-invalid'],
+  ['清单损坏', 'manifest-mismatch'],
+]) test(`${scenario}时保留固定拒写并提示使用 v0.5.0 工具`, async t => {
   const f = await offlineFixture(t, false);
-  writeFileSync(join(f.data, 'migrations.jsonl'), JSON.stringify({event:'migration', id:'old-run',
+  const journal = join(f.data, 'migrations.jsonl');
+  if (scenario === '旧轮次未完成') writeFileSync(journal, JSON.stringify({event:'migration', id:'old-run',
     backup:f.out, manifestHash:'a'.repeat(64)}) + '\n');
-  refusedCli(f, ['run', '--installation', f.installation, '--resume'], 'journal-step-mismatch');
+  if (scenario === '日志损坏') writeFileSync(journal, '{\n');
+  if (scenario === '清单损坏') writeFileSync(join(f.data,'storage-manifest.json'), '{}');
   const host = createCore(f.config);
   try {
     const {workspace, migrationHelp} = await snapshot(host);
-    assert.equal(workspace.migrationReason, 'migration-incomplete');
-    assert.match(migrationHelp, /换回原版本的包和源码续做，或按回退流程恢复/);
+    assert.equal(workspace.state, 'migration-required');
+    assert.equal(workspace.migrationReason, reason);
+    assert.match(migrationHelp, /v0\.5\.0 tag/);
+    assert.doesNotMatch(migrationHelp, /--resume|0\.2\.0/);
+    const signal = new AbortController().signal;
+    const reply = await settingsHandler(() => host, () => undefined)('economyAction',
+      {requestId:'blocked-wallet-write',input:{workspaceId:f.target.id,action:{kind:'grant',amount:2}}},
+      signal, {signal,principal:{kind:'owner'}});
+    assert.equal(reply.ok,false);
+    assert.equal(reply.error.code,'migration-required');
+    assert.equal(reply.error.effect,'none');
   } finally { await host.close(); }
 });
+
+for (const [label, mirror] of [['没有镜像 ID', {version:1}], ['镜像 ID 滞后', {version:1, homeSessionId:'old-home'}]]) {
+  for (const adopted of [false, true]) test(`新装由前台开 home 后，${label}且${adopted ? '已' : '未'}采用钱包时仍无旧浏览器来源`, async t => {
+    const f = await offlineFixture(t, false, {keepStorageManifest:true});
+    const registry = {workspaces:[{...f.target, sessionIds:[]}], archived:[]};
+    const running = await cordisFixture(t, {existing:{...f, registry}, order:adopted ? ['economy'] : []});
+    const home = await resolveCompanionHome(running.ctx, running.core);
+    await running.input('Synthetic foreground home turn', home.id);
+    const wallet = adopted ? await running.ownerAction({kind:'grant',amount:19},'initial-wallet') : undefined;
+    assert.equal(running.body,undefined);
+    const mirrorPath = join(f.data, 'life/life.json'), body = JSON.stringify(mirror) + '\n';
+    writeFileSync(mirrorPath, body);
+    await running.restart(() => {
+      const {database,adoption} = economyPaths(f);
+      assert.equal(existsSync(join(f.data,'migrations.jsonl')),false);
+      assert.deepEqual(read(join(f.data,CONSOLE_WALLET_IMPORT_FILE)),
+        freshWalletImportProof({storageId:f.storageId,companionId:f.config.companionId}));
+      assert.equal(existsSync(database),adopted);
+      assert.equal(existsSync(adoption),adopted);
+      assert.deepEqual(read(join(f.data,'storage-manifest.json')),storageManifest(f.config.companionId,CONSOLE_WALLET_STEP.to));
+      assert.equal(readFileSync(mirrorPath, 'utf8'), body);
+    });
+    assert.equal(running.core.workspace.status().state, 'ready');
+    assert.equal((await resolveCompanionHome(running.ctx, running.core)).id, home.id);
+    assert.deepEqual(running.sessionCreateCalls, [home.id]);
+    if (adopted) assert.deepEqual(await running.economy.snapshot(f.target.id),wallet);
+  });
+}

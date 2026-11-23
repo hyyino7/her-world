@@ -18260,7 +18260,7 @@ registerCompanion({
       if (snapshot?.workspace.state === 'migration-required') {
         const reason = snapshot.workspace.migrationReason;
         return h('div', { className:'chatpet-settings' }, h('style', null, css),
-          h(Card, {title:'需要迁移', status:'migration-required'},
+          h(Card, {title:'伙伴资料暂不可用', status:'migration-required'},
             h('p', null, 'DSH 普通聊天仍可使用。'), h('p', null, h('code', null, reason)), h('p', null, snapshot.migrationHelp),
             error && h('p', {role:'alert'}, error),
             h('button', {type:'button', disabled:loading, onClick:refresh}, '刷新设置')));

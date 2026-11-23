@@ -9,6 +9,7 @@ import {fixture,until} from './fixture.mjs';
 import {cordisFixture} from './entries-lifecycle.test.mjs';
 import {CONSOLE_WALLET_IMPORT_FILE,CONSOLE_WALLET_STEP,ECONOMY_STORAGE_STEP,HOME_STORAGE_STEP,INITIAL_STORAGE_STEP}
   from '../../dist/src/core/storage-migration.js';
+import {readEconomyJournalEvidence} from '../../dist/src/living/economy/adoption.js';
 const meal='food:improved-meal',HOUR=3_600_000;
 
 test('效果落盘后的钱包路径故障保留预留并在重启后只结算一次',async t=>{
@@ -199,16 +200,21 @@ test('0.5.0 完成日志挡住双目录丢失后重建钱包并保留免费照�
   const {companionId}=f.core.workspace.runtime.config, storageId=f.core.workspace.storageId();
   const digest='a'.repeat(64), archive=join(dirname(f.repo),'historical-backup');
   const steps=[INITIAL_STORAGE_STEP,HOME_STORAGE_STEP,ECONOMY_STORAGE_STEP,CONSOLE_WALLET_STEP];
-  const log=[
+  const binding={storageId,repoHash:createHash('sha256').update(f.repo).digest('hex')};
+  const header={event:'migration',schema:2,backup:archive,backupHash:digest,binding};
+  const lines=[
     {event:'migration',id:'first-round',backup:archive,manifestHash:digest},
     {event:'done',migrationId:'first-round',step:INITIAL_STORAGE_STEP.id},
-    {event:'migration',id:'last-round',schema:2,backup:archive,backupHash:digest,
-      binding:{storageId,repoHash:createHash('sha256').update(f.repo).digest('hex')},steps,economyAdopted:true,
+    {...header,id:'adoption-round',steps:steps.slice(0,3),economyAdopted:true},
+    ...steps.slice(0,3).map(step=>({event:step===INITIAL_STORAGE_STEP?'skip':'done',migrationId:'adoption-round',step:step.id})),
+    {...header,id:'last-round',steps,economyAdopted:false,
       walletImport:{exportFile:archive,rollbackFile:archive,rollbackDigest:digest,codeFingerprint:digest,
         proof:{format:1,mode:'import',binding:{storageId,companionId},wallet:'adopted',round:'fixture',
           sourceCount:1,requestCount:1,sourceDigest:digest,requestDigest:digest,exportDigest:digest}}},
-    ...steps.map(step=>({event:step===INITIAL_STORAGE_STEP?'skip':'done',migrationId:'last-round',step:step.id})),
-  ].map(row=>JSON.stringify(row)).join('\n')+'\n';
+    ...steps.map(step=>({event:step===CONSOLE_WALLET_STEP?'done':'skip',migrationId:'last-round',step:step.id})),
+  ];
+  const serialize=rows=>rows.map(row=>JSON.stringify(row)).join('\n')+'\n';
+  const log=serialize(lines);
   await f.restart(()=>{
     writeFileSync(garden,retained);
     writeFileSync(journal,log);
@@ -226,4 +232,14 @@ test('0.5.0 完成日志挡住双目录丢失后重建钱包并保留免费照�
   for (const directory of directories) assert.equal(existsSync(directory),false);
   assert.equal(readFileSync(garden,'utf8'),retained);
   assert.equal(readFileSync(journal,'utf8'),log);
+  await f.stop();
+  const foreign=lines.map(row=>row.binding?{...row,binding:{...row.binding,storageId:'foreign'}}:row);
+  for (const invalid of [serialize(foreign),log+'broken\n',log+'{']) {
+    writeFileSync(journal,invalid);
+    assert.equal(readEconomyJournalEvidence(f.repo,storageId),false);
+    assert.equal(readFileSync(journal,'utf8'),invalid);
+  }
+  rmSync(journal);
+  assert.equal(readEconomyJournalEvidence(f.repo,storageId),false);
+  assert.equal(existsSync(journal),false);
 });
