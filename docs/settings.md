@@ -1,185 +1,53 @@
-# Her World Settings
+# Her World 设置
 
-Open **DSH Settings → Her World** for the bound Dafeiyu companion.
-**工作区 → 资料与会话 → 实际存储位置** shows the active Core/Memory paths
-and device interpreter. Document readiness alone is not storage completion;
-an external bootstrap or incomplete device runtime is shown separately.
-This guide describes the currently implemented interfaces. Build and source
-navigation belong to `README.md` and `docs/development.md`. Code checks and
-package checks are separate from functional owner acceptance.
+在 **DSH 设置 → Her World** 管理当前绑定的伙伴。**工作区 → 资料与会话 → 实际存储位置**显示 Core、Memory 和本机 Python 的位置。文档已就绪时，可搬迁存储仍可能待准备，页面会显示外部引导库或设备运行时的状态。
 
-Desktop projects the same actual activity/phase/progress, without independent
-random, reply-expression or work clips. Drinking, real-content reading, gardening
-and trade use eight supplementary clips shared with Room 2D. Reading stays in a
-waiting pose until actual content is offered. Unknown/custom-pack media gaps
-remain explicit; this source delivery is not installed visual acceptance. New
-companions receive no starter money/resources/system gifts; free basic care
-remains. Income targets, crop yield and buyback prices are no longer editable;
-shop purchase prices/availability, existing food settings and reading import
-remain available. Existing balances, items and planted profiles are preserved.
-The source-only plans and verification records distinguish source checks from
-the unchanged personal installation and pending owner acceptance.
-
-**生活 → 离线身体变化** controls a negative-consumption allowance initially
-four hours (0–168 whole hours). The owner-confirmed adjustable initial severity
-bounds are 70% for hunger/thirst/bladder and 35% minimum energy, not immutable
-balance rules. They never heal a worse condition already present or add pain
-penalties. Actual accepted sleep
-may recover through its real duration, stopping at its accepted endpoint or the
-normal body maximum; rest animation alone grants nothing. Closing/hiding Room
-does not pause Life. Explicit pause freezes passive body/crop time; enabled
-crops use their separate real elapsed time. Reopening cannot grant another
-allowance for the same saved absence.
-
-The independent dsh-world plugin's **世界控制台** remains a separate upstream plugin;
-it is not a second Dafeiyu settings home.
-
-| Page | Where to go |
+| 页面 | 操作 |
 | --- | --- |
-| **概览** | See the bound companion and service status, show/hide the normal desktop body, or choose **打开房间** for the independent Room window. |
-| **角色** | Edit SOUL, USER, **基础说明** and **我是谁**; browse the shared diary/photo archive. These Core capabilities remain available with Life or Memory disabled. |
-| **情绪** | Read and edit the continuing mood, reason and structured feelings; inspect expressions and configure recent mood retention. |
-| **记忆与档案** | Inspect native conversation counts, search eligible Mnemosyne records and read their sources; adjust per-turn recall and batch consolidation. |
-| **桌宠** | Control the same normal body, use the original Pet appearance/physics/action editor, and manage reply display, recent actions, quiet mode and timing. Preserved presentation-configuration conflicts must be resolved before replacing saved choices. |
-| **生活** | Pause/resume autonomous Life, adjust its schedule and review preferences, perform directed care and open Room. Wallet/shop/inventory/ledger, owner money/items/feeding, text import and adjustable economic values use the Economy module. |
-| **连接** | Manage device-local QQ/WeChat/bridge settings and each allowed group's public-facing material. |
-| **工作区** | Bind/initialize the Repo and inspect execution limits, capabilities and advanced maintenance information. |
+| **概览** | 查看绑定和组件状态，显示或隐藏正常桌宠，或打开独立的 Room 窗口。 |
+| **角色** | 编辑 SOUL、USER、**基础说明**与**我是谁**，查看日记和相册。关闭 Life 或 Memory 后仍可访问这些 Core 资料。 |
+| **情绪** | 编辑持续心情、原因和结构化感受，查看表达、设置近期保留范围。 |
+| **记忆与档案** | 查看原生会话数，搜索有资格召回的 Bank 记录、打开来源，调整召回和批量整理。 |
+| **桌宠** | 管理原版外观、物理和动作，设置回复表现、近期动作、安静模式与互动间隔。 |
+| **生活** | 暂停或恢复 Life、设置日程和回顾、主动照料、打开 Room。钱包、背包、账本、商城和阅读导入由 Economy 提供。 |
+| **连接** | 管理本机 QQ／微信／本地桥接及各获准群的公开资料。 |
+| **工作区** | 绑定并初始化 Repo、查看执行限制、组件和维护信息。 |
 
-The preview uses the saved identity and user sections from Core's native
-context reader. World's estimate covers those two sections. DSH records the
-actual usage for a conversation. The World integration view uses the currently
-mounted namespaces. The [Pet, World and Room controls](#pet-world-and-room)
-use their corresponding native services and display the current workspace’s state.
+角色预览读 Core 保存的人设与用户资料，预估只覆盖这两段；会话实际用量由 DSH 记录。World 视图使用当前装载的组件。独立上游 dsh-world 的「世界控制台」在自己的 DSH 设置项管理。[桌宠、World 与 Room](#pet-world-and-room)各用对应的服务。
 
-Opening the archive page reads the native workspace session count. A manual
-search starts the local provider on demand. The settings reader calls the
-existing scoped recall and read operations with the workspace's configured count
-and excerpt limits. Mnemosyne checks source and memory eligibility again when
-opening a result. A corrected result shows its current content and evidence.
-A withdrawn result is unavailable. Chat transcripts retained for recovery stay
-under DSH ownership. The search covers material admitted to this Bank.
+档案页读取原生工作区会话统计，手动搜索按需启动本机 provider。搜索和打开详细内容都会按当前 Bank、作用域和来源资格校验。主人更正后，页面显示当前内容和证据。撤回后该条不可见。原始会话日志归 DSH，档案搜索覆盖当前 Bank 已准入的材料。
 
-The overview reports whether long-term Memory is enabled for the **next turn**,
-including existing conversations. A provider outage leaves chat available and
-removes the previous recall block; the overview reports the temporary outage.
-**工作区 → 运行状态** shows whether the provider process is running. Opening
-settings reads its state without starting it. The provider starts on demand.
+概览的长期记忆开关对已有会话的下一轮也生效。provider 不可用时，聊天照常并移除上轮召回块。**工作区 → 运行状态**只查询进程状态；真正需要时才启动 provider。
 
-For a first launch, bind and initialize the companion Repo. Blank role and
-profile content is valid. Pet starts empty; explicitly add a body in **桌宠**
-before opening it. All surfaces read the same Core identity. An ordinary awake
-tap on the shared default body records a real owner head touch, retaining the
-ongoing activity and showing compatible factual feedback. A sleeping tap requests
-wake. Cmd/Ctrl+click, the right-click
-menu or hover + L opens compact chat. Drag to reposition the fish. **收起** folds
-the window. **新会话** starts a fresh conversation and archives the preceding one.
+首次使用先绑定并初始化伙伴 Repo，人设和资料可以留空。在 **桌宠** 里添加形象后再打开桌宠。各入口读取同一份 Core 身份。清醒时轻触默认身体会记录主人的真实摸头行为，当前活动继续；睡眠时轻触请求叫醒。Cmd/Ctrl 加点击、右键菜单或悬停后按 L 都能打开紧凑聊天窗。拖动可移动桌宠，**收起**折叠窗口，**新会话**会先归档上一段。
 
-## Desktop interactions
+<a id="desktop-interactions"></a>
 
-Use **桌宠** for the managed companion's presentation. Appearance, size,
-position/confinement, original movement and action controls use the original Pet
-editor on this same page. It manages deliberately added bodies explicitly;
-opening another settings page or compact chat must not create an extra normal body.
-The original body host and compact chat use separate presentation-only carriers;
-compact chat carries no extra body or tray. Startup displays **启动中** until the
-helper actually runs, supports cancellation and retry, and keeps unsaved form
-values while it checks status.
+## 桌宠交互
 
-**对话表现** controls final-reply bubbles, bubble duration and selected-sticker
-probability. **动作记录** sets the number and age of retained observed actions.
-**互动间隔** uses seconds for whisper, sleep talk and balance checks; use the
-original Pet editor for their enable switches. Save each section, then inspect
-its saved/effective value. A preserved migration conflict is shown for a choice
-rather than silently overwriting either configuration. Automatic migration fills
-only absent fields. An existing explicit value is preserved even if it equals an
-upstream default. A conflict choice is checked against the configuration hash, so
-an older open form cannot overwrite a later edit.
+在 **桌宠** 使用同页的原版 Pet 编辑器调整外观、大小、位置、活动范围、移动和动作。形象由主人显式添加。正常身体与紧凑聊天使用独立的呈现载体，紧凑窗不会带额外身体或托盘。助手进程真正运行后，**启动中**才结束。可取消、重试，查询状态时保留未保存的表单。
 
-Quiet mode suppresses proactive contact while normal owner replies remain
-available. Enabling automatic whisper/sleep talk permits an additional direct
-provider request through the original Pet generator; it starts disabled in a
-new companion configuration. This short text is not a new native conversation,
-complete chat transcript or Memory entry. Its deadline is the smaller of the
-saved background duration and the original generator's 30-second limit. Closing,
-pausing or changing the workspace aborts an in-flight request. Provider billing
-still applies to work already submitted. Life and Desktop
-coordinate these opportunities so one scheduled event does not create two
-independent assistant turns. Balance reads the current provider's actual account
-capability; unsupported providers report unavailability.
+**对话表现**设置最终回复气泡、气泡时长和贴图概率。**动作记录**设置已观察动作的保留条数和时长。**互动间隔**以秒保存碎碎念、梦话和余额查询的间隔；开关在上方原版编辑器。分段保存后可查看实际值。现行编辑器和计时均使用 `main-config.jsonc`。
 
-The pet menu opens compact chat and provides **进入房间**, plus available original
-Pet actions, sound, sleep/wake, todos, whisper and balance. Room opens in a normal
-independent window, even with Desktop hidden or unloaded. Room also remains accessible through the settings controls. Hover shortcuts retain upstream L (chat), S
-(screenshot), D (todos) and Z (sleep). Sleep/wake is an explicit request to the
-shared Behavior service; it remains available with autonomous Life paused.
+安静模式暂停主动联络，主人发起的对话照常。开启自动碎碎念或梦话后，原版 Pet 生成器可发额外的短文本请求。新配置默认不开。短文本不生成原生会话、完整聊天日志或 Memory 记录。期限取已保存的后台时长上限和生成器的 30 秒上限中较短者。关闭、暂停或换绑会取消在途请求，提供者已收到的请求可能继续计费。Life 与桌宠协调主动时机。余额读取当前提供者的实际账户能力，不支持时显示不可用。
 
-Room 2D and the default Desktop body use one registered media allocation and
-sample the same accepted activity, phase and progress. Closing Room keeps that
-same activity; dragging the desktop window changes its position. Real reading
-content, actual arrival, sleep/wake and consumption remain authoritative. Movie
-loops and clip boundaries do not settle effects or choose another activity.
-A one-shot that ends early holds its final frame until the shared phase changes;
-it does not repeatedly restart its tail.
+桌宠菜单可打开聊天和 **进入房间**，也提供当前可用的原版动作、声音、睡醒、待办、碎碎念和余额。桌宠隐藏或卸载后，Room 仍能从设置打开独立窗口。悬停快捷键为 L（聊天）、S（截图）、D（待办）和 Z（睡眠）。主人请求睡醒走共用 Body 服务，自主生活暂停时也可用。
 
-Sleep begins when she actually reaches bed and enters sleep. A quiet wait ending,
-pausing or being cancelled does not wake her. While asleep, requests for basic
-food, inventory meals or water ask the owner to wake her first. They apply no
-food/body effect, reserve or consume no inventory, and never wake automatically.
-Repeat delivery keeps the same rejected result; send a new request after waking. Relative-duration pause preserves the activity's active animation
-progress; absolute deadlines retain their calendar meaning. Rejected movement
-or garden requests keep the accepted activity and plan running.
+Room 2D 和默认桌宠用同一份媒体映射，采样同一活动的阶段与进度。关闭 Room 后活动继续，拖动桌宠只改窗口位置。阅读文本、到达、睡醒和消耗均由实际执行决定。视频循环或素材结束不结算效果；提前播完的单次素材停在末帧，等共用阶段变化。
 
-Existing whole clips are reused or combined in the real phase order. Actual
-item metadata chooses food; names or chat prose do not. One actual feeling can
-select compatible rest/touch; unknown or multiple feelings retain a neutral
-posture. A cosmetic hint cannot replace the actual activity or emotion. Conflicting
-happy/hurry motifs keep the existing specific variant; an explicit turn or
-special-gait intention may use its admitted shared portrayal. Paths and physical
-speed remain with the executor.
-Missing dedicated/component-only actions keep an explicit proxy/static gap.
-Right-turn reuse applies the same explicit mirror on managed surfaces. Custom
-packs retain valid local media and accurate activity text; complete 3D/artistic
-coverage is not claimed.
+身体到达床并进入睡眠后才算睡着。等待结束、暂停或取消都不会叫醒她。睡眠期间投喂基础食物、背包餐食或水会提示先叫醒，身体和库存都不会变化。重复提交按原号返回拒绝结果；醒后发新请求。相对时长暂停保留活动进度，绝对截止时间仍按时钟计算。被拒的移动或菜园请求不打断当前计划。
 
-Ordinary shared Desktop taps pass the existing input/drag/lock guards and the
-same Body care path. While busy, the primary clip continues. Committed owner
-facts may use the existing bubble and a registered sticker; repeated observations
-do not replay them, late delivery respects the actual expiry, and hiding waits
-for a fresh snapshot. These visual choices do not create chat turns, another
-Memory writer. The independent rice minigame and its polling are removed;
-basic feeding remains in Room and Life care. Original food/sleep command,
-action/surface/lock admission remains. Code checks do not establish installed
-visual quality, decoder compatibility or measured device power use.
+素材按实际阶段复用或拼接。食物按物品元数据选素材。单一适配的 feeling 可以选择休息或触摸表现；无匹配素材或没有适配分类时保留中性表现。快乐与赶路冲突时沿用已有专用变体，明确转向或特殊步态可用共用映射。路径和速度由执行者决定。缺少专用动作时显示代理或静态表现，向右转向使用相同的镜像配置。自定义包继续用可用的本地素材和真实活动文字。
 
-In compact chat, the microphone action uses the configured recognizer; review or
-edit the transcript before sending. Each assistant reply offers manual speech
-playback. Voice and original menu items depend on their owning capabilities.
-Compact chat revokes its recorder/transcription and playback generation when
-hidden or changing sessions, so late results cannot alter the next draft. Room's
-request lifetime also cancels not-yet-started speech synthesis through Voice.
-A provider that has already received text may still finish or bill that work;
-this does not promise that every transport can retract an accepted request.
+普通桌宠点击须先经过输入、拖动和锁定守卫，再走 Body 照料。忙碌时原活动主素材继续播放。已确认的主人互动可用气泡或登记贴图反馈；重复观察不重播，迟到反馈按实际有效期处理，隐藏后等待新快照。反馈不新开会话，也不独立写 Memory。基础投喂可从 Room 或生活照料发起，睡眠和动作准入沿用当前守卫。
 
-The original todo panel supports create, complete/reopen, delete, deadlines and
-reminders. Its original store/policy are reused in `.chatpet/data/desktop/todos.json`.
-This Desktop list is separate from native Agent todos and the accepted Life plan.
-Malformed existing todo files are refused and retained, rather than overwritten.
+紧凑聊天的麦克风用已配置的识别器，发送前可检查和编辑转写。每条伙伴回复可手动播放。隐藏或换会话会撤销录音、转写和播放请求，晚到结果不会覆盖新草稿。Room 也会通过 Voice 取消尚未开始的合成。已经提交给提供者的文本仍可能完成处理或计费。
 
-Images can be selected, pasted or dropped onto the body/chat, or captured through
-the explicit screenshot action. A preview remains editable before send. Screenshot
-requires the operating system's screen-recording permission; it never starts on
-its own. Images enter the same native conversation via DSH attachment admission.
-Portable upload copies live under `.chatpet/data/desktop/images/`; another device
-re-admits them through its native attachment service and checks the references.
-The selected model must support images for a useful visual answer.
+原版待办支持新增、完成、重开、删除、截止时间与提醒，存于 `.chatpet/data/desktop/todos.json`。它独立于原生 Agent 的待办和已接受的 Life 计划。现存文件无效时，保留并显示错误。
 
-Normal Pet preparation first uses an explicitly configured or cached Electron.
-If none exists, its original download path uses the declared optional
-`@electron/get` and `@electron-internal/extract-zip` dependencies. Keeping that
-fallback requires installing the declared optional dependencies and network
-access when the owner requests a body; it does not download merely to read
-settings. Compact chat, Room and standalone use an existing device Electron via
-their documented executable path. The package does not bundle an Electron binary.
+图片可选择、粘贴、拖入，也可由主人显式截图。发送前可看预览。截图要有系统录屏权限。图片经 DSH 原生附件服务进入同一个会话；便携上传副本在 `.chatpet/data/desktop/images/`。换设备后由新设备的附件服务重新准入。要让伙伴理解图片，当前模型须支持视觉输入。
+
+正常桌宠优先用已配置或缓存的 Electron。主人请求启动身体、设备又没有 Electron 时，原版下载路径使用可选依赖 `@electron/get` 和 `@electron-internal/extract-zip`。紧凑窗、Room 和独立桌宠使用本机已有 Electron；包内不附二进制。外观和解码表现以安装后实机结果为准。
 
 ## Expression, recent experience and lasting memory
 
