@@ -140,7 +140,7 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | **R7** | 外围可关闭 | 见下 | 组合测试 | 阶段 2 覆盖生活世界的卸载与暂停；阶段 3 覆盖全部外围模块 |
 | **R8** | 词汇重复与裸字符串 | 同一组字符串取值出现在多个文件，阶段 3 纳入有类型或用途证据的对象表和布尔值表的键。另检查公开接口的 `kind / action / status / type` 裸 `string` 字段 | 扫描，旧重复按基线放行，新增重复阻断（`scripts/arch/check.mjs:38–49`、`tests/arch/object-vocabulary.test.mjs:8–33`） | M1，阶段 3 扩面 |
 
-**棘轮**：R1–R4 的基线在 [arch/baseline/rules.json](../arch/baseline/rules.json)，R8 在 [arch/baseline/vocabulary.json](../arch/baseline/vocabulary.json)；R5 的 [arch/baseline/writers.json](../arch/baseline/writers.json) 只作报告，不参与棘轮。已建立的检查出现新增违规，或旧条目消失而未同步收紧基线，都会失败；更新基线只能删条目，清理旧违规时同提交收紧。检查与报告命令见 [开发说明](development.md#architecture-behavior)。尚未建立的检查不计为已生效。
+**棘轮**：R1–R4 的基线在 [arch/baseline/rules.json](../arch/baseline/rules.json)，R8 在 [arch/baseline/vocabulary.json](../arch/baseline/vocabulary.json)。运行 `pnpm run check:arch -- --report` 可查看 R5 实时读写报告。已建立的检查出现新增违规，或旧条目消失而未同步收紧基线，都会失败；更新基线只能删条目，清理旧违规时同提交收紧。检查与报告命令见 [开发说明](development.md#architecture-behavior)。尚未建立的检查不计为已生效。
 
 **R5 的做法**
 
