@@ -177,8 +177,8 @@ Desktop（含 PetPlatform）、Room、Channels、Voice、Console。两条规则�
 | Core 数据库：身份、设置、请求去重、原生消息映射、记忆待处理/确认 | 第一层 | Core、NativeMemory、Memory batch | 不变 |
 | Core 数据库：`channel-received / channel-reach / life-outlet-delivery / channel-usage / channel-usage-event` | **第三层·Channels** | Channels 直接写 | **原位例外**，沿用 CoreStore 记录协议及[离线恢复](#72-回退)对当前渠道记录的保护 |
 | Core 数据库：`desktop-session` | **第三层·Desktop** | Desktop 直接写 | **原位例外**，会话映射随选中的 Core 备份恢复 |
-| 钱包导入独立证明 `data/console-wallet-import.json` | 第一层·绑定与迁移 | Core 初始化、离线步骤 `0004-console-wallet` | 全新安装标记无旧来源。未采用钱包的副本零条导入时原子记录绑定与来源摘要，未来采用钱包保留此历史凭证 |
-| 钱包「已采用」证据：`economy.sqlite` 的 `meta.economy.initialized` 和独立文件 `data/living/economy-adoption.json`（都是 `{storageId, companionId}`） | 第二层·钱包区 | Economy | 原来放在 Core `meta` 的 `economy.initialized:<storageId>`，已由离线迁移步骤 `0003-economy-marker` 搬走：先在钱包库里写标记并提交，再原子写独立证据，两者都落盘后才删 Core 旧键（`scripts/migrate/steps/0003-economy-marker.mjs:101-121`）。首次建库时先验旧菜园，在钱包租约下先落独立证据，再在同一个事务里建表、导入旧菜园、写库内标记，提交后补 `storage.json`（`living/economy/store.ts:75-125`）。运行时认五种采用证据：独立证据、库内标记、`storage.json`、身体检查点的 `economyGardenAuthority`，以及同一 `storageId` 的迁移日志里含 `0003` 且记了 `economyAdopted:true` 的段（`living/economy/adoption.ts:31-73,85-106`）。任一成立而库缺失，就拒绝钱包，不建空库、不导入旧菜园，免费照料照常；钱包目录和 `data/living/` 同时丢失时，迁移日志这一条仍然挡住重建。日志缺失或损坏按没有这条证据处理，不影响工作区；所以钱包目录、`data/living/` 和迁移日志三处同时丢失或损坏时，运行时认不出曾经采用过，这是已知边界。证据文件内容坏了只拒绝钱包，工作区清单只看文件在不在。独立证据已落盘、库还没提交时拒绝自动补建，钱包能力状态行 `life.economy` 给出证据路径和处理办法 |
+| 钱包导入独立证明 `data/console-wallet-import.json` | 第一层·绑定与迁移 | Core 初始化 | 全新安装写入无旧来源的证明。已迁移绑定由完成日志中的凭证准入 |
+| 钱包「已采用」证据：`economy.sqlite` 的 `meta.economy.initialized` 和独立文件 `data/living/economy-adoption.json`（都是 `{storageId, companionId}`） | 第二层·钱包区 | Economy | 首次建库时先验旧菜园，在钱包租约下先落独立证据，再在同一个事务里建表、导入旧菜园、写库内标记，提交后补 `storage.json`（`living/economy/store.ts:75-125`）。运行时认五种采用证据：独立证据、库内标记、`storage.json`、身体检查点的 `economyGardenAuthority`，以及同一 `storageId` 的迁移日志里含 `0003` 且记了 `economyAdopted:true` 的段（`living/economy/adoption.ts:31-73,85-106`）。任一成立而库缺失，就拒绝钱包，不建空库、不导入旧菜园，免费照料照常；钱包目录和 `data/living/` 同时丢失时，迁移日志这一条仍然挡住重建。日志缺失或损坏按没有这条证据处理，不影响工作区；所以钱包目录、`data/living/` 和迁移日志三处同时丢失或损坏时，运行时认不出曾经采用过，这是已知边界。证据文件内容坏了只拒绝钱包，工作区清单只看文件在不在。独立证据已落盘、库还没提交时拒绝自动补建，钱包能力状态行 `life.economy` 给出证据路径和处理办法 |
 | Core 数据库：`native-memory-view / native-memory-action` | 第一层（只保留） | 无：旧版本写入，当前 `src/` 不读不写 | 原样保留，是否清理另议；登记后盘点不再报未知 kind |
 | Mnemosyne 记忆库 `data/memory/data/memory.db` 等 | 第一层·记忆 | Mnemosyne 服务、Pet 接口 | 不变 |
 | 情绪 `data/emotion/state.json`；近期账本 `.chatpet/data/memory/recent-interactions.sqlite`（`src/emotion/recent.ts:11-17,47-56`） | 第一层·情绪 | Emotion | 近期账本虽在 Memory 目录，业务拥有者仍是 Emotion；初始化改为自己登记 |
@@ -592,15 +592,15 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 ### 7.3 经济待确认请求的迁移顺序
 
-0.4.0 到 0.5.0 有浏览器导出和主人声明无待办两条路线。声明路线的适用边界见[迁移决定](decisions.md#2026-11-23-040050-钱包迁移用主人声明无待办放行)，停写、导入、换包与回退顺序见[Console 钱包迁移](development.md#console-wallet-migration)。
+0.4.0 到 0.5.0 有浏览器导出和主人声明无待办两条路线。声明路线的适用边界见[迁移决定](decisions.md#2026-11-23-040050-钱包迁移用主人声明无待办放行)，停写、导入、换包与回退顺序见[v0.5.0 钱包迁移记录](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration)。
 
 ### 7.4 第一次迁移的定位
 
-阶段 1 只做「存储清单加版本号和迁移日志」，数据格式其余不变。2a 登记了三步：`0001-storage-manifest` 写存储清单，`0002-home-identity` 把共享 home 身份从 `life.json` 复制进 Core，`0003-economy-marker` 把 `economy.initialized` 从 Core 搬进钱包库并写独立证据，存储版本随之升到 v3。`0003` 是第一次跨数据库搬迁，合成副本上已演练崩溃续做、结算守恒和用 v0.2.0 代码回退；主人随后在隔离环境做了升级、迁移和回退，在独立设备上做了真实副本演练，0.3.0 已发布并在日常机器上迁移通过，迁移链路按 [product.md](product.md) 2a 完成标准验收。换包后新版本遇到未迁移的数据进入「需要迁移」模式，只开普通聊天、拒绝伙伴数据写入；离线迁移器接不住的绑定形状另报 `binding-not-migratable`，提示换回旧版理顺。
+阶段 1 只做「存储清单加版本号和迁移日志」，数据格式其余不变。2a 登记了三步：`0001-storage-manifest` 写存储清单，`0002-home-identity` 把共享 home 身份从 `life.json` 复制进 Core，`0003-economy-marker` 把 `economy.initialized` 从 Core 搬进钱包库并写独立证据，存储版本随之升到 v3。`0003` 是第一次跨数据库搬迁，合成副本上已演练崩溃续做、结算守恒和用 v0.2.0 代码回退；主人随后在隔离环境做了升级、迁移和回退，在独立设备上做了真实副本演练，0.3.0 已发布并在日常机器上迁移通过，迁移链路按 [product.md](product.md) 2a 完成标准验收。换包后新版本遇到未迁移的数据进入「需要迁移」模式，只开普通聊天、拒绝伙伴数据写入；工作区绑定不一致时另报 `binding-not-migratable`，设置页引导核对绑定并提供历史标签信息。
 
-版本号和日志放在 `.chatpet/data/storage-manifest.json` 和 `.chatpet/data/migrations.jsonl`，迁移锁是同目录的 `migration.lock`（`scripts/migrate/context.mjs:21-22`）。它们不放进 `.chatpet/manifest.json`：那个文件算进绑定指纹（`src/core/workspace.ts:309-311,324-327`），还会被 Core 改写（`src/core/workspace.ts:443-445`）。三个文件都在 `.chatpet/` 里，现有备份自然覆盖。
+版本号和日志放在 `.chatpet/data/storage-manifest.json` 和 `.chatpet/data/migrations.jsonl`，迁移锁是同目录的 `migration.lock`（`scripts/companion-backup.mjs`）。它们不放进 `.chatpet/manifest.json`：那个文件算进绑定指纹（`src/core/workspace.ts:309-311,324-327`），还会被 Core 改写（`src/core/workspace.ts:443-445`）。三个文件都在 `.chatpet/` 里，现有备份自然覆盖。
 
-迁移按轮追加日志段：每轮的段头写明本轮步骤集、每步的源版本和目标版本、绑定（`storageId` 和仓库路径摘要）、同包续做备份的地址和校验值（`scripts/migrate/journal.mjs:5-11`、`scripts/migrate/runner.mjs:110-120`）。上一轮全部完成且目标仍在，才能开新一轮；`--resume` 只续最后一轮，并要求步骤集和当前代码一致（`scripts/migrate/runner.mjs:59-83`）。v1 存储清单冻结在步骤表里（`core/storage-migration.ts:13-15,24,29-31`、`scripts/migrate/steps/0001-storage-manifest.mjs:4-10`），之后每一步完成目标后由运行器推进清单（`scripts/migrate/runner.mjs:126-144`）。迁移和恢复用仓库外的互斥文件串行（`scripts/companion-backup.mjs:17-20,93-99`，`scripts/migrate/runner.mjs:90-108`），因为恢复会替换整个 `.chatpet/`；恢复带回的旧 `migration.lock` 按陈旧锁接管（`scripts/migrate/io.mjs:48`）。命令、状态值和原因码见 [development.md](development.md)。
+Core 依据冻结的 0.5.0 步骤表校验历史日志，接受已完成的绑定凭证（`src/core/storage-migration.ts`、`src/core/workspace.ts`）。恢复会替换整个 `.chatpet/`，所以 restore 通过仓库外的 SQLite 互斥避免并发恢复，并检查备份带回的旧锁是否还有存活的持有者（`scripts/companion-backup.mjs`）。
 
 ### 7.5 演练覆盖
 

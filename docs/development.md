@@ -67,9 +67,9 @@ L1 是插件入口的完整流程，L2 是公开面行为，L3 是保留在全�
 <a id="migration-inventory"></a>
 ## 合成副本、迁移与盘点
 
-这些也是源码检出命令，需要已经构建。输入是完成安装的 `installation.json` 回执。开发使用生成器产出的合成副本；真实副本由主人提供且只在另行授权的隔离检查点使用。已登记四步：`0001-storage-manifest` 写存储清单；`0002-home-identity` 把 `life.json` 的 home 会话 ID 复制到 Core 的 `companion-home` 记录（只复制，`life.json` 原字节保留；两边 ID 不同时报 `home-identity-conflict`），清单换成 `core:2`、`living:2`；`0003-economy-marker` 把 Core `meta` 里属于当前绑定的那一条 `economy.initialized:<storageId>` 搬进钱包库，并写独立证据 `.chatpet/data/living/economy-adoption.json`，两者都落盘后删掉 Core 旧键，清单换成 `core:3`、`living:3`。`0003` 只打开已存在、身份和 schema 都对的钱包库，不建库、不导入旧菜园；含 `0003` 的日志段头记 `economyAdopted`，用来区分「从未采用」和「源已删、目标缺失」。它的原因码：`economy-database-missing`（已采用而钱包库缺失）、`economy-database-invalid`（钱包库无效或 schema 不完整）、`economy-marker-multiple`（Core 有多条标记）、`economy-marker-invalid`（标记无效）、`economy-marker-binding-mismatch`（标记、钱包库或独立证据属于另一个绑定）；失败时 Core 旧键保留。盘点在 Core 库那一项报 `economyInitialized: {rows, matchesCurrentBinding}`。迁移后钱包目录和独立证据同时丢失时，离线 `status` 报 `binding-changed`，续做和开新一轮都拒绝。 `0004-console-wallet` 把经停写排空导出的浏览器钱包请求按原号登记，清单换成 `core:3/living:4`。导入不派发请求。已采用的库同时提交待办和导入证明，未采用且零条时原子写独立证明。新装写无旧来源证明。浏览器切换和双备份的操作顺序见 [Console 钱包迁移](#console-wallet-migration)。
+生成和盘点在已构建的源码检出中运行，盘点输入是完成安装的 `installation.json` 回执。开发使用合成副本，真实副本由主人提供给另行授权的隔离检查点。下文保留的旧迁移操作用 [v0.5.0 标签下的工具与说明](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#migration-inventory)。
 
-存储清单落后于代码时，运行时进入「需要迁移」：对外状态和拒写码都是 `migration-required`，DSH 普通聊天照常，伙伴的设置、身份、策略、生活世界和记忆写入全部拒绝，设置页显示细因和操作提示。细因有 `storage-version-outdated`、`manifest-mismatch`、`migration-incomplete`、`journal-invalid`、`journal-step-mismatch`、`binding-changed`，以及 `binding-not-migratable`：绑定的形状离线迁移器接不了（例如选中的工作区和已初始化的绑定不一致），这时要在版本页换回 0.2.0，把工作区选择和初始化理顺后再升级。一旦判定需要迁移，本进程就锁定，迁移完成后要重启 DSH。新装由主人显式初始化时直接写最新清单，不需要迁移。
+存储清单落后于代码时，运行时进入「需要迁移」：对外状态和拒写码都是 `migration-required`，DSH 普通聊天照常，伙伴的设置、身份、策略、生活世界和记忆写入全部拒绝，设置页显示细因和操作提示。细因有 `storage-version-outdated`、`manifest-mismatch`、`migration-incomplete`、`journal-invalid`、`journal-step-mismatch`、`binding-changed`，以及 `binding-not-migratable`：绑定的形状离线迁移器接不了（例如选中的工作区和已初始化的绑定不一致），先核对工作区选择与绑定，再查阅历史标签说明。一旦判定需要迁移，本进程就锁定，迁移完成后要重启 DSH。新装由主人显式初始化时直接写最新清单，不需要迁移。
 
 用一个不存在或为空的输出目录生成 0.5.0 合成布局。
 
@@ -108,7 +108,7 @@ node scripts/migrate/companion-migrate.mjs run --installation /tmp/her-world-syn
 
 日志头记录 `storageId` 和仓库路径摘要。已收尾的轮次只核对 `storageId`，所以按 [portability.md](portability.md) 把 Repo 搬到新路径后，`status` 和下一轮迁移照常可用；未收尾的轮次只能在原路径、用原备份续做。
 
-迁移和恢复按仓库路径互斥。互斥文件在仓库外：`/tmp/her-world-offline-<uid>/<仓库路径的 sha256>.sqlite`，目录权限 0700、只属于当前用户，进程退出或被杀时 SQLite 自动释放，不留陈旧锁。迁移 `run`、本检出的备份 `restore`、钱包封锚、声明预检及浏览器离线操作使用这把锁。已安装旧包里的 `companion-backup.mjs` 不持有，所以回退恢复要用本检出的命令。仓库内的 `.chatpet/data/migration.lock` 照旧：恢复带回的已退出进程旧锁会被下一轮接管并记入日志；若 PID 被复用而报 `lock-held`，先确认迁移和恢复都已结束，再按提示处理旧锁。
+同一仓库的 restore 使用仓库外的 SQLite 互斥，锁文件位于 `/tmp/her-world-offline-<uid>/`。进程退出会释放互斥。恢复也检查历史备份带回的 `.chatpet/data/migration.lock`，仍有存活持有者时拒绝。
 
 要回退安装版本，在旧包下退出 DSH，用 `companion-backup.mjs create` 预先做回退备份，再启动 DSH 从版本页换包。回退时先从版本页换回旧包，再退出 DSH，用本检出的命令恢复旧包对应的回退备份。同包续做备份也可在安装指纹相同的情况下恢复。恢复器先备份当前状态，并保留已送达、已消耗额度及 Life 花费：
 
@@ -129,7 +129,7 @@ node scripts/companion-backup.mjs restore --installation /tmp/her-world-syntheti
 
 **换了设备的钱包**：Repo 搬到新设备、新路径后，0.2.0 的 Core 里那条 `economy.initialized` 标记还记着旧路径，`0003` 会报 `economy-marker-binding-mismatch` 停下。换包前先用 0.2.0 在新设备上绑定新路径并打开一次钱包，旧版本打开钱包时会把标记改成新路径，再做第 1 步。
 
-原有恢复 CLI 的输出不属于迁移/盘点的固定原因与隐私输出契约；真实数据检查点不能把其原始输出交给 Agent。开发演练只用合成副本。
+恢复命令会输出绑定位置等细节。真实数据检查点将原始输出留在本机，开发演练使用合成副本。
 
 真实副本检查点（阶段 2 的 2a 做过一次；改数据格式的阶段都要再做，2b 没改格式所以没做）在独立设备上跑：源机退出 DSH 后，打包伙伴 Repo、安装包和源码 bundle，用隔空投送或移动硬盘传过去，不经云端；新设备按 [portability.md](portability.md)「搬到另一台设备」安装绑定，再盘点、迁移、回退、续做。设备 profile 里的语音、附件不随 Repo 走，新设备上为空属于预期。盘点只给出未登记 kind 的个数；要查是哪几种，只按冒号前的前缀聚合计数，不输出完整 kind 和字段值。恢复命令的输出重定向到本机日志，只取退出码和 `restored` 字段。
 
@@ -207,7 +207,7 @@ PR CI 和发布工作流各自执行全量检查（`.github/workflows/ci.yml:13�
     env -u ELECTRON_RUN_AS_NODE "${DSH_CHATBOT_ELECTRON_PATH:-${DSH_HOME:-$HOME/.dsh}/electron/Electron.app/Contents/MacOS/Electron}" tests/desktop/compact-voice-window.cjs
     ```
 
-- 回退到 0.2.0 的演练 `tests/migrate/home-rollback.mjs` 不在门禁里，要先准备一份装好依赖并构建过的 v0.2.0 检出，再运行 `HER_WORLD_020_ROOT=/absolute/v0.2.0 node --test tests/migrate/home-rollback.mjs`。它核对回退后聊天、召回和共享 home 可用，2a 发版前跑过。
+
 
 这些检查不安装或更新 DSH。已安装环境里的主人验收，与源码、包和脚本宿主验证分开。
 

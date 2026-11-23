@@ -12,7 +12,7 @@
 
 新增 `0004-console-wallet`，把 Console（设置页）留在浏览器里的钱包待确认请求按原编号迁入持久存储，存储清单更新为 `core:3/living:4`。导入只登记待办，不会执行这些请求。
 
-在隔离副本上按下面的顺序操作。完整命令和停写要求见 [Console 钱包迁移操作清单](https://github.com/hyyino7/her-world/blob/main/docs/development.md#console-wallet-migration)。
+在隔离副本上按下面的顺序操作。完整命令和停写要求见 [Console 钱包迁移操作清单](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration)。
 
 1. **先退出旧浏览器。** 完全退出使用该副本的浏览器及后台进程，关闭会话自动恢复。在 0.4.0 下停下 Life 等写入入口，核实钱包与身体的在途操作已经排空，再完全退出 DSH。能确认停写和独占访问后才导出。
 2. **先备份再换包。** 用获准的适配入口做私有导出，用 0.4.0 创建并校验回退备份，把导出和该备份绑定为同一轮。原副本继续停写，换包后用 v0.5.0 标签的源码执行带备份的离线迁移。
