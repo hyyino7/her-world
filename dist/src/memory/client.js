@@ -29,7 +29,7 @@ export class MemoryConnection {
     get lifecycle() {
         return this.connected() ? 'ready' : this.host?.child ? 'unresolved' : 'stopped';
     }
-    async start(scope, workspacePath, useConfiguredDirectory) {
+    async start({ companionId, scopeId, bankId }, workspacePath, useConfiguredDirectory) {
         const directory = memoryDirectory(this.config, workspacePath, useConfiguredDirectory);
         let parent = workspacePath;
         for (const part of relative(workspacePath, directory).split(sep)) {
@@ -37,35 +37,34 @@ export class MemoryConnection {
             if (existsSync(parent) && lstatSync(parent).isSymbolicLink())
                 throw new Error('Workspace Memory directory contains a symbolic link');
         }
-        const snapshot = Object.freeze({ ...scope });
+        const snapshot = Object.freeze({ companionId, scopeId, bankId });
         const next = this.transition.then(() => this.open(snapshot, directory));
         this.transition = next.catch(() => { });
         return next;
     }
     async open(scope, directory) {
-        if (this.connected() && directory === this.directory && JSON.stringify(scope) === JSON.stringify(this.scope?.memory))
+        if (this.connected() && directory === this.directory && JSON.stringify(scope) === JSON.stringify(this.scope))
             return;
         if (this.host)
             await this.stop();
         const root = fileURLToPath(new URL('../../../', import.meta.url));
         const { MemoryProcessHost } = await import(pathToFileURL(`${root}vendor/mnemosyne/src/memory-process.js`).href);
         const { MemoryClient } = await import(pathToFileURL(`${root}vendor/mnemosyne/src/memory-client.js`).href);
-        const provider = { companionId: scope.companionId, scopeId: scope.scopeId, workspaceId: scope.bankId };
         this.host = new MemoryProcessHost({ serviceRoot: `${root}vendor/mnemosyne/service`, serviceEntry: this.config.serviceEntry ?? `${root}src/memory/main.py`,
             dataDir: directory, python: this.config.python,
-            serviceEnv: { CHATPET_MEMORY_SCOPE: JSON.stringify(provider), PYTHONDONTWRITEBYTECODE: '1' } });
-        this.scope = { memory: scope, provider };
+            serviceEnv: { CHATPET_MEMORY_SCOPE: JSON.stringify(scope), PYTHONDONTWRITEBYTECODE: '1' } });
+        this.scope = scope;
         this.directory = directory;
         this.client = new MemoryClient(await this.host.start({ timeoutMs: 10000 }));
     }
     async call(operation, args, expectedBankId) {
         if (!this.connected() || !this.scope)
             throw new Error('Memory provider unavailable');
-        if (expectedBankId !== undefined && this.scope.memory.bankId !== expectedBankId)
+        if (expectedBankId !== undefined && this.scope.bankId !== expectedBankId)
             throw Object.assign(new Error('Memory workspace changed'), { code: 'STALE_BINDING' });
         const client = this.client, scope = this.scope;
         try {
-            const result = await client.request('POST', `/pet/v1/${operation}`, { scope: scope.provider, ...args });
+            const result = await client.request('POST', `/pet/v1/${operation}`, { ...args, scope });
             // A stopped/replaced connection cannot return a late result as the new
             // Bank, including A→B→A where the logical Bank name is equal again.
             if (!this.connected() || this.client !== client || this.scope !== scope)

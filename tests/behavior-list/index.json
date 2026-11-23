@@ -400,7 +400,7 @@
       "categories": [],
       "level": "L2",
       "file": "tests/behavior-list/policy-room.test.mjs",
-      "name": "Room 电视 footer 写共享情绪（现状，待主人决定）",
+      "name": "Room 电视回复剥离 footer 且不写共享情绪",
       "l1Stage": "阶段 1",
       "families": [],
       "policyCells": [
@@ -599,7 +599,7 @@
       "categories": [],
       "level": "L2",
       "file": "tests/behavior-list/policy-qq.test.mjs",
-      "name": "guest footer 写共享情绪（现状，待主人决定）",
+      "name": "guest 回复剥离 footer，混入其他来源也不写共享情绪",
       "l1Stage": "阶段 1",
       "families": [],
       "policyCells": [

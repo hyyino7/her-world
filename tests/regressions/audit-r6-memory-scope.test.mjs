@@ -40,7 +40,7 @@ async function fixture(t) {
   });
   t.mock.method(MemoryProcessHost.prototype,'stop',async function(){this.ready=false;this.child=null;return {state:'stopped'};});
   t.mock.method(MemoryClient.prototype,'request',async function(_method,path,body){
-    const operation=path.split('/').at(-1),bank=body.scope.workspaceId;
+    const operation=path.split('/').at(-1),bank=body.scope.bankId;
     requests.push({operation,bank,args:structuredClone(body)});
     const gate=gates.get(operation);if(gate){gates.delete(operation);gate.entered.resolve();await gate.release.promise;}
     const source='source-'+bank,dependencies={sources:[{id:source,revision:'1'}],memories:[]};

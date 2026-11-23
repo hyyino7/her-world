@@ -49,7 +49,7 @@ export declare class MemoryConnection {
     constructor(config: MemoryConfig);
     private connected;
     get lifecycle(): 'ready' | 'stopped' | 'unresolved';
-    start(scope: MemoryScope, workspacePath: string, useConfiguredDirectory: boolean): Promise<void>;
+    start({ companionId, scopeId, bankId }: MemoryScope, workspacePath: string, useConfiguredDirectory: boolean): Promise<void>;
     private open;
     call<T>(operation: string, args: Record<string, unknown>, expectedBankId?: string): Promise<T>;
     validate(dependencies: Dependencies, expectedBankId?: string): Promise<Decision>;

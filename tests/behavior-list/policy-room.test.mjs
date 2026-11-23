@@ -117,8 +117,10 @@ test('3C 电视接管期间相册 schema 和旧工具均不可用，电视请求
   assert.ok(!f.schemas(tv.active).includes(name));
   await assert.rejects(f.tool(tv.active,name,{}),/电视画面只能用于观后感/);
   await assert.rejects(old.execute({},{agent:tv.agent,signal:signal()}),/相册需要当前工作区/);
-  await f.end(tv.active);
-  await tv.pending;
+  const emotion=f.service('petEmotion'),before=await emotion.read('world');
+  await f.end(tv.active,'completed',footer('Television takeover'));
+  assert.equal((await tv.pending).reply,'Synthetic reply');
+  assert.deepEqual(await emotion.read('world'),before,'主人接管没有给同一轮电视回复写入授权');
   const next=await f.begin(tv.agent.id);
   assert.ok(f.schemas(next).includes(name));
   assert.equal((await f.tool(next,name,{})).total,0);
@@ -177,12 +179,13 @@ test('Room 私聊与电视按 owner 和伙伴身份进入 Memory',async t=>{
   assert.ok(reply.rootSourceIds.includes(frame.sourceId));
 });
 
-test('Room 电视 footer 写共享情绪（现状，待主人决定）',async t=>{
+test('Room 电视回复剥离 footer 且不写共享情绪',async t=>{
   const f=await setup(t);
   const tv=await television(f);
+  const emotion=f.service('petEmotion'),before=await emotion.read('world');
   await f.end(tv.active,'completed',footer('Television'));
   assert.equal((await tv.pending).reply,'Synthetic reply');
-  await assertEmotion(f,'Television');
+  assert.deepEqual(await emotion.read('world'),before);
 });
 
 test('Room 在途回复重新校验绑定并拒绝旧工作区',async t=>{

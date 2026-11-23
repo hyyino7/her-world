@@ -89,10 +89,12 @@ class ProviderConformance(unittest.TestCase):
     def test_legacy_interaction_projection_repairs_once_and_keeps_originals_and_versions(self):
         from cognitive_memory.cognition.consolidate import consolidate_observation
         # Legacy captures have scope on the source, but consolidation dropped it.
+        legacy_scope = {"companionId": "pet", "scopeId": "owner", "workspaceId": "repo"}
+        wire_scope = {"companionId": "pet", "scopeId": "owner", "bankId": "repo"}
         def legacy(key, text, attribution, roots):
             return self.ctx.service.capture_observation(ObservationIn(source_kind="system", content=text,
                 producer="dsh", idempotency_key="pet:observation:" + key,
-                metadata={"workspace_id": self.scope["workspaceId"], "pet_scope": self.scope,
+                metadata={"workspace_id": "repo", "pet_scope": legacy_scope,
                     "actor_id": "owner", "pet_roots": roots, "attribution": attribution,
                     "source_ref": {"source_id": key, "root_source_id": key, "revision": "1"}}))
         original = legacy("native-fact:legacy", "The owner gave me 50 coins.",
@@ -109,12 +111,17 @@ class ProviderConformance(unittest.TestCase):
         self.assertEqual(self.ctx.service.get_memory(envelope_episode)["content"], '{"facts":"old transport"}')
         self.assertEqual(consolidate_observation(self.ctx.service, envelope.id), envelope_episode,
                          "an already stored transport candidate keeps its original ID")
-        self.assertEqual([r["memory"]["id"] for r in self.port.recall(self.scope, query="50 coins", include_recent=True)["records"]], [episode_id])
+        request_scope = self.port.scope_for_request(wire_scope)
+        self.assertEqual([r["memory"]["id"] for r in self.port.recall(request_scope, query="50 coins", include_recent=True)["records"]], [episode_id])
         counts = tuple(self.ctx.db.connect().execute("SELECT (SELECT COUNT(*) FROM observations), (SELECT COUNT(*) FROM memories), (SELECT COUNT(*) FROM memory_versions)").fetchone())
         self.ctx.db.close(); self.open()
         self.assertEqual(self.ctx.service.get_memory(episode_id)["version"], repaired["version"])
         self.assertEqual(counts, tuple(self.ctx.db.connect().execute("SELECT (SELECT COUNT(*) FROM observations), (SELECT COUNT(*) FROM memories), (SELECT COUNT(*) FROM memory_versions)").fetchone()))
         self.assertEqual(self.port.source("native-fact:legacy")["content"], original.content)
+        request_scope = self.port.scope_for_request(wire_scope)
+        self.port.withdraw(request_scope, memory_id=episode_id, expected_version=repaired["version"])
+        self.assertFalse(self.port.recall(request_scope, query="50 coins", include_recent=True)["records"])
+        self.assertEqual(self.port.source("native-fact:legacy")["metadata"]["pet_scope"], legacy_scope)
 
     def test_capture_commit_can_immediately_consolidate_without_a_duplicate_envelope(self):
         from cognitive_memory.cognition.consolidate import consolidate_observation

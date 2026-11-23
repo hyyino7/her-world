@@ -71,7 +71,7 @@ export function createChannelSourceAdapter(routes: ChannelAdmission): SourceAdap
       },
       reply: ({sessionId}) => ({channel: guest ? 'external' : 'dsh', sessionId}),
     },
-    emotionUpdate: {footer: true, tool: !guest},
+    emotionUpdate: {footer: !guest, tool: !guest},
     historyProjection: {participates: false, protectsTurn: true},
     policyRow: {
       row: guest ? 6 : 5,
@@ -87,7 +87,8 @@ export function createChannelSourceAdapter(routes: ChannelAdmission): SourceAdap
       memoryObservation: {description: guest ? '按外部身份观察，召回共享 Bank' : '观察带渠道身份的主人输入和补答',
         behaviorIds: [guest ? 'M2A-20' : 'M2A-19']},
       emotionUpdate: {
-        footer: {description: '允许回复 footer 更新共享情绪', behaviorIds: [guest ? 'M2A-21' : 'M2A-19']},
+        footer: {description: guest ? '回复剥离 footer，禁止写共享情绪' : '允许回复 footer 更新共享情绪',
+          behaviorIds: [guest ? 'M2A-21' : 'M2A-19']},
         tool: {description: guest ? 'guest 无情绪工具' : '允许情绪工具', behaviorIds: [guest ? 'M2A-20' : 'M2A-19']},
       },
     },
