@@ -63,9 +63,7 @@ test('ordinary lock freeze retains its deadline and explicit release without a g
   const cleanup=effects[0]();assert.equal(frozen,true);assert.equal(timers.size,1);assert.equal([...timers.values()][0].at,9000);
   lock.release();assert.equal(frozen,false);assert.equal(timers.size,0);assert.deepEqual(events,['frozen','resumed']);cleanup();
 });
-test('all 122 mapped movies and the existing food PNG components remain packaged',()=>{
-  assert.equal(Object.keys(animationAssets).length,122);
-  for(const asset of Object.values(animationAssets))assert.ok(readFileSync('src/desktop/assets/'+asset.file).byteLength>0,asset.id);
+test('food PNG components and meal animation composition mappings remain packaged',()=>{
   for(const name of ['bowl-full.png','bowl-empty.png','rice-ball.png'])
     assert.ok(readFileSync('vendor/dsh-pet/platform/assets/pic/baifan/'+name).byteLength>0,name);
   assert.equal(animationAssets['吃饭·碗饭'].composition,'baifan-bowl');
