@@ -121,7 +121,7 @@ node scripts/companion-backup.mjs restore --installation /tmp/her-world-syntheti
 
 新版本遇到未迁移的数据会先进入「需要迁移」，所以要先在旧版本下做回退备份、换包后再离线迁移。`$RECEIPT` 是安装回执，命令都在与要装版本同标签的源码检出里跑，而且已经构建：
 
-1. **在 0.2.0 下做回退备份。** 完全退出 DSH，运行 `node scripts/companion-backup.mjs create --installation "$RECEIPT" --output "$ROLLBACK"`，再用 `verify --installation "$RECEIPT" --backup "$ROLLBACK"` 核对。旧 setup 装的机器先按已知问题 8 跑一次 `migrate-core-config --apply`。
+1. **在 0.2.0 下做回退备份。** 完全退出 DSH，运行 `node scripts/companion-backup.mjs create --installation "$RECEIPT" --output "$ROLLBACK"`，再用 `verify --installation "$RECEIPT" --backup "$ROLLBACK"` 核对。
 2. **换包。** 启动 DSH，在版本页换到 0.3.0。看到设置页「需要迁移」、只有普通聊天可用，是预期。显示 `binding-not-migratable` 时换回 0.2.0，按提示理顺工作区选择和初始化再来。
 3. **离线迁移。** 完全退出 DSH 和所有写入者，依次跑 `plan`、`run --backup "$RESUME_BACKUP"`、`status`（命令见上）。该版的三步都 `complete` 且 `segment` 为 `settled` 才算完成；`unfinished` 用 `--resume` 续做。
 4. **启动核对。** 启动 DSH，确认工作区就绪，聊天、记忆召回、home 和钱包都正常。

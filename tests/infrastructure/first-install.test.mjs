@@ -24,7 +24,7 @@ function fixture(t) {
   const {attemptReceipt} = setup.checked([]);
   const {config} = JSON.parse(readFileSync(attemptReceipt));
   assert.deepEqual(setup.calls(), [], 'Setup planning starts no package process, Electron, or model');
-  assert.equal(config.dataDir, join(root, 'codex-pet/core'));
+  assert.equal(config.dataDir, join(root, 'her-world/core'));
   host = createCore(config);
   let sequence = 0;
   const request = () => host.operator.request('first-install-' + ++sequence);

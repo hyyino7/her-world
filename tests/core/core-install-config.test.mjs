@@ -16,7 +16,7 @@ test('actual installer preparation requires no default model and creates only na
   const {config} = JSON.parse(readFileSync(attemptReceipt));
   assert.deepEqual(Object.keys(config).sort(),['character','companionId','dataDir','displayName','ownerActorId','scopeId'].sort());
   assert.ok(config.companionId&&config.scopeId&&config.ownerActorId);
-  assert.equal(config.dataDir, join(f.home, 'codex-pet/core'));
+  assert.equal(config.dataDir, join(f.home, 'her-world/core'));
   assert.equal(readFileSync(f.patchPath, 'utf8'), patch);
   assert.equal(readFileSync(f.manifest, 'utf8'), '{}');
   assert.deepEqual(f.calls(), [], 'Preparation installs no package and starts no host or model');
@@ -40,8 +40,8 @@ test('explicit resume layers override only declared binding fields and retain th
   assert.throws(()=>prepareCoreConfiguration(identity,[]),/configuration must be an object/);
 });
 
-const migrate = ['migrate-core-config'];
-const apply = [...migrate, '--apply'];
+const repair = ['repair-core-config'];
+const apply = [...repair, '--apply'];
 const configFor = f => ({...identity, dataDir: join(f.home, 'core')});
 const read = path => JSON.parse(readFileSync(path));
 const completed = (f, config) => ({status: 'installed', packageInstalled: true, profileDir: f.profileDir, config,
@@ -69,46 +69,36 @@ async function initializeWorkspace(config, workspace) {
   } finally { await host.close(); }
 }
 
-test('migrate-core-config moves legacy Core and preserves other patches, then a repeat leaves both files intact', t => {
+test('repair-core-config refuses to import device configuration from a bundle', t => {
   const f = profileFixture(t), config = configFor(f);
-  f.installFixture(config);
-  const other = '# keep owner comments\n- insert:\n    - id: another-entry\n      name: another\n      config: !!js untouched\n';
-  writeFileSync(f.patchPath, other);
-  const bundle = readFileSync(f.bundlePatch);
-  assert.equal(f.checked(migrate).status, 'migration-required');
-  assert.equal(readFileSync(f.patchPath, 'utf8'), other);
-  assert.equal(existsSync(f.receiptDir), false);
-
-  assert.equal(f.checked(apply).status, 'migrated');
-  assert.deepEqual(readFileSync(f.bundlePatch), bundle);
-  assert.ok(readFileSync(f.patchPath, 'utf8').startsWith(other));
-  assert.deepEqual(f.coreConfig(), config);
-  const receipt = read(f.receiptPath);
-  assert.equal(receipt.status, 'installed');
-  assert.deepEqual(receipt.config, config);
-  const output = readdirSync(f.receiptDir), timestamps = [f.patchPath, f.receiptPath].map(path => statSync(path, {bigint: true}).mtimeNs);
-  assert.equal(f.checked(apply).status, 'checked');
-  assert.deepEqual(readdirSync(f.receiptDir), output);
-  assert.deepEqual([f.patchPath, f.receiptPath].map(path => statSync(path, {bigint: true}).mtimeNs), timestamps);
+  f.installFixture();
+  const bundle = f.dump([{insert: [{id: '00-Core', name: 'her-world/00-Core', config}]}]);
+  writeFileSync(f.bundlePatch, bundle);
+  for (const args of [repair, apply]) {
+    assertRejected(f.command(args), 'bundle-core-config-conflict', config);
+    assert.equal(readFileSync(f.bundlePatch, 'utf8'), bundle);
+    assert.equal(readFileSync(f.patchPath, 'utf8'), '[]\n');
+    assert.equal(existsSync(f.receiptDir), false);
+  }
   assert.deepEqual(f.calls().filter(call => call.args), []);
 });
 
-test('migrate-core-config backfills a receipt for an existing disabled npm profile', t => {
+test('repair-core-config backfills a receipt for an existing disabled npm profile', t => {
   const f = profileFixture(t);
   const config = {...configFor(f), memory: {python: join(f.home, 'python'), dataDir: join(f.home, 'bank')}};
   f.installFixture(undefined, {enabled: false, spec: '^0.2.0', version: '0.2.0'});
   const patch = '# existing profile\n' + f.dump([{id: '00-Core', config}]);
   writeFileSync(f.patchPath, patch);
   const manifest = readFileSync(f.manifest);
-  assert.equal(f.checked(migrate).status, 'migration-required');
+  assert.equal(f.checked(repair).status, 'repair-required');
   assert.equal(existsSync(f.receiptPath), false);
   const result = f.checked(apply);
-  assert.equal(result.status, 'migrated');
+  assert.equal(result.status, 'repaired');
   assert.equal(result.enabled, false);
   assert.equal(readFileSync(f.patchPath, 'utf8'), patch);
   assert.deepEqual(readFileSync(f.manifest), manifest);
   assert.deepEqual(read(f.receiptPath), {...read(f.receiptPath), ...completed(f, config), enabled: false});
-  assert.equal(f.checked(migrate).status, 'checked');
+  assert.equal(f.checked(repair).status, 'checked');
   assert.deepEqual(f.calls().filter(call => call.args), []);
 });
 
@@ -116,73 +106,54 @@ const memoryFor = (f, serviceEntry) => ({python: join(f.home, 'python'), dataDir
   ...(serviceEntry === undefined ? {} : {serviceEntry})});
 const packageShim = 'src/memory/main.py';
 
-test('migrate-core-config removes a managed entry from the override and keeps checking the legacy package', t => {
+test('repair-core-config normalizes an entry at the installed bundle path', t => {
   const f = profileFixture(t), config = {...configFor(f), memory: memoryFor(f)};
   const entry = join(f.profileDir, 'node_modules/her-world', packageShim);
   f.installFixture({...config, memory: {...config.memory, serviceEntry: entry}});
-  const bundle = readFileSync(f.bundlePatch);
-  assert.equal(f.checked(migrate).status, 'migration-required');
-  assert.equal(readFileSync(f.patchPath, 'utf8'), '[]\n');
-  assert.equal(f.checked(apply).status, 'migrated');
+  const bundle = readFileSync(f.bundlePatch), patch = readFileSync(f.patchPath);
+  assert.equal(f.checked(repair).status, 'repair-required');
+  assert.deepEqual(readFileSync(f.patchPath), patch);
+  assert.equal(f.checked(apply).status, 'repaired');
   assert.deepEqual(f.coreConfig(), config);
   assert.deepEqual(read(f.receiptPath).config, config);
   assert.deepEqual(readFileSync(f.bundlePatch), bundle);
-  assert.equal(f.checked(migrate).status, 'checked');
+  assert.equal(f.checked(repair).status, 'checked');
 });
 
-test('migrate-core-config removes a verified old pnpm entry and keeps the receipt usable after the package is pruned', t => {
-  const f = profileFixture(t), config = {...configFor(f), memory: memoryFor(f)};
-  const oldRoot = join(f.profileDir, 'node_modules/.pnpm/her-world@0.1.7/node_modules/her-world');
-  mkdirSync(join(oldRoot, 'src/memory'), {recursive: true});
-  writeFileSync(join(oldRoot, 'package.json'), JSON.stringify({name: 'her-world', version: '0.1.7'}));
-  for (const file of [packageShim, 'src/memory/provider.py']) copyFileSync(new URL(`../../${file}`, import.meta.url), join(oldRoot, file));
-  const legacy = {...config, memory: {...config.memory, serviceEntry: join(oldRoot, packageShim)}};
-  f.installFixture(legacy);
-  const previous = {...completed(f, legacy), packageVersion: '0.1.8', backupDir: join(f.home, 'backup')};
-  putReceipt(f, previous);
-
-  assert.equal(f.checked(apply).status, 'migrated');
-  assert.deepEqual(f.coreConfig(), config);
-  assert.deepEqual(read(f.receiptPath), {...previous, config});
-  assert.equal(f.checked(apply).status, 'checked');
-  f.installFixture(undefined, {version: '0.2.0', spec: '0.2.0'});
-  rmSync(oldRoot, {recursive: true});
-  assert.deepEqual(f.coreConfig(), config);
-  assert.equal(f.checked(migrate).status, 'checked');
-});
-
-test('migrate-core-config keeps a custom entry verbatim and still rejects a different Memory binding', t => {
+test('repair-core-config keeps a custom entry verbatim and still rejects a different Memory binding', t => {
   const f = profileFixture(t), custom = join(f.home, 'custom.py');
   writeFileSync(custom, '# deliberate custom entry\n');
   const config = {...configFor(f), memory: memoryFor(f, f.home + '/./custom.py')};
   f.installFixture(config);
-  assert.equal(f.checked(apply).status, 'migrated');
+  assert.equal(f.checked(apply).status, 'repaired');
   assert.deepEqual(f.coreConfig(), config);
   assert.deepEqual(read(f.receiptPath).config, config);
 
   for (const change of [{python: join(f.home, 'other-python')}, {dataDir: join(f.home, 'other-bank')}, {serviceEntry: null}]) {
     const patch = f.dump([{id: '00-Core', config: {...config, memory: {...config.memory, ...change}}}]);
     writeFileSync(f.patchPath, patch);
-    assertRejected(f.command(apply), 'core-binding-conflict', config);
+    assertRejected(f.command(apply), 'receipt-binding-conflict', config);
     assert.equal(readFileSync(f.patchPath, 'utf8'), patch);
   }
 });
 
-test('migrate-core-config rejects unproven inherited entries without writing or exposing configuration', t => {
+test('repair-core-config rejects unproven inherited entries without writing or exposing configuration', t => {
   const f = profileFixture(t);
   const oldRoot = join(f.profileDir, 'node_modules/.pnpm/her-world@0.1.7/node_modules/her-world');
   mkdirSync(join(oldRoot, 'src/memory'), {recursive: true});
   writeFileSync(join(oldRoot, 'package.json'), JSON.stringify({name: 'her-world', version: '0.1.7'}));
-  copyFileSync(new URL(`../../${packageShim}`, import.meta.url), join(oldRoot, packageShim));
-  writeFileSync(join(oldRoot, 'src/memory/provider.py'), '# modified provider\n');
+  for (const file of [packageShim, 'src/memory/provider.py']) {
+    copyFileSync(new URL(`../../${file}`, import.meta.url), join(oldRoot, file));
+  }
   for (const entry of [join(oldRoot, packageShim), join(f.home, 'missing-custom.py')]) {
     const config = {...configFor(f), memory: memoryFor(f, entry)};
     f.installFixture(config);
-    for (const args of [migrate, apply]) {
+    const patch = readFileSync(f.patchPath);
+    for (const args of [repair, apply]) {
       const result = f.command(args);
       assertRejected(result, 'memory-service-entry-unverified', config);
       assert.deepEqual(JSON.parse(result.stderr), {status: 'failed', reason: 'memory-service-entry-unverified', profileDir: f.profileDir});
-      assert.equal(readFileSync(f.patchPath, 'utf8'), '[]\n');
+      assert.deepEqual(readFileSync(f.patchPath), patch);
       assert.equal(existsSync(f.receiptDir), false);
     }
   }
@@ -198,29 +169,40 @@ test('receipt-only recovery requires the private Core identity and a verified wo
   assertRejected(f.command(apply), 'receipt-recovery-unverified', config);
   await initializeWorkspace(config, workspace);
 
+  const other = '# keep owner comments\n- insert:\n    - id: another-entry\n      name: another\n      config: !!js untouched\n';
+  writeFileSync(f.patchPath, other);
   putReceipt(f, {...receipt, config: {...config, scopeId: 'wrong-scope'}});
   assertRejected(f.command(apply), 'core-binding-conflict', config);
-  assert.equal(readFileSync(f.patchPath, 'utf8'), '[]\n');
+  assert.equal(readFileSync(f.patchPath, 'utf8'), other);
   putReceipt(f, receipt);
   const original = readFileSync(f.receiptPath);
-  assert.equal(f.checked(apply).status, 'migrated');
+  assert.equal(f.checked(repair).status, 'repair-required');
+  assert.equal(readFileSync(f.patchPath, 'utf8'), other);
+  assert.equal(f.checked(apply).status, 'repaired');
+  assert.ok(readFileSync(f.patchPath, 'utf8').startsWith(other));
   assert.deepEqual(f.coreConfig(), config);
   assert.deepEqual(readFileSync(f.receiptPath), original);
+  const output = readdirSync(f.receiptDir), timestamps = [f.patchPath, f.receiptPath].map(path => statSync(path, {bigint: true}).mtimeNs);
+  assert.equal(f.checked(apply).status, 'checked');
+  assert.deepEqual(readdirSync(f.receiptDir), output);
+  assert.deepEqual([f.patchPath, f.receiptPath].map(path => statSync(path, {bigint: true}).mtimeNs), timestamps);
+  assert.deepEqual(f.calls().filter(call => call.args), []);
 });
 
-test('migrate-core-config leaves invalid, conflicting or in-progress evidence untouched', t => {
+test('repair-core-config leaves invalid, conflicting or in-progress evidence untouched', t => {
   const f = profileFixture(t), config = configFor(f);
   f.installFixture(config);
   const override = changed => f.dump([{id: '00-Core', config: changed}]);
+  const current = override(config);
   const cases = [
     {patch: 'not a sequence', reason: 'patch-invalid'},
-    {patch: override({...config, ownerActorId: 'different-owner'}), reason: 'core-binding-conflict'},
+    {patch: override({...config, ownerActorId: 'different-owner'}), receipt: completed(f, config), reason: 'receipt-binding-conflict'},
     {patch: override(config) + override(config), reason: 'core-duplicate'},
-    {patch: '[]\n', home: override({...config, displayName: 'Home override'}), reason: 'home-core-conflict'},
-    {patch: '[]\n', receipt: {...completed(f, config), status: 'applying'}, reason: 'receipt-incomplete'},
-    {patch: '[]\n', receipt: {...completed(f, config), status: 'prepared'}, reason: 'receipt-incomplete'},
-    {patch: '[]\n', receipt: {...completed(f, config), profileDir: f.home}, reason: 'receipt-profile-conflict'},
-    {patch: '[]\n', receipt: completed(f, {...config, memory: {python: join(f.home, 'python'), dataDir: join(f.home, 'other-bank')}}), reason: 'receipt-binding-conflict'},
+    {patch: current, home: override({...config, displayName: 'Home override'}), reason: 'home-core-conflict'},
+    {patch: current, receipt: {...completed(f, config), status: 'applying'}, reason: 'receipt-incomplete'},
+    {patch: current, receipt: {...completed(f, config), status: 'prepared'}, reason: 'receipt-incomplete'},
+    {patch: current, receipt: {...completed(f, config), profileDir: f.home}, reason: 'receipt-profile-conflict'},
+    {patch: current, receipt: completed(f, {...config, memory: {python: join(f.home, 'python'), dataDir: join(f.home, 'other-bank')}}), reason: 'receipt-binding-conflict'},
   ];
   const homePatch = join(f.home, 'cordis.patch.yml');
   for (const row of cases) {
@@ -237,14 +219,10 @@ test('migrate-core-config leaves invalid, conflicting or in-progress evidence un
   assert.deepEqual(f.calls().filter(call => call.args), []);
 });
 
-test('setup rejects a legacy archive and refuses to invent identity for an unconfigured installed package', t => {
+test('setup refuses to invent identity for an unconfigured installed package', t => {
   const f = profileFixture(t);
-  const gone = f.command(['--apply', '--archive=/fixture/old.tgz']);
-  assert.equal(gone.status, 1);
-  assert.match(gone.stderr, /archive-unsupported.*--version/);
-  assert.deepEqual(f.calls(), []);
   f.installFixture(undefined, {version: '0.2.0', spec: '0.2.0'});
-  assertRejected(f.command(['--apply']), 'migrate-core-config-required', identity);
+  assertRejected(f.command(['--apply']), 'repair-core-config-required', identity);
   assert.deepEqual(f.calls().filter(call => call.args), []);
   assert.equal(existsSync(f.receiptDir), false);
 });
@@ -298,11 +276,13 @@ test('setup selects the same explicit Bank from both memory-data-dir option form
   }
 });
 
-test('setup accepts an explicit custom service entry and rejects an empty value in either option form', t => {
+test('setup selects explicit bundled or custom Memory entries and rejects empty choices', t => {
   const f = profileFixture(t), custom = join(f.home, 'custom.py');
   writeFileSync(custom, '# explicit custom path\n');
   const memory = memoryFor(f);
-  f.installFixture({...configFor(f), memory});
+  f.installFixture({...configFor(f), memory: {...memory, serviceEntry: custom}});
+  const {attemptReceipt} = f.checked(['--memory-service-entry', 'bundled'], {runtime: true});
+  assert.deepEqual(read(attemptReceipt).config.memory, {...memory, runtimeRoot: join(f.profileDir, 'chatpet-runtime')});
   for (const option of [['--memory-service-entry', custom], [`--memory-service-entry=${custom}`]]) {
     const {attemptReceipt} = f.checked(option, {runtime: true});
     assert.equal(read(attemptReceipt).config.memory.serviceEntry, custom);

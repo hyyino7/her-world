@@ -34,9 +34,9 @@
    setup 交给 DSH 安装 npm 上的稳定版 `her-world`。用 `--version <版本>` 指定版本。缓存中已有该包和依赖时，可以加 `--offline`。包内入口为 `scripts/install-dsh.mjs`，也可以用 DSH 自带的 Electron 以 Node 模式运行。设备运行时准备会离线复制提供的本地 Python 环境。伙伴从未配置长期 Memory 时，省略 `--memory-python`。已声明或拥有的 Bank 缺失或无效时，setup 会报错。`--no-backup` 可关闭默认备份，每次应用仍会保留此前的 profile 补丁和回执快照（若存在）。
 4. setup 将 Core 身份、范围和本机路径写入当前 profile 的 `cordis.patch.yml`。验证安装后生成 `chatpet-installation/installation.json`。重新打开 DSH，通过原生工作区选择器绑定复制来的 Repo 并初始化文档。新建的原生工作区 ID 可以不同，恢复的日志和存储身份沿用复制来的 Repo。本机渠道连接和权限要另行配置。
 
-已经用旧 setup 安装的设备，可在退出 DSH 后运行 `dafeiyu-setup migrate-core-config` 核对配置。加 `--apply` 将有效配置移入当前 profile，或为已有覆盖补写回执。迁移会让已核实的托管 Memory 入口跟随安装包，并保留可确认的本机自定义入口。两个模式都离线运行，适用于启用或停用的插件。遇到冲突时，命令会返回原因码供核对。
+现用 npm profile 可在退出 DSH 后运行 `dafeiyu-setup repair-core-config` 离线核对。加 `--apply` 可以为现有 Core 覆盖补写安装回执，或凭经核实的已完成回执恢复丢失的覆盖。修复保留已核实的自定义 Memory 入口。插件启用或停用时均可离线修复，遇到冲突会返回原因码。
 
-setup 或配置迁移中断后，如果重试一直返回 `profile-busy`，先确认没有 setup 或迁移进程在运行，并且 DSH 已完全退出。然后手动删除目标 profile 目录下的 `.her-world-setup.lock` 目录，再重试原命令。
+setup 或配置修复中断后，如果重试一直返回 `profile-busy`，先确认没有 setup 或修复进程在运行，并且 DSH 已完全退出。然后手动删除目标 profile 目录下的 `.her-world-setup.lock` 目录，再重试原命令。
 
 初始化会区分「文档已就绪」和「可搬迁存储已完整」。设置页显示 Core/Memory 的实际位置，不会把外部引导数据库说成已完成的安装。setup 可以离线完成已经识别的绑定；缺失或被删的 `.chatpet/` 绝不会在应用启动时被悄悄重建。
 

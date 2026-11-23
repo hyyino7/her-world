@@ -11,14 +11,9 @@ No custom plugin index, compiler or install hooks are required.
 - Existing npm installation: open **Her World → Versions**, check versions,
   click **Update** for the desired version. Normal stable updates do not need
   the prerelease filter.
-- Existing GitHub installation: switch once through DSH's native manager.
-  Disable and remove the GitHub-installed Her World program package, then add
-  `her-world`. Preserve the bound workspace and private Core overrides;
-  do not delete companion data. Subsequent updates use the version list above.
 
 DSH owns installed-source records, package replacement, activation and rollback.
 Restart only when DSH requests it. The owner performs installation and updates.
-Do not enable the old `dsh-Chatpet` and Her World bundles together.
 
 pnpm may delay new npm packages for 24 hours. An owner-approved
 `minimumReleaseAgeExclude: [her-world]` entry in the native profile's existing
