@@ -245,6 +245,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | 6. 新装环境里桌宠外观编辑器没加载 | 已安装的 0.1.8 桌宠外观编辑器；源码位置在本仓库还没定位 | 新设备上界面固定提示 `EDITOR_NOT_LOADED`，没有添加形象的入口；桌宠服务本身可用 | 已在 Mac mini 新装 DSH + 0.1.8 上观察到（M1 D 批）。当时的 Codex 怀疑是可选命令依赖挡住了编辑器加载，并写了候选补丁，但补丁没有装上，修复效果没验证；默认独立桌宠的 Electron 路径缺失也是同时观察到的环境缺口，是不是原因还没确定 | 已观察到，原因未确认，待主人安排 |
 | 9. 迁移兼容测试的 legacy 变体在 CI 偶发失败 | `tests/migrate/compatibility.test.mjs` 的 `legacy` 变体；失败的断言在 `scripts/fixtures/synthetic-companion.mjs:104`（刚写入的合成记忆召回不到） | 发布门禁偶发失败，重跑能过；0.2.0 正式版的发布运行一次通过 | 0.2.0-rc.1 的发布运行第 1 次尝试失败、第 3 次通过；本机单跑 15 次、加负载并行 30 次都没复现，召回前加 0–3 秒延迟也通过 | 原因未查，主人判断是 GitHub 侧问题。2a 期间又见两次同类偶发，都在 Codex 沙箱的整套并行运行里、复跑即过：第 4 批行为清单 B10「B 必须真实召回 A 已确认送达的事实」首跑失败；第 5 批返工 Memory 盘点用例首跑返回 422。2a 收尾在沙箱外把这两条各单跑 8 次，全部通过，没复现。现有证据不足以判定是同一个不变量（「已确认写入的记忆一定能召回」）第二次失守；再出现时先保留首个失败的入口、操作名、状态码和合成日志，确认是同一不变量就按 G3 提前复盘 |
 | 10. 付费 Memory 实测脚本还依赖旧回执的 `archive` 字段 | `scripts/checks/check-native-memory-live.mjs:176` 读 `installedReceipt.archive` 并对它算哈希 | 改为经 DSH 安装 npm 包之后，新回执里没有 `archive`，这个检查会在算哈希时失败；日常运行不受影响，只影响这条手动付费检查 | 读代码确认，没有运行（会调用付费模型） | 待定。以后还要用这个检查，需要另定按 npm 包核对的方式（例如回执里的 `packageVersion`） |
+| 13. 设置窗口手动检查的夹具宿主没接语音表 | `tests/manual/companion-settings-window.cjs:106` 自建宿主调用 `PetPlatform.handle`，走到 `VoiceTable.lookup` 的服务隔离时报错（`src/core/tables/voice.ts`、`src/core/tables/registry.ts`） | 只影响这条手动检查；产品设置保存、建库和回读已由同一夹具的无窗口路径验证 | 阶段 3 收尾沙箱外复跑：第一轮修掉夹具解开 `.venv` 符号链接导致 Memory 用错 Python（`OUTCOME_UNKNOWN`），第二轮仍卡在语音表 | 按「修两轮没好就停」停下，归阶段 4 |
 
 ## 阶段
 
@@ -470,6 +471,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 - [ ] 对典型修改 7 记录收益评估和是否再做的决定。若再做，用设置保存、重启和实际生效的流程验证，并核对是否达 1 个手写文件／1 层（`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
 - [ ] 按收益确认 `contracts/` 的逐层拆分范围。若拆分，按原场景独立复测第 8 类的照料动作和事实领域，分别记录手写文件数、物理层和漏改时的检查结果（[架构 2.1](architecture.md#21-现在--以后)、[典型修改前后对比](#典型修改前后对比)）。
 - [ ] 下次发版时，在发布说明补上「主人声明无待办」路线的适用条件及[操作入口](development.md#console-wallet-migration)，保留有待办时的导出路线。发布前核对说明与离线工具实际参数一致（`docs/decisions.md:286–288`、`docs/release/notes.md:15–28`）。
+- [ ] 修好设置窗口手动检查的夹具宿主（已知问题 13），在沙箱外跑通。
 - [ ] 跑全量门禁和行为清单，保存通过记录，至少验证一条真实入口的完整流程。逐项体检文档、测试、代码、分支和规则，按 G8 对每条检查和长期例外记录保留或调整理由及证据。
 
 把 [README.md](../README.md)、[github-updates.md](github-updates.md) 和 [settings.md](settings.md) 全文译成中文列为候选，主人本次未勾选。如纳入阶段 4，验收时核对命令、配置键及链接。
