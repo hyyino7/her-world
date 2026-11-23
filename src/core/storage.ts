@@ -8,7 +8,7 @@ import { closeSqliteLease, setSqliteMeta } from './sqlite.js';
 export class Rejection extends Error {
   constructor(readonly detail: ContractError) { super(detail.message); }
 }
-export function reject(code: Exclude<RejectedCode, 'EXPIRED_USE'>, message: string): never {
+export function reject(code: RejectedCode, message: string): never {
   throw new Rejection({ code, message, effect: 'none', retry: code.startsWith('STALE') ? 'refresh' : 'never' });
 }
 export function unavailable(message: string): never {

@@ -18,7 +18,7 @@ export interface CallOptions {
     signal?: AbortSignal;
     deadline?: Timestamp;
 }
-export type RejectedCode = 'INVALID_ARGUMENT' | 'UNAUTHORIZED' | 'NOT_FOUND' | 'NOT_IMPLEMENTED' | 'DISABLED' | 'INCOMPATIBLE' | 'CONFLICT' | 'STALE_REVISION' | 'STALE_BINDING' | 'INELIGIBLE' | 'EXPIRED_USE' | 'LIMIT_REACHED';
+export type RejectedCode = 'INVALID_ARGUMENT' | 'UNAUTHORIZED' | 'NOT_FOUND' | 'NOT_IMPLEMENTED' | 'DISABLED' | 'INCOMPATIBLE' | 'CONFLICT' | 'STALE_REVISION' | 'STALE_BINDING' | 'INELIGIBLE' | 'LIMIT_REACHED';
 export type ContractError = {
     message: string;
     operationId?: string;
