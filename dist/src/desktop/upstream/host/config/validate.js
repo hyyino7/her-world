@@ -6,7 +6,7 @@
  * @module dsh-pet/src/host/config/validate
  */
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '../../shared/fonts.js';
-import { isKnownVoice } from '../voice/voices.js';
+import { isKnownVoice } from '../../../../voice/upstream/host/voice/voices.js';
 import { FONT_FAMILY_SET } from './constants.js';
 /** 内置玩法动画的槽位数：`animations.baifan` 必须恰好这么多个（顺序是玩法契约，见 shared/types 的 Animations）。 */
 const ACTIVITY_SLOTS = 5;

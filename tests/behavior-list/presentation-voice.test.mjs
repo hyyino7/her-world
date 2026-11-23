@@ -4,7 +4,7 @@ import {mkdtempSync,realpathSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {resolveCompanionHome} from '../../dist/tests/behavior-list/entries.js';
-import {registerVoiceProvider} from '../../dist/src/desktop/upstream/host/voice/registry.js';
+import {registerVoiceProvider} from '../../dist/src/voice/upstream/host/voice/registry.js';
 import {eventually} from './entries-lifecycle.test.mjs';
 import {presentationFixture,selectHome} from './presentation-r7-fixture.mjs';
 import {qqTransport} from './qq-transport.mjs';
