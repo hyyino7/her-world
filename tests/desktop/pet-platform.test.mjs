@@ -10,7 +10,8 @@ import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {Desktop} from '../../dist/src/desktop/index.js';
 import {adaptRoomApp,roomAsset} from '../../dist/src/room/assets.js';
-import {behaviorPresentation,companionFeelings,feelingLabels} from '../../dist/src/living/body/presentation.js';
+import {behaviorPresentation,feelingLabels} from '../../dist/src/living/body/presentation.js';
+import {COMPANION_FEELINGS} from '../../dist/src/contracts/emotion.js';
 
 export function fixture(root,getOrigin=()=> 'http://127.0.0.1',services={}) {
   let target={id:'a',path:root}, turns=[], requests=0;
@@ -263,7 +264,7 @@ test('all nine feelings preserve actual activity and Room displays text without 
  const render=new Function('state','$','companionLabel',chipSource);
  const renderChip=state=>render(state,()=>chip,()=> '大肥鱼');
  const chip={textContent:'',title:'',classList:{toggle(){}}};
- for(const feeling of companionFeelings){
+ for(const feeling of COMPANION_FEELINGS){
   renderChip({emotion:{feelings:[feeling]}});
   assert.equal(chip.textContent,'心情 · '+feelingLabels[feeling]);
   assert.equal(behaviorPresentation({her:{kind:'eat',activity:'正在吃饭'},emotion:{feelings:[feeling]}}).action,'eat');

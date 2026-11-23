@@ -7,7 +7,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { isDeepStrictEqual } from 'node:util';
 import { desktopHomePlayback, activityPresentation, eatingClips, physicalClips, sleepingClips, projectActivityConfig } from './activity.js';
 import { migratePresentation, resolvePresentationMigration } from './migration.js';
-import { companionFeelings } from '../../living/body/presentation.js';
+import { COMPANION_FEELINGS } from '../../contracts/emotion.js';
 import { isWorldChangeFor } from '../../contracts/living.js';
 import { fail, object, requiredText } from '../../core/tables/console.js';
 import { sameHomeBinding, withLivingCaller } from '../../living/index.js';
@@ -20,7 +20,7 @@ const expressionCatalog = {
     actions: catalog.actions.filter(asset => !physicalClips.has(asset.label) && (asset.group === 'expression' || ['点击回应-傲娇生气', '悠闲哼歌', '开心小跑'].includes(asset.id)))
         .map(asset => ({ name: asset.id, label: asset.label, description: asset.description || asset.label })),
     stickers: catalog.stickers.map(asset => ({ name: asset.id, label: asset.label, description: asset.description || asset.label })),
-    supportedFeelings: [...companionFeelings],
+    supportedFeelings: [...COMPANION_FEELINGS],
 };
 const route = '/chatpet-presentation';
 const json = (obj, status = 200) => ({ kind: 'json', obj, status });
