@@ -70,6 +70,8 @@ test('bound platform runs original config, media, controls, animation and native
   assert.equal((await request('state')).obj.pets.second.anim.data.name,'螃蟹走路');
   assert.equal((await request('chat?pet=second','POST',{text:'和同一个伙伴聊天'})).obj.text,'native reply');
   assert.equal((await request('chat?pet=main')).obj.messages.at(-1).content,'native reply');
+  assert.equal((await request('chat/memory')).status,404);
+  assert.equal((await request('chat/memory','DELETE')).status,404);
   assert.equal(requests(),1);
   const {file}=platform.standaloneAccess('a');
   assert.equal(statSync(file).mode&0o777,0o600);

@@ -861,8 +861,9 @@ export class PetPlatform {
         }
         if (rest === 'chat')
             return this.nativeChat(pet, method, raw, signal);
-        if (rest === 'chat/memory')
-            return json({ ok: true, orphans: [] }, method === 'GET' ? 200 : 405);
+        // Keep the upstream chat router outside the native chat namespace.
+        if (rest.startsWith('chat/'))
+            return json({ ok: false }, 404);
         if (rest.startsWith('voice/')) {
             const voice = this.ctx.petCore.native.voiceTable.lookup(this.ctx, AbortSignal.any([signal, this.scope.signal]));
             if (!voice)
