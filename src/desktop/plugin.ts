@@ -43,7 +43,8 @@ export function desktopConsoleOperations(desktop: Pick<Desktop, 'start' | 'close
     call.checkBinding(input.workspaceId, open);
     call.validate();
     if (open) await desktop.start();
-    else await desktop.closeWindow();
+    else await desktop.closeWindow(call.validate);
+    call.validate();
     return desktop.status();
   };
   return {

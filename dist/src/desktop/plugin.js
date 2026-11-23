@@ -37,7 +37,8 @@ export function desktopConsoleOperations(desktop) {
         if (open)
             await desktop.start();
         else
-            await desktop.closeWindow();
+            await desktop.closeWindow(call.validate);
+        call.validate();
         return desktop.status();
     };
     return {

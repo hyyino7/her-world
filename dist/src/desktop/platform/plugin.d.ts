@@ -277,7 +277,7 @@ export declare class PetPlatform {
         };
         packsDirectory: string;
     }>;
-    hide(): Promise<void>;
+    hide(permit?: () => void): Promise<void>;
     private presentExpression;
     private refreshBehavior;
     private readBehavior;

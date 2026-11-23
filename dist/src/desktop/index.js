@@ -343,9 +343,10 @@ export class Desktop {
                 this.chatVoice.delete(msg.id);
         }
     }
-    async closeWindow() {
+    async closeWindow(validate) {
         this.closeChat();
-        await this.native.getPresentation?.()?.hide();
+        await this.native.getPresentation?.()?.hide(validate);
+        validate?.();
     }
     closeChat() {
         clearTimeout(this.tick);

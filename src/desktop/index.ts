@@ -16,7 +16,7 @@ import { Conversation, sameBinding, type Binding, type NativeDesktopHost, type N
 
 type Work = { session: string; turn: number; start: number; stage: string; workspaceId: string; entered?: boolean; terminal?: boolean };
 type HostServices = NativeDesktopHost & {
-  getPresentation?(): {show(): Promise<unknown>; hide(): Promise<unknown>; bodyStatus(): {running:boolean};
+  getPresentation?(): {show(): Promise<unknown>; hide(validate?: () => void): Promise<unknown>; bodyStatus(): {running:boolean};
     savePreference?(key:string,value:boolean):Promise<unknown>} | undefined;
   getEmotion(): import('../emotion/plugin.js').CompanionEmotion | undefined;
   isLifeHome?(id: string): boolean;
@@ -243,9 +243,10 @@ export class Desktop {
       if (voice && this.chatVoice.get(msg.id) === voice) this.chatVoice.delete(msg.id);
     }
   }
-  async closeWindow() {
+  async closeWindow(validate?: () => void) {
     this.closeChat();
-    await this.native.getPresentation?.()?.hide();
+    await this.native.getPresentation?.()?.hide(validate);
+    validate?.();
   }
   closeChat() {
     clearTimeout(this.tick); clearTimeout(this.clock); this.tick = undefined; this.clock = undefined;

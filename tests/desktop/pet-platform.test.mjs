@@ -30,7 +30,7 @@ export function fixture(root,getOrigin=()=> 'http://127.0.0.1',services={}) {
       onPresentation:receive=>{presentation=receive;return()=>{presentation=undefined;};}}};
   const platform=new PetPlatform(ctx);
   return {platform,ctx,receipts,present:(type,value)=>presentation?.(type,value),publish:(name,...args)=>{for(const receive of events.get(name) ?? [])receive(...args);},
-    rebind(id){generation++;target={...target,id};},requests:()=>requests,chatOpens:()=>chatOpens};
+    rebind(id,path=target.path){generation++;target={id,path};},requests:()=>requests,chatOpens:()=>chatOpens};
 }
 
 async function configureFixturePet(platform,display='none') {
@@ -115,6 +115,38 @@ test('settings read creates no body; one host preserves raw configuration while 
   await assert.rejects(platform.saveTiming('a',timing,{balance:1800,whisper:480,sleepTalk:90}),/改变/);
   await platform.hide();assert.equal(platform.bodyStatus().running,false);
  }finally{platform.close();rmSync(root,{recursive:true,force:true});}
+});
+
+for(const returnToOriginal of [false,true]) test(
+ 'closing desktop pets stops after an in-flight config write changes binding'+(returnToOriginal?' A→B→A':' A→B'),async t=>{
+ const root=mkdtempSync(join(tmpdir(),'chatpet-desktop-hide-'));
+ const a=join(root,'a'),b=join(root,'b');
+ mkdirSync(a);mkdirSync(b);
+ const {platform,ctx,rebind}=fixture(a);
+ t.after(()=>{platform.close();rmSync(root,{recursive:true,force:true});});
+ const request=(endpoint,method='GET',body)=>platform.handle(new URL('http://localhost/chatpet-presentation/'+endpoint),
+   method,body&&JSON.stringify(body),new AbortController().signal);
+ async function configure() {
+   const {obj:{main:{bodyTemplate:pet}}}=await request('config');
+   assert.equal((await request('config','PUT',{pets:[{...pet,display:'web'},{...pet,id:'second',display:'web'}]})).status,200);
+ }
+ await configure();
+ rebind('b',b);
+ await configure();
+ rebind('a',a);
+ assert.equal(platform.ownerAccess('a').path,'/chatpet-presentation');
+ const entered=Promise.withResolvers(),resume=Promise.withResolvers();
+ let calls=0;
+ ctx.petDesktop.features={restore(){},refresh(){if(++calls===1){entered.resolve();return resume.promise;}}};
+ const hiding=assert.rejects(platform.hide(),error=>error.code==='STALE_BINDING');
+ try {
+   await entered.promise;
+   rebind('b',b);
+   if(returnToOriginal)rebind('a',a);
+ } finally {resume.resolve();}
+ await hiding;
+ assert.deepEqual((await request('config')).obj.main.pets.map(({id,display})=>[id,display]),
+   [['main',returnToOriginal?'none':'web'],['second','web']]);
 });
 
 test('connected standalone attaches to the managed host without requiring or spawning another Electron body',async()=>{

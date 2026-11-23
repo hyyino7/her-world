@@ -404,13 +404,23 @@ export class PetPlatform {
             throw Error(result.obj?.message || '桌宠暂时无法显示');
         return this.status();
     }
-    async hide() {
+    async hide(permit = () => { }) {
         if (!this.bound)
             return;
+        const workspace = this.ctx.petCore.workspace, binding = workspace.homeScope?.(), scope = this.scope;
+        const validate = () => {
+            permit();
+            scope.signal.throwIfAborted();
+            if (!sameHomeBinding(this.homeBinding, binding) || !sameHomeBinding(workspace.homeScope?.(), binding))
+                fail('STALE_BINDING');
+        };
+        validate();
         for (const pet of this.pets().filter(p => p.display !== 'none')) {
-            await this.handle(new URL(route + '/pet-display', 'http://localhost'), 'POST', JSON.stringify({ id: pet.id, display: 'none' }), this.scope.signal);
+            await this.handle(new URL(route + '/pet-display', 'http://localhost'), 'POST', JSON.stringify({ id: pet.id, display: 'none' }), scope.signal);
+            validate();
         }
         await this.ctx.petDesktop.features?.refresh();
+        validate();
     }
     presentExpression(event) {
         if (!this.bound || event.workspaceId !== this.bound.id)
@@ -772,7 +782,7 @@ export class PetPlatform {
             if (input.action === 'show')
                 return json(await this.show());
             if (input.action === 'hide') {
-                await this.hide();
+                await this.hide(() => signal.throwIfAborted());
                 return json(this.bodyStatus());
             }
             return json({ ok: false }, 400);
