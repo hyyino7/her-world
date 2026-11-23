@@ -97,22 +97,19 @@ Her World 是跑在 DSH 里的伙伴插件，同一个伙伴的身份、记忆�
 
 回答「重写是不是真的降低了维护成本」。固定起点是 `main` 的 `bfe069f`。前 3 题在同一起点的独立 `codex/m1-baseline-*` 分支实做，只用于度量，不合并；只统计 `git diff --stat bfe069f..<分支>` 的已提交差异。计数方法见 [开发说明](development.md#baseline-counting)。层和模块按 [arch/layers.json](../arch/layers.json) 的文件根映射；测试及 `dist/src` 归回其源码模块，不另算一层；`src/` 内声明的生成文件仍计入其物理模块。
 
-| 典型修改 | 基线（`bfe069f`） | M2 后（复测） | 目标 |
+| 典型修改 | 重构前基线 | 收尾核对 | 原目标与结果 |
 | --- | --- | --- | --- |
-| 1. 把小萝卜的默认生长时间由 12 小时改为 10 小时，售价由 3 改为 4 | 3 文件：`src/` 1（手写 1、生成 0）、`dist/` 1、测试 1；1 层 / 1 模块（第二层 `economy`，现并入 `living` 的钱包区 `src/living/economy/`） | 未复测（M2 没有改这条路径）。**2a 后**（`codex/m4-measure-1-garden`，基点 `6ba9b00`）：3 文件：源码 1、测试 1、跟踪产物 1；1 层 / 1 模块（第二层 `living` 钱包区）；**达标** | 只动第二层·钱包区及其测试 |
-| 2. 给 Room 增加「当前口渴值」百分比状态项 | 3 文件：`src/` 1（手写 1、生成 0）、`dist/` 1、测试 1；1 层 / 1 模块（第三层 `room`） | **阶段 3 Room 后达标**，实做 3 文件（源码、产物、测试各 1），均属第三层 Room | 只动 Room 及共用资源，不动第一层、第二层 |
-| 3. 给 QQ 加每账号每日主动消息额度 | 11 文件：`src/` 4（手写 3、生成 1）、`dist/` 6、测试 1；1 层 / 3 模块（第三层 `channels/console/desktop`，其中 Desktop 是生成联动） | **阶段 3 Channels 前置后达标**，独立实做 9 文件（源码 2、产物 6、测试 1），均属第三层 Channels | 只动 Channels，不动其他层 |
-| 4. 新增一个伙伴可调用的工具 | 1 文件（复用已挂载的工具集合，仅 owner 用）；2 文件（Life 也可用）；4 文件（另加历史投影） | **1 文件 / 1 层**（第二层 `behavior`，现并入 `living`）：4a、4b、4c 都只改 `src/behavior/plugin.ts`（现 `src/living/body/plugin.ts`），另各有测试 1、`dist/src` 2；**达标** | 工具定义里一处声明来源，其余派生 |
-| 5. 新增一类输入来源 | 至少 3 文件（有独立准入及工具策略的后台来源）；至少 5 个自有文件（含设置与持久化的新聊天平台，上游身份支持另计） | 5a：**2 文件 / 1 层**（第二层 `life`，现并入 `living`：`src/life/tool-policy.ts`、`src/life/plugin.ts`，现在都在 `src/living/plan/`），**未达标**（门槛最多 1 个）；5b 未复测，读码下限仍是至少 5 | 一个来源适配器登记 |
-| 6. 新增一个上下文段（例如天气） | 1–2 文件（已有模块内登记，或另拆读取器）；预算、有效期和 guest 可见性没有集中契约检查 | 不再复测 | 不设目标（段声明已砍出重构，见 [decisions.md](decisions.md)「阶段 1 缩小」） |
-| 7. 新增一个设置页项目 | 至少 3 文件（界面、拥有者的字段校验、实际消费，沿用透传 RPC）；新操作再加路由和处理器，共至少 5 文件 | **Console 后未达标**，独立实做 3 个手写文件、2 层（试加「最近心情保留分钟数」：界面、Console 设置和 Emotion 消费），超过 1 文件／1 层门槛，字段声明不再扩展 | 一份字段声明驱动显示、保存、执行 |
-| 8. 新增一个照料动作；新增一个事实领域 | 照料动作接入 Life、Room、Console 并新增播放映射，不进入计划：至少 7 个自有文件，2 层 / 4 模块；同一动作再进入计划：至少 10 个自有文件，3 层 / 5 模块；上游另计。事实领域至少 8 个文件（含提供者和 Python 侧识别） | **2b 后**（起点 `b24c381`，只度量、不合并）：照料动作（`codex/2b-measure-8-care`，把上游已有的 `poke` 加进照料，计数点 `4399a2d`、`190cbb2`）手写 **1 文件**（`src/contracts/behavior.ts`），另测试 1、跟踪产物 3；再进计划仍是手写 1 文件，测试 2。文件数**达标**；改的是第一层 `contracts`，按 2b 拍板点 10 层数**判未达标**。真实改动还要更新固定现有词表的 3–4 条旧断言，度量分支里保留为失败。事实领域（`codex/2b-measure-8-fact` 的 `982361d`，新增 `garden`）手写 **8 文件**：`contracts`、`memory/provider.py` 和 `living` 6 个，2 层 / 3 模块（另有 `core` 的联动生成类型），R8 新增 1 条；上游 `FactRef` 领域封闭，只能借 `economy` 领域携带 `garden:*` 编号再在回读时还原；与 M1 读码下限持平，**未达标**。两题漏改都能被检查发现：漏写照料文案时类型检查报 `TS2741`，漏登记计划动作时计划 schema 校验失败，Python 少认 `garden` 时契约测试失败 | 一份基础表或领域声明，其余派生，漏改能被检查发现 |
+| 1. 小萝卜的默认生长时间和售价 | 手写 1、测试 1、产物 1；第二层 1 模块。 `bfe069f..codex/m1-baseline-1-garden` | 手写 1、测试 1、产物 1；第二层钱包区。 `6ba9b00..codex/m4-measure-1-garden` | 只改第二层钱包区，**达标** |
+| 2. Room 口渴百分比 | 手写 1、测试 1、产物 1；第三层 Room。 `bfe069f..codex/m1-baseline-2-room` | 阶段 3 记录手写 1、测试 1、产物 1；第三层 Room。原补丁未保留（`6dd3e4c:docs/plans/stage3-presentation.md:145`） | 只动 Room 及共用资源，**按执行记录达标** |
+| 3. QQ 每账号每日主动额度 | 手写 3、源码生成 1、测试 1、产物 6；第三层 Channels／Console／Desktop。 `bfe069f..codex/m1-baseline-3-channel` | 阶段 3 记录手写 2、测试 1、产物 6；第三层 Channels 1 模块。原补丁未保留（`6dd3e4c:docs/plans/stage3-presentation.md:150–155`） | 只动 Channels，**按执行记录达标** |
+| 4. 新增伙伴工具 | 4a 仅主人、4b 含 Life、4c 含历史投影，读码分别估手写 1／2／4 | 三题各手写 1、测试 1、产物 2；第二层 1 模块。起点 `d865bff`，终点 `991c6fb`／`5d1ef47`／`9cfaeb7` | 一处声明工具来源，**三题均达标** |
+| 5. 新增输入来源 | 5a 后台来源读码至少 3 文件；5b 新聊天平台至少 5 个自有文件 | 5a 手写 2、测试 1、产物 4；第二层 1 模块，`754a0a5..9be0496`。5b 无实做数 | 一个来源适配器登记，5a 超过 1 手写文件，**未达标**。5b **延期** |
+| 6. 新增上下文段 | 读码下限 1–2 文件 | 已有 `registerWorldPrompt` 登记和动态段退休接点（`src/core/native/prompt.ts:27–63,99`） | 阶段 1 缩小后**不设目标** |
+| 7. 新增设置项 | 读码至少 3 个手写文件；全新操作的路由、处理器另计 | 阶段 3 的近期心情保留分钟数试做手写 3、测试 1、产物 6；2 层。原补丁未保留（`6dd3e4c:docs/plans/stage3-presentation.md:173–179`） | 一份声明驱动显示、保存和执行，**未达 1 文件／1 层** |
+| 8a. 新增照料动作 | 不进计划至少 7 文件，2 层／4 模块；进入计划至少 10 文件，3 层／5 模块 | `b24c381..4399a2d` 与 `b24c381..190cbb2` 各手写 1、产物 3；测试分别 1／2。改在物理第一层 `contracts`，业务归 Living | **文件数达标，物理层未达标**；漏文案触发类型检查，漏计划登记触发 schema 检查 |
+| 8b. 新增事实领域 | 至少 8 文件 | `b24c381..982361d` 手写 8、测试 1、产物 12、文档 1；业务改动 2 层／3 模块，Core 类型产物联动。上游封闭的 `FactRef` 经 Life 回读适配 | **未达标**；Python 少认领域会使契约检查失败 |
 
-三题的 `dist/` 都是 build 联动的已跟踪 `dist/src/` 文件，保留并计数；新测试各 1 个也已计入。
-
-QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与 Console，`src/desktop/platform/client.js` 是 Console 内嵌客户端的生成产物。设置页保存到真实持久化及额度执行的流程由该分支的 `tests/behavior/qq-daily-reach.test.mjs:42` 覆盖；`dailyReachLimit` 默认 10，0 禁发，按 UTC 日和当前存储绑定内的账号计数。发送前与回执一起持久预留，重复请求不重扣，未知发送仍占额度，测试覆盖重启、换目标、换账号、跨日、并发和无效设置（同文件 `:42`、`:80`）。
-
-后 5 题是 A 的 R1 import 图结合执行点读码所得的下限，未实际实现，排除测试、文档和构建产物；图中仅被动导入类型的消费者不等于必改文件。复核依据：
+第 4–8 题的重构前基线是当时结合 R1 图与执行点得到的读码下限，排除测试、文档和产物；图中仅被动导入类型的消费者不等于必改文件。复核依据：
 
 | 题 | 文件与执行点 |
 | --- | --- |
@@ -120,7 +117,7 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | 5 输入来源 | 后台来源需适配器、`src/core/native/conversation.ts:24-26` 的准入端口、`src/core/native/agent.ts:56` 的工具策略；聊天平台至少涉及适配器（现有例 `src/channels/qq.ts:38`）、`src/channels/messaging-settings.ts:4`、`src/channels/messaging-storage.ts:6`、`src/channels/messaging.ts:57` 和 `src/console/client.js:344`。身份校验还依赖上游 `speakerIdentity`（`src/channels/sessions.ts:6`），因此 3/5 不能当所有来源的精确改动数。 |
 | 6 上下文 | 已挂载模块可直接调用 `src/core/native/prompt.ts:91,179` 的登记函数，现有例为 `src/living/plan/plugin.ts:63`；读取器可同文件或独立文件。动态段退休在 `src/core/native/prompt.ts:25`，guest 可见性由登记回调自行决定（如 `src/emotion/plugin.ts:218` 的作用域条件），不是统一预算或可见性声明。 |
 | 7 设置 | `src/console/client.js:1049,1103` 的伙伴设置控件、`src/core/companion-settings.ts:4,56` 的字段声明及解析、消费端（如 `src/emotion/recent.ts:71-72`）构成 3 个文件；现有透传在 `src/console/settings.ts:339`。新操作还要改 `src/console/plugin.ts:28` 的路由清单和 `src/console/settings.ts:79` 一类处理分支。 |
-| 8 照料动作 | M1 的读码下限按当时的 Life、Room、Console 入口和播放映射计算，不进入计划至少 7 文件，进入计划至少 10 文件。阶段 3 后素材映射与播放在第三层（`src/presentation/playback.ts:34–50,95–110,130–153`、`arch/layers.json:104–115`）。实际改动数以表中的独立试做和阶段 4 复测为准。 |
+| 8 照料动作 | M1 的读码下限按当时的 Life、Room、Console 入口和播放映射计算，不进入计划至少 7 文件，进入计划至少 10 文件。阶段 3 后素材映射与播放在第三层（`src/presentation/playback.ts:34–50,95–110,130–153`、`arch/layers.json:104–115`）。实际改动数以上表的独立试做为准。 |
 | 8 事实领域 | 统一按文件计：领域提供者（现有例 `src/living/economy/plugin.ts:145`）加 `src/contracts/interaction.ts:13`、`src/core/native/conversation.ts:107`、`src/core/companion-foundation.ts:179,228`、`src/core/interaction-presentation.ts:15`、`src/living/plan/facts.ts:9`、`src/living/plan/plugin.ts:360,365`、`src/memory/provider.py:76`，至少 8 文件；存储布局、UI 或新公开接口增加的文件另计。 |
 
 **M2 复测**：起点 `d865bff`（M2 各批合并后的 `main`）。在独立分支实做，只度量、不合并，分支保留：`codex/m2-retest-4-tool` 的 `991c6fb`、`5d1ef47`、`9cfaeb7` 分别是 4a、4b、4c；`codex/m2-retest-5-source` 的 `2e7ab9e` 是第一次 5a（3 个文件、两层，第一层 `contracts` 的两份词表是封闭的）；补上可扩展词表后，从 `754a0a5`（代码与合并后的 `main` 相同）重测，`codex/m2-retest-5-source-v2` 的 `9be0496` 就是上表的 5a。主列只算手写 `src/`，测试和 `dist/src` 另列。
@@ -176,7 +173,9 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | 把身体状态分类成呈现的分类器 | 2 套，对混合情绪结果不同 | **阶段 3 Room 后 1 套**，见[表现意图](architecture.md#57-动作与行为) |
 | 第二层里出现 `roomClip / desktopClip` | 有（`ActivityClip`） | **阶段 3 Room 后 0 处** |
 
-**词表份数按概念逐行核对**，定义处见 [architecture.md 5.6.1](architecture.md#561-第一批概念细表)。扫描范围见 [R8 检查](architecture.md#3-依赖规则和自动检查)，阶段 3 扩面结果见[完成标准与结果](#阶段-3第三层原地治理p4已完成)。
+**阶段 4 实测**。 `pnpm run check:arch -- --report` 和 `pnpm run metrics -- --json` 报告 R8 **586 → 576**，其中重复或子集关系 556 → 546，裸字段 30 → 30。 `kind` 282 点／48 文件，`action` 105 点／14 文件，合计 387 点／52 文件，达到本期上限。R1 例外 9 → 8，R2–R4 均为 0，两类基线新增均为 0。模块间依赖 33 条，超 1500 行的手写文件 0 个。
+
+词表份数按概念逐项核对，声明见[架构 5.6.1](architecture.md#561-第一批概念细表)，扫描范围见[架构检查](architecture.md#3-依赖规则和自动检查)。
 
 ### 防止越做越乱的机制
 
@@ -234,17 +233,16 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 
 ## 已知问题
 
-以下登记已确认的现有行为及复现边界；是否修改由主人决定。
-
-| 问题 | 位置 | 影响 | 能否复现 | 状态 |
-| --- | --- | --- | --- | --- |
-| 1. guest 和电视回复 footer 会改共享情绪 | `src/core/native/agent.ts:46` 给 guest 作用域；`src/room/chat.ts:130` 产生 `chatpet-room-tv` 来源；`src/room/plugin.ts:149` 阻止电视工具；`src/emotion/plugin.ts:166` 的作用域解析、`:273-278` 的流处理和 `:269` 的完成处理未排除两者 | 没有主人工具权限也能经回复 footer 更新同一个情绪文件 | 已复现：在合成绑定上向真实 Emotion 流及完成处理分别送 guest 与 TV 来源原生事件，两者均落盘；guest 的原有断言另见 `scripts/checks/check-native-services.mjs:104`。未验证已安装 DSH 的电视完整入口 | **现有行为，是否改变待主人决定** |
-| 2. 发给 Memory provider 的 `workspaceId` 实际是 `storageId` | TS 侧 M2 后已改名：`MemoryScope` 的第三个字段是 `bankId`（`src/memory/client.ts:11`，取值见 `src/core/native/memory.ts:53`）；发给 Python provider 的兼容形状仍叫 `workspaceId`（`src/memory/client.ts:12,57`） | provider 边界的字段名仍混淆原生工作区和可搬迁 Bank 身份；本项不证明串库 | 已复现：合成工作区设置不同的两种 ID，经公开 `findForOwner` 驱动、仅在 provider 启动边界捕获 scope，收到的是 `storageId` | 待主人决定 |
-| 3. 错误码辅助函数不收 `EXPIRED_USE` | `src/core/storage.ts:11` 的 `reject()` 复用 `ContractError` 的拒绝码类型，但排除 `EXPIRED_USE` | 该拒绝只能经 `ContractError` 直接构造；设置回复的 `effect/retry` 已在阶段 3 Console 批透传（`src/console/settings.ts:85–86`） | 读代码确认 | 按阶段 3 拍板 2 保留 `reject()` 原有适用子集 |
-| 12. 关闭多只桌宠途中换绑，已派给上游的那一次关闭仍写原路径 | `src/desktop/platform/plugin.ts` 的 `hide()` 逐只调用上游 `/pet-display`；上游写盘在 `vendor/dsh-pet/`（禁改） | 后续几只会因换绑停下；已经交给上游的那一只仍在原工作区隐藏并写盘，只影响该桌宠的显示状态 | 已复现（阶段 3 审查返工第 5 条的回归） | 主人接受，不修 |
-| 6. 新装环境里桌宠外观编辑器没加载 | 已安装的 0.1.8 桌宠外观编辑器；源码位置在本仓库还没定位 | 新设备上界面固定提示 `EDITOR_NOT_LOADED`，没有添加形象的入口；桌宠服务本身可用 | 已在 Mac mini 新装 DSH + 0.1.8 上观察到（M1 D 批）。当时的 Codex 怀疑是可选命令依赖挡住了编辑器加载，并写了候选补丁，但补丁没有装上，修复效果没验证；默认独立桌宠的 Electron 路径缺失也是同时观察到的环境缺口，是不是原因还没确定 | 已观察到，原因未确认，待主人安排 |
-| 10. 付费 Memory 实测脚本还依赖旧回执的 `archive` 字段 | `scripts/checks/check-native-memory-live.mjs:176` 读 `installedReceipt.archive` 并对它算哈希 | 改为经 DSH 安装 npm 包之后，新回执里没有 `archive`，这个检查会在算哈希时失败；日常运行不受影响，只影响这条手动付费检查 | 读代码确认，没有运行（会调用付费模型） | 待定。以后还要用这个检查，需要另定按 npm 包核对的方式（例如回执里的 `packageVersion`） |
-| 13. 设置窗口手动检查的夹具宿主没接语音表 | `tests/manual/companion-settings-window.cjs:106` 自建宿主调用 `PetPlatform.handle`，走到 `VoiceTable.lookup` 的服务隔离时报错（`src/core/tables/voice.ts`、`src/core/tables/registry.ts`） | 只影响这条手动检查；产品设置保存、建库和回读已由同一夹具的无窗口路径验证 | 阶段 3 收尾沙箱外复跑：第一轮修掉夹具解开 `.venv` 符号链接导致 Memory 用错 Python（`OUTCOME_UNKNOWN`），第二轮仍卡在语音表 | 按「修两轮没好就停」停下，归阶段 4 |
+| 问题 | 收尾结果与证据 |
+| --- | --- |
+| 1. guest／电视回复改共享情绪 | **已改**。主人确认两者均无写权限，输入来源拒绝会覆盖同轮其他来源的 footer 许可。策略回归和真实宿主原生服务检查通过（`8acb7fa`，`tests/behavior-list/policy-qq.test.mjs`、`tests/behavior-list/policy-room.test.mjs`）。 |
+| 2. provider 传输字段与工作区 ID 混淆 | **已改**。启动和 HTTP scope 用 `bankId`，SQLite 的 `pet_scope.workspaceId` 沿用原落盘字段。原生服务与进程检查通过；换回 0.5.0 的实际读回仍属发布验收（`59cc109`）。 |
+| 3. `EXPIRED_USE` 与拒绝助手不一致 | **已改**。删无消费者的拒绝码，`reject()` 统一接 `RejectedCode`，设置仍传递 `effect/retry`（`18af12f`，`src/core/storage.ts`、`src/console/settings.ts`）。 |
+| 6. 新装桌宠外观编辑器未加载 | 0.1.8 在新设备曾出现 `EDITOR_NOT_LOADED`。当前候选有整窗夹具证据，**仍待隔离正式包实机观察**。 |
+| 9. 旧布局的合成迁移夹具在 CI 偶发失败 | **旧夹具已退役**，当前布局和真实 Memory 检查继续保留（`51c9ba6`）。 |
+| 10. 付费实测脚本读取旧 `archive` 回执 | **已关闭**。旧脚本已删除，现行原生服务和 provider 测试覆盖召回及重启（`5730d79`）。 |
+| 12. 关闭多只桌宠时换绑 | **保持主人接受的边界**。已交给上游的那一只可能在原工作区保存显示状态；后续宠物和新工作区受绑定校验保护（`src/desktop/platform/plugin.ts` 的 `hide()`、`tests/desktop/pet-platform.test.mjs:123–153`）。 |
+| 13. 设置窗夹具无法走完整入口 | **已修**。夹具已接真实 Cordis 上下文并补 Core 位置、运行时回执及当前按钮文案。核对 `storageStatus()` 在 `main`、`v0.5.0` 和实现 HEAD 一致。Claude 沙箱外整窗退出 0（`3405743`、`1153f2b`）。 |
 
 ## 阶段
 
@@ -253,9 +251,9 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 | **1（MVP）** | P0 + P1 + P2a + P2b | 地基 + 第一层改用登记口（缩小后不再重写第一层） | 阶段结束发 0.2.0 |
 | 2 | P3 | 2a 合并成第二层「生活世界」（行为不变），并接手第一层里属于第二层的违规；2b 逐概念统一 | 2a 发 0.3.0，2b 再发一个版本 |
 | 3 | P4 | 第三层「呈现与连接」原地治理：登记口和共用小包，不重写模块 | [七批合并后一次发版](decisions.md#2026-11-23-阶段-3-合成一次发版)。 |
-| 4 | P5 | 收尾：删已不用的旧适配、文档对齐、体检 | 是 |
+| **4（当前）** | P5 | 已迁移的 0.5.0 为支持基线；实现、文档、度量及体检已汇总，待门禁与主人隔离验收 | 一个 0.6.0 正式包 |
 
-阶段 3 已收尾，拍板口径见[阶段 3 决定](decisions.md#2026-11-23-阶段-3-拍板中长期有效的规则)。阶段 4 是当前阶段，待开工，完成标准待阶段 4 方案定稿。
+当前进度见[阶段 4 九项完成标准](#stage-4)。
 
 ### 阶段 1（MVP）地基 + 第一层（已完成）
 
@@ -437,16 +435,16 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 
 ##### 阶段 3 结果
 
-已发布预发布版 `0.5.0-rc.1`（`4eb6fa8`）和正式版 `0.5.0`（`f723ba1`），版本见两标签的 `package.json:3`。主人已验收正式版，日常机器已升级，**本机钱包已按「主人声明无待办」路线迁移完成**（主人确认，路线见 [v0.5.0 历史操作说明](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration) 和 `docs/decisions.md:284–288`）。
+已发布预发布版 `0.5.0-rc.1`（`4eb6fa8`）和正式版 `0.5.0`（`f723ba1`），版本见两标签的 `package.json:3`。主人已验收正式版，日常机器已升级，**本机钱包已按「主人声明无待办」路线迁移完成**（主人确认，路线见 [v0.5.0 历史操作说明](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration)）。
 
 **完成标准核对（体检第 6 节）**
 
 - [x] 语音接口、运维操作表及图片共用包已接入，对应的旧直接依赖已清理（`src/core/tables/voice.ts:15,33`、`src/console/plugin.ts:25`、`src/presentation/images.ts:25`、`6dd3e4c:docs/plans/stage3-presentation.md:131,142,176`）。
-- [ ] **部分完成，扩展止步。** 运维 RPC 按拥有者登记，结构化错误透传 `effect/retry`，`reject()` 复用拒绝码类型并保留原子集。典型修改 7 试做记录为 3 个手写文件、2 层，未达 1 文件／1 层，停止扩展通用字段声明。Core 外观引用保留为例外，5b 延至阶段 4 聊天平台接入时复测（`src/contracts/common.ts:19–36`、`src/core/storage.ts:5–11`、`src/console/settings.ts:79–88,110`、`docs/decisions.md:268,280`、`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
-- [ ] **合成演练通过，本机声明迁移完成。** 浏览器「导出 → 导入核对 → 清除」仅有合成副本的升级、断点续做、清源和回退证据。正式包读声明证明、激活及回退也有合成证据。实际有待办的生产浏览器导出和清源因生产适配缺口止步，实机验收待核实（`v0.5.0:tests/migrate/wallet-rollback-040.mjs:55,181,380`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:46–51`、`docs/decisions.md:286–288`）。
+- [ ] **部分完成，扩展止步。** 运维 RPC 按拥有者登记，结构化错误透传 `effect/retry`，`reject()` 复用拒绝码类型并保留原子集。典型修改 7 试做记录为 3 个手写文件、2 层，未达 1 文件／1 层，停止扩展通用字段声明。Core 外观引用保留为例外，5b 的重开条件见[阶段 4](#stage-4)（`src/contracts/common.ts:19–36`、`src/core/storage.ts:5–11`、`src/console/settings.ts:79–88,110`、`docs/decisions.md:268,280`、`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
+- [ ] **合成演练通过，本机声明迁移完成。** 浏览器「导出 → 导入核对 → 清除」仅有合成副本的升级、断点续做、清源和回退证据。正式包读声明证明、激活及回退也有合成证据。实际有待办的生产浏览器导出和清源因生产适配缺口止步，实机验收待核实（`v0.5.0:tests/migrate/wallet-rollback-040.mjs:55,181,380`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:46–51`）。
 - [x] Channels 与桌宠的原位例外已登记，见[状态拥有者表](architecture.md#4-状态拥有者表)（`arch/storage.json:14–20`）。
 - [x] R7 组合检查历史记录通过，覆盖外围全关、逐关、反序装载、重载、卸载与暂停、A→B→A 换绑、写前取消和写后断回复（`tests/behavior-list/presentation-r7.test.mjs:46,78,156,186,207,234`、`tests/behavior-list/entries-lifecycle.test.mjs:551,637,943`）。
-- [x] 典型修改 2、3 按试做记录达标。Room 口渴项 3 文件／1 层，QQ 额度 9 文件／1 层。典型修改 2、3、7 的原始补丁或提交位置待核实（`6dd3e4c:docs/plans/stage3-presentation.md:145,155,291`）。
+- [x] 典型修改 2、3 按试做记录达标。Room 口渴项 3 文件／1 层，QQ 额度 9 文件／1 层。典型修改 2、3、7 的原补丁未保留（`6dd3e4c:docs/plans/stage3-presentation.md:145,155,291`）。
 - [x] Room 的端点派生自一份传输契约。`lifeDates` 等 Console 端点直接读取 Core 记录库（`src/presentation/room-transport.ts:9–36`、`src/core/console-operations.ts:22–41`、`tests/room/room-transport.test.mjs:93–140`）。
 - [ ] **按拍板完成局部收拢，其余延期。** Body 保留槽位准入，素材投影归呈现。桌宠本轮只收语音、Room 开窗和吃饭接点，便携设置默认值与校验已收拢，Channels 已合并连接返回类型。完整桌宠命令与通知协议、`WorkStage`、设备键重排、Channels 其余状态命名及素材目录合并延后，排期待核实（`src/living/body/animation-slots.ts:1–20`、`src/presentation/animation-map.ts:3–6`、`src/core/companion-settings.ts:6–43,54–76`、`ed6fb4f`、`6dd3e4c:docs/plans/stage3-presentation.md:29–33,305–310`）。
 - [x] 情绪与呈现四项完成。九种 feeling 和 Room 七维各有一份声明，两套分类器共用 `classifyActivity`，`ActivityClip`、`ActivityPlayback` 及 `roomClip / desktopClip` 已搬到呈现层（`src/contracts/emotion.ts:2–6`、`src/living/body/presentation.ts:11–29`、`src/presentation/playback.ts:4–17,34–36`、`19fcdae`）。
@@ -455,22 +453,22 @@ QQ 实验分支 `codex/m1-baseline-3-channel` 的手写代码涉及 Channels 与
 - [x] 桌宠投喂由 Body 按目标动作串行准入，可开始时投喂，已呈现时只播放，忙碌或读失败时拒绝，断开后可按原号核对已提交效果（`tests/behavior-list/presentation-r7.test.mjs:336–486`）。
 - [x] 合并前全量门禁的 Node 部分 1777/1777、行为清单 170/170，真实 Electron 的 Room 语音、Room 刷新、桌宠平台和 Compact 语音窗口均已通过；钱包声明补丁后行为清单仍为 170/170（`6dd3e4c:docs/plans/stage3-presentation.md:234–237`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:50`）。
 
-**待核实的收尾证据。** 生产 DSH 设置窗、实机 QQ／微信、主人用更新按钮在隔离环境分别激活 RC 和正式包的记录，以及真实副本回退的独立记录，仍待核实（`6dd3e4c:docs/plans/stage3-presentation.md:237,295–296`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:50–51`、体检第 1、2、6 节）。体检第 8 节已列出规则与长期例外的逐项证据，阶段 3 G8 结论待核实。绑定代次见 [G3 复盘](#绑定代次的-g3-复盘)。
+**待核实的收尾证据。** 生产 DSH 设置窗、实机 QQ／微信、主人用更新按钮在隔离环境分别激活 RC 和正式包的记录，以及真实副本回退的独立记录，仍待核实（`6dd3e4c:docs/plans/stage3-presentation.md:237,295–296`、`8bb0cdf:docs/plans/console-wallet-browser-adapter.md:50–51`、体检第 1、2、6 节）。体检第 8 节已列出规则与长期例外的逐项证据，阶段 4 已重新核对长期例外。绑定代次见 [G3 复盘](#绑定代次的-g3-复盘)。
 
 停止条件：某个第三层模块（尤其 Desktop 的生成文件链路）无法在不改行为的前提下治理：停下来，把它的违规记为长期例外并说明理由；真实数据搬迁演练失败两轮：不进入下一个模块。
 
-#### 阶段 4：收尾（P5）（当前：待开工）
+<a id="stage-4"></a>
 
-**完成标准待阶段 4 方案定稿。** 拟验收条目如下。
+#### 阶段 4：收尾（P5）
 
-- [ ] 逐条记录旧适配、入口和服务名在已安装配置及公开调用处的引用证据。可删项移除后验证升级和正常入口，仍需兼容的项记录理由及验收用例，由主人确认。
-- [ ] 按实际模块、层间接口和长期例外核对 [architecture.md](architecture.md)，更新为收尾后的结构。合并时删除已完成方案，检查相对链接和锚点。
-- [ ] 更新前后对比总表，每题附计数起点和可复核差异，列手写源码、测试、产物和涉及层数，并按原目标判定。第 4 类已达标、第 5 类按 5a 判未达标、第 6 类不设目标，见[典型修改前后对比](#典型修改前后对比)。词表按声明份数实查，再用 `pnpm run check:arch -- --report` 对比基线，目标数待方案定稿。
-- [ ] 聊天平台接入时独立实做 5b，核对准入、设置和持久化的完整路径并记录文件数，按原标准检查第一层是否有改动（`docs/decisions.md:268`）。
-- [ ] 对典型修改 7 记录收益评估和是否再做的决定。若再做，用设置保存、重启和实际生效的流程验证，并核对是否达 1 个手写文件／1 层（`6dd3e4c:docs/plans/stage3-presentation.md:173–179`）。
-- [ ] 按收益确认 `contracts/` 的逐层拆分范围。若拆分，按原场景独立复测第 8 类的照料动作和事实领域，分别记录手写文件数、物理层和漏改时的检查结果（[架构 2.1](architecture.md#21-现在--以后)、[典型修改前后对比](#典型修改前后对比)）。
-- [ ] 下次发版时，发布说明写清从已迁移的 0.5.0 升级和换回 0.5.0。旧钱包迁移保留在 [v0.5.0 历史操作说明](https://github.com/hyyino7/her-world/blob/v0.5.0/docs/development.md#console-wallet-migration)。
-- [ ] 修好设置窗口手动检查的夹具宿主（已知问题 13），在沙箱外跑通。
-- [ ] 跑全量门禁和行为清单，保存通过记录，至少验证一条真实入口的完整流程。逐项体检文档、测试、代码、分支和规则，按 G8 对每条检查和长期例外记录保留或调整理由及证据。
+支持从已迁移的 0.5.0 升级。下列勾选包含定稿后的延期与关闭决定。正式包实机验收是独立放行条件。
 
-把 [README.md](../README.md)、[github-updates.md](github-updates.md) 和 [settings.md](settings.md) 全文译成中文列为候选，主人本次未勾选。如纳入阶段 4，验收时核对命令、配置键及链接。
+- [x] **1. 旧适配**。已逐项删除、改名或按只读证据保留，现用消费者已登记。构建归档没有退役语音深路径与三个旧 npm 导出，架构报告新增为 0。保留的宿主本地化与 bundle 公开键将在第 9 项实机核验。
+- [x] **2. 架构与文档**。已按现行结构更新架构、决定、开发、搬家、设置、发布和架构描述，三份英文文档已译成中文。改动 Markdown 的相对链接、锚点和 `git diff --check` 已核对。
+- [x] **3. 典型修改与词表**。按[计数表](#典型修改前后对比)保留原判定。R8 576、裸字段 30、`kind` 282、`action` 105，规则新增为 0。
+- [x] **4. 5b 聊天平台接入延期**。主人确认一个实际平台和私聊／群聊、主人／访客使用场景后重开。届时按真实准入、设置和持久化链路实做并计数。
+- [x] **5. 典型修改 7 关闭**。Core 已统一默认值和校验，界面与实际消费各有职责。通用字段声明会为省两个计数文件引入跨层机制，本期维持现有接线。试做 3 文件／2 层，未达标。
+- [x] **6. `contracts/` 保留共用目录**。照料表归 Living，Core、呈现及计划共享契约；旧 npm 子路径已删。第 8 题的事实领域还须对齐 Python，物理拆目录不能减少这项工作，判定见[计数表](#典型修改前后对比)。
+- [x] **7. 发布说明**。已写成 [0.6.0 草稿](release/notes.md)，包含实际入口验收、换回 0.5.0 及历史路线链接。
+- [x] **8. 设置窗口夹具**。Claude 在沙箱外跑完整窗口退出 0，见已知问题 13。
+- [ ] **9. 门禁、体检与发版**。G8 已做，真实 Console 投喂到事实、跨会话召回及重启回读的合成用例已过。待冻结候选的全量门禁和行为清单记录、0.6.0 正式包隔离激活和换回 0.5.0 的双向读回、主人实机验收。通过后再升日常机器。
