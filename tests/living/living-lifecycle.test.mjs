@@ -1087,6 +1087,27 @@ test('Plan 常规落盘不等待 Body 同步，显式暂停等待 Body 原执行
   assert.equal((await f.body.snapshot(f.id)).autonomyEnabled,false);
 });
 
+test('显式关闭 Life 在计划读取失败时仍关闭 Body 自治',async t=>{
+  const {f}=await runningHold(t);
+  assert.equal((await f.body.snapshot(f.id)).autonomyEnabled,true);
+  const file=join(f.life.binding.directory,'life.json');
+  const original=readFileSync(file);
+  // Delay the ordinary background clock update so only explicit pause can stop Body.
+  const sync=f.body.syncLifeClock.bind(f.body), release=Promise.withResolvers();
+  const background=t.mock.method(f.body,'syncLifeClock',async(...args)=>{await release.promise;return sync(...args);});
+  writeFileSync(file,'{');
+  try {
+    await assert.rejects(f.life.control(f.id,false),/not valid JSON/);
+    assert.equal(f.life.bodyClockState(f.id).enabled,false);
+    assert.equal(f.life.running(),false);
+    assert.equal((await f.body.snapshot(f.id)).autonomyEnabled,false);
+  } finally {
+    writeFileSync(file,original);
+    background.mock.restore();
+    release.resolve();
+  }
+});
+
 test('Economy 的 Plan 通知失败后，新事实与请求回执仍能在重开后核对', async t => {
   const f = await cordisFixture(t);
   const notify = t.mock.method(f.life,'noticeDomainChange',()=>{throw Error('synthetic notice failure');});

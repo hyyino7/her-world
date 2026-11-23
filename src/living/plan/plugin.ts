@@ -400,16 +400,18 @@ export class CompanionLife {
           this.assertCurrentBinding(pausing);
           if (body && !body.isCurrent()) throw Error('生活区已变化');
         };
-        validate();
-        const saved=pausing.plan.read();
-        if(saved.plan && ['active','waiting'].includes(saved.plan.status)) {
-          await pausing.plan.control(saved.revision,'pause','Autonomous life paused',body?.value,pausing.id,validate);
+        try {
           validate();
-          pausing.plan.markAutoResume(true);
-        }
+          const saved=pausing.plan.read();
+          if(saved.plan && ['active','waiting'].includes(saved.plan.status)) {
+            await pausing.plan.control(saved.revision,'pause','Autonomous life paused',body?.value,pausing.id,validate);
+            validate();
+            pausing.plan.markAutoResume(true);
+          }
+        } catch(error) {bodyError=error;}
         if (body) await withLivingCaller(validate,()=>body.value.setAutonomy(pausing.id,false));
       }
-    }catch(error){bodyError=error;}
+    }catch(error){bodyError??=error;}
     // A stale or unavailable optional body must never prevent cancellation of
     // the old native home after rebinding or during component disposal.
     if(runtime && this.runtime===runtime){

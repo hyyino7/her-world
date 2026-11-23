@@ -1894,6 +1894,15 @@
       "families": []
     },
     {
+      "id": "3-LIFE-PAUSE-01",
+      "categories": [],
+      "level": "L2",
+      "file": "tests/living/living-lifecycle.test.mjs",
+      "name": "显式关闭 Life 在计划读取失败时仍关闭 Body 自治",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
       "id": "3-CONSOLE-11",
       "categories": [],
       "level": "L2",
