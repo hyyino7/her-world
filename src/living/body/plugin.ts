@@ -150,7 +150,7 @@ export class CompanionBehavior {
       void this.enqueue(async validate=>{
         this.synchronize();if(this.binding!==bound)return;
         await this.refreshEmotion(bound.id);validate();if(this.binding!==bound)return;
-        this.advanceRoom(bound);this.deadlineAt=undefined;this.publish();
+        this.advanceRoom(bound);this.publish();
       },undefined,scope).catch(error=>{this.fault=String(error);});
     },Math.min(5*60_000,Math.max(1,at-Date.now())));
     this.timer.unref();
@@ -251,7 +251,8 @@ export class CompanionBehavior {
   }
   private publish(reason:'observation'|'transition'='transition',notifyFirst = reason==='transition') {
     const bound = this.binding; if (!bound || this.closed || !this.living.isCurrent()) return;
-    if(reason==='observation' && this.deadlineAt!==undefined && Date.now()>=this.deadlineAt) {reason='transition';this.deadlineAt=undefined;}
+    const deadlineReached = this.deadlineAt !== undefined && Date.now() >= this.deadlineAt;
+    if (deadlineReached) {reason = 'transition'; this.deadlineAt = undefined;}
     try {
       const {updatedAt:_updated,lastTickAt:_tick,...semantic} = bound.room.state;
       // This is an internal projection of the existing JSON save, not an
@@ -271,6 +272,7 @@ export class CompanionBehavior {
       const visibleChanged=presentationFingerprint!==bound.presentationFingerprint;
       const hadProjection=bound.presentationFingerprint!==undefined;
       if(changed) {bound.fingerprint=fingerprint;this.revision++;}
+      let notifyWorld = deadlineReached && changed;
       if(visibleChanged) {
         bound.presentationFingerprint=presentationFingerprint;
         const receipts=new Set(Object.values(semantic.interactionReceipts ?? {}));
@@ -284,9 +286,10 @@ export class CompanionBehavior {
           })).digest('hex') : presentationFingerprint;
         const worldChanged=worldFingerprint!==bound.worldFingerprint;
         bound.worldFingerprint=worldFingerprint;
-        if(bound.scope && worldChanged && (hadProjection || notifyFirst))
-          this.living.changed(bound.scope,true,reason==='observation'?this.presentationVersion():undefined);
+        notifyWorld ||= worldChanged && (hadProjection || notifyFirst);
       }
+      if (bound.scope && notifyWorld)
+        this.living.changed(bound.scope, true, reason === 'observation' ? this.presentationVersion() : undefined);
       if(changed && reason==='transition' && bound.scope) {
         const scope=bound.scope, plan=this.living.lookup('plan');
         if(plan)plan.value.noticeDomainChange(scope,()=>this.living.isCurrent() && plan.isCurrent());

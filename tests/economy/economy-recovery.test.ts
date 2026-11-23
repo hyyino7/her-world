@@ -11,6 +11,8 @@ import type {PetCoreHost} from '../../src/core/index.js';
 import type {CompanionFactActor} from '../../src/contracts/interaction.js';
 import {EconomyStore} from '../../src/living/economy/store.js';
 import {CompanionEconomy} from '../../src/living/economy/plugin.js';
+import type {WorldChanged} from '../../src/contracts/living.js';
+import {livingNotifications} from '../fixtures/living-notifications.js';
 
 const owner:CompanionFactActor={kind:'owner',id:'fixture-owner',channel:'settings',sessionId:'fixture-settings'};
 const meal='food:improved-meal';
@@ -137,16 +139,22 @@ test('missing authoritative storage cannot silently create a replacement wallet'
 test('notification failure retains a committed fact and acknowledgement rejects a changed binding',async t=>{
   const root=mkdtempSync(join(tmpdir(),'economy-service-facts-')),metadata=new Map<string,unknown>();
   let target={id:'fixture-workspace',path:root};
-  const host={workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,runtime:{config:{companionId:'fixture-companion',ownerActorId:owner.id},store:{
+  const homeScope = () => ({workspaceId: target.id, path: target.path, storageId: target.id, bootId: 'fixture', generation: 0});
+  const host={workspace:{status:()=>({state:'ready',target}),storageId:()=>target.id,homeScope,runtime:{config:{companionId:'fixture-companion',ownerActorId:owner.id},store:{
     persisted:()=>true,meta:(key:string)=>metadata.get(key),setMeta:(key:string,value:unknown)=>metadata.set(key,value),transaction:(fn:()=>unknown)=>fn(),
   }}}} as unknown as PetCoreHost;
-  let notifications=0;
-  const ctx={emit:()=>{notifications++;throw Error('injected listener failure');},logger:()=>({warn(){}})} as unknown as Context;
-  const service=new CompanionEconomy(ctx,host);
+  const notifications: WorldChanged[] = [];
+  const ctx = {emit(name: string, event: WorldChanged) {
+    if (name !== 'world.changed') return;
+    notifications.push(event);
+    throw Error('injected listener failure');
+  }, logger: () => ({warn(){}})} as unknown as Context;
+  const service = new CompanionEconomy(ctx, host, livingNotifications(t, ctx, host, 'economy'));
   t.after(()=>{service.close();rmSync(root,{recursive:true,force:true});});
   const signal=new AbortController().signal;
   const result=await service.ownerAction(target.id,{kind:'grant',amount:7},'service-grant',signal);
-  assert.equal(result.balance,7);assert.equal(notifications,1);
+  assert.equal(result.balance, 7);
+  assert.deepEqual(notifications, [{workspaceId: target.id, storageId: target.id, bootId: 'fixture', generation: 0}]);
   const pending=await service.pendingFacts(target.id);
   assert.equal(pending.length,1);assert.deepEqual(pending[0].actor,{kind:'owner',id:owner.id,channel:'settings'});
   const original=target.id;target={...target,id:'another-workspace'};

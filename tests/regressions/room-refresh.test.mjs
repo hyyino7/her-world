@@ -2,35 +2,53 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
-import {LivingView} from '../../dist/src/living/index.js';
+import {Context} from '@deepseek-ai/cordis';
+import {LivingView, LivingWorld} from '../../dist/src/living/index.js';
+import {RoomWindow} from '../../dist/src/room/window.js';
 import {CompanionBehavior} from '../../dist/src/living/body/plugin.js';
 import {emptyHomeState,advanceHomeState,homeView} from '../../vendor/feiyu-room-template/home-state.js';
 import {roomReaders} from '../fixtures/room-readers.mjs';
 
-function bodyFixture() {
+function bodyFixture(t) {
   let now=1_000_000,state=emptyHomeState(now);const events=[];
+  const scope={workspaceId:'a',path:'/fixture/a',storageId:'a',bootId:'core',generation:1};
+  const host={workspace:{homeScope:()=>scope,runtime:{identity:()=>({displayName:'Fixture'})}}};
+  const ctx={emit(name,event){if(name==='world.changed')events.push(event);},
+    get(){throw Error('Use native notification subscribers, not direct Desktop restore');}};
+  const {world,release}=LivingWorld.retain(new Context(),host,'body');
+  t.after(release);
+  const living=new LivingView({},undefined,undefined,undefined,
+    (binding,bodyOnly,observation)=>world.changed(ctx,host,()=>true,binding,bodyOnly,observation));
   const room={get state(){return state;},tick(){now++;state=advanceHomeState(state,now,{goalPolicy:'planned',autonomy:false,passive:true}).state;},
     presentationActivity:()=>undefined,plannedState:()=>null,nextWakeAt:()=>null,view:()=>homeView(state,now,{}),garden(){this.tick();return{ok:true,garden:{plots:[]}};}};
-  const body=Object.assign(Object.create(CompanionBehavior.prototype),{living:new LivingView(),
-    binding:{id:'a',storageId:'a',room},serial:Promise.resolve(),revision:0,bootId:'boot',autonomous:true,
-    synchronize(){},arm(){},refreshEmotion:async()=>{},ctx:{emit(_name,event){events.push(event);},get(){throw Error('Use native notification subscribers, not direct Desktop restore');}},
-    host:{workspace:{runtime:{identity:()=>({displayName:'Fixture'})}}}});
-  return{body,events,room};
+  const body=Object.assign(Object.create(CompanionBehavior.prototype),{living,
+    binding:{id:'a',storageId:'a',room,scope},serial:Promise.resolve(),revision:0,bootId:'boot',autonomous:true,
+    synchronize(){},arm(){},refreshEmotion:async()=>{},ctx,host});
+  return {body,events,room,scope,world};
 }
 
-test('reads keep raw time, publish visible changes, and retain threshold/phase transitions',async()=>{
-  const {body,events,room}=bodyFixture();const first=await body.snapshot('a');
+test('reads keep raw time, publish visible changes, and retain threshold/phase transitions',async t=>{
+  const {body,events,room,scope,world}=bodyFixture(t);
+  world.changed(body.ctx,body.host,()=>true);
+  const first=await body.snapshot('a');
   for(let i=0;i<20;i++)await body.garden('a','state');
-  assert.equal(events.length,1);assert.ok((await body.snapshot('a')).needs.thirst>first.needs.thirst);
-  room.state.needs.thirst+=.02;await body.snapshot('a');assert.equal(events.at(-1).reason,'observation');
-  const n=events.length;body.deadlineAt=0;await body.snapshot('a');assert.equal(events.length,n+1);assert.equal(events.at(-1).reason,'transition');
-  room.state.activity='A newly accepted activity';body.publish();assert.equal(events.length,n+2);
+  const {path,...worldScope}=scope;
+  assert.deepEqual(events,[worldScope],'The mount refresh is the only notification while visible state stays constant');
+  assert.ok((await body.snapshot('a')).needs.thirst>first.needs.thirst);
+  room.state.needs.thirst+=.02;await body.snapshot('a');
+  assert.deepEqual(events.at(-1),{...worldScope,bodyOnly:true,bodyObservation:body.presentationVersion()});
+  const n=events.length;body.deadlineAt=0;await body.snapshot('a');assert.equal(events.length,n+1);
+  assert.deepEqual(events.at(-1),{...worldScope,bodyOnly:true});
+  room.state.activity='A newly accepted activity';body.publish();await Promise.resolve();assert.equal(events.length,n+2);
 });
 
-test('Room and garden consume covered versions but follow newer, explicit and resumed reads',async()=>{
-  const {body,events,room}=bodyFixture();
+test('Room and garden consume covered versions but follow newer, explicit and resumed reads',async t=>{
+  const {body,room,scope}=bodyFixture(t);
   const readers=roomReaders(()=>body.roomState('a'),()=>body.garden('a','state'));
-  body.ctx.emit=(_name,event)=>{events.push(event);readers.changed(event);};
+  const window=new RoomWindow({binding:()=>scope});
+  window.bound=scope;window.child={};
+  window.send=message=>readers.changed(message.change);
+  body.ctx.emit=(name,event)=>{if(name==='world.changed')window.changed(event,body.presentationVersion());};
   await readers.start();await readers.drain();assert.ok(readers.counts.main<=2&&readers.counts.garden<=2);
   const before=readers.counts;room.state.needs.thirst+=.02;await body.snapshot('a');await readers.drain();
   assert.ok(readers.counts.main>before.main&&readers.counts.garden>before.garden);
@@ -40,7 +58,7 @@ test('Room and garden consume covered versions but follow newer, explicit and re
 
 test('a deadline armed during rebinding cannot publish after returning to the same workspace',async t=>{
   t.mock.timers.enable({apis:['Date','setTimeout'],now:1_000_000});
-  const {body,events,room}=bodyFixture();
+  const {body,events,room}=bodyFixture(t);
   const first={workspaceId:'a',path:'/fixture/a',storageId:'a',bootId:'core',generation:1};
   let binding=first;
   body.host.workspace.homeScope=()=>binding;
@@ -57,12 +75,16 @@ test('a deadline armed during rebinding cannot publish after returning to the sa
   assert.deepEqual(events,[]);
 });
 
-test('Plan and wallet invalidation refresh Room and garden at the same Body revision',async()=>{
-  const {body}=bodyFixture();
+test('Plan and wallet invalidation refresh Room and garden at the same Body revision',async t=>{
+  const {body,scope,world}=bodyFixture(t);
   const readers=roomReaders(()=>body.roomState('a'),()=>body.garden('a','state'));
+  const window=new RoomWindow({binding:()=>scope});
+  window.bound=scope;window.child={};
+  window.send=message=>readers.changed(message.change);
+  body.ctx.emit=(name,event)=>{if(name==='world.changed')window.changed(event,body.presentationVersion());};
   await readers.start();await readers.drain();
   const before=readers.counts;
-  readers.changed({...body.presentationVersion(),reason:'world'});
+  world.changed(body.ctx,body.host,()=>true);
   await readers.drain();
   assert.deepEqual(readers.counts,{main:before.main+1,garden:before.garden+1});
 });
