@@ -58,6 +58,7 @@ export declare class CompanionEconomy {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -85,6 +86,7 @@ export declare class CompanionEconomy {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -133,6 +135,7 @@ export declare class CompanionEconomy {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -161,6 +164,7 @@ export declare class CompanionEconomy {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -184,11 +188,12 @@ export declare class CompanionEconomy {
             importedAt: number;
         };
     }>;
-    settings(workspaceId: string, expectedVersion: string, next: EconomyConfigurationPatch, requestId: string, signal: AbortSignal, validate?: () => void): Promise<{
+    settings(workspaceId: string, expectedVersion: string, next: EconomyConfigurationPatch, requestId: string, signal: AbortSignal, validate?: () => void, recordEffect?: RecordCommandEffect): Promise<{
         writableKeys?: {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;
@@ -216,6 +221,7 @@ export declare class CompanionEconomy {
             itemPrices: string[];
             catalogEnabled: string[];
         } | undefined;
+        recentRequests?: Record<string, import("node:sqlite").SQLOutputValue>[] | undefined;
         workspaceId: string;
         ledger: import("./types.js").LedgerEntry[];
         configurationVersion: string;

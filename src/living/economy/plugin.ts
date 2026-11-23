@@ -212,7 +212,7 @@ export class CompanionEconomy {
   async snapshot(workspaceId:string,validate:()=>void=()=>{},options:{includeWritableKeys?:boolean}={}) {
     validate();const store=this.bound(workspaceId),{writableKeys,...snapshot}=store.snapshot();validate();
     return {...this.walletSnapshot(store, workspaceId, snapshot),
-      ...(options.includeWritableKeys?{writableKeys}:{})};
+      ...(options.includeWritableKeys?{writableKeys,recentRequests:store.consoleRequests.recentCommitted()}:{})};
   }
   private walletSnapshot(store: EconomyStore, workspaceId: string, snapshot?: EconomySnapshot) {
     const {writableKeys: _keys, ...current} = snapshot ? {...snapshot, writableKeys:undefined} : store.snapshot();
@@ -400,15 +400,28 @@ export class CompanionEconomy {
     workspaceId = request.input.workspaceId) {
     this.walletInFlight.add(id);
     return this.inFlight.run(async () => {
+      const outcome = {effect:'none'};
+      const recordEffect: RecordCommandEffect = effect => { outcome.effect = effect; };
       try {
         const {input} = request;
-        const value = 'action' in input ? await this.ownerAction(workspaceId, input.action, id, signal, validate)
-          : await this.settings(workspaceId, input.expectedVersion, input.next, id, signal, validate);
+        const value = 'action' in input ? await this.ownerAction(workspaceId, input.action, id, signal, validate, undefined, recordEffect)
+          : await this.settings(workspaceId, input.expectedVersion, input.next, id, signal, validate, recordEffect);
         validate();
         const evidence = this.walletEvidence(store, id, request);
         if (evidence.state === 'committed' || evidence.declined)
           store.withConsoleRequests(rows => this.finishWallet(rows, id, request, evidence));
         return value;
+      } catch (error) {
+        if (outcome.effect !== 'none')
+          throw new Rejection(unknownEffect(signal.aborted ? 'CANCELLED' : 'OUTCOME_UNKNOWN', 'Check the original wallet request before retrying'));
+        const atomic = !('action' in request.input) || request.input.action.kind !== 'feed';
+        if (atomic && error instanceof Rejection && error.detail.effect === 'none'
+          && error.detail.retry !== 'same_request' && !signal.aborted) {
+          validate();
+          if (this.walletEvidence(store,id,request).state === 'no-evidence')
+            store.withConsoleRequests(rows => this.finishWallet(rows,id,request,{state:'no-evidence',declined:true}));
+        }
+        throw error;
       } finally { this.walletInFlight.delete(id); }
     });
   }
@@ -426,7 +439,7 @@ export class CompanionEconomy {
     switch(walletActionReceipt(requestId, action).operation) {
       case 'grant-money':store.grantMoney(requestId,action.amount,typeof action.note==='string'&&action.note.trim()?action.note:undefined,actor);break;
       case 'gift-item':store.giftItem(requestId,action.itemId,quantity,typeof action.note==='string'&&action.note.trim()?action.note:undefined,actor);break;
-      case 'purchase': case 'sale': {
+      case 'purchase': case 'sell': {
         recordEffect?.('unknown');
         try {
           if(action.kind==='buy')store.purchase(requestId,action.itemId,quantity,actor);
@@ -435,7 +448,6 @@ export class CompanionEconomy {
           if(error instanceof Rejection)recordEffect?.('none');
           throw error;
         }
-        recordEffect?.('partial');
         break;
       }
       case 'import-reading': {
@@ -450,14 +462,17 @@ export class CompanionEconomy {
         return this.inFlight.run(async()=>{
           const execution=await withLivingCaller(admit,()=>body.value.consumeFood(workspaceId,
             {operationId:consoleFoodOperationId(requestId),itemId:action.itemId,interaction:{requestId,actor}},guard));
+          recordEffect?.('partial');
           admit();return finish(execution);
         });
       }
       default:throw Error('Unknown economic action');
     }
+    recordEffect?.('partial');
     return finish();
   }
-  async settings(workspaceId:string,expectedVersion:string,next:EconomyConfigurationPatch,requestId:string,signal:AbortSignal,validate:()=>void=()=>{}) {
+  async settings(workspaceId:string,expectedVersion:string,next:EconomyConfigurationPatch,requestId:string,signal:AbortSignal,validate:()=>void=()=>{},
+    recordEffect?: RecordCommandEffect) {
     signal.throwIfAborted();validate();const store=this.bound(workspaceId);
     const version=Number(expectedVersion);integer(version,'configuration version',1);
     // UI may send the complete edited configuration. Schema/revision are CAS
@@ -472,6 +487,7 @@ export class CompanionEconomy {
       if(body)await withLivingCaller(admit,()=>body.value.snapshot(workspaceId));
       admit();check(this.bound(workspaceId)===store,'Economy binding changed');
       store.configure(requestId,patch,version,this.gardenClock(workspaceId));
+      recordEffect?.('partial');
       admit();return this.snapshot(workspaceId,validate);
     });
   }

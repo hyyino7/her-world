@@ -436,7 +436,7 @@ window.__ModuleLoader__.load({
     function EconomyPanel({workspaceId, request}) {
       const [view,setView] = useState(null), [busy,setBusy] = useState(false), [fault,setFault] = useState('');
       const [feedback,setFeedback] = useState(''), [edit,setEdit] = useState(null), [pending,setPending] = useState(null);
-      const [checks,setChecks] = useState({}), [unknown,setUnknown] = useState(null);
+      const [checks,setChecks] = useState({}), [unknown,setUnknown] = useState(null), [requestLookup,setRequestLookup] = useState('');
       const [amount,setAmount] = useState(''), [note,setNote] = useState('');
       const [giftItem,setGiftItem] = useState(''), [giftQuantity,setGiftQuantity] = useState('1'), [giftNote,setGiftNote] = useState('');
       const [feedItem,setFeedItem] = useState('');
@@ -469,7 +469,7 @@ window.__ModuleLoader__.load({
       }
       React.useEffect(() => {
         const controller = new AbortController(); lifetime.current = controller;
-        setView(null); setPending(null); setChecks({}); setUnknown(null);
+        setView(null); setPending(null); setChecks({}); setUnknown(null); setRequestLookup('');
         setEdit(null); setImported(null); setTitle(''); setAmount(''); setNote(''); setFault('');
         void Promise.allSettled([loadView(controller.signal),loadPending(controller.signal)]);
         return () => controller.abort();
@@ -590,6 +590,14 @@ window.__ModuleLoader__.load({
             button('按原号查证',()=>reconcile('economyCheck',requestId)),
             button('重试原操作',()=>reconcile('economyRetry',requestId)),
             checks[requestId]==='no-evidence'&&button('确认无证据，放弃此笔',()=>reconcile('economyAbandon',requestId))))),
+        view&&details('钱包操作查证',
+          field('原请求编号',{value:requestLookup,maxLength:160,onChange:setRequestLookup}),
+          button('查证编号',()=>reconcile('economyCheck',requestLookup.trim()),busy||!requestLookup.trim()),
+          checks[requestLookup.trim()]&&h('p',{role:'status'},outcomes[checks[requestLookup.trim()]]),
+          ...(view.recentRequests??[]).map(({requestId,endpoint})=>h('div',{key:requestId},
+            h('p',null,(endpoint === 'economySettings' ? '经济配置' : '钱包操作')+' · '+requestId),
+            checks[requestId]&&h('p',null,outcomes[checks[requestId]]),
+            button('按原号查证',()=>reconcile('economyCheck',requestId))))),
         view&&h(React.Fragment,null,
           facts([['余额',`${view.balance} 虚拟币`],['账本修订',view.revision],['当前经济配置',`${view.configuration.revision} · ${String(view.configurationVersion).slice(-12)}`]]),
           details('给零花钱',fields(field('金额',{type:'number',min:1,value:amount,onChange:setAmount,disabled:busy||hasPending}),

@@ -38,7 +38,7 @@ declare const receipt: {
         };
     };
     sell: (_id: string, { itemId, quantity }: WalletFields) => {
-        readonly operation: "sale";
+        readonly operation: "sell";
         readonly payload: {
             readonly itemId: string | undefined;
             readonly quantity: number | undefined;
@@ -84,7 +84,7 @@ export declare function walletActionReceipt(id: string, action: WalletAction): {
         readonly quantity: number | undefined;
     };
 } | {
-    readonly operation: "sale";
+    readonly operation: "sell";
     readonly payload: {
         readonly itemId: string | undefined;
         readonly quantity: number | undefined;
@@ -153,6 +153,7 @@ export declare class ConsoleRequests {
         request: WalletRequest | undefined;
     } | undefined;
     pending(): Record<string, import("node:sqlite").SQLOutputValue>[];
+    recentCommitted(): Record<string, import("node:sqlite").SQLOutputValue>[];
     waitsForRetry(operationId: string): boolean;
     add(id: string, request: WalletRequest): void;
     finish(id: string, fingerprint: string, state: 'committed' | 'declined' | 'abandoned'): void;

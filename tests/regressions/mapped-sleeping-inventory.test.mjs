@@ -177,6 +177,7 @@ test('a lost Settings response after the refusal checkpoint retains the same ter
   });
   const result=await f.handler('economyAction',{requestId,input:{workspaceId:'workspace',action:{kind:'feed',itemId:meal,quantity:1}}},caller.signal,f.peer);
   stop();assert.equal(committed,true);assert.equal(result.ok,false);
+  assert.equal(result.error.effect,'unknown');assert.equal(result.error.retry,'reconcile');
   const row=f.read().plannedExecutions[operation(requestId)],fact=denialFact(f);
   assert.equal(row.status,'failed');assert.equal(f.store().itemUse(operation(requestId)),undefined);
   await f.wake();f.terminal(await f.call());assert.deepEqual(f.read().plannedExecutions[operation(requestId)],row);
@@ -210,4 +211,24 @@ test('EconomyPanel clears a terminal sleeping reply and tells the owner to wake 
   assert.deepEqual(value(await f.handler('economyPending',{requestId:'pending-after-refusal',input:{workspaceId}},f.signal,f.peer)),[]);
   assert.equal(feedButton().props.disabled,false,'A confirmed no-effect refusal must not block the next wallet operation');
   assert.equal(f.state().asleep,true);assert.equal(f.inventory().quantity,1);assert.equal(f.inventory().reserved,0);
+});
+
+test('cancelled reply after a wallet commit preserves the original transfer',async t=>{
+  const f=await fixture(t), caller=new AbortController(), original='transfer-before-cancel';
+  const before=f.store().snapshot().balance;
+  let committed=false;
+  f.services.get('petLife').noticeDomainChange=()=>{
+    committed=f.store().ledger().items.some(row=>row.requestId===original);
+    if(committed)caller.abort();
+  };
+  const input={requestId:original,input:{workspaceId:'workspace',action:{kind:'grant',amount:4}}};
+  const reply=await f.handler('economyAction',input,caller.signal,f.peer);
+  assert.equal(committed,true);
+  assert.equal(reply.ok,false);
+  assert.equal(reply.error.code,'CANCELLED');
+  assert.equal(reply.error.effect,'unknown');
+  assert.equal(reply.error.retry,'reconcile');
+  assert.deepEqual(value(await f.recover('economyCheck',original)),{state:'committed'});
+  assert.equal(value(await f.handler('economyAction',input,f.signal,f.peer)).balance,before+4);
+  assert.equal(f.store().ledger().items.filter(row=>row.requestId===original).length,1);
 });

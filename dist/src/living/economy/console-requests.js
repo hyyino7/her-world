@@ -5,7 +5,7 @@ const receipt = {
     grant: (_id, { amount, note }) => ({ operation: 'grant-money', payload: { amount, note } }),
     gift: (_id, { itemId, quantity, note }) => ({ operation: 'gift-item', payload: { itemId, quantity, note } }),
     buy: (_id, { itemId, quantity }) => ({ operation: 'purchase', payload: { itemId, quantity } }),
-    sell: (_id, { itemId, quantity }) => ({ operation: 'sale', payload: { itemId, quantity } }),
+    sell: (_id, { itemId, quantity }) => ({ operation: 'sell', payload: { itemId, quantity } }),
     importReading: (id, { title, content, format, source }) => ({ operation: 'import-reading', payload: {
             itemId: `reading:owner-${digest(id).slice(7, 39)}`, title, text: content,
             ...(format === undefined ? {} : { format }), source: { kind: 'owner-import', name: source?.name },
@@ -111,6 +111,10 @@ export class ConsoleRequests {
     }
     pending() {
         return this.db.prepare("SELECT id AS requestId, endpoint FROM console_wallet_requests WHERE state='pending' AND storage_id=? AND companion_id=? ORDER BY id")
+            .all(this.binding.storageId, this.binding.companionId);
+    }
+    recentCommitted() {
+        return this.db.prepare("SELECT id AS requestId, endpoint FROM console_wallet_requests WHERE state='committed' AND storage_id=? AND companion_id=? ORDER BY rowid DESC LIMIT 20")
             .all(this.binding.storageId, this.binding.companionId);
     }
     waitsForRetry(operationId) {

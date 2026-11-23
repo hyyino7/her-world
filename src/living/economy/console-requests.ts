@@ -13,7 +13,7 @@ const receipt = {
   grant: (_id: string, {amount, note}: WalletFields) => ({operation:'grant-money', payload:{amount, note}} as const),
   gift: (_id: string, {itemId, quantity, note}: WalletFields) => ({operation:'gift-item', payload:{itemId, quantity, note}} as const),
   buy: (_id: string, {itemId, quantity}: WalletFields) => ({operation:'purchase', payload:{itemId, quantity}} as const),
-  sell: (_id: string, {itemId, quantity}: WalletFields) => ({operation:'sale', payload:{itemId, quantity}} as const),
+  sell: (_id: string, {itemId, quantity}: WalletFields) => ({operation:'sell', payload:{itemId, quantity}} as const),
   importReading: (id: string, {title, content, format, source}: WalletFields) => ({operation:'import-reading', payload:{
     itemId: `reading:owner-${digest(id).slice(7,39)}`, title, text:content,
     ...(format === undefined ? {} : {format}), source:{kind:'owner-import', name:source?.name},
@@ -132,6 +132,11 @@ export class ConsoleRequests {
 
   pending() {
     return this.db.prepare("SELECT id AS requestId, endpoint FROM console_wallet_requests WHERE state='pending' AND storage_id=? AND companion_id=? ORDER BY id")
+      .all(this.binding.storageId, this.binding.companionId);
+  }
+
+  recentCommitted() {
+    return this.db.prepare("SELECT id AS requestId, endpoint FROM console_wallet_requests WHERE state='committed' AND storage_id=? AND companion_id=? ORDER BY rowid DESC LIMIT 20")
       .all(this.binding.storageId, this.binding.companionId);
   }
 
