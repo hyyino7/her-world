@@ -120,7 +120,6 @@
     "test:audit-r5": "pnpm run build && node --test --test-timeout=30000 tests/regressions/audit-r5-backup-memory.test.mjs tests/regressions/audit-r5-garden-clock.test.mjs tests/regressions/audit-r5-install-receipt.test.mjs",
     "test:audit-r6": "pnpm run build && node --test --test-timeout=30000 dist/tests/regressions/audit-r6-binding.test.js tests/regressions/audit-r6-channel-drafts.test.mjs tests/regressions/audit-r6-memory-scope.test.mjs tests/regressions/audit-r6-emotion-size.test.mjs tests/regressions/audit-r6-garden-refresh.test.mjs",
     "check:release": "node scripts/checks/check-release.mjs",
-    "test:release": "node --test tests/infrastructure/release-flow.test.mjs",
     "test:refresh": "node --test tests/regressions/room-refresh.test.mjs tests/regressions/mapped-refresh-convergence.test.mjs",
     "check:arch": "node scripts/arch/check.mjs",
     "metrics": "node scripts/arch/metrics.mjs",

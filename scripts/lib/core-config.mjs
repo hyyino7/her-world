@@ -174,8 +174,7 @@ export function patchWithCoreOverride(text, patches, override, config, yaml, sch
   const fragment = yaml.dump([replacement], {schema, noRefs: true, lineWidth: -1});
   if (text === undefined) return fragment;
 
-  // Use the same expression tag as prepare-store-switch. Read the resulting
-  // document with the loader's dialect to verify untouched entries and tags.
+  // Read the resulting document with the loader's dialect to verify untouched entries and tags.
   const customTags = [{tag: 'tag:yaml.org,2002:js', resolve: value => value}];
   const doc = yamlDocument.parseDocument(text, {customTags});
   requireSetup(!doc.errors.length, 'patch-invalid');
