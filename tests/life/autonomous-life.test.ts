@@ -126,20 +126,26 @@ test('movement cannot silently wait forever or wake a sleeping body',t=>{
   assert.equal(f.room.state.asleep,true);assert.equal(f.room.state.route,null);assert.equal(f.room.state.dwell,null);
 });
 
-test('legacy indefinite room queues stay readable while invalid replacements preserve the original',async t=>{
+test('saved room plans use the same reachability check as replacements',async t=>{
   const f=fixture(t),plan=new PersistentLifePlan(f.root,'fish','world','UTC');
   const stay={...travel,kind:'room' as const};
   await plan.commit(0,parsePlanDraft(draft([stay])));
-  const file=join(f.root,'life.json'),state=JSON.parse(readFileSync(file,'utf8'));
-  state.currentPlan.steps.push(breakfast);writeFileSync(file,JSON.stringify(state));
-  assert.equal(plan.read().plan!.steps.length,2);
-  const original=readFileSync(file,'utf8');
+  const file=join(f.root,'life.json'),original=readFileSync(file,'utf8');
+  const reopened=new PersistentLifePlan(f.root,'fish','world','UTC');
+  assert.deepEqual(reopened.read(),plan.read());
+  assert.equal(reopened.read().plan!.steps.length,1);
   await assert.rejects(()=>plan.commit(plan.read().revision,draft([stay,breakfast]) as any),/blocks later steps/);
   assert.equal(readFileSync(file,'utf8'),original);
+  const state=JSON.parse(original);
+  state.currentPlan.steps.push(breakfast);
+  const unreachable=JSON.stringify(state);
+  writeFileSync(file,unreachable);
+  assert.throws(()=>reopened.read(),/blocks later steps/);
+  assert.equal(readFileSync(file,'utf8'),unreachable);
   f.room.setAutonomy(true,f.now);
-  f.room.startPlanned({operationId:'legacy-stay',...stay},f.now);
+  f.room.startPlanned({operationId:'indefinite-stay',...stay},f.now);
   f.room.tick(Math.ceil(f.room.state.route.arriveAt)+1);
-  const receipt=f.room.inspectPlanned('legacy-stay',Math.ceil(f.room.state.lastTickAt))!;
+  const receipt=f.room.inspectPlanned('indefinite-stay',Math.ceil(f.room.state.lastTickAt))!;
   assert.equal(receipt.status,'running');assert.equal(receipt.completion,'explicit-control');
   assert.match(receipt.reason!,/后续步骤尚未开始/);
 });

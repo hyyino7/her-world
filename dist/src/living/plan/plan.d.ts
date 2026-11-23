@@ -58,7 +58,8 @@ export interface PlanDraft {
     reconsiderWhen?: LifeCondition[];
 }
 /** Validate executable structure and queue reachability without choosing a routine. */
-export declare function parsePlanDraft(raw: unknown): PlanDraft;
+export { parsePlan as parsePlanDraft };
+declare function parsePlan(raw: unknown): PlanDraft;
 /** One scoped intent in World's existing life.json. Body receipts own actual execution.
  * The owning CompanionLife queue serializes every intent mutation, including
  * native alarm tools and retry callbacks, across awaits of the body service. */

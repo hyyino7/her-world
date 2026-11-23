@@ -47,9 +47,8 @@ const validateStepFields = {
     },
 };
 /** Validate executable structure and queue reachability without choosing a routine. */
-export function parsePlanDraft(raw) { return parsePlan(raw, false); }
-/** Stored legacy queues remain readable; new submissions must be reachable. */
-function parsePlan(raw, legacy) {
+export { parsePlan as parsePlanDraft };
+function parsePlan(raw) {
     check(object(raw), 'Invalid life plan');
     string(raw.goal, 'goal');
     string(raw.reason, 'reason');
@@ -92,10 +91,9 @@ function parsePlan(raw, legacy) {
         }
         return step;
     });
-    if (!legacy)
-        for (const [index, step] of steps.entries()) {
-            check(!(typeof step.kind === 'string' && PLAN_KINDS[step.kind].executable === false && step.durationMinutes === undefined && step.until === undefined && index < steps.length - 1), `Activity ${step.id} waits for explicit control and blocks later steps. Use move for arrival, set durationMinutes/until for a finite stay, or put indefinite waiting last. nextConsiderAt only wakes planning; it does not complete the activity.`);
-        }
+    for (const [index, step] of steps.entries()) {
+        check(!(typeof step.kind === 'string' && PLAN_KINDS[step.kind].executable === false && step.durationMinutes === undefined && step.until === undefined && index < steps.length - 1), `Activity ${step.id} waits for explicit control and blocks later steps. Use move for arrival, set durationMinutes/until for a finite stay, or put indefinite waiting last. nextConsiderAt only wakes planning; it does not complete the activity.`);
+    }
     check(raw.nextConsiderAt === null || typeof raw.nextConsiderAt === 'string', 'Specify nextConsiderAt, or null to wait for an event');
     if (raw.nextConsiderAt !== null)
         instant(raw.nextConsiderAt);
@@ -133,7 +131,7 @@ export class PersistentLifePlan {
         if (plan) {
             check(plan.version === 1 && plan.companionId === companionId && plan.storageId === storageId, 'Life plan belongs to another companion or format');
             check(Number.isSafeInteger(plan.revision) && Number.isSafeInteger(plan.cursor) && plan.cursor >= 0 && plan.cursor <= plan.steps.length, 'Life plan progress is invalid; original state retained');
-            parsePlan(plan, true);
+            parsePlan(plan);
             check(['active', 'paused', 'waiting', 'completed', 'cancelled'].includes(plan.status) && Array.isArray(plan.triggeredConditions), 'Invalid stored plan status');
             check(!plan.operationId || !!plan.steps[plan.cursor] && plan.operationId === `life:${plan.id}:${plan.steps[plan.cursor].id}`, 'Stored activity does not match the current plan step');
             if (plan.dispatchUntil)
@@ -190,7 +188,7 @@ export class PersistentLifePlan {
     }
     async commit(expectedRevision, draft, behavior, workspaceId, validate = () => { }) {
         validate();
-        draft = parsePlanDraft(draft);
+        draft = parsePlan(draft);
         const old = this.read();
         check(old.revision === expectedRevision, 'Life plan changed; read it again');
         if (draft.nextConsiderAt)

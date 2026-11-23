@@ -104,10 +104,9 @@ const validateStepFields: Record<PlanKind, (value: Record<string, unknown>, step
 };
 
 /** Validate executable structure and queue reachability without choosing a routine. */
-export function parsePlanDraft(raw: unknown): PlanDraft { return parsePlan(raw, false); }
+export {parsePlan as parsePlanDraft};
 
-/** Stored legacy queues remain readable; new submissions must be reachable. */
-function parsePlan(raw: unknown, legacy: boolean): PlanDraft {
+function parsePlan(raw: unknown): PlanDraft {
   check(object(raw), 'Invalid life plan'); string(raw.goal, 'goal'); string(raw.reason, 'reason');
   check(Array.isArray(raw.steps), 'Plan steps must be an array; empty is valid');
   const ids = new Set<string>();
@@ -139,7 +138,7 @@ function parsePlan(raw: unknown, legacy: boolean): PlanDraft {
     if (value.until !== undefined) { instant(value.until); step.until=value.until; }
     return step;
   });
-  if (!legacy) for (const [index, step] of steps.entries()) {
+  for (const [index, step] of steps.entries()) {
     check(!(typeof step.kind === 'string' && PLAN_KINDS[step.kind].executable === false && step.durationMinutes === undefined && step.until === undefined && index < steps.length - 1),
       `Activity ${step.id} waits for explicit control and blocks later steps. Use move for arrival, set durationMinutes/until for a finite stay, or put indefinite waiting last. nextConsiderAt only wakes planning; it does not complete the activity.`);
   }
@@ -172,7 +171,7 @@ export class PersistentLifePlan {
       check(plan.version===1 && plan.companionId===companionId && plan.storageId===storageId, 'Life plan belongs to another companion or format');
       check(Number.isSafeInteger(plan.revision) && Number.isSafeInteger(plan.cursor) && plan.cursor>=0 && plan.cursor<=plan.steps.length,
         'Life plan progress is invalid; original state retained');
-      parsePlan(plan, true);
+      parsePlan(plan);
       check(['active','paused','waiting','completed','cancelled'].includes(plan.status) && Array.isArray(plan.triggeredConditions), 'Invalid stored plan status');
       check(!plan.operationId || !!plan.steps[plan.cursor] && plan.operationId===`life:${plan.id}:${plan.steps[plan.cursor].id}`, 'Stored activity does not match the current plan step');
       if(plan.dispatchUntil)instant(plan.dispatchUntil);
@@ -220,7 +219,7 @@ export class PersistentLifePlan {
   }
   async commit(expectedRevision:number, draft:PlanDraft, behavior?:CompanionBehavior, workspaceId?:string,validate:()=>void=()=>{}) {
     validate();
-    draft=parsePlanDraft(draft);
+    draft=parsePlan(draft);
     const old=this.read(); check(old.revision===expectedRevision, 'Life plan changed; read it again');
     if (draft.nextConsiderAt) check(Date.parse(draft.nextConsiderAt)>Date.now(), 'Next consideration must be in the future');
     for(const step of draft.steps)if(step.until)check(Date.parse(step.until)>Date.now(),'A new activity cannot have an end time in the past');
