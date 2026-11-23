@@ -176,11 +176,6 @@ export class CompanionLife {
   }
   isHome(id: string) { return this.running() && this.runtime?.isHome(id) === true; }
   homeSessionId() { return this.running() ? this.runtime?.snapshot().homeSessionId : undefined; }
-  /** Presentation reads the original body's two distinct states: walking to bed
-   * can be cancelled, but the sleeping animation starts only after arrival. */
-  restState(workspaceId: string) {
-    if (this.isOpen()) return this.living.get('body')?.restState(workspaceId);
-  }
   private publishRest() { lookupLifeOutlet(this.ctx, this.host, 'desktop')?.restore(); }
   private directory(root: string) {
     const directories = lifeDirectories(root);
@@ -703,14 +698,6 @@ export class CompanionLife {
       const result=await withLivingCaller(validate,()=>work(body.value));
       validate();return result;
     });
-  }
-  /** Compatibility methods delegate; Behavior remains available after Life unload. */
-  roomAction(workspaceId: string, input: unknown, by = '伙伴') {
-    return this.forwardToBody(body=>body.roomAction(workspaceId,input,by));
-  }
-  roomState(workspaceId: string) { return this.forwardToBody(body=>body.roomState(workspaceId)); }
-  garden(workspaceId: string, operation: 'state' | 'act' | 'control', input?: unknown) {
-    return this.forwardToBody(body=>body.garden(workspaceId,operation,input));
   }
   settings(workspaceId: string, expected: unknown, next: unknown, validate?: () => void) {
     return this.enqueue(async () => {

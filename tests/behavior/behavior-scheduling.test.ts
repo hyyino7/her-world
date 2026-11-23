@@ -105,6 +105,7 @@ async function fixture(t:TestContext,needs:Record<string,number>={}) {
   const plan=internal.binding.plan as PersistentLifePlan;
   return{root,directory,workspace,life,get behavior(){return behavior;},plan,counters,changes,settle,advance,reopenBodyAfter,attachNative,emit,
     body:()=> (behavior as any).binding.room.state,
+    nextRoomWake:()=> (behavior as any).binding.room.nextWakeAt(Date.now(),plan.read().plan!.reconsiderWhen) as number|null,
     garden:()=>JSON.parse(readFileSync(join(directory,'garden.json'),'utf8')),
   };
 }
@@ -137,7 +138,7 @@ test('a real empty waiting plan sleeps until its Body condition and reconsiders 
   await f.life.updatePlan(f.workspace.id,f.plan.read().revision,{goal:'Wait for thirst',reason:'No work is needed yet',steps:[],nextConsiderAt:null,
     reconsiderWhen:[{metric:'thirst',comparison:'gte',value:.2+.085/3600}]});
   await f.settle();
-  const next=await f.behavior.nextWakeAt(f.workspace.id,f.plan.read().plan!.reconsiderWhen);
+  const next=f.nextRoomWake();
   assert.ok(next!==null&&next>Date.now());
   const ticks=f.counters.ticks,reschedules=f.counters.reschedules;
   await f.advance(5);await f.behavior.snapshot(f.workspace.id);await f.settle();
@@ -177,7 +178,7 @@ test('an observation queued before a delayed Body deadline cannot consume its Li
   const f=await fixture(t);
   await f.life.updatePlan(f.workspace.id,f.plan.read().revision,{goal:'Wait for a real condition',reason:'Continue waiting',steps:[],nextConsiderAt:null,
     reconsiderWhen:[{metric:'thirst',comparison:'gte',value:.21}]});await f.settle();
-  const next=await f.behavior.nextWakeAt(f.workspace.id,f.plan.read().plan!.reconsiderWhen);
+  const next=f.nextRoomWake();
   assert.ok(next!==null&&next>Date.now());
   const before=f.counters.reschedules;
   let release:()=>void=()=>{},entered:()=>void=()=>{};

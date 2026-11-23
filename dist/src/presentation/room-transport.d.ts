@@ -36,10 +36,10 @@ declare const routes: {
     };
 };
 export type RoomEndpoint = keyof typeof routes;
-export declare const ROOM_ENDPOINTS: readonly ("roomAction" | "roomState" | "roomGarden" | "roomPlant" | "roomCare" | "roomChat" | "roomTelevision" | "roomHistory" | "roomVoice")[];
+export declare const ROOM_ENDPOINTS: readonly ("roomState" | "roomAction" | "roomGarden" | "roomPlant" | "roomCare" | "roomChat" | "roomTelevision" | "roomHistory" | "roomVoice")[];
 export declare function isRoomEndpoint(value: unknown): value is RoomEndpoint;
 export declare const ROOM_BROWSER_ROUTES: (readonly [string, {
-    readonly endpoint: "roomAction" | "roomState" | "roomGarden" | "roomPlant" | "roomCare" | "roomChat" | "roomTelevision" | "roomHistory" | "roomVoice";
+    readonly endpoint: "roomState" | "roomAction" | "roomGarden" | "roomPlant" | "roomCare" | "roomChat" | "roomTelevision" | "roomHistory" | "roomVoice";
     readonly timeout: 20000 | 310000;
 }])[];
 export declare const ROOM_CONSOLE_TIMEOUTS: {

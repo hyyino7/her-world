@@ -32,7 +32,6 @@ export declare class LivingWorld {
     private entries;
     private constructor();
     private static matching;
-    static find(ctx: Context, host: PetCoreHost): LivingWorld | undefined;
     static lookupPlan(ctx: Context, host: PetCoreHost): CompanionLife | undefined;
     static retain(ctx: Context, host: PetCoreHost, area: Area): {
         world: LivingWorld;
