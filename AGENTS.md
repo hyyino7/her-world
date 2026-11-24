@@ -64,6 +64,7 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
   - 发布流程：`.github/workflows/`、`scripts/checks/check-release.mjs`、[docs/github-updates.md](docs/github-updates.md)
 - 禁改：
   - `vendor/**`、`references/`（decisions.md「没有现成替代，上游代码整体复用」）
+    接管 Room 模板的例外按组审批，见[空间重做与内容扩展的立项与选型](docs/decisions.md#room-extension-decisions)。
   - 生成文件，名单在 `arch/layers.json` 各模块的 `generated` 里（例如 `src/desktop/platform/client.js`）。要改就改它的生成源
   - `arch/baseline/**`：只能用 `pnpm run check:arch -- --write-baseline` 删除条目，或在纯搬家提交里用 `pnpm run check:arch -- --write-baseline --move <对照文件>` 改键（见[纯搬家可以用工具改基线的键](docs/decisions.md#2026-11-20-纯搬家可以用工具改基线的键)）。主人于 2026-11-23 批准整份删除无人读取的 R5 快照，R5 以实时报告为准。
 - 提交：一个提交只做一件事；单个提交不超过 15 个文件、600 行改动。`pnpm run build` 生成的 `dist/src/**`、脚本生成的基线文件和抄录的样例不计入阈值，但照常提交，并在方案里预先声明（构建产物一条来自 M2 方案拍板点 9：每改一个 `src/*.ts` 就多出 `.js` 和 `.d.ts`，C2、E2 等批按模块提交都靠它）。
