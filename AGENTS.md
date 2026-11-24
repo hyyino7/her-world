@@ -38,7 +38,7 @@ Her World（npm 包 `her-world`）是跑在 DSH 里的伙伴插件：同一个�
 | 工具 | 在工具定义旁声明 `sources`（和需要时的 `historyOverview`），登记到 `host.native.toolTable`；见 [architecture.md 5.10](docs/architecture.md#510-扩展一处声明其余派生) |
 | 输入来源 | 在模块里写来源适配器，入口登记到 `host.native.sourceTable`；新 `source.kind` 在 DSH 的 `MessageSourceMap` 声明，新工具来源用 `toolTable.registerSource` 登记；见 architecture.md 2.2、5.8、5.10 |
 | 能力状态行 | 在模块入口登记到 `host.workspace.runtime.capabilityTable`，卸载时撤销；见 architecture.md 2.2 |
-| 上下文段 | 在模块入口用 `registerWorldPrompt` 登记；不做段声明（architecture.md 5.9） |
+| 上下文段 | 现行在模块入口用 `registerWorldPrompt` 登记；分批补段声明见[架构 5.9](docs/architecture.md#59-上下文组装契约) |
 | 第二层的一个区，或区之间的查找 | 区在入口用 `mountLivingArea`（`src/living/index.ts`）登记到常驻实例，不按服务名互相查找；见 architecture.md 2.3、6.2 |
 | 第一层要知道的生活判定（身体可用、Life home、相册门控等） | 登记到 `host.native.companionPorts`（`src/core/tables/companion-ports.ts`），第一层不读生活服务；见 architecture.md 2.2 |
 | 第三层给 Life 的呈现或送达 | 在入口用 `registerLifeOutlet`（`src/living/outlets.ts`）登记生活出口，卸载时撤销；见 architecture.md 5.2 |
