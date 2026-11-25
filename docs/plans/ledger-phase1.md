@@ -39,7 +39,7 @@
 
 - 流开始时取一次快照：开始时刻、`sessionId`、`purpose`、`provider`、`model`、`reasoningEffort`（字段见 `node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:538-584`），以及下文的入口、预设、归属工作区。**不碰 `messages`、`system`、`tools`。**
 - 把 `next()` 的每个 chunk 原样往下传，只旁看两种：`{type:'usage'}`，多次出现时取最后一份，和 DSH 自己的做法一致（`index.js:997`）；`{type:'finish'}`，取结束原因。适配器失败会变成 `error` 或 `aborted` 的 finish（`index.js:2356,2371,2410-2421`）。
-- `outcome` 取值：收到 finish 时记它的 `reason.kind` 原值（`completed`、`error`、`aborted`，以及 DSH 的其他取值）；没收到 finish 就结束的记 `cancelled`；中间件或消费方抛出的异常记 `error` 并原样抛出（`index.js:2387` 起的注释写明这些异常不会转成 finish）。
+- `outcome` 取值：收到 finish 时记它的 `reason.kind` 原值（`completed`、`error`、`aborted`，以及 DSH 的其他取值）；没收到 finish 就被关闭的记 `cancelled`，包括消费方在 `for await` 循环体里抛错：这种情况监听者只收到无参数的 `return()`，和主动停止分不开（执行第一批的假流探针证实，碎碎念消费循环见 `vendor/dsh-pet/src/host/whisper.ts:142`）；从 `next()` 一侧传到监听者的异常（里层中间件、适配器分派之外的异常，`index.js:2387` 起的注释写明这些异常不会转成 finish）记 `error` 并原样抛出。
 - 在 `finally` 里写一行。写行失败只计漏记、打一条警告，不往外抛。
 - 拿到流却从没迭代的，适配器不会被调用，也就没有请求，不记。
 - 外层看到的 `reasoningEffort` 是请求值，默认值可能在里层才补上（`index.js:2192`），列名写明「请求的推理强度」。
