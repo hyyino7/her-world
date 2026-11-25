@@ -77,7 +77,7 @@ export class RoomChat {
             id: 'room', order: 20, sources: ['chatpet-room-tv'], classify,
             branches: {
                 television: {
-                    turnKind: 'background', toolSource: 'tv',
+                    turnKind: 'background', toolSource: 'tv', usageEntry: 'television',
                     toolPolicy: {
                         allows: () => false,
                         denial: '电视画面只能用于观后感，不提供工具操作授权。',
@@ -181,6 +181,8 @@ export class RoomChat {
                 this.active = { agent, sessionId: agent.id, messageId: message.id, validate, abort: reason => binding.abort(reason) };
                 if (television)
                     this.admission.set(agent.id, message.id);
+                else
+                    this.ctx.petCore.native.usageEvidence.claim(agent.id, message.id, 'room');
                 const cancel = () => agent.cancel({ kind: 'user' });
                 signal.addEventListener('abort', cancel, { once: true });
                 try {

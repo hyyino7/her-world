@@ -14,6 +14,7 @@ import { RegistrationTable } from '../tables/registry.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts, type CompanionBinding } from '../tables/companion-ports.js';
 import { VoiceTable } from '../tables/voice.js';
+import { UsageEvidence } from '../usage/evidence.js';
 import { ConsoleTable } from '../tables/console.js';
 
 export const OWNER_LIFE_TOOL_SOURCES = Object.freeze(COMPANION_TOOL_SOURCES.filter(
@@ -85,6 +86,7 @@ interface Work {
 }
 /** Scoped services for the existing DSH Agent; only autonomous inputs have extra allowances. */
 export class CoreNative {
+  readonly usageEvidence = new UsageEvidence();
   memory?: NativeMemory;
   private memoryEnabled = true;
   readonly toolTable = new CompanionToolTable();
@@ -265,7 +267,7 @@ export class CoreNative {
       id: 'core-owner', sources: ['user'], order: 0, classify: classifyOwner, policyRows: [homePolicy],
       branches: {
         owner: {
-          turnKind: 'foreground', toolSource: 'owner', toolPolicy: null,
+          turnKind: 'foreground', toolSource: 'owner', toolPolicy: null, usageEntry: this.usageEvidence.owner,
           memoryObservation: {
             input: ({sessionId, isGuest}: OwnerSourceContext) => {
               const guest = isGuest();

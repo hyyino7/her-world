@@ -87,6 +87,7 @@ export interface SourceMemoryObservation<Selected> {
     };
 }
 export interface SourceBranch<Selected> {
+    readonly usageEntry?: import('./usage.js').UsageEntry | ((input: SourceInput) => import('./usage.js').UsageEntry);
     readonly turnKind: TurnKind;
     readonly toolSource: CompanionToolSource;
     readonly toolPolicy: SourceToolPolicy<Selected> | null;

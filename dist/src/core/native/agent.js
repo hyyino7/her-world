@@ -256,10 +256,12 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
         agents.set(payload.agent.id, payload.agent);
         let saved = turns.get(payload.agent.id);
         const first = !saved || saved.turn !== payload.turn;
+        let stepInputs;
         if (first) {
             const accepted = selectStepSources(payload.agent, payload.messages);
             if (!accepted?.length)
                 return { kind: 'reject' };
+            stepInputs = accepted;
             const selections = accepted.map(({ selection }) => selection);
             const foreground = selections.some(selection => selection.branch.turnKind === 'foreground');
             saved = { turn: payload.turn, scope, background: !foreground, extensionAdmissions: new Set(),
@@ -293,6 +295,7 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
             const admitted = selectStepSources(payload.agent, payload.messages);
             if (!admitted || !trackExtensions(saved, admitted))
                 return { kind: 'reject' };
+            stepInputs = admitted;
             if (admitted.length)
                 host.native.observeInputs(payload.agent.id, payload.turn, admitted.map(({ message }) => message), saved.scope);
             if (saved.background && admitted.some(({ selection }) => selection.branch.turnKind === 'foreground')) {
@@ -344,6 +347,7 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
         const decision = await next();
         if (decision.kind !== 'enter' || !currentTurn(payload.agent.id, saved))
             return decision.kind === 'enter' ? { kind: 'reject' } : decision;
+        host.native.usageEvidence.admit(payload.agent.id, stepInputs ?? []);
         if (!first)
             return decision;
         if (checkMemory)
@@ -367,6 +371,7 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
             recall.compacted(session);
         if (event.type !== 'turn/end')
             return;
+        host.native.usageEvidence.end(session.id);
         const saved = turns.get(session.id);
         if (!saved)
             return;
@@ -399,6 +404,7 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
         return watch(done);
     }, { global: true });
     ctx.on('agent/disposed', ({ agent }) => {
+        host.native.usageEvidence.end(agent.id);
         void host.native.end(agent.id).catch(() => { });
         host.native.memory?.clear(agent.id);
         agents.delete(agent.id);

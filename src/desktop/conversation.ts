@@ -75,7 +75,7 @@ export class Conversation {
   private readonly stoppedText = new Map<number, { text: string; step?: number }>();
   constructor(private native: NativeDesktopHost, private binding: () => Binding,
     private saved: (workspace: string) => string | undefined, private save: (workspace: string, id: string) => void,
-    private changed: () => void) {}
+    private changed: () => void, private claimUsage?: (sessionId: string, messageId: string) => void) {}
 
   get id() { return this.active?.id; }
   /** Closing a view revokes its queued/in-flight commands, not the native chat. */
@@ -178,7 +178,10 @@ export class Conversation {
           const content = input.image ? await n.admitImage?.(input.image) : [];
           if (input.image && !content) throw Error('原生图片附件服务暂不可用');
           this.current(binding, revision, id);
-          agent.followup(createUserMessage({ content: [...(text ? [{ type: 'text' as const, text }] : []), ...(content ?? [])], source: { kind: 'user', rpcId: input.requestId } })); }
+          const message = createUserMessage({ content: [...(text ? [{ type: 'text' as const, text }] : []), ...(content ?? [])], source: { kind: 'user', rpcId: input.requestId } });
+          this.claimUsage?.(id, message.id);
+          agent.followup(message);
+        }
         catch (cause) { this.pending = false; throw cause; }
       }
     } else if (action === 'stop') {

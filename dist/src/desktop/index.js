@@ -33,7 +33,7 @@ export class Desktop {
         this.native = native;
         this.host = host;
         const store = host.workspace.runtime.store;
-        this.chat = new Conversation(native, () => this.target(), key => store.get('desktop-session', key), (key, id) => store.put('desktop-session', key, id), () => this.changed());
+        this.chat = new Conversation(native, () => this.target(), key => store.get('desktop-session', key), (key, id) => store.put('desktop-session', key, id), () => this.changed(), (sessionId, messageId) => host.native.usageEvidence.claim(sessionId, messageId, 'desktop'));
     }
     target() {
         const { state, target } = this.host.workspace.status();

@@ -10,6 +10,7 @@ import { SourceAdapterTable } from '../tables/sources.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts, type CompanionBinding } from '../tables/companion-ports.js';
 import { VoiceTable } from '../tables/voice.js';
+import { UsageEvidence } from '../usage/evidence.js';
 import { ConsoleTable } from '../tables/console.js';
 export declare const OWNER_LIFE_TOOL_SOURCES: readonly ("life" | "owner" | "review")[];
 export interface NativeScope extends CompanionBinding {
@@ -33,6 +34,7 @@ type ResolvePlaybackEvidence = (sessionId: string, playbackId: string) => {
 /** Scoped services for the existing DSH Agent; only autonomous inputs have extra allowances. */
 export declare class CoreNative {
     readonly runtime: CoreRuntime;
+    readonly usageEvidence: UsageEvidence;
     memory?: NativeMemory;
     private memoryEnabled;
     readonly toolTable: CompanionToolTable;

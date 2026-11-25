@@ -44,7 +44,8 @@ export class Desktop {
   constructor(private native: HostServices, private host: PetCoreHost) {
     const store = host.workspace.runtime.store;
     this.chat = new Conversation(native, () => this.target(), key => store.get<string>('desktop-session', key),
-      (key, id) => store.put('desktop-session', key, id), () => this.changed());
+      (key, id) => store.put('desktop-session', key, id), () => this.changed(),
+      (sessionId, messageId) => host.native.usageEvidence.claim(sessionId, messageId, 'desktop'));
   }
 
   private target() {

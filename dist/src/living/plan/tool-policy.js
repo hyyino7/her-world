@@ -38,7 +38,7 @@ export function createLifeSourceAdapter(ctx, host, accepts) {
     const branch = (kind) => {
         const review = kind === 'review';
         return {
-            turnKind: 'background', toolSource: kind,
+            turnKind: 'background', toolSource: kind, usageEntry: kind,
             toolPolicy: {
                 install: agent => restrictLifeTools(host.native.toolTable, agent.ctx.tools, lifeInheritedToolNames(ctx.tools, agent, review), review),
                 allows: exec => lifeToolAllowed(host.native.toolTable, exec.name, review),

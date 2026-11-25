@@ -217,9 +217,11 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
     agents.set(payload.agent.id,payload.agent);
     let saved=turns.get(payload.agent.id);
     const first=!saved || saved.turn!==payload.turn;
+    let stepInputs: ReturnType<typeof selectStepSources>;
     if(first) {
       const accepted=selectStepSources(payload.agent,payload.messages);
       if(!accepted?.length)return {kind:'reject'};
+      stepInputs=accepted;
       const selections=accepted.map(({selection})=>selection);
       const foreground=selections.some(selection=>selection.branch.turnKind==='foreground');
       saved={turn:payload.turn,scope,background:!foreground,extensionAdmissions:new Set(),
@@ -242,6 +244,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
     if(!first) {
       const admitted=selectStepSources(payload.agent,payload.messages);
       if(!admitted||!trackExtensions(saved!,admitted))return {kind:'reject'};
+      stepInputs=admitted;
       if(admitted.length)host.native.observeInputs(payload.agent.id,payload.turn,admitted.map(({message})=>message),saved!.scope);
       if(saved!.background && admitted.some(({selection})=>selection.branch.turnKind==='foreground')) {
         // A real owner input takes over this native turn; autonomous limits do
@@ -279,6 +282,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
     }
     const decision=await next();
     if(decision.kind!=='enter' || !currentTurn(payload.agent.id,saved!))return decision.kind==='enter'?{kind:'reject'}:decision;
+    host.native.usageEvidence.admit(payload.agent.id, stepInputs ?? []);
     if(!first)return decision;
     if(checkMemory)try{checkMemory();}catch(error){
       text='';host.native.memory?.clear(payload.agent.id);host.native.memory?.unavailable(error);
@@ -293,6 +297,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
   ctx.on('session/event',(session,event)=>{
     if(String(event.type)==='compaction/end' && !(event.data as {error?:unknown}).error)recall.compacted(session);
     if(event.type!=='turn/end')return;
+    host.native.usageEvidence.end(session.id);
     const saved=turns.get(session.id);if(!saved)return;
     const result=nativeResult(session.snapshotEvents(),inputs.get(session.id) ?? '');
     clearContinuation(session.id);
@@ -313,6 +318,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
     return watch(done);
   },{global:true});
   ctx.on('agent/disposed',({agent})=>{
+    host.native.usageEvidence.end(agent.id);
     void host.native.end(agent.id).catch(()=>{});
     host.native.memory?.clear(agent.id);
     agents.delete(agent.id);turns.delete(agent.id);inputs.delete(agent.id);

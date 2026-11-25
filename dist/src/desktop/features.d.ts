@@ -2,6 +2,12 @@ import { DesktopImages } from './images.js';
 import type { Context } from '@deepseek-ai/cordis';
 import type { PetCoreHost } from '../core/index.js';
 import type { CompanionFactActor } from '../contracts/interaction.js';
+declare module '@deepseek-ai/dsh-llm/types' {
+    interface LlmRequestPurposeMap {
+        'chatpet-whisper': true;
+        'chatpet-dream': true;
+    }
+}
 export declare class DesktopFeatures {
     private ctx;
     private host;

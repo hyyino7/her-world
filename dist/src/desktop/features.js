@@ -275,7 +275,7 @@ export class DesktopFeatures {
                     abort.signal.throwIfAborted();
                     if (automatic && !this.automaticAllowed(target, dream))
                         throw Error('自动碎碎念已取消');
-                    return llm.stream({ ...options, signal: AbortSignal.any([options.signal, abort.signal]) });
+                    return llm.stream({ ...options, purpose: dream ? 'chatpet-dream' : 'chatpet-whisper', signal: AbortSignal.any([options.signal, abort.signal]) });
                 } };
             const result = await generateWhisper({ llm: nativeLlm, agentDefaultModel: { currentSelection: () => selection } }, {
                 system,

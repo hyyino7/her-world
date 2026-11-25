@@ -123,13 +123,14 @@ export declare class Conversation {
     private saved;
     private save;
     private changed;
+    private claimUsage?;
     private active?;
     private attempt?;
     private tail;
     private pending;
     private revision;
     private readonly stoppedText;
-    constructor(native: NativeDesktopHost, binding: () => Binding, saved: (workspace: string) => string | undefined, save: (workspace: string, id: string) => void, changed: () => void);
+    constructor(native: NativeDesktopHost, binding: () => Binding, saved: (workspace: string) => string | undefined, save: (workspace: string, id: string) => void, changed: () => void, claimUsage?: ((sessionId: string, messageId: string) => void) | undefined);
     get id(): string | undefined;
     /** Closing a view revokes its queued/in-flight commands, not the native chat. */
     invalidate(): void;
