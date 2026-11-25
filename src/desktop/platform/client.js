@@ -16910,7 +16910,7 @@ registerCompanion({
     const { useState, useRef, useId } = React;
     const sections = [
       ['overview', '概览'], ['role', '角色'], ['emotion', '情绪'], ['archive', '记忆与档案'],
-      ['desktop', '桌宠'], ['life', '生活'], ['connections', '连接'], ['workspace', '工作区'],
+      ['desktop', '桌宠'], ['life', '生活'], ['connections', '连接'], ['usage', '用量'], ['workspace', '工作区'],
     ];
     const worldGroups = [
       { id: 'persona', title: '人设与提示', modules: { persona: '人设提示', scope: '工作区范围' },
@@ -16923,7 +16923,7 @@ registerCompanion({
         bridge: '主动消息', channels: '渠道路由', qq: 'QQ', wechat: '微信' },
         connection: '生活页提供作息、活动、日记和相册；连接页管理聊天渠道。' },
       { id: 'activity', title: '运行与用量', modules: { health: '健康与故障', usage: '活动与用量' },
-        connection: '当前服务状态见上方。活动日志在生活页；准确用量见对应 DSH 会话。' },
+        connection: '当前服务状态见上方，活动日志在生活页，模型调用和估算花费见「用量」页。' },
     ];
     const workspaceLabels = { unbound: '未绑定', pending: '待初始化', ready: '已就绪', unavailable: '不可用' };
     const capabilityLabels = { ready: '可用', degraded: '部分可用', unavailable: '不可用', disabled: '已停用',
@@ -16940,6 +16940,10 @@ registerCompanion({
       .chatpet-settings .cp-muted { opacity: .64; }
       .chatpet-settings .cp-heading { display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:18px; padding:18px 20px; border:1px solid color-mix(in srgb,currentColor 13%,transparent); border-radius:14px; background:radial-gradient(120% 140% at 100% 0%,var(--cp-glow),transparent 55%),color-mix(in srgb,currentColor 3.5%,transparent); }
       .chatpet-settings .cp-heading h2 {font:600 24px/1.25 var(--cp-serif);letter-spacing:.04em;margin:2px 0 5px;}
+      .chatpet-settings .cp-usage-table {overflow-x:auto;}
+      .chatpet-settings .cp-usage-table table {width:100%;border-collapse:collapse;}
+      .chatpet-settings .cp-usage-table th,.chatpet-settings .cp-usage-table td {padding:4px 6px;text-align:start;}
+      .chatpet-settings .cp-usage-alert {color:var(--dsw-alias-label-danger, #c43c35);}
       .chatpet-settings .cp-heading small {font-size:10px;letter-spacing:.22em;color:var(--cp-soft);}
       .chatpet-settings .cp-state {font-size:12px;color:var(--cp-soft);display:flex;align-items:center;gap:7px;}
       .chatpet-settings .cp-dot {width:7px;height:7px;border-radius:50%;background:var(--cp-gold);display:inline-block;}
@@ -17728,6 +17732,78 @@ registerCompanion({
           h('p',{role:'status'},error?'未能读取当前心情。':'正在读取当前心情…'),
         notice&&h('p',{role:'status'},notice),error&&h('p',{role:'alert'},error),error&&!value&&h('button',{type:'button',className:'cp-save',onClick:()=>{setError('');retry(n=>n+1);}},'重试读取'));
     }
+    const recoveryNotices = new Set();
+    function UsagePage({workspaceId, request}) {
+      const [day, setDay] = useState(''), [revision, refresh] = useState(0);
+      const [view, setView] = useState(null), [fault, setFault] = useState('');
+      const [legacy, setLegacy] = useState({}), [recovered, setRecovered] = useState(false);
+      React.useEffect(() => {
+        const controller = new AbortController(), signal = controller.signal;
+        setView(null); setFault(''); setLegacy({}); setRecovered(false);
+        request('usageLedger', day ? {workspaceId, day} : {workspaceId}, signal).then(result => {
+          if (signal.aborted) return;
+          setView(result);
+          const key = JSON.stringify([workspaceId, result.recovery]);
+          if (result.recovery && !recoveryNotices.has(key)) { recoveryNotices.add(key); setRecovered(true); }
+        }).catch(e => { if (!signal.aborted) setFault(e.message); });
+        for (const endpoint of ['channelStatus', 'lifeView']) {
+          request(endpoint, {workspaceId}, signal).then(value => {
+            if (!signal.aborted) setLegacy(old => ({...old, [endpoint]: {value}}));
+          }).catch(e => {
+            if (!signal.aborted) setLegacy(old => ({...old, [endpoint]: {status: e.code === 'UNAVAILABLE' ? '未加载' : '读取失败'}}));
+          });
+        }
+        return () => controller.abort();
+      }, [workspaceId, request, day, revision]);
+      const amount = value => '¥' + Number(value).toFixed(6);
+      function tokens(row, key, missing) {
+        const reported = row.calls - row.missingUsage;
+        if (!reported) return '—';
+        if (row[missing] === reported) return '未报';
+        return String(row[key]) + (row[missing] ? '（另有 ' + row[missing] + ' 次未报）' : '');
+      }
+      function line(row, total) {
+        const cost = row.priced ? amount(row.yuan) + (row.partial ? '（部分估算）' : '')
+          : row.partial ? '无价格' : '—';
+        return h('tr', {key: total ? 'total' : JSON.stringify([row.entry, row.preset, row.purpose])},
+          h('th', {scope:'row'}, total ? '合计' : row.label), ...[row.preset, row.purpose, row.calls,
+            tokens(row,'input'), tokens(row,'read','missingRead'), tokens(row,'write','missingWrite'),
+            tokens(row,'output'), cost].map((value,i) => h('td', {key:i}, value)));
+      }
+      const channels = legacy.channelStatus?.value?.messaging, spend = legacy.lifeView?.value?.life?.spend;
+      const oldCount = channel => channels ? channels[channel]?.usage?.requests ?? '暂无记录' : legacy.channelStatus?.status ?? '读取中';
+      return h(Card, {title:'模型用量', note:'只记当前伙伴工作区的调用。合计不含漏记的次数。'},
+        h('div', {className:'cp-inline-actions'},
+          h('label', null, '记录日期 ', h('input', {type:'date', value:day || view?.day || '', min:view?.minDay, max:view?.today,
+            onChange:e => setDay(e.target.value)})),
+          h('button', {type:'button', onClick:() => refresh(n => n + 1)}, '刷新')),
+        fault && h('p', {role:'alert'}, fault),
+        !fault && !view && h('p', {role:'status'}, '正在读取用量…'),
+        view && h(React.Fragment, null,
+          recovered && h('p', {role:'status'}, '已留档损坏的账本，并从新账本继续记录。'),
+          view.issue && h('p', {role:'alert'}, view.issue === 'upgrade' ? '账本格式较新，请升级 Her World。' : '账本暂时无法读取。'),
+          !view.issue && h('p', null, view.firstDay ? '合计从 ' + view.firstDay + ' 起记录。' : '账本从首次调用起记录。'),
+          !view.issue && (view.groups.length ? h('div', {className:'cp-usage-table'}, h('table', null,
+            h('thead', null, h('tr', null, ...['入口','预设','用途','次数','未命中输入','缓存读','缓存写','输出','估算花费'].map(name => h('th',{key:name,scope:'col'},name)))),
+            h('tbody', null, ...view.groups.map(row => line(row,false))), h('tfoot', null, line(view.summary,true))))
+            : h('p', null, view.today === view.day ? '今天还没有模型调用。' : '这一天没有模型调用。')),
+          !view.issue && view.groups.filter(row => row.entry === 'unknown').map(row => h('p', {
+            role:'alert', className:'cp-usage-alert', key:JSON.stringify([row.preset,row.purpose])},
+            '未归类 · ' + row.preset + ' / ' + (row.purpose || '普通对话') + ' · ' + row.calls + ' 次。这类调用找不到入口证据。')),
+          !view.issue && view.summary.missingUsage > 0 && h('p', null, '缺用量 ' + view.summary.missingUsage + ' 次，仅计次数。'),
+          !view.issue && view.prices.map(info => h('p', {key:info}, '价格缺项 · ' + info)),
+          Object.values(view.gaps).some(Boolean) && h('p', {role:'status'}, '漏记 · 写失败 ' + view.gaps.writeFailed
+            + ' 次，未绑定 ' + view.gaps.unbound + ' 次，换绑未记 ' + view.gaps.rebound + ' 次。'),
+          !view.issue && h(React.Fragment, null, h('h4', null, '旧统计对照'),
+            facts([['口径','旧统计 ／ 账本'], ['QQ 累计调用', oldCount('qq') + ' ／ ' + view.channels.qq],
+              ['微信累计调用', oldCount('wechat') + ' ／ ' + view.channels.wechat],
+              ['Life 当日估算', (legacy.lifeView?.value ? spend?.day === view.day ? amount(spend.yuan) : '当天无旧记录'
+                : legacy.lifeView?.status ?? '读取中') + ' ／ ' + amount(view.homeYuan)]]),
+            h('p', null, '渠道旧值是当前账号的全期累计，按会话与事件序号去重。消息和尝试各算一次，缺用量也计次，缓存写未计。账本合计所有账号的主人、访客和补答入口，包含未产生会话事件的失败流，此处排除辅助用途。'),
+            h('p', null, 'Life 旧值只保留最近一天，运行期间按处理时刻估算 home 带用量的助手消息，含部分输出。账本按结束时刻用旧单价估算当天 home 的普通调用，也含 Life 暂停期间。'),
+            h('p', {className:'cp-muted'}, '全新隔离安装便于对照。旧统计可能含启用账本前的记录。恢复离线备份会回卷账本，渠道及 Life 旧值保留。'))));
+    }
+
     function SettingsPage({ request, getAppearanceEditor }) {
       const [active, setActive] = useState('overview');
       const [documents,setDocuments]=useState({});
@@ -17985,6 +18061,7 @@ registerCompanion({
               numberField('offlineNeedCeilingPercent','离线需求温和上限（%）',100),numberField('offlineEnergyFloorPercent','离线精力温和下限（%）',100)),
             saveCompanion(['offlineBodyHours','offlineNeedCeilingPercent','offlineEnergyFloorPercent'],'保存离线身体设置')),
           h(LifePage, {key: workspaceId || 'unbound', workspaceId, request}));
+        if (active === 'usage') return workspaceId ? h(UsagePage, {key:workspaceId, workspaceId, request}) : needsWorkspace('查看用量');
         if (active === 'connections') return workspaceId?h(ChannelsPage,{key:workspaceId,workspaceId,request}):needsWorkspace('连接聊天渠道');
         if (active === 'emotion') return h(React.Fragment,null,
           h(EmotionEditor,{key:'emotion-'+(workspaceId||'unbound'),workspaceId,request,value:document.emotion,onChange:editDocument('emotion')}),
@@ -18163,7 +18240,7 @@ registerCompanion({
             return answer.value;
           } catch (failure) {
             if (failure.code && !failure.code.startsWith('gateway/')) throw failure;
-            if (['worldView', 'archiveFind', 'archiveRead'].includes(endpoint)) throw new Error('无法读取当前工作区资料，请检查连接后重试。');
+            if (['worldView', 'archiveFind', 'archiveRead', 'usageLedger'].includes(endpoint)) throw new Error('无法读取当前工作区资料，请检查连接后重试。');
             throw new Error(endpoint === 'snapshot' ? '无法读取设置，请检查 00-Core 和连接状态后重试。' : '保存结果未确认，请刷新核对实际状态后再操作。');
           } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
         };
