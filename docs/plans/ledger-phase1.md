@@ -236,4 +236,14 @@ Codex 第一轮挑刺的结论是「退回修改」，以下已采纳：
 
 ## 执行结果
 
+- 第 1 批已在 `9743d3b`，第 2–5 批从 `0857f9c` 续做，分为 02–05 四份补丁。04 单列按脚本生成的桌宠客户端。
+- `src/core/native/agent.ts` 在 Core 根作用域登记和撤销流监听，`src/core/usage/listener.ts` 旁观流，`ledger.ts` 校验标识、存原始计量并处理坏库，`gaps.ts` 按结束日持久化三类漏记。
+- `src/world/usage.ts` 实现带版本的估价，首版单价已核对 DeepSeek 官方价目。`arch/layers.json` 登记事件，`arch/storage.json` 登记独立文件及 Core kind。
+- `src/core/usage/report.ts` 按日聚合并算同口径对照，`src/core/console-operations.ts` 和 `src/console/settings.ts` 接入只读操作，`src/console/client.js` 实现分页。`src/desktop/platform/client.js` 和对应 `dist/src/**` 由构建生成。
+- `tests/core/usage-coverage.test.ts` 核对假适配器的调用、流结局和渠道事件，`usage-ledger.test.ts` 查内容哨兵、写入故障和单价。`tests/behavior-list/usage-ledger.test.mjs` 查设置读口、换绑、跨日和 Life 对账，`index.json` 登记换绑条目。`docs/architecture.md` 说明归属及回卷，`docs/product.md` 标明待隔离验收。
+- `pnpm run build` 通过，验收节的三文件快测 12 通过、0 失败。另跑入口归因及新增行为文件，4 通过、0 失败。`pnpm run check:arch` 通过，两个基线均无增减。
+- `pnpm run test:behavior-list` 的索引测试 11 通过、0 失败，行为条目 172 通过、1 失败。单独复跑 `3-ROOM-CHAT-02` 仍失败，假 Core 缺少 `usageEvidence.claim`，尚未执行换绑断言。
+- 按范围约束止步。登记调用来自已提交的第 1 批，真实 Core 已提供证据表。修复需要将 `tests/room/room-binding.test.mjs` 纳入允许修改的文件，在其夹具提供同一份证据表。
+- 待验收：修正夹具后重跑行为清单，再由合并方跑 `pnpm run verify`。双宿主、两份 profile、0.6.0 往返、真实窗口及付费对账尚未验证。首次账期和离线恢复都会影响旧值对照。
+
 ## 审查结论
