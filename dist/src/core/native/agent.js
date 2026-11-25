@@ -4,6 +4,7 @@ import { WorldRecall } from './recall.js';
 import { matchesNativeScope } from './conversation.js';
 import { installCompanionFoundation } from '../companion-foundation.js';
 import { installSourceFileGuard } from '../life-review-files.js';
+import { installUsageListener } from '../usage/listener.js';
 import { prepareLifeHistory, applyLifeHistory } from './history-maintenance.js';
 export const name = 'chatpet-agent';
 export const inject = ['petCore', 'petWorld', 'agents', 'systemPrompt', 'tools'];
@@ -20,17 +21,19 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
     const historyPrepared = new Map();
     let historyClosing = false;
     const recall = new WorldRecall();
+    const agentFor = (id) => ctx.agents.get(id) ?? agents.get(id);
     const nativeScopeFor = (id) => {
         const status = host.workspace.status();
         if (status.state !== 'ready' || !status.target)
             return;
-        const agent = ctx.agents.get(id) ?? agents.get(id);
+        const agent = agentFor(id);
         const guest = host.native.isGuest(id);
         if (!guest && (!agent || world.sessionStatus(agent.session)?.state !== 'ready'))
             return;
         return { workspaceId: status.target.id, path: status.target.path, storageId: host.workspace.storageId(), guest };
     };
     host.native.resolveNativeScope = nativeScopeFor;
+    const stopUsage = installUsageListener(ctx, host, agentFor);
     const sameNativeScope = (id, expected) => matchesNativeScope(nativeScopeFor(id), expected);
     const currentExtensions = (saved) => [...saved.extensionAdmissions].every(lease => lease.isCurrent());
     const currentTurn = (id, saved) => sameNativeScope(id, saved.scope)
@@ -417,6 +420,7 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
     }, { global: true });
     let stopped;
     const stop = () => stopped ??= (async () => {
+        stopUsage();
         historyClosing = true;
         historyReady.clear();
         historyPrepared.clear();

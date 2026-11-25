@@ -14,6 +14,7 @@ import type { PetWorld } from '../../world/service.js';
 import {matchesNativeScope,type NativeScope,type NativeSourceSelection} from './conversation.js';
 import {installCompanionFoundation} from '../companion-foundation.js';
 import {installSourceFileGuard} from '../life-review-files.js';
+import {installUsageListener} from '../usage/listener.js';
 import {prepareLifeHistory,applyLifeHistory,type HistoryProjection} from './history-maintenance.js';
 
 export const name = 'chatpet-agent';
@@ -42,15 +43,17 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
   const historyPrepared=new Map<Agent,{scope:NativeScope;changes:HistoryProjection[]}>();
   let historyClosing=false;
   const recall = new WorldRecall();
+  const agentFor = (id:string) => ctx.agents.get(id as SessionId) ?? agents.get(id);
   const nativeScopeFor = (id:string):NativeScope|undefined => {
     const status=host.workspace.status();
     if(status.state!=='ready' || !status.target)return;
-    const agent=ctx.agents.get(id as SessionId) ?? agents.get(id);
+    const agent=agentFor(id);
     const guest=host.native.isGuest(id);
     if(!guest && (!agent || world.sessionStatus(agent.session)?.state!=='ready'))return;
     return {workspaceId:status.target.id,path:status.target.path,storageId:host.workspace.storageId(),guest};
   };
   host.native.resolveNativeScope=nativeScopeFor;
+  const stopUsage = installUsageListener(ctx, host, agentFor);
   const sameNativeScope=(id:string,expected:NativeScope)=>matchesNativeScope(nativeScopeFor(id),expected);
   const currentExtensions=(saved:ManagedTurn)=>[...saved.extensionAdmissions].every(lease=>lease.isCurrent());
   const currentTurn=(id:string,saved:ManagedTurn)=>sameNativeScope(id,saved.scope)
@@ -328,6 +331,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
   },{global:true});
   let stopped:Promise<void>|undefined;
   const stop=()=>stopped ??= (async()=>{
+    stopUsage();
     historyClosing=true;historyReady.clear();historyPrepared.clear();stopHistoryStatus();
     await Promise.allSettled([...pending]);await archiveTail;
     disposePrompt();disposeFoundation();
