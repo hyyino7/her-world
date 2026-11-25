@@ -130,6 +130,7 @@
   - `src/world/usage.ts` — 带版本的价表和 `priceCall`
   - `src/living/plan/tool-policy.ts`、`src/channels/sessions.ts`、`src/room/chat.ts` — 各自分支的 `usageEntry`；Room 私聊发送时登记证据
   - `src/desktop/conversation.ts` — 发送时登记证据
+  - `src/desktop/index.ts` — 构造 `Conversation` 时传入登记证据的回调（`src/desktop/index.ts:44-47`；执行第一轮发现漏列，Claude 补入）
   - `src/desktop/features.ts` — 碎碎念、梦话加 `purpose` 并声明用途
   - `src/console/settings.ts` — `usageLedger` 端点映射
   - `src/console/client.js` — 「用量」分页
