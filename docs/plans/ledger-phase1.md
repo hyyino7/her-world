@@ -137,6 +137,7 @@
   - `src/desktop/platform/client.js` — 只经生成脚本更新
   - `arch/layers.json` — core 的 `subscribes` 加 `llm/stream`
   - `arch/storage.json` — 新条目 `usage-ledger`（独立文件）和 `record-usage-ledger-gaps`（Core kind），各附写者证据
+  - `tests/room/room-binding.test.mjs` — 假 Core 补上 `usageEvidence`，跟上第 1 批的宿主接口（执行时发现，Claude 补入）
   - `tests/core/usage-*.test.ts`、`tests/behavior-list/usage-ledger.test.mjs`、`tests/behavior-list/index.json`
   - `docs/architecture.md`（4.1 由「计划」改为现状并写明独立文件的理由、第 4 节拥有者表、3.1 写明两项检查已建立、5.8.6 补账本一行、7.2.1 补离线恢复会回卷账本）、`docs/product.md`（当前状态）
 - 必须复用：
@@ -242,8 +243,8 @@ Codex 第一轮挑刺的结论是「退回修改」，以下已采纳：
 - `src/core/usage/report.ts` 按日聚合并算同口径对照，`src/core/console-operations.ts` 和 `src/console/settings.ts` 接入只读操作，`src/console/client.js` 实现分页。`src/desktop/platform/client.js` 和对应 `dist/src/**` 由构建生成。
 - `tests/core/usage-coverage.test.ts` 核对假适配器的调用、流结局和渠道事件，`usage-ledger.test.ts` 查内容哨兵、写入故障和单价。`tests/behavior-list/usage-ledger.test.mjs` 查设置读口、换绑、跨日和 Life 对账，`index.json` 登记换绑条目。`docs/architecture.md` 说明归属及回卷，`docs/product.md` 标明待隔离验收。
 - `pnpm run build` 通过，验收节的三文件快测 12 通过、0 失败。另跑入口归因及新增行为文件，4 通过、0 失败。`pnpm run check:arch` 通过，两个基线均无增减。
-- `pnpm run test:behavior-list` 的索引测试 11 通过、0 失败，行为条目 172 通过、1 失败。单独复跑 `3-ROOM-CHAT-02` 仍失败，假 Core 缺少 `usageEvidence.claim`，尚未执行换绑断言。
-- 按范围约束止步。登记调用来自已提交的第 1 批，真实 Core 已提供证据表。修复需要将 `tests/room/room-binding.test.mjs` 纳入允许修改的文件，在其夹具提供同一份证据表。
+- `pnpm run test:behavior-list` 的索引测试 11 通过、0 失败；行为条目先是 172 通过、1 失败（`3-ROOM-CHAT-02` 的假 Core 缺 `usageEvidence`，在换绑断言前失败）。
+- Claude 把 `tests/room/room-binding.test.mjs` 补进允许修改，夹具补上同一份证据表，断言未改；复跑 `pnpm run test:behavior-list` 173 条全部通过，快测 16 通过、0 失败，`pnpm run check:arch` 新增 0。
 - 待验收：修正夹具后重跑行为清单，再由合并方跑 `pnpm run verify`。双宿主、两份 profile、0.6.0 往返、真实窗口及付费对账尚未验证。首次账期和离线恢复都会影响旧值对照。
 
 ## 审查结论
