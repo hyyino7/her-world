@@ -10,6 +10,61 @@ const {say} = await import(new URL('../../../scripts/checks/lib/native-conversat
 const input = (source: any) => createUserMessage({source,content:[{type:'text',text:'synthetic input'}]});
 const route = {provider:'deepseek', model:'deepseek-flash'};
 
+test('压缩先注册时，步前压缩按本步输入记录 Life 首步和主人接管', async t => {
+  const f = await fixture(t,{configure(services: Map<string,any>) {
+    const ctx = services.get('agents').get('home').ctx;
+    ctx.on('agent/pre-step',async ({agent,signal}: {agent:{id:string}; signal:AbortSignal}, next:()=>Promise<unknown>) => {
+      if (!signal.aborted) {
+        const options = {...route,sessionId:agent.id,purpose:'compaction'};
+        const stream = await f.middleware('llm/stream',[options],async function* () { yield* say('synthetic summary'); });
+        for await (const _ of stream) { /* finish the summary before admitting the step */ }
+      }
+      return next();
+    });
+  }});
+  await f.enable();
+  const home = (await f.home()).id;
+  const active = await f.begin(home,input({kind:'dsh-world-life'}));
+  await f.step(active,[input({kind:'user'})]);
+  await f.end(active);
+  const entries = readLedger(f.repo,db=>db.prepare("SELECT entry FROM calls WHERE purpose='compaction' ORDER BY rowid").all().map(r=>r.entry));
+  assert.deepEqual(entries,['life','dsh']);
+});
+
+test('步前拒绝、异常或取消撤销临时入口，重试还能使用发送方证据', async t => {
+  const f = await fixture(t,{life:false,economy:false});
+  const agent = f.agent('home'), evidence = f.host.native.usageEvidence;
+  const message = input({kind:'user'});
+  evidence.claim(agent.id,message.id,'room');
+  const enter = {kind:'enter',messages:[]};
+  const attempt = (turn:number, step:number, controller:AbortController, next:()=>Promise<unknown>) =>
+    f.middleware('agent/pre-step',[{agent,turn,step,messages:[message],signal:controller.signal}],next);
+  const current = () => evidence.step(agent.id);
+  const rejected = await attempt(1,1,new AbortController(),async () => {
+    assert.equal(current(),'room');
+    return {kind:'reject'};
+  });
+  assert.equal(rejected.kind,'reject');
+  assert.equal(current(),undefined);
+  const active = await f.begin(agent.id);
+  assert.equal(current(),'dsh');
+  const controller = new AbortController();
+  await attempt(active.turn,active.step+1,controller,async () => {
+    assert.equal(current(),'room');
+    controller.abort();
+    assert.equal(current(),'dsh');
+    return enter;
+  });
+  assert.equal(current(),'dsh');
+  const failure = Error('synthetic pre-step failure');
+  await assert.rejects(attempt(active.turn,active.step+1,new AbortController(),async () => { throw failure; }),failure);
+  assert.equal(current(),'dsh');
+  await f.step(active,[message]);
+  assert.equal(current(),'room');
+  await f.end(active);
+  assert.equal(current(),undefined);
+});
+
 test('假适配器逐笔核对共享 home、桌面、房间、生活、渠道、独立调用及辅助用途', async t => {
   const received: unknown[][] = [];
   let expected = '', preset = 'standard', expectedPreset = preset, f: any;

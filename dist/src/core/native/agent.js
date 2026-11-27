@@ -347,28 +347,41 @@ export function apply(ctx, host = ctx.petCore, world = ctx.petWorld) {
             else
                 host.native.memory?.clear(payload.agent.id);
         }
-        const decision = await next();
-        if (decision.kind !== 'enter' || !currentTurn(payload.agent.id, saved))
-            return decision.kind === 'enter' ? { kind: 'reject' } : decision;
-        host.native.usageEvidence.admit(payload.agent.id, stepInputs ?? []);
-        if (!first)
+        if (payload.signal.aborted)
+            return { kind: 'reject' };
+        const finishEntry = host.native.usageEvidence.beginStep(payload.agent.id, stepInputs ?? [], payload.signal);
+        let entered = false;
+        try {
+            let decision = await next();
+            if (decision.kind !== 'enter')
+                return decision;
+            if (payload.signal.aborted || !currentTurn(payload.agent.id, saved))
+                return { kind: 'reject' };
+            if (first) {
+                if (checkMemory)
+                    try {
+                        checkMemory();
+                    }
+                    catch (error) {
+                        text = '';
+                        host.native.memory?.clear(payload.agent.id);
+                        host.native.memory?.unavailable(error);
+                    }
+                // An empty replacement explicitly retires the prior recall after toggle or failure.
+                recall.refresh(payload.agent.session, saved.scope.storageId, true);
+                const message = recall.prepare(payload.agent.session, text);
+                decision = { ...decision, startsRequestSeries: true, messages: message ? [message, ...decision.messages] : decision.messages };
+            }
+            entered = true;
             return decision;
-        if (checkMemory)
-            try {
-                checkMemory();
-            }
-            catch (error) {
-                text = '';
-                host.native.memory?.clear(payload.agent.id);
-                host.native.memory?.unavailable(error);
-            }
-        // An empty replacement explicitly retires the prior recall after toggle or failure.
-        recall.refresh(payload.agent.session, saved.scope.storageId, true);
-        const message = recall.prepare(payload.agent.session, text);
-        return { ...decision, startsRequestSeries: true, messages: message ? [message, ...decision.messages] : decision.messages };
+        }
+        finally {
+            finishEntry?.(entered);
+        }
     };
-    ctx.on('agent/pre-step', onStep);
-    host.native.attachGuest = scope => { disposePrompt.attach(scope); scope.on('agent/pre-step', onStep); scope.on('agent/request', onRequest); };
+    // Basic compaction uses a normal listener and may already be mounted by the preset.
+    ctx.on('agent/pre-step', onStep, { prepend: true });
+    host.native.attachGuest = scope => { disposePrompt.attach(scope); scope.on('agent/pre-step', onStep, { prepend: true }); scope.on('agent/request', onRequest); };
     ctx.on('session/event', (session, event) => {
         if (String(event.type) === 'compaction/end' && !event.data.error)
             recall.compacted(session);

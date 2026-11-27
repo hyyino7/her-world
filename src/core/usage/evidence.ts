@@ -5,7 +5,7 @@ type Admission = { message: SourceInput['message']; selection: { branch: Pick<So
 
 export class UsageEvidence {
   private readonly claims = new Map<string, SenderEntry>();
-  private readonly steps = new Map<string, UsageEntry>();
+  private readonly steps = new Map<string, {entry: UsageEntry}>();
 
   claim(sessionId: string, messageId: string, entry: SenderEntry) {
     this.claims.set(JSON.stringify([sessionId, messageId]), entry);
@@ -16,15 +16,32 @@ export class UsageEvidence {
     this.claims.get(JSON.stringify([sessionId, message.id])) ?? 'dsh';
 
   admit(sessionId: string, accepted: readonly Admission[]) {
-    // Empty follow-up steps continue the same turn's admitted input.
-    const first = accepted.find(item => item.selection.branch.turnKind === 'foreground') ?? accepted[0];
-    if (!first) return;
-    const declaration = first.selection.branch.usageEntry;
-    const entry = typeof declaration === 'function' ? declaration({sessionId, message:first.message}) : declaration;
-    this.steps.set(sessionId, entry ?? 'unknown');
-    for (const {message} of accepted) this.claims.delete(JSON.stringify([sessionId, message.id]));
+    this.beginStep(sessionId, accepted)?.(true);
   }
 
-  step(sessionId: string) { return this.steps.get(sessionId); }
+  beginStep(sessionId: string, accepted: readonly Admission[], signal?: AbortSignal) {
+    // Empty follow-up steps continue the same turn's admitted input.
+    const first = accepted.find(item => item.selection.branch.turnKind === 'foreground') ?? accepted[0];
+    if (!first || signal?.aborted) return;
+    const declaration = first.selection.branch.usageEntry;
+    const entry = typeof declaration === 'function' ? declaration({sessionId, message:first.message}) : declaration;
+    const previous = this.steps.get(sessionId), current = {entry: entry ?? 'unknown'} as const;
+    this.steps.set(sessionId, current);
+    const rollback = () => {
+      if (this.steps.get(sessionId) !== current) return;
+      if (previous) this.steps.set(sessionId, previous);
+      else this.steps.delete(sessionId);
+    };
+    signal?.addEventListener('abort', rollback, {once:true});
+    return (entered: boolean) => {
+      signal?.removeEventListener('abort', rollback);
+      if (!entered) rollback();
+      else if (this.steps.get(sessionId) === current) {
+        for (const {message} of accepted) this.claims.delete(JSON.stringify([sessionId, message.id]));
+      }
+    };
+  }
+
+  step(sessionId: string) { return this.steps.get(sessionId)?.entry; }
   end(sessionId: string) { this.steps.delete(sessionId); }
 }

@@ -568,7 +568,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 接点 | 现状 |
 | --- | --- |
 | Life 预算与渠道统计 | Life 从共享 home 的 `assistant/message` 累计估价，达到日预算提醒一次，可进入当前回合后续步骤或触发提醒轮次。渠道主人私聊可能与该累计重叠。渠道只计已核验的渠道输入，处理 `assistant/message` 和 `assistant/attempt`，按会话事件去重并记录缺报。独立 Desktop、Room、碎碎念没经过这两条统计路径（`vendor/dsh-world/lib/life/runtime.js:954–975,1043–1052`、`vendor/dsh-world/lib/life/pricing.js:1–30`、`src/channels/usage.ts:8–35`、`src/desktop/features.ts:198–232`、`src/room/chat.ts:131–137`）。 |
-| 用量归因 | 已准入分支与发送方登记决定本步入口。辅助调用沿用在途步骤，无在途步骤时归后台整理。预设取调用开始时的组合预设，碎碎念和梦话通过用途识别。Desktop 或 Room 消息跨重启排队时会丢失内存中的发送方证据，准入后归到 DSH 原生。 |
+| 用量归因 | 已准入分支与发送方登记决定本步入口。Core 显式前置步前准入，让基础压缩在同一条链里读到临时入口；下游拒绝或取消时撤销。辅助调用沿用在途步骤，无在途步骤时归后台整理。预设取调用开始时的组合预设，碎碎念和梦话通过用途识别。Desktop 或 Room 消息跨重启排队时会丢失内存中的发送方证据，准入后归到 DSH 原生。 |
 | 流与用量 | 锁定包的 `llm/stream` 在适配器流外。已报告的输入可由未命中、缓存读、缓存写相加，输出另计。会话事件可供旧口径对账。适配器内另发网络请求时，流级观测未必能分解失败及重试的账单（`node_modules/@deepseek-ai/dsh-llm/lib/index.js:2396–2403`、`node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:160–180`、`src/channels/usage.ts:23–34`）。 |
 | 模型选择 | 预设用于选插件组合，Her World 的 home 与 guest 选择见 5.8.2。锁定包的会话模型选择把服务商、模型和推理强度写入 `model/selection`，切换提示取决于作用域装载的中间件。独立调用可直接传服务商、模型、推理强度、用途和取消信号，会话 ID 可省。碎碎念和梦话已复用该入口并限制时长（`node_modules/@deepseek-ai/dsh-agent/lib/types/model-selection.js:75–92,116–138`、`node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:538–580`、`src/core/companion-foundation.ts:124–129`、`src/channels/guest.ts:5–22`、`src/desktop/features.ts:198–232`）。 |
 

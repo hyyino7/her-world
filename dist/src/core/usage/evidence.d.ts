@@ -12,6 +12,7 @@ export declare class UsageEvidence {
     claim(sessionId: string, messageId: string, entry: SenderEntry): void;
     owner: ({ sessionId, message }: SourceInput) => UsageEntry;
     admit(sessionId: string, accepted: readonly Admission[]): void;
+    beginStep(sessionId: string, accepted: readonly Admission[], signal?: AbortSignal): ((entered: boolean) => void) | undefined;
     step(sessionId: string): "life" | "desktop" | "unknown" | "review" | "dsh" | "television" | "qq-owner" | "qq-guest" | "qq-nudge" | "wechat-owner" | "wechat-guest" | "chatpet-whisper" | "chatpet-dream" | "maintenance" | "room" | undefined;
     end(sessionId: string): void;
 }
