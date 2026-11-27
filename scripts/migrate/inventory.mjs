@@ -75,15 +75,17 @@ export function inventory(installation) {
   const coverage = storage.entries.map(entry => {
     if (entry.paths.every(path => path.startsWith('localStorage:'))) return {id:entry.id, state:'browser-check-required'};
     const matches = [...logical].filter(([,path]) => entry.paths.some(pattern => path === pattern.replace(/\/\*\*$/, '') || matchesGlob(path, pattern)));
-    // Directory entries may be empty; a named container still requires its file.
+    const paths = matches.map(([path]) => path);
     const containers = (entry.locations ?? [entry]).map(location => location.container.split('#')[0]).filter(path => !/[*?[\]{}()]/.test(path));
+    if (entry.lazy && !matches.some(([,path]) => containers.includes(path)))
+      return {id:entry.id, state:'not-created', paths};
     const present = containers.length
       ? matches.some(([file,path]) => metadataByPath.has(file) && containers.includes(path))
       : matches.length > 0;
     const tables = [...new Set(matches.flatMap(([path]) => metadataByPath.get(path)?.tables?.map(table => table.name) ?? []))];
     const missingTables = (entry.tables ?? (entry.selector?.table ? [entry.selector.table] : [])).filter(table => !tables.includes(table));
     return {id:entry.id, state:present && !missingTables.length ? 'present' : 'missing',
-      paths:matches.map(([path]) => path), ...(missingTables.length ? {missingTables} : {})};
+      paths, ...(missingTables.length ? {missingTables} : {})};
   });
   const operational = ['.chatpet/README.md','.chatpet/data/storage-manifest.json','.chatpet/data/migrations.jsonl','.chatpet/data/migration.lock'];
   const extra = files.filter(file => {

@@ -750,6 +750,8 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 支持基线是已迁移的 0.5.0。运行时和离线工具核对工作区清单 v3、当前存储版本（Core 3、Living 4）和绑定证据。全新绑定写独立的 `fresh` 钱包证明；已迁移绑定读取 `migrations.jsonl` 的完成凭证（`src/core/workspace.ts`、`src/core/storage-migration.ts`）。未满足准入时，设置页给出固定拒写原因并指向历史标签。0.4.0 的操作见 [v0.5.0](https://github.com/hyyino7/her-world/tree/v0.5.0)。
 
+`arch/storage.json` 中的 `lazy: true` 表示容器在首次写入时建立，离线盘点在文件缺席时报 `not-created`，文件存在时照常检查声明的表。
+
 <a id="72-回退"></a>
 
 ### 7.2 换包回退与离线恢复

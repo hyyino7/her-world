@@ -16,6 +16,10 @@ test(`current: inventory emits metadata and detects discrepancies without source
   assert.ok(report.files.some(file => file.tables?.some(table => table.name === 'records' && table.rows > 0)));
   assert.deepEqual(fileHashes(f.managed),before);
   assert.deepEqual(inventoryPlan(f.installation).plan.roots,planFor(f).roots,'Metadata mirror preserves the shared backup root inventory');
+  assert.equal(report.coverage.find(row => row.id === 'usage-ledger').state,'not-created');
+  mkdirSync(join(f.data,'usage'));
+  const ledger = new DatabaseSync(join(f.data,'usage/ledger.sqlite'));
+  ledger.exec('CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT)'); ledger.close();
   const db = new DatabaseSync(join(f.config.dataDir,'core.sqlite'));
   db.prepare('INSERT INTO records(kind,id,value) VALUES(?,?,?)').run('SYNTHETIC_UNKNOWN_KIND_817','fixture','"SYNTHETIC_HIDDEN_VALUE_817"');
   db.close();
@@ -26,6 +30,8 @@ test(`current: inventory emits metadata and detects discrepancies without source
   const recent = new DatabaseSync(join(f.data,'memory/recent-interactions.sqlite'));
   recent.exec('DROP TABLE recent'); recent.close();
   const missing = inventory(f.installation);
+  assert.ok(missing.differences.missing.includes('usage-ledger'));
+  assert.deepEqual(missing.coverage.find(row => row.id === 'usage-ledger').missingTables,['calls']);
   assert.ok(missing.differences.missing.includes('emotion-recent'));
   assert.deepEqual(missing.coverage.find(row => row.id === 'emotion-recent').missingTables,['recent']);
   for (const secret of ['SYNTHETIC_UNKNOWN_KIND_817','SYNTHETIC_HIDDEN_VALUE_817','SYNTHETIC_HIDDEN_FILE_817']) assert.ok(!output.includes(secret));
