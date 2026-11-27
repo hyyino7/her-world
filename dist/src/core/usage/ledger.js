@@ -113,7 +113,7 @@ export function appendUsage(root, row) {
         const archived = (file) => archive + file.slice(ledgerFiles[0].length);
         let time = Date.now(), archive;
         do {
-            archive = join(directory, 'ledger.corrupt-' + time++ + '.sqlite');
+            archive = path + '.corrupt-' + time++;
         } while (ledgerFiles.some(file => lstatSync(archived(file), { throwIfNoEntry: false })));
         // Move the main file last so a sidecar failure cannot attach old data to a new DB.
         for (const file of ledgerFiles.slice(1)) {

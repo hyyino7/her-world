@@ -7,6 +7,7 @@ import { inventoryPlan } from '../../scripts/migrate/inventory-plan.mjs';
 import { inventory } from '../../scripts/migrate/inventory.mjs';
 import { fileHashes } from '../../scripts/lib/repo-storage.mjs';
 import { content } from '../../scripts/fixtures/synthetic-companion.mjs';
+import { appendUsage, usageDay } from '../../dist/src/core/usage/ledger.js';
 import { planFor, fixture } from './helpers.mjs';
 
 test(`current: inventory emits metadata and detects discrepancies without source writes`, {timeout:60000}, async t => {
@@ -49,4 +50,24 @@ test(`current: inventory follows the selected nondefault Bank with an empty defa
   const report = inventory(f.installation);
   assert.equal(report.coverage.find(row => row.id === 'memory').state,'present');
   assert.deepEqual(report.differences.extra,[]);
+});
+
+test('坏账本恢复后，盘点只读新库的表，原库及旁文件留档均已登记', {timeout:60000}, async t => {
+  const f = await fixture(t), directory = join(f.data,'usage'), path = join(directory,'ledger.sqlite');
+  mkdirSync(directory);
+  writeFileSync(path,'synthetic damaged ledger');
+  writeFileSync(path+'-shm','synthetic sidecar');
+  const at = Date.now();
+  appendUsage(f.repo,{started_at:at, ended_at:at, day:usageDay(at), session_id:null,
+    entry:'dsh', preset:'standard', purpose:null, provider:'fixture', model:'fixture', requested_effort:null,
+    outcome:'completed', input_miss:null, output:null, cache_read:null, cache_write:null, reasoning:null});
+  const report = inventory(f.installation);
+  assert.deepEqual(report.differences,{missing:[],extra:[]});
+  const archives = report.files.filter(file => file.path.includes('ledger.sqlite.corrupt-'));
+  assert.equal(archives.length,2);
+  assert.ok(archives.every(file => !('tables' in file)));
+  const coverage = report.coverage.find(row => row.id === 'usage-ledger');
+  assert.ok(archives.every(file => coverage.paths.includes(file.path)));
+  const live = report.files.find(file => file.path.endsWith('/ledger.sqlite'));
+  assert.equal(live.tables.find(table => table.name === 'calls').rows,1);
 });

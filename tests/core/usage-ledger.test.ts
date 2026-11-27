@@ -92,7 +92,7 @@ test('多步假聊天在目录只读、模拟磁盘满和坏库时继续，漏�
   await chat();
   assert.equal(count(),2);
   assert.equal(gaps().writeFailed,4);
-  const archive = readdirSync(dir).find(name=>/^ledger\.corrupt-\d+\.sqlite$/.test(name))!;
+  const archive = readdirSync(dir).find(name=>/^ledger\.sqlite\.corrupt-\d+$/.test(name))!;
   assert.equal(readFileSync(join(dir,archive),'utf8'),'synthetic damaged sqlite');
   const newer = new DatabaseSync(path);
   newer.prepare("UPDATE meta SET value='2' WHERE key='version'").run(); newer.close();
