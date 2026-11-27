@@ -287,7 +287,7 @@ Room 直接使用 DSH 的工具与 `webServer`，窗口默认使用 DSH 自带�
 
 ### 4.1 用量账本的拥有者
 
-Core 在根作用域监听 `llm/stream`，按结束日记录当前伙伴的调用。账本采用独立 SQLite 文件，目录只读时聊天仍可使用 Core 数据库。首次写入在同一事务里建立格式版本、索引和首行，设置页只读打开。文件路径和 Core 漏记 kind 见[存储登记](../arch/storage.json)。写失败、未绑定及调用途中换绑的次数由该伙伴的 CoreStore 按结束日合存一条记录。
+Core 在根作用域监听 `llm/stream`，按结束日记录当前伙伴的调用。账本采用独立 SQLite 文件，目录只读时聊天仍可使用 Core 数据库。首次写入在同一事务里建立格式版本、索引和首行，设置页只读打开。文件路径和 Core 漏记 kind 见[存储登记](../arch/storage.json)。写失败、未绑定及调用途中换绑的次数由该伙伴的 CoreStore 按结束日合存一条记录。处于迁移停写状态时，监听者只记录警告。
 
 账本只保存时间、标识、结局和原始用量。`requested_effort` 表示请求的推理强度。花费按开始时刻匹配[版本价表](../src/world/usage.ts)及峰谷时段。读取到较新版本时提示升级。SQLite 明确报告损坏时，写入者将原库留档为 `ledger.sqlite.corrupt-<时间>`，旁文件在同名后保留 `-journal`、`-wal` 或 `-shm`，再建立新账本。独立个体新增和改变拥有者的数据见[10.8](#individual-ownership)。
 

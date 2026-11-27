@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {priceCall} from '../../src/world/usage.js';
 import {readGaps} from '../../src/core/usage/gaps.js';
+import {CONSOLE_WALLET_IMPORT_FILE} from '../../src/core/storage-migration.js';
 import {readLedger, usageDay} from '../../src/core/usage/ledger.js';
 
 const {fixture} = await import(new URL('../../../tests/behavior-list/fixture.mjs', import.meta.url).href);
@@ -114,4 +115,28 @@ test('估价按请求开始时的路由、版本和北京时间峰谷选择单�
   assert.equal(priceCall(counters,'deepseek','deepseek-flash',0).yuan,null);
   assert.equal(priceCall(counters,'other','deepseek-flash',at).yuan,null);
   assert.equal(priceCall(counters,'deepseek','unknown-model',at).yuan,null);
+});
+
+test('调用中途进入迁移停写，模型流照常结束，Core 漏记记录不增加', async t => {
+  const f = await fixture(t,{life:false,economy:false});
+  const workspace = f.host.workspace;
+  // Finish startup exports while ready so shutdown only observes this model call.
+  const transcripts = f.service('petTranscripts');
+  await transcripts.restore();
+  await transcripts.flush();
+  const gaps = workspace.runtime.store.db.prepare("SELECT id,value FROM records WHERE kind='usage-ledger-gaps'");
+  const before = gaps.all();
+  assert.equal(workspace.status().state,'ready');
+  const chunks = [{type:'text-delta',text:'synthetic reply'},{type:'usage',usage},{type:'finish',reason:{kind:'completed'}}];
+  const stream = await f.middleware('llm/stream',[options],async function* () { yield* chunks; });
+  const iterator = stream[Symbol.asyncIterator]();
+  assert.equal((await iterator.next()).value,chunks[0]);
+  unlinkSync(join(f.repo,'.chatpet/data',CONSOLE_WALLET_IMPORT_FILE));
+  assert.equal(workspace.status().state,'migration-required');
+  const remaining = [];
+  for await (const chunk of iterator) remaining.push(chunk);
+  assert.deepEqual(remaining,chunks.slice(1));
+  assert.deepEqual(gaps.all(),before);
+  assert.equal(existsSync(join(f.repo,'.chatpet/data/usage/ledger.sqlite')),false);
+  assert.ok(f.warnings.some((warning: unknown) => String(warning).includes('migration-required')));
 });

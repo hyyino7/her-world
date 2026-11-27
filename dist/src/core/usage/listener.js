@@ -72,12 +72,14 @@ export function installUsageListener(ctx, host, agentFor) {
             }
             if (gap) {
                 try {
-                    recordGap(host.workspace.runtime.store, day, gap);
+                    const reason = host.workspace.migrationReason();
+                    if (!reason)
+                        recordGap(host.workspace.runtime.store, day, gap);
+                    warn(reason ? '用量漏记 ' + gap + '（migration-required，' + reason + '）' : '用量漏记 ' + gap);
                 }
                 catch {
-                    warn('用量漏记计数写入失败');
+                    warn('用量漏记计数写入失败 ' + gap);
                 }
-                warn('用量漏记 ' + gap);
             }
         }
     }, { global: true });
