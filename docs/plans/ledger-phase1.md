@@ -102,7 +102,7 @@
 
 **漏记**不能写进可能已经写不进的账本，所以记在 Core 的新记录 kind `usage-ledger-gaps`（按天一条：写失败、未绑定、换绑三种计数），走现有 CoreStore 的 `put`，不改 `storage.ts`。新 kind 对 0.6.0 无影响（`src/core/storage.ts:169-181` 按 kind 精确查询）。
 
-**坏库的处置**：锁忙，下一条再试；只读、磁盘满，计漏记；格式版本比当前新，拒绝写、计漏记、分页提示升级；SQLite 明确报告文件损坏（`SQLITE_CORRUPT`、`SQLITE_NOTADB`），把原文件改名为 `ledger.corrupt-<时间>.sqlite` 留档，新建一份，分页提示一次。只凭「打不开」不改名，免得把完好的账本挪走。
+**坏库的处置**：锁忙，下一条再试；只读、磁盘满，计漏记；格式版本比当前新，拒绝写、计漏记、分页提示升级；SQLite 明确报告文件损坏（`SQLITE_CORRUPT`、`SQLITE_NOTADB`），把原文件改名为 `ledger.sqlite.corrupt-<时间>` 留档，旁文件在同名后保留原旁文件后缀，新建一份，分页提示一次。只凭「打不开」不改名，免得把完好的账本挪走。
 
 ### 5. 花费怎么算
 
@@ -139,6 +139,10 @@
   - `arch/storage.json` — 新条目 `usage-ledger`（独立文件）和 `record-usage-ledger-gaps`（Core kind），各附写者证据
   - `tests/room/room-binding.test.mjs` — 假 Core 补上 `usageEvidence`，跟上第 1 批的宿主接口（执行时发现，Claude 补入）
   - `tests/core/usage-*.test.ts`、`tests/behavior-list/usage-ledger.test.mjs`、`tests/behavior-list/index.json`
+  - 第一轮验收返工（主人 2026-11-26：「同意扩范围返工」）：
+    - `scripts/migrate/inventory.mjs`（高风险）：只为「审查结论」必须修第 1、2 条改。首次写入才建立的条目，文件不存在时不报缺失；坏库留档不当数据库打开。不改盘点的其他口径
+    - `scripts/arch/lib/storage.mjs`：只为必须修第 3 条改，按建表语句所在文件匹配存储条目
+    - `tests/migrate/*.test.mjs`、`tests/arch/storage-locations.test.mjs`：只新增覆盖上面三条的断言，不改、不放宽已有断言
   - `docs/architecture.md`（4.1 由「计划」改为现状并写明独立文件的理由、第 4 节拥有者表、3.1 写明两项检查已建立、5.8.6 补账本一行、7.2.1 补离线恢复会回卷账本）、`docs/product.md`（当前状态）
 - 必须复用：
   - `src/emotion/plugin.ts:289-295` — `llm/stream` 监听写法
@@ -247,4 +251,61 @@ Codex 第一轮挑刺的结论是「退回修改」，以下已采纳：
 - Claude 把 `tests/room/room-binding.test.mjs` 补进允许修改，夹具补上同一份证据表，断言未改；复跑 `pnpm run test:behavior-list` 173 条全部通过，快测 16 通过、0 失败，`pnpm run check:arch` 新增 0。
 - 待验收：修正夹具后重跑行为清单，再由合并方跑 `pnpm run verify`。双宿主、两份 profile、0.6.0 往返、真实窗口及付费对账尚未验证。首次账期和离线恢复都会影响旧值对照。
 
+### 第一轮返工
+
+1. 已修。账本声明 `lazy: true`，盘点对尚未创建的文件报 `not-created`；已有库缺 `calls` 时仍列入 `missing`。两条原有 0.5.0 零差异断言保留。
+2. 已修。主库与旁文件共用第 4 节的留档前缀并登记到 `paths`。实际恢复损坏的合成账本后，盘点只读新库的表，`missing`、`extra` 都为空。
+3. 已修。R5 对同名表先核对建表文件与 `evidence`，无文件证据时沿用原匹配。Core 和账本的 `meta` 分别归回各自数据库，账本的 `calls` 也已核对。
+4. 已修。rc.5 基础压缩以普通处理器先压缩再 `next()`（`DSH:dsh-compaction-basic/src/index.ts:157–175`）。旧接线谁先登记谁在外层；预设压缩先登记时，复现首步记 `maintenance`、接管步记 `life`。Core 和 guest 的准入显式 `prepend`，在 `await next()` 前登记临时入口，拒绝、取消或抛错时撤销，准入成功才消费发送方证据。链内压缩实测分别记 `life`、`dsh`。
+5. 已修。写漏记前检查 `migrationReason()`。调用中途停写后仍收到原有 finish，`core.sqlite` 的漏记记录保持原值，监听者输出停写警告。
+
+- `pnpm run build` 通过。指定快测 `node --test dist/tests/core/usage-ledger.test.js dist/tests/core/usage-coverage.test.js dist/tests/core/usage-entry.test.js dist/tests/core/tables-sources.test.js tests/behavior-list/usage-ledger.test.mjs tests/migrate/compatibility.test.mjs tests/migrate/inventory-paths.test.mjs tests/migrate/inventory.test.mjs tests/arch/storage-locations.test.mjs` 最终 32 通过、0 失败、0 跳过。首次整组 31 通过、1 失败，因停写夹具关闭时尚有初始化的会话日志待导出；现已在触发停写前排空。
+- `pnpm run check:arch` 通过，规则和词表基线均新增 0、消失 0。用锁定依赖的 `agentEvents` 和 Cordis waterfall 比较两种登记顺序及前置开关，4 项通过、0 失败（`node_modules/@deepseek-ai/dsh-agent/lib/index.js:384–386`、`node_modules/@deepseek-ai/cordis/lib/index.js:903–926`）。
+- 本轮未做建议修、全量门禁、rc.1／rc.5 双宿主隔离安装、两份 profile、0.6.0 往返、真实窗口及付费对账。
+
 ## 审查结论
+
+第一轮验收（2026-11-26，Codex `exec review --base main` 只读审查 + Claude 核实）。结论：**退回返工**。
+
+门禁：在 worktree 跑 `pnpm run verify`，测试阶段 1632 项里 1629 通过、3 失败，全部由本分支引起（失败在测试阶段，后面的 Python Memory、`check:release`、打包检查没有执行）。验收节的快测 20 通过、0 失败；`pnpm run check:arch` 新增 0；构建后工作区没有差异。
+
+### 必须修
+
+1. **离线盘点把还没创建的账本报成缺失**（verify 失败 2 项）— `arch/storage.json:13` 的 `usage-ledger` 声明了具名容器，`scripts/migrate/inventory.mjs:79-90` 把每个具名容器都当成必须存在的文件。已迁移的 0.5.0 工作区、从没调用过模型的新工作区都会报 `missing: ['usage-ledger']`：`tests/migrate/compatibility.test.mjs:14`、`tests/migrate/inventory-paths.test.mjs:29` 失败。这违反支持基线（0.5.0 盘点零差异）。改法：在 `arch/storage.json` 给这类「首次写入才建立」的条目加一个声明，盘点器对文件不存在的条目报「尚未建立」而不报缺失；文件已存在却缺表的照常报缺失。在初始化时提前建库解决不了，因为 0.5.0 工作区里本来就没有这个文件。**会改到高风险目录 `scripts/migrate/`，也不在「允许修改」里，等主人同意。** 已修，见[第一轮返工](#第一轮返工)第 1 条。
+2. **坏库留档会让离线盘点整体中断** — `src/core/usage/ledger.ts:105,112` 把坏库改名成 `ledger.corrupt-<时间>.sqlite`，`scripts/migrate/inventory.mjs:68-69` 对所有 `.sqlite` 后缀的文件都用 SQLite 打开，再查 `sqlite_schema`（`:24`）。打开已知损坏的文件会抛错，整次盘点退出；这份留档也不匹配任何存储条目，还会被列进 `extra`。改法：留档改用不会被当成数据库的后缀（例如 `ledger.sqlite.corrupt-<时间>`，旁文件跟着改），并把这个模式登记到 `usage-ledger` 的 `paths`；补一条测试：坏库恢复以后还能完成盘点。和第 1 条同属盘点器，一起等主人同意。 已修，见[第一轮返工](#第一轮返工)第 2 条。
+3. **架构扫描器把 Core 的 `meta` 表错归到账本**（verify 失败 1 项）— `arch/storage.json:13` 给 `usage-ledger` 声明了 `tables: ["calls","meta"]`，`scripts/arch/lib/storage.mjs:46-48` 按表名和写入模块找条目，于是 `src/core/storage.ts` 的 `CREATE TABLE meta` 被归到 `.chatpet/data/usage/ledger.sqlite#meta`，`tests/arch/storage-locations.test.mjs:51` 失败。`check:arch` 能过，只是因为两边的拥有者都是 core；但 R5 报告里的容器已经写错了。改法：扫描器先按建表语句所在文件匹配条目（例如条目的 `evidence` 里列了这个文件），再退回到按表名匹配；不要从 `tables` 里删掉 `meta`，盘点器还要靠它查表。`scripts/arch/` 不在「允许修改」里，属于范围扩大，和第 1、2 条一起请主人确认。 已修，见[第一轮返工](#第一轮返工)第 3 条。
+4. **步前压缩读不到本步入口** — `src/core/native/agent.ts:288` 在 `await next()` 返回之后才调用 `usageEvidence.admit`。DSH rc.5 的 `dsh-compaction-basic/src/index.ts:157-175`（安装包 `app.asar` 里的源码，Claude 已读过原文）在自己的 `agent/pre-step` 里先跑压力压缩，再调用 `next()`。结果是：首步触发的压缩记成「后台整理」；主人接管 Life 时触发的压缩沿用上一步的 Life 入口。这违反方案第 3 节「会话此刻有在途的一步，入口取这一步的」，而方案列出的覆盖场景里正好有「步间压缩」。`tests/core/usage-coverage.test.ts:72-75` 是在步骤结束后手动发流，没有走 `pre-step` 链，所以测不出来。改法：本步输入准入成功后立刻登记临时入口，让同一条 `pre-step` 链上的压缩读得到；被拒绝或取消时撤销。测试要在 `pre-step` 链里触发压缩（先确认 Her World 的处理器和压缩处理器谁在外层），首步和接管两种情况分别断言。 已修，见[第一轮返工](#第一轮返工)第 4 条。
+5. **迁移停写期间仍会写漏记** — `src/core/usage/listener.ts:43,57`。如果调用开始时工作区是 ready，结束前进入 `migration-required`，`homeScope()` 会返回 `undefined`，监听者判成 `rebound`，然后 `recordGap()` 直接调用 `CoreStore.transaction` 写 `core.sqlite`。这条路没有经过 `CoreRuntime.call()` 在 `src/core/runtime.ts:113,129` 做的 `assertMigrationReady()`，绕开了停写。没有绑定时（`gap='unbound'`）走的也是同一条路。改法：写漏记之前检查迁移状态（复用 `host.workspace.migrationReason()` 或 `assertMigrationReady()`）；停写期间只打警告，不写库，也不影响模型流。补一条测试：调用中途进入停写，`core.sqlite` 不新增记录。 已修，见[第一轮返工](#第一轮返工)第 5 条。
+
+### 建议修（不挡合并）
+
+- `src/core/usage/gaps.ts:11-13`：漏记只按日期做键。Core 库是运行期唯一的一份（`src/core/runtime.ts:49`），已有的同类记录都把 `storageId` 放进键里（`src/channels/usage.ts:11,26`，`companion-home` 按 `storageId` 一条）。建议键改成 `storageId + 日期`，与它们一致，`rebound` 记到调用开始时的那份绑定。
+- `src/core/usage/ledger.ts:32`：标识列的校验 `/^[\p{L}\p{N}_.:@/+~%-]+$/u` 比方案写的「不超过 128 字、不含换行的标识」更严，预设名或模型名里有空格、括号的调用会全部记成写失败。建议放宽到方案的口径（只拒绝控制字符和换行）。
+- `src/core/usage/evidence.ts:22-24`：来源分支的 `usageEntry` 回调如果抛错，会从 `agent/pre-step` 冒出去，中断已经准入的聊天。现有分支都不会抛错：渠道的 `speakerIdentity` 已在准入时校验过（`src/channels/sessions.ts:150,167`）。但「账本出错，聊天照常」是方案的不变量，建议加 `try/catch`，失败时降为 `unknown`。
+- `src/core/usage/report.ts:40`：Life 对照按打开页面时的 home ID 筛选当天的调用。如果当天中途 home 被归档、换成新 home，上午的花费就会从对照里消失。对照是只在一期存在的临时功能，可以接受，但建议在页面说明里写明。
+- `src/core/usage/listener.ts:14-16`：无会话调用只按 `sessionId='dsh-pet'` 和 `chatpet-` 前缀识别。同一个 Cordis 根下如果有两个 Core 实例，一方的碎碎念会同时记进两份账本。生产环境只有一个实例，暂时不需要改。
+- `src/core/usage/report.ts:39,65`：`firstDay`、`recovery` 被 TypeScript 推断成 `null`，已提交的 `dist/src/core/usage/report.d.ts:7,13` 也是这样。建议显式声明返回类型。
+- `docs/product.md` 新增的那句「已在开发分支接入」，合并时改成现状的写法。
+
+### 核实说明
+
+- 范围：除上面列出的必须修第 1–3 条要动的文件以外，`git diff --stat main...HEAD` 和「允许修改」一致；测试只有新增，加上 `tests/room/room-binding.test.mjs` 的夹具补字段，没有删除、跳过或放宽断言。
+- 概念与扩展检查属实：入口词表、`usageEntry`、`usageEvidence.claim`、`llm/stream` 订阅、`LlmRequestPurposeMap` 增补都和方案一致。
+- 项目没有 `docs/design.md`，样式规范这一项不适用。
+- 没有手动验证：真实设置窗口、rc.1／rc.5 双宿主和两份 profile、0.6.0 降级往返、付费隔离对账。这些留给主人在隔离安装上做。
+
+### 复查（第一轮返工后）
+
+主人 2026-11-26 同意扩大范围返工（「同意扩范围返工」）。Claude 逐条核对了改动，5 条必须修都已修好：
+
+1. `arch/storage.json:13` 给 `usage-ledger` 加了 `lazy: true`；`scripts/migrate/inventory.mjs:80-81` 在账本文件不存在时报 `not-created`，不进 `missing`；文件已存在但缺表的照常报缺失，新增了这条断言。
+2. 坏库留档改名为 `ledger.sqlite.corrupt-<时间>`（`src/core/usage/ledger.ts:105`），旁文件用同一个前缀，这个模式已登记进 `paths`；盘点不会再打开留档，新增的恢复后盘点测试通过。
+3. `scripts/arch/lib/storage.mjs:47-49` 先按建表语句所在文件匹配条目的 `evidence`，再按表名匹配，两种匹配都限定表名；`check:arch` 基线新增 0、消失 0。
+4. 步前准入改用 `prepend` 登记（`src/core/native/agent.ts:307-308`），在 `await next()` 之前登记本步入口，拒绝、取消或抛错时撤销（`src/core/usage/evidence.ts:22-44`）；测试在 `pre-step` 链里触发压缩，分别断言了首步和接管两种情况。**残余风险**：Core 自己的 prompt `pre-step` 处理器（`src/core/native/prompt.ts:143`，比准入先注册）从外层移到了内层，下游拒绝时会多一次 prompt `admit`。它本来就保留 restart 以兼容「准入后被取消」（`prompt.ts:151-152`），全量测试也没有发现回归；在 rc.1／rc.5 双宿主上建会话、压缩时要留意。
+5. `src/core/usage/listener.ts:58-60` 写漏记前检查 `migrationReason()`，停写期间只打警告。
+
+测试改动只改了留档文件名的匹配模式，没有删除、跳过或放宽其他断言。
+
+门禁：`pnpm run verify` 通过，`{"verified":true,"testFiles":176,"modelCalls":0}`；Node 测试 1637 通过、0 失败；Python Memory 22 项 OK；打包检查通过。`pnpm run test:behavior-list` 173 条全部通过。
+
+结论：**可以合并**。「建议修」各条留作后续，不影响合并。合并时把 `docs/product.md` 那句「已在开发分支接入」改成现状的写法。
