@@ -1957,6 +1957,15 @@
       "families": [
         "关闭后晚到的录音与取消"
       ]
+    },
+    {
+      "id": "LEDGER-BINDING-01",
+      "categories": ["换目录时在途请求不写旧目录"],
+      "level": "L2",
+      "file": "tests/behavior-list/usage-ledger.test.mjs",
+      "name": "模型调用途中换绑又返回时，两份账本都不写，漏记可从设置读回",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }

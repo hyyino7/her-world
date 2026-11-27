@@ -55,7 +55,7 @@ export function createLifeSourceAdapter(ctx:Context,host:PetCoreHost,accepts:(se
   const branch=(kind:NonNullable<ReturnType<typeof classify>>):SourceBranch<LifeSourceContext>=>{
     const review=kind==='review';
     return {
-      turnKind:'background',toolSource:kind,
+      turnKind:'background',toolSource:kind,usageEntry:kind,
       toolPolicy:{
         install:agent=>restrictLifeTools(host.native.toolTable,agent.ctx.tools,lifeInheritedToolNames(ctx.tools,agent,review),review),
         allows:exec=>lifeToolAllowed(host.native.toolTable,exec.name,review),

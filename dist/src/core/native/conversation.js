@@ -7,6 +7,7 @@ import { RegistrationTable } from '../tables/registry.js';
 import { CompanionToolTable } from '../tables/tools.js';
 import { CompanionPorts } from '../tables/companion-ports.js';
 import { VoiceTable } from '../tables/voice.js';
+import { UsageEvidence } from '../usage/evidence.js';
 import { ConsoleTable } from '../tables/console.js';
 export const OWNER_LIFE_TOOL_SOURCES = Object.freeze(COMPANION_TOOL_SOURCES.filter(source => source === 'owner' || source === 'life' || source === 'review'));
 export function matchesNativeScope(current, expected) {
@@ -42,6 +43,7 @@ function classifyOwner(message) {
 /** Scoped services for the existing DSH Agent; only autonomous inputs have extra allowances. */
 export class CoreNative {
     runtime;
+    usageEvidence = new UsageEvidence();
     memory;
     memoryEnabled = true;
     toolTable = new CompanionToolTable();
@@ -238,7 +240,7 @@ export class CoreNative {
             id: 'core-owner', sources: ['user'], order: 0, classify: classifyOwner, policyRows: [homePolicy],
             branches: {
                 owner: {
-                    turnKind: 'foreground', toolSource: 'owner', toolPolicy: null,
+                    turnKind: 'foreground', toolSource: 'owner', toolPolicy: null, usageEntry: this.usageEvidence.owner,
                     memoryObservation: {
                         input: ({ sessionId, isGuest }) => {
                             const guest = isGuest();

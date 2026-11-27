@@ -7,6 +7,7 @@ import {Context} from '@deepseek-ai/cordis';
 import {NativeTranscripts} from '../../dist/src/core/native/transcripts.js';
 import {digest} from '../../dist/src/core/storage.js';
 import {VoiceTable} from '../../dist/src/core/tables/voice.js';
+import {UsageEvidence} from '../../dist/src/core/usage/evidence.js';
 import {Room} from '../../dist/src/room/plugin.js';
 
 function fixture(t) {
@@ -25,7 +26,7 @@ function fixture(t) {
     storageId: () => target.id,
     homeScope: () => ({workspaceId: target.id, path: target.path, storageId: target.id, bootId: 'fixture', generation}),
     runtime: {identity: () => ({displayName:'Fixture'}), config: {companionId:'fish', scopeId:'scope', ownerActorId:'owner'}},
-  }, native: {voiceTable}};
+  }, native: {voiceTable, usageEvidence: new UsageEvidence()}};
   const services = {workspaceRegistry, attachments: {admitPromptContent: async input => input}};
   const listeners = new Map();
   const ctx = {root: rootContext, [Context.isolate]: rootContext[Context.isolate], workspaceRegistry, petCore: host,

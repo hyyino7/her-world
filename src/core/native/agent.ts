@@ -14,6 +14,7 @@ import type { PetWorld } from '../../world/service.js';
 import {matchesNativeScope,type NativeScope,type NativeSourceSelection} from './conversation.js';
 import {installCompanionFoundation} from '../companion-foundation.js';
 import {installSourceFileGuard} from '../life-review-files.js';
+import {installUsageListener} from '../usage/listener.js';
 import {prepareLifeHistory,applyLifeHistory,type HistoryProjection} from './history-maintenance.js';
 
 export const name = 'chatpet-agent';
@@ -42,15 +43,17 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
   const historyPrepared=new Map<Agent,{scope:NativeScope;changes:HistoryProjection[]}>();
   let historyClosing=false;
   const recall = new WorldRecall();
+  const agentFor = (id:string) => ctx.agents.get(id as SessionId) ?? agents.get(id);
   const nativeScopeFor = (id:string):NativeScope|undefined => {
     const status=host.workspace.status();
     if(status.state!=='ready' || !status.target)return;
-    const agent=ctx.agents.get(id as SessionId) ?? agents.get(id);
+    const agent=agentFor(id);
     const guest=host.native.isGuest(id);
     if(!guest && (!agent || world.sessionStatus(agent.session)?.state!=='ready'))return;
     return {workspaceId:status.target.id,path:status.target.path,storageId:host.workspace.storageId(),guest};
   };
   host.native.resolveNativeScope=nativeScopeFor;
+  const stopUsage = installUsageListener(ctx, host, agentFor);
   const sameNativeScope=(id:string,expected:NativeScope)=>matchesNativeScope(nativeScopeFor(id),expected);
   const currentExtensions=(saved:ManagedTurn)=>[...saved.extensionAdmissions].every(lease=>lease.isCurrent());
   const currentTurn=(id:string,saved:ManagedTurn)=>sameNativeScope(id,saved.scope)
@@ -217,9 +220,11 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
     agents.set(payload.agent.id,payload.agent);
     let saved=turns.get(payload.agent.id);
     const first=!saved || saved.turn!==payload.turn;
+    let stepInputs: ReturnType<typeof selectStepSources>;
     if(first) {
       const accepted=selectStepSources(payload.agent,payload.messages);
       if(!accepted?.length)return {kind:'reject'};
+      stepInputs=accepted;
       const selections=accepted.map(({selection})=>selection);
       const foreground=selections.some(selection=>selection.branch.turnKind==='foreground');
       saved={turn:payload.turn,scope,background:!foreground,extensionAdmissions:new Set(),
@@ -242,6 +247,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
     if(!first) {
       const admitted=selectStepSources(payload.agent,payload.messages);
       if(!admitted||!trackExtensions(saved!,admitted))return {kind:'reject'};
+      stepInputs=admitted;
       if(admitted.length)host.native.observeInputs(payload.agent.id,payload.turn,admitted.map(({message})=>message),saved!.scope);
       if(saved!.background && admitted.some(({selection})=>selection.branch.turnKind==='foreground')) {
         // A real owner input takes over this native turn; autonomous limits do
@@ -277,22 +283,33 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
       }catch(error){memory.clear(payload.agent.id);memory.unavailable(error);ctx.logger('chatpet-memory').warn('Memory unavailable; native chat continues',error);}
       else host.native.memory?.clear(payload.agent.id);
     }
-    const decision=await next();
-    if(decision.kind!=='enter' || !currentTurn(payload.agent.id,saved!))return decision.kind==='enter'?{kind:'reject'}:decision;
-    if(!first)return decision;
-    if(checkMemory)try{checkMemory();}catch(error){
-      text='';host.native.memory?.clear(payload.agent.id);host.native.memory?.unavailable(error);
-    }
-    // An empty replacement explicitly retires the prior recall after toggle or failure.
-    recall.refresh(payload.agent.session,saved!.scope.storageId,true);
-    const message=recall.prepare(payload.agent.session,text);
-    return {...decision,startsRequestSeries:true,messages:message?[message,...decision.messages]:decision.messages};
+    if(payload.signal.aborted)return {kind:'reject'};
+    const finishEntry=host.native.usageEvidence.beginStep(payload.agent.id,stepInputs ?? [],payload.signal);
+    let entered=false;
+    try {
+      let decision=await next();
+      if(decision.kind!=='enter')return decision;
+      if(payload.signal.aborted || !currentTurn(payload.agent.id,saved!))return {kind:'reject'};
+      if(first) {
+        if(checkMemory)try{checkMemory();}catch(error){
+          text='';host.native.memory?.clear(payload.agent.id);host.native.memory?.unavailable(error);
+        }
+        // An empty replacement explicitly retires the prior recall after toggle or failure.
+        recall.refresh(payload.agent.session,saved!.scope.storageId,true);
+        const message=recall.prepare(payload.agent.session,text);
+        decision={...decision,startsRequestSeries:true,messages:message?[message,...decision.messages]:decision.messages};
+      }
+      entered=true;
+      return decision;
+    } finally { finishEntry?.(entered); }
   };
-  ctx.on('agent/pre-step',onStep);
-  host.native.attachGuest=scope=>{disposePrompt.attach(scope);scope.on('agent/pre-step',onStep);scope.on('agent/request',onRequest);};
+  // Basic compaction uses a normal listener and may already be mounted by the preset.
+  ctx.on('agent/pre-step',onStep,{prepend:true});
+  host.native.attachGuest=scope=>{disposePrompt.attach(scope);scope.on('agent/pre-step',onStep,{prepend:true});scope.on('agent/request',onRequest);};
   ctx.on('session/event',(session,event)=>{
     if(String(event.type)==='compaction/end' && !(event.data as {error?:unknown}).error)recall.compacted(session);
     if(event.type!=='turn/end')return;
+    host.native.usageEvidence.end(session.id);
     const saved=turns.get(session.id);if(!saved)return;
     const result=nativeResult(session.snapshotEvents(),inputs.get(session.id) ?? '');
     clearContinuation(session.id);
@@ -313,6 +330,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
     return watch(done);
   },{global:true});
   ctx.on('agent/disposed',({agent})=>{
+    host.native.usageEvidence.end(agent.id);
     void host.native.end(agent.id).catch(()=>{});
     host.native.memory?.clear(agent.id);
     agents.delete(agent.id);turns.delete(agent.id);inputs.delete(agent.id);
@@ -322,6 +340,7 @@ export function apply(ctx: Context, host: PetCoreHost = ctx.petCore, world: PetW
   },{global:true});
   let stopped:Promise<void>|undefined;
   const stop=()=>stopped ??= (async()=>{
+    stopUsage();
     historyClosing=true;historyReady.clear();historyPrepared.clear();stopHistoryStatus();
     await Promise.allSettled([...pending]);await archiveTail;
     disposePrompt();disposeFoundation();

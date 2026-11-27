@@ -8,7 +8,7 @@
       "dependencies": ["core","memory","emotion","contracts","world"],
       "reads": ["petCore","petWorld","petTranscripts","petMemory","petEmotion"],
       "publishes": ["pet/core.changed"],
-      "subscribes": ["agent/disposed","agent/inbox/inserted","agent/pre-step","agent/request","agent/status","pet/core.changed","session/event","system-prompt/assemble","tools/pre-execute","tools/result","domain/changed"],
+      "subscribes": ["agent/disposed","agent/inbox/inserted","agent/pre-step","agent/request","agent/status","llm/stream","pet/core.changed","session/event","system-prompt/assemble","tools/pre-execute","tools/result","domain/changed"],
       "generated": []
     },
     "memory": {

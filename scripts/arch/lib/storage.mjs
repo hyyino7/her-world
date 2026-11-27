@@ -44,8 +44,11 @@ export function scanStorage(project,layers,storage) {
       if(op==='exec'&&names)for(const sql of names)for(const match of sql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`\[]?([\w-]+)/gi)) {
         const table=match[1];
         const declared=storage.entries.filter(r=>r.tables?.includes(table));
-        const row=declared.find(r=>r.owner===writer)
-          ??storage.entries.find(r=>r.selector?.table===table&&r.containerOwner===writer)
+        const selectors=storage.entries.filter(r=>r.selector?.table===table);
+        const namesFile=r=>r.evidence?.some(ref=>ref.replace(/:\d+$/,'')===file);
+        const row=declared.find(namesFile)??selectors.find(namesFile)
+          ??declared.find(r=>r.owner===writer)
+          ??selectors.find(r=>r.containerOwner===writer)
           ??(declared.length===1?declared[0]:undefined);
         // records 的表结构属于容器；其中各 kind 的业务归属在 store 调用处单独核对。
         const owner=row?(row.tables?row.owner:row.containerOwner):writer,containerOwner=row?.containerOwner??writer;

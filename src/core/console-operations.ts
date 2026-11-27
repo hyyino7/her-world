@@ -1,5 +1,6 @@
 import type { CoreService, WorkspaceEditScope } from '../contracts/core.js';
 import type { Result } from '../contracts/common.js';
+import {usageReport} from './usage/report.js';
 import { sameHomeBinding } from './home-binding.js';
 import type { CompanionConfiguration } from './companion-settings.js';
 import type { PetCoreHost } from './index.js';
@@ -39,6 +40,14 @@ export function coreConsoleOperations(host: PetCoreHost) {
 
   return {operations: {
     ...library,
+    usageLedger(call: ConsoleCall) {
+      const dated = call.input !== null && typeof call.input === 'object' && Object.hasOwn(call.input, 'day');
+      const input = object(call.input, dated ? ['workspaceId', 'day'] : ['workspaceId']);
+      call.checkBinding(requiredText(input.workspaceId, 200), true);
+      const scope = host.workspace.homeScope();
+      if (!scope) fail('STALE_BINDING');
+      return usageReport(host, scope, input.day);
+    },
     async foundation(call: ConsoleCall) {
       const writing = Boolean(call.input && typeof call.input === 'object' && Object.hasOwn(call.input, 'text'));
       const input = object(call.input, writing ? ['workspaceId', 'expectedRevision', 'text'] : ['workspaceId']);

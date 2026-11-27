@@ -15,6 +15,19 @@ export function createChannelSourceAdapter(routes) {
     const branch = (guest) => ({
         turnKind: 'foreground',
         toolSource: guest ? 'guest' : 'owner',
+        usageEntry: ({ message }) => {
+            const { source } = message;
+            if (source.kind === 'dsh-world-reply-nudge')
+                return 'qq-nudge';
+            if (!('identity' in source))
+                return 'unknown';
+            const { channel } = speakerIdentity(source.identity);
+            if (channel === 'qq')
+                return guest ? 'qq-guest' : 'qq-owner';
+            if (channel === 'wechat')
+                return guest ? 'wechat-guest' : 'wechat-owner';
+            return 'unknown';
+        },
         toolPolicy: null,
         memoryObservation: {
             input: ({ sessionId, message }) => {

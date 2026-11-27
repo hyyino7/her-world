@@ -195,9 +195,11 @@ Room 直接使用 DSH 的工具与 `webServer`，窗口默认使用 DSH 自带�
 
 <a id="llm-check-plan"></a>
 
-### 3.1 计划：用量账本检查
+### 3.1 用量账本检查
 
-「用量全覆盖」「账本不含内容」「账本和旧统计一致」在[用量账本](product.md#大模型使用-1a-用量账本)建立；「请求差异」和连贯性抽查在[大模型使用 1b](product.md#大模型使用-1b-观测和基线)建立基线，供独立个体对比。原 1c 以后的检查由[独立个体检查清单](#individual-checks)取代。
+[逐笔覆盖与渠道对账](../tests/core/usage-coverage.test.ts)用假适配器的实际调用核对每行的入口、预设和用途，未声明入口的已准入调用会报警。[内容隔离与写失败](../tests/core/usage-ledger.test.ts)核对列名、标识、主库和旁文件的字节，验证计量失败时聊天可以继续。[设置读口与绑定](../tests/behavior-list/usage-ledger.test.mjs)覆盖换绑、漏记、跨日和 Life 对照。
+
+「请求差异」和连贯性抽查在[大模型使用 1b](product.md#大模型使用-1b-观测和基线)建立基线，供独立个体对比。原 1c 以后的检查由[独立个体检查清单](#individual-checks)取代。
 
 <a id="room-extension-checks"></a>
 
@@ -251,6 +253,7 @@ Room 直接使用 DSH 的工具与 `webServer`，窗口默认使用 DSH 自带�
 | 数据 | 新拥有者 | 现在谁写 | 变化 / 唯一写入协议 |
 | --- | --- | --- | --- |
 | `.chatpet/{manifest.json, SOUL.md, USER.md, COMPANION.md, core.json}` | 第一层·身份与绑定 | Core 初始化和设置 | 不变 |
+| 用量账本与漏记记录 | 第一层·Core | Core 的全局模型流监听者 | [用量账本写入协议](#llm-storage-plan) |
 | Core 数据库：身份、设置、请求去重、原生消息映射、记忆待处理/确认 | 第一层 | Core、NativeMemory、Memory batch | 不变 |
 | Core 数据库：`channel-received / channel-reach / life-outlet-delivery / channel-usage / channel-usage-event` | **第三层·Channels** | Channels 直接写 | **原位例外**，沿用 CoreStore 记录协议及[离线恢复](#72-回退)对当前渠道记录的保护 |
 | Core 数据库：`desktop-session` | **第三层·Desktop** | Desktop 直接写 | **原位例外**，会话映射随选中的 Core 备份恢复 |
@@ -280,9 +283,13 @@ Room 直接使用 DSH 的工具与 `webServer`，窗口默认使用 DSH 自带�
 
 <a id="llm-storage-plan"></a>
 
-### 4.1 计划：用量账本的拥有者
+<a id="41-计划用量账本的拥有者"></a>
 
-用量账本由第一层监听 `llm/stream`，一条流一行；会话调用按会话 ID 和当轮可信来源归因，独立调用按用途，无证据记「未归类」，只记时间、标识、用途和计量，不含内容。实施时登记到 [arch/storage.json](../arch/storage.json)。独立个体新增和改变拥有者的数据见[10.8](#individual-ownership)。
+### 4.1 用量账本的拥有者
+
+Core 在根作用域监听 `llm/stream`，按结束日记录当前伙伴的调用。账本采用独立 SQLite 文件，目录只读时聊天仍可使用 Core 数据库。首次写入在同一事务里建立格式版本、索引和首行，设置页只读打开。文件路径和 Core 漏记 kind 见[存储登记](../arch/storage.json)。写失败、未绑定及调用途中换绑的次数由该伙伴的 CoreStore 按结束日合存一条记录。处于迁移停写状态时，监听者只记录警告。
+
+账本只保存时间、标识、结局和原始用量。`requested_effort` 表示请求的推理强度。花费按开始时刻匹配[版本价表](../src/world/usage.ts)及峰谷时段。读取到较新版本时提示升级。SQLite 明确报告损坏时，写入者将原库留档为 `ledger.sqlite.corrupt-<时间>`，旁文件在同名后保留 `-journal`、`-wal` 或 `-shm`，再建立新账本。独立个体新增和改变拥有者的数据见[10.8](#individual-ownership)。
 
 <a id="room-extension-storage"></a>
 
@@ -561,6 +568,7 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 | 接点 | 现状 |
 | --- | --- |
 | Life 预算与渠道统计 | Life 从共享 home 的 `assistant/message` 累计估价，达到日预算提醒一次，可进入当前回合后续步骤或触发提醒轮次。渠道主人私聊可能与该累计重叠。渠道只计已核验的渠道输入，处理 `assistant/message` 和 `assistant/attempt`，按会话事件去重并记录缺报。独立 Desktop、Room、碎碎念没经过这两条统计路径（`vendor/dsh-world/lib/life/runtime.js:954–975,1043–1052`、`vendor/dsh-world/lib/life/pricing.js:1–30`、`src/channels/usage.ts:8–35`、`src/desktop/features.ts:198–232`、`src/room/chat.ts:131–137`）。 |
+| 用量归因 | 已准入分支与发送方登记决定本步入口。Core 显式前置步前准入，让基础压缩在同一条链里读到临时入口；下游拒绝或取消时撤销。辅助调用沿用在途步骤，无在途步骤时归后台整理。预设取调用开始时的组合预设，碎碎念和梦话通过用途识别。Desktop 或 Room 消息跨重启排队时会丢失内存中的发送方证据，准入后归到 DSH 原生。 |
 | 流与用量 | 锁定包的 `llm/stream` 在适配器流外。已报告的输入可由未命中、缓存读、缓存写相加，输出另计。会话事件可供旧口径对账。适配器内另发网络请求时，流级观测未必能分解失败及重试的账单（`node_modules/@deepseek-ai/dsh-llm/lib/index.js:2396–2403`、`node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:160–180`、`src/channels/usage.ts:23–34`）。 |
 | 模型选择 | 预设用于选插件组合，Her World 的 home 与 guest 选择见 5.8.2。锁定包的会话模型选择把服务商、模型和推理强度写入 `model/selection`，切换提示取决于作用域装载的中间件。独立调用可直接传服务商、模型、推理强度、用途和取消信号，会话 ID 可省。碎碎念和梦话已复用该入口并限制时长（`node_modules/@deepseek-ai/dsh-agent/lib/types/model-selection.js:75–92,116–138`、`node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:538–580`、`src/core/companion-foundation.ts:124–129`、`src/channels/guest.ts:5–22`、`src/desktop/features.ts:198–232`）。 |
 
@@ -742,6 +750,8 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 支持基线是已迁移的 0.5.0。运行时和离线工具核对工作区清单 v3、当前存储版本（Core 3、Living 4）和绑定证据。全新绑定写独立的 `fresh` 钱包证明；已迁移绑定读取 `migrations.jsonl` 的完成凭证（`src/core/workspace.ts`、`src/core/storage-migration.ts`）。未满足准入时，设置页给出固定拒写原因并指向历史标签。0.4.0 的操作见 [v0.5.0](https://github.com/hyyino7/her-world/tree/v0.5.0)。
 
+`arch/storage.json` 中的 `lazy: true` 表示容器在首次写入时建立，离线盘点在文件缺席时报 `not-created`，文件存在时照常检查声明的表。
+
 <a id="72-回退"></a>
 
 ### 7.2 换包回退与离线恢复
@@ -752,9 +762,11 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 <a id="llm-rollback-plan"></a>
 
-#### 7.2.1 计划：用量账本的迁移与回退
+<a id="721-计划用量账本的迁移与回退"></a>
 
-大模型使用 1a 新增用量账本，无旧账迁移：旧版可忽略账本，再升可续写；恢复范围不含账本也可使用。1b 只用原有日志和账本。独立个体的迁移与回退见[10.10](#individual-migration)。
+#### 7.2.1 用量账本的迁移与回退
+
+账本按首次调用建立，工作区清单和存储版本沿用 0.6.0。旧包按原有路径和 kind 运行，再次升级可从已有账本续写。离线恢复替换整棵 `.chatpet`，账本回到备份时刻，早于首次记账的备份会移除账本。渠道计数和 Life 旧花费保留恢复前的值，设置页提示这项对照差异。1b 只用原有日志和账本。独立个体的迁移与回退见[10.10](#individual-migration)。
 
 <a id="room-extension-migration"></a>
 

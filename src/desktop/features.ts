@@ -12,6 +12,10 @@ import {sameBinding, type Binding} from './conversation.js';
 import {DEFAULT_CONVERSATION} from '../core/options.js';
 import {readLifeEnabled} from '../living/outlets.js';
 
+declare module '@deepseek-ai/dsh-llm/types' {
+  interface LlmRequestPurposeMap { 'chatpet-whisper': true; 'chatpet-dream': true }
+}
+
 // 上游功能按需加载。构建直接把这些模块生成到 dist 下的相对位置。
 const MAX_TIMER_MS = 2_147_483_647;
 /** Ask the original policy for the first eligible reminder rather than polling
@@ -223,7 +227,7 @@ export class DesktopFeatures {
       const nativeLlm = llm && {resolveModelInfo:llm.resolveModelInfo?.bind(llm),stream:(options: any) => {
         this.assertCurrent(target); abort.signal.throwIfAborted();
         if(automatic && !this.automaticAllowed(target,dream))throw Error('自动碎碎念已取消');
-        return llm.stream({...options,signal:AbortSignal.any([options.signal,abort.signal])});
+        return llm.stream({...options,purpose:dream ? 'chatpet-dream' : 'chatpet-whisper',signal:AbortSignal.any([options.signal,abort.signal])});
       }};
       const result = await generateWhisper({llm:nativeLlm,agentDefaultModel:{currentSelection:()=>selection}}, {
         system,

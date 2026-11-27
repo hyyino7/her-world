@@ -33,6 +33,7 @@ export class Conversation {
     saved;
     save;
     changed;
+    claimUsage;
     active;
     attempt;
     tail = Promise.resolve();
@@ -41,12 +42,13 @@ export class Conversation {
     // Native cancellation may abandon the stream before appending an assistant message.
     // Preserve the last visible text in this window session without changing DSH history.
     stoppedText = new Map();
-    constructor(native, binding, saved, save, changed) {
+    constructor(native, binding, saved, save, changed, claimUsage) {
         this.native = native;
         this.binding = binding;
         this.saved = saved;
         this.save = save;
         this.changed = changed;
+        this.claimUsage = claimUsage;
     }
     get id() { return this.active?.id; }
     /** Closing a view revokes its queued/in-flight commands, not the native chat. */
@@ -191,7 +193,9 @@ export class Conversation {
                     if (input.image && !content)
                         throw Error('原生图片附件服务暂不可用');
                     this.current(binding, revision, id);
-                    agent.followup(createUserMessage({ content: [...(text ? [{ type: 'text', text }] : []), ...(content ?? [])], source: { kind: 'user', rpcId: input.requestId } }));
+                    const message = createUserMessage({ content: [...(text ? [{ type: 'text', text }] : []), ...(content ?? [])], source: { kind: 'user', rpcId: input.requestId } });
+                    this.claimUsage?.(id, message.id);
+                    agent.followup(message);
                 }
                 catch (cause) {
                     this.pending = false;
