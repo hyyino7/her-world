@@ -83,6 +83,15 @@ test('R5 仅放行仍登记在 Core 原位的记录及获批模块',t=>{
   assert.deepEqual(violations(work.scan().writers),revoked);
 });
 
+test('R5 将真实用量账本的两条建表语句归到独立账本',t=>{
+  const file='src/core/usage/ledger.ts';
+  const rows=workspace(t,{[file]:readFileSync(join(repository,file),'utf8')}).scan().writers.filter(r=>r.reason==='创建表');
+  assert.deepEqual(rows.map(r=>[r.file,r.target,r.storageId,r.container]),[
+    [file,'meta','usage-ledger','.chatpet/data/usage/ledger.sqlite#meta'],
+    [file,'calls','usage-ledger','.chatpet/data/usage/ledger.sqlite#calls'],
+  ]);
+});
+
 test('存储登记逐 kind 对上真实 store.put 写入模块，旧情绪只读来源不冒充当前写入',()=>{
   const storage=JSON.parse(readFileSync(join(repository,'arch/storage.json'),'utf8'));
   const rows=scan(repository).writers.filter(r=>r.access==='写'&&/\bput\s*\(/.test(r.expression));
