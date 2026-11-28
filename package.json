@@ -102,6 +102,7 @@
     "test:pet-platform-window": "pnpm run build && node scripts/checks/check-pet-platform-window.mjs",
     "test:native-services": "pnpm run build && node scripts/checks/check-native-services.mjs",
     "test:native-context": "pnpm run build && node scripts/checks/check-native-context.mjs",
+    "test:native-usage": "pnpm run build && node scripts/checks/check-native-usage.mjs",
     "check:context-payload": "node scripts/checks/check-context-payload.mjs",
     "test:room-voice": "pnpm run build && node scripts/checks/check-room-voice.mjs",
     "test:room-refresh": "pnpm run build && node tests/manual/room-refresh-window.mjs",

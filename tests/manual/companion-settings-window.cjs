@@ -309,7 +309,15 @@ async function check() {
     assert.deepEqual(await listVoices(), unavailable);
     await screenshot(process.env.CP_VISUAL_PHASE||'after');
     {
-      for (const label of ['角色','情绪','记忆与档案','桌宠','生活','连接','工作区']) {await click(label,'[role=tab]'); await pause(200); await screenshot('after-' + label);}
+      for (const label of ['角色','情绪','记忆与档案','桌宠','生活','用量','连接','工作区']) {
+        await click(label,'[role=tab]'); await pause(200);
+        if (label === '用量') {
+          await waitFor(() => [...document.querySelectorAll('[role=tabpanel] .cp-card h3')].some(h => h.textContent === '模型用量'));
+          await waitFor(() => Boolean(document.querySelector('[role=tabpanel] input[type=date]')?.value || document.querySelector('[role=tabpanel] [role=alert]')));
+          assert.equal(await evaluate(() => document.querySelector('[role=tabpanel] [role=alert]')?.textContent ?? null), null);
+        }
+        await screenshot('after-' + label);
+      }
       await click('角色','[role=tab]');await waitFor(()=>Boolean(document.querySelector('.cp-foundation')));
       const before=await fieldValue('基础说明内容');await setField('基础说明内容',before+'Fixture saved rule.');
       await click('情绪','[role=tab]');await setField('心情','calm');await setField('原因与想法','Disposable UI check');

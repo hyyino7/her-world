@@ -98,6 +98,7 @@ PR CI 和发布工作流各自执行全量检查（`.github/workflows/ci.yml:13�
 `scripts/checks/`、`tests/manual/` 中的原生与窗口检查需要显式指定的隔离环境，不对个人伙伴数据运行。
 
 - `test:native-context`：已安装 DSH 的原生循环与落盘，使用本机脚本模型，核对上下文、互动确认、原始记录和已接受计划。
+- `test:native-usage` 在 rc.5 的两份临时 profile 上用进程内模型逐笔核对聊天、压缩和碎碎念的用量归因，并检查重载、账本内容隔离及只读故障恢复。
 - `test:native-services`：跨会话 Bank 召回、provider 重启和 guest 权限。
 - `test:native-room`：合成或隔离宿主上的原生 Room 拍照入口。
 - `test:room-voice`：Room 语音窗口和请求生命周期。
