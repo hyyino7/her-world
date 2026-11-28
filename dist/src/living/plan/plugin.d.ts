@@ -81,6 +81,22 @@ export declare class CompanionLife {
             planningRecovery: import("../../../vendor/dsh-world/lib/life/types.js").PlanningRecovery | undefined;
             faults: string[];
         };
+        ledgerSpend: {
+            status: "unavailable" | "empty" | "absent" | "recorded" | "recovered";
+            issue: string | null;
+            calls: number;
+            missingUsage: number;
+            input: number;
+            output: number;
+            read: number;
+            write: number;
+            missingRead: number;
+            missingWrite: number;
+            priced: number;
+            unpriced: number;
+            yuan: number;
+            partial: boolean;
+        };
         activity: import("../../../vendor/dsh-world/lib/life/types.js").ActivityRecord[];
         fault: string | null;
         workspaceId: string;

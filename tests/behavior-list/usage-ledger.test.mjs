@@ -65,15 +65,15 @@ test('模型调用途中换绑又返回时，两份账本都不写，漏记可�
   assert.equal(newer.gaps.writeFailed,1);
 });
 
-test('用量设置按入口预设用途分行，区分缺用量、未知价格和部分估算，并按旧口径对照 Life', async t => {
+test('用量设置按入口预设用途分行，区分缺用量、未知价格和部分估算，并核对生活卡读数', async t => {
   const f = await fixture(t,{console:true,now});
   await f.enable();
   const home = await f.home(), active = await f.begin(home.id), opts = {...route,sessionId:home.id};
   await run(f,opts);
   const event = home.session.append('assistant/message',{turn:active.turn,message:{role:'assistant',source:opts,content:[]},usage:counters,stream:[]});
   await f.emit('session/event',home.session,event);
-  const oldLife = value(await f.settings('lifeView',{workspaceId:'world'})).life.spend;
-  assert.ok(oldLife.yuan>0);
+  const firstSpend = value(await f.settings('lifeView',{workspaceId:'world'})).ledgerSpend;
+  assert.ok(firstSpend.yuan>0);
   await run(f,opts,null);
   await run(f,{...opts,purpose:'compaction',model:'unknown-model'});
   const page = await report(f), ordinary = page.groups.find(row=>!row.purpose);
@@ -88,7 +88,12 @@ test('用量设置按入口预设用途分行，区分缺用量、未知价格�
   assert.equal(page.prices.length,2);
   assert.ok(page.prices.some(value=>value.endsWith('缓存写')) && page.prices.some(value=>value.endsWith('无价格')));
   assert.equal(page.firstDay,page.day);
-  assert.equal(page.homeYuan,oldLife.yuan);
+  const view = value(await f.settings('lifeView',{workspaceId:'world'}));
+  assert.deepEqual([view.ledgerSpend.calls,view.ledgerSpend.priced,view.ledgerSpend.unpriced,view.ledgerSpend.missingUsage],
+    [3,1,1,1]);
+  assert.equal(view.ledgerSpend.yuan,firstSpend.yuan);
+  assert.equal(view.ledgerSpend.yuan,page.summary.yuan);
+  assert.equal(view.ledgerSpend.partial,true);
   await f.end(active);
   for (const day of ['2026-11-31','1900-01-01','2099-01-01']) {
     assert.equal((await f.settings('usageLedger',{workspaceId:'world',day})).error.code,'INVALID_ARGUMENT');

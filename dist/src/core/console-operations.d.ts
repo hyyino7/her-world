@@ -50,11 +50,6 @@ export declare function coreConsoleOperations(host: PetCoreHost): {
                 partial: boolean;
             };
             prices: string[];
-            channels: {
-                qq: number;
-                wechat: number;
-            };
-            homeYuan: number;
         };
         foundation(call: ConsoleCall): Promise<import("./workspace.js").CompanionFoundation>;
         self(call: ConsoleCall): Promise<{

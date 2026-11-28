@@ -45,9 +45,4 @@ export declare function usageReport(host: PetCoreHost, scope: HomeBinding, reque
         partial: boolean;
     };
     prices: string[];
-    channels: {
-        qq: number;
-        wechat: number;
-    };
-    homeYuan: number;
 };

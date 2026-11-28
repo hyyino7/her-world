@@ -139,6 +139,6 @@ test('activity describes the observed operation and home usage prices actual usa
   const log = usage.summarizeCall('read_image', '{"file_path":"drawing.png"}', '/fixture');
   assert.match(log.summary, /drawing\.png/);
   const step = { inputTokens: 1_000, cacheReadTokens: 10_000, outputTokens: 100 };
-  const price = usage.stepCost(step, 'deepseek-flash', new Date('2026-11-11T10:04:00Z'));
-  assert.ok(Math.abs(price - 0.0016) < 1e-10);
+  const price = usage.priceCall(step, 'deepseek', 'deepseek-flash', Date.parse('2026-11-28T10:04:00Z'));
+  assert.ok(Math.abs(price.yuan - 0.0016) < 1e-10);
 });

@@ -1,3 +1,4 @@
+import { formatLocalTime } from '#dsh-world/timeContext';
 import { homeSpend } from '../../core/usage/totals.js';
 import { fail, object, requiredText } from '../../core/tables/console.js';
 import { reviewDiaryStatus } from './review-completion.js';
@@ -572,8 +573,9 @@ export class CompanionLife {
             const state = { workspaceId, enabled: this.enabled, running: this.running(), timeZone: this.timeZone, preferences: { ...this.preferences } };
             const home = await (body && withLivingCaller(validate, () => body.value.roomState(workspaceId)));
             validate();
-            return { ...state, home: home ?? null,
-                life: this.runtime?.snapshot() ?? this.binding.home.store.read(),
+            const life = this.runtime?.snapshot() ?? this.binding.home.store.read();
+            const day = formatLocalTime(new Date(), this.timeZone).slice(0, 10);
+            return { ...state, home: home ?? null, life, ledgerSpend: homeSpend(this.binding.scope, life.homeSessionId, day),
                 activity: store.activityDays().slice(0, 2).reverse().flatMap(day => store.activity(day)).slice(-20),
                 fault: this.fault ?? null };
         });
