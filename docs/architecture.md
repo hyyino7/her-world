@@ -197,7 +197,7 @@ Room 直接使用 DSH 的工具与 `webServer`，窗口默认使用 DSH 自带�
 
 ### 3.1 用量账本检查
 
-[逐笔覆盖与渠道对账](../tests/core/usage-coverage.test.ts)用假适配器的实际调用核对每行的入口、预设和用途，未声明入口的已准入调用会报警。[内容隔离与写失败](../tests/core/usage-ledger.test.ts)核对列名、标识、主库和旁文件的字节，验证计量失败时聊天可以继续。[设置读口与绑定](../tests/behavior-list/usage-ledger.test.mjs)覆盖换绑、漏记、跨日和 Life 对照。
+[逐笔覆盖与 Life 旧算法对账](../tests/core/usage-coverage.test.ts)用假适配器的实际调用核对每行的入口、预设和用途，未声明入口的已准入调用会报警。[内容隔离与写失败](../tests/core/usage-ledger.test.ts)核对列名、标识、主库和旁文件的字节，验证计量失败时聊天可以继续。[设置读口与绑定](../tests/behavior-list/usage-ledger.test.mjs)覆盖换绑、漏记、跨日、预算送达及渠道停写。[汇总测试](../tests/core/usage-totals.test.ts)核对近 30 天逐日金额和重建后的 home 读数。
 
 「请求差异」和连贯性抽查在[大模型使用 1b](product.md#大模型使用-1b-观测和基线)建立基线，供独立个体对比。原 1c 以后的检查由[独立个体检查清单](#individual-checks)取代。
 
@@ -255,7 +255,8 @@ Room 直接使用 DSH 的工具与 `webServer`，窗口默认使用 DSH 自带�
 | `.chatpet/{manifest.json, SOUL.md, USER.md, COMPANION.md, core.json}` | 第一层·身份与绑定 | Core 初始化和设置 | 不变 |
 | 用量账本与漏记记录 | 第一层·Core | Core 的全局模型流监听者 | [用量账本写入协议](#llm-storage-plan) |
 | Core 数据库：身份、设置、请求去重、原生消息映射、记忆待处理/确认 | 第一层 | Core、NativeMemory、Memory batch | 不变 |
-| Core 数据库：`channel-received / channel-reach / life-outlet-delivery / channel-usage / channel-usage-event` | **第三层·Channels** | Channels 直接写 | **原位例外**，沿用 CoreStore 记录协议及[离线恢复](#72-回退)对当前渠道记录的保护 |
+| Core 数据库：`channel-received / channel-reach / life-outlet-delivery` | **第三层·Channels** | Channels 直接写 | **原位例外**，沿用 CoreStore 记录协议及[离线恢复](#72-回退)对当前渠道记录的保护 |
+| Core 数据库的 `channel-usage`、`channel-usage-event` | 第三层·Channels 的旧记录 | 现版停写 | 保留旧行及盘点用的 kind，留待后续存储版本清理。换包和恢复见[账本回退](#llm-rollback-plan) |
 | Core 数据库：`desktop-session` | **第三层·Desktop** | Desktop 直接写 | **原位例外**，会话映射随选中的 Core 备份恢复 |
 | 钱包导入独立证明 `data/console-wallet-import.json` | 第一层·绑定 | Core 初始化 | 全新安装写入无旧来源的证明。已迁移绑定由完成日志中的凭证准入 |
 | 钱包「已采用」证据：`economy.sqlite` 的 `meta.economy.initialized` 和独立文件 `data/living/economy-adoption.json`（都是 `{storageId, companionId}`） | 第二层·钱包区 | Economy | 首次建库时先验旧菜园，在钱包租约下先落独立证据，再在同一个事务里建表、导入旧菜园、写库内标记，提交后补 `storage.json`（`living/economy/store.ts:75-125`）。运行时认五种采用证据：独立证据、库内标记、`storage.json`、身体检查点的 `economyGardenAuthority`，以及同一 `storageId` 的迁移日志里含 `0003` 且记了 `economyAdopted:true` 的段（`living/economy/adoption.ts:31-73,85-106`）。任一成立而库缺失，就拒绝钱包，不建空库、不导入旧菜园，免费照料照常；钱包目录和 `data/living/` 同时丢失时，迁移日志这一条仍然挡住重建。日志缺失或损坏按没有这条证据处理，不影响工作区；所以钱包目录、`data/living/` 和迁移日志三处同时丢失或损坏时，运行时认不出曾经采用过，这是已知边界。证据文件内容坏了只拒绝钱包，工作区清单只看文件在不在。独立证据已落盘、库还没提交时拒绝自动补建，钱包能力状态行 `life.economy` 给出证据路径和处理办法 |
@@ -290,6 +291,8 @@ Room 直接使用 DSH 的工具与 `webServer`，窗口默认使用 DSH 自带�
 Core 在根作用域监听 `llm/stream`，按结束日记录当前伙伴的调用。账本采用独立 SQLite 文件，目录只读时聊天仍可使用 Core 数据库。首次写入在同一事务里建立格式版本、索引和首行，设置页只读打开。文件路径和 Core 漏记 kind 见[存储登记](../arch/storage.json)。写失败、未绑定及调用途中换绑的次数由该伙伴的 CoreStore 按结束日合存一条记录。处于迁移停写状态时，监听者只记录警告。
 
 账本只保存时间、标识、结局和原始用量。`requested_effort` 表示请求的推理强度。花费按开始时刻匹配[版本价表](../src/world/usage.ts)及峰谷时段。读取到较新版本时提示升级。SQLite 明确报告损坏时，写入者将原库留档为 `ledger.sqlite.corrupt-<时间>`，旁文件在同名后保留 `-journal`、`-wal` 或 `-shm`，再建立新账本。独立个体新增和改变拥有者的数据见[10.8](#individual-ownership)。
+
+花费事实由 Core 账本提供。[汇总读口](../src/core/usage/totals.ts)为每天的用量页、当前 home 和近 30 天渠道合计共用逐行估价。home 按会话、当地日期和账本文件身份缓存累计值及末行号，只读新增行。换日、换 home、换库或重建后重新计算。Life 拥有 `life.json` 中的 `spend.day`、每日提醒标记 `reminded` 和供旧版续读的金额投影 `yuan`。
 
 <a id="room-extension-storage"></a>
 
@@ -567,10 +570,13 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 | 接点 | 现状 |
 | --- | --- |
-| Life 预算与渠道统计 | Life 从共享 home 的 `assistant/message` 累计估价，达到日预算提醒一次，可进入当前回合后续步骤或触发提醒轮次。渠道主人私聊可能与该累计重叠。渠道只计已核验的渠道输入，处理 `assistant/message` 和 `assistant/attempt`，按会话事件去重并记录缺报。独立 Desktop、Room、碎碎念没经过这两条统计路径（`vendor/dsh-world/lib/life/runtime.js:954–975,1043–1052`、`vendor/dsh-world/lib/life/pricing.js:1–30`、`src/channels/usage.ts:8–35`、`src/desktop/features.ts:198–232`、`src/room/chat.ts:131–137`）。 |
+| Life 预算 | `lifeView.ledgerSpend` 汇总当前 home 当天所有调用，包括压缩和标题。在带用量的 home 助手消息到达时，`spentToday(id, day)` 返回 `{yuan}`（可为零），Life 写入金额并按预算每天最多提醒一次。返回 `{unavailable:true}` 时保留原状态，留待下次检查。未提供钩子的 vendor 调用者逐步按旧算法累加。辅助调用越线要等下一条合格消息。同日换 home 后按新会话计费，已提醒标记沿用。 |
+| 渠道用量 | `messaging.qq.usage`、`messaging.wechat.usage` 按 `qq-`、`wechat-` 入口汇总本伙伴从 `from` 到 `to`（今天及前 29 天）的所有账号，一次查询返回两组。当前 home 中经渠道的调用也计入该渠道。 |
 | 用量归因 | 已准入分支与发送方登记决定本步入口。Core 显式前置步前准入，让基础压缩在同一条链里读到临时入口；下游拒绝或取消时撤销。辅助调用沿用在途步骤，无在途步骤时归后台整理。预设取调用开始时的组合预设，碎碎念和梦话通过用途识别。Desktop 或 Room 消息跨重启排队时会丢失内存中的发送方证据，准入后归到 DSH 原生。 |
-| 流与用量 | 锁定包的 `llm/stream` 在适配器流外。已报告的输入可由未命中、缓存读、缓存写相加，输出另计。会话事件可供旧口径对账。适配器内另发网络请求时，流级观测未必能分解失败及重试的账单（`node_modules/@deepseek-ai/dsh-llm/lib/index.js:2396–2403`、`node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:160–180`、`src/channels/usage.ts:23–34`）。 |
+| 流与用量 | 锁定包的 `llm/stream` 在适配器流外。已报告的输入可由未命中、缓存读、缓存写相加，输出另计。缺用量仍计调用次数。适配器内另发网络请求时，流级观测未必能分解失败及重试的账单（`node_modules/@deepseek-ai/dsh-llm/lib/index.js:2396–2403`、`node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:160–180`）。 |
 | 模型选择 | 预设用于选插件组合，Her World 的 home 与 guest 选择见 5.8.2。锁定包的会话模型选择把服务商、模型和推理强度写入 `model/selection`，切换提示取决于作用域装载的中间件。独立调用可直接传服务商、模型、推理强度、用途和取消信号，会话 ID 可省。碎碎念和梦话已复用该入口并限制时长（`node_modules/@deepseek-ai/dsh-agent/lib/types/model-selection.js:75–92,116–138`、`node_modules/@deepseek-ai/dsh-llm/lib/types/types.d.ts:538–580`、`src/core/companion-foundation.ts:124–129`、`src/channels/guest.ts:5–22`、`src/desktop/features.ts:198–232`）。 |
+
+两个读口都返回 `calls`、`input/output`、`read/write`、`missingRead/missingWrite`、`missingUsage`、`priced/unpriced`、`yuan` 和 `partial`。金额只加已定价部分，缺用量另计次数。状态 `absent`、`empty`、`recorded`、`recovered`、`unavailable` 分别表示尚无账本、范围为空、有记录、重建过和读取失败。重建后的范围即使为空也提示只覆盖新库。失败原因 `issue` 为 `upgrade` 或 `unavailable`，只影响用量字段。账本按调用结束时的系统日期归日，运行中更改设备时区后，Life 会在下次装载时使用新时区。
 
 <a id="llm-channel-current"></a>
 
@@ -767,7 +773,9 @@ Console 通过运维操作表调用同层拥有者，通过第二层快照和第
 
 #### 7.2.1 用量账本的迁移与回退
 
-账本按首次调用建立，工作区清单和存储版本沿用 0.6.0。旧包按原有路径和 kind 运行，再次升级可从已有账本续写。离线恢复替换整棵 `.chatpet`，账本回到备份时刻，早于首次记账的备份会移除账本。渠道计数和 Life 旧花费保留恢复前的值，设置页提示这项对照差异。1b 只用原有日志和账本。独立个体的迁移与回退见[10.10](#individual-migration)。
+账本从首次调用起建立，工作区清单和存储版本沿用 0.6.0。离线恢复把账本回卷到备份时刻，首次记账前的备份会移除账本。恢复器保留当前渠道旧记录和 Life 的 `spend`。下一次合格的 home 助手消息会按恢复后的账本重算金额，金额可能下调。同一天已提醒过就不会重发。
+
+退回账本一期，旧渠道计数从冻结值续加，二期期间的调用只保存在账本中。Life 从金额投影续加并沿用当天的提醒标记，一期也继续写账本。退回 0.6.0 时旧计数和 Life 同样续加，但 0.6.0 期间的调用没有账本行。再升回二期，当天预算金额可能变小，甚至为零。两条路径的验收见[产品检查表](product.md#每个单位必须通过的检查)。独立个体的迁移与回退见[10.10](#individual-migration)。
 
 <a id="room-extension-migration"></a>
 

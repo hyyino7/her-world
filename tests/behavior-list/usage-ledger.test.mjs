@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {existsSync, mkdirSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
-import {fixture, value} from './fixture.mjs';
+import {qqTransport} from './qq-transport.mjs';
+import {fixture, until, value} from './fixture.mjs';
 
 const route = {sessionId:'home',provider:'deepseek-official',model:'deepseek-flash'};
 const counters = {inputTokens:100,cacheReadTokens:40,cacheWriteTokens:5,outputTokens:10};
@@ -117,4 +118,100 @@ test('跨午夜的调用按结束日入账，按开始时段估价', async t => 
   assert.equal(after.summary.calls,1);
   assert.equal(after.summary.yuan,(100*2 + 40*.04 + 10*8)/1e6);
   assert.equal((await report(f,{day:before.day})).summary.calls,0);
+});
+
+test('home 预算按账本跨线每天送达一次，压缩等下一条助手消息，读错保留原状态', async t => {
+  const f = await fixture(t,{console:true,now});
+  await f.enable();
+  const home = await f.home(), opts = {...route,sessionId:home.id};
+  const view = async () => value(await f.settings('lifeView',{workspaceId:'world'}));
+  const {preferences} = await view();
+  await f.life.settings('world',preferences,{...preferences,dailyBudget:1});
+  const usage = {inputTokens:300000,outputTokens:0};
+  const messages = () => f.sent.filter(message=>message.content.some(block=>block.text?.includes('手上的事收个尾')));
+  async function reply(tokens = usage) {
+    const active = await f.begin(home.id);
+    await run(f,opts,tokens);
+    await message(active,tokens);
+    await f.end(active);
+  }
+  async function message(active,tokens) {
+    const event = home.session.append('assistant/message',{
+      turn:active.turn,message:{role:'assistant',source:opts,content:[]},usage:tokens,stream:[]});
+    await f.emit('session/event',home.session,event);
+  }
+  await reply();
+  assert.equal((await view()).life.spend.yuan,0.6);
+  assert.equal(messages().length,0);
+  await reply();
+  await until(()=>messages().length===1,'当天第一次越线送到 home');
+  assert.ok(home.inbox.nextStep.includes(messages()[0]) || home.inbox.nextTurn.includes(messages()[0]));
+  await reply();
+  assert.equal(messages().length,1);
+
+  t.mock.timers.tick(24*3600000);
+  await reply();
+  await run(f,{...opts,purpose:'compaction'},usage);
+  const compressed = await view();
+  assert.equal(compressed.ledgerSpend.yuan,1.2);
+  assert.equal(compressed.life.spend.yuan,0.6);
+  assert.equal(messages().length,1);
+  await reply({inputTokens:0,outputTokens:0});
+  await until(()=>messages().length===2,'下一条带用量的助手消息触发提醒');
+  const saved = (await view()).life.spend;
+  assert.equal(saved.reminded,true);
+  assert.equal(saved.yuan,1.2);
+  t.mock.timers.tick(24*3600000);
+  const db = new DatabaseSync(join(f.repo,'.chatpet/data/usage/ledger.sqlite'));
+  try { db.exec("UPDATE meta SET value='2' WHERE key='version'"); } finally { db.close(); }
+  await reply({inputTokens:1e6,outputTokens:0});
+  const unreadable = await view();
+  assert.equal(unreadable.ledgerSpend.issue,'upgrade');
+  assert.deepEqual(unreadable.life.spend,saved);
+  assert.equal(unreadable.running,true);
+  assert.equal(messages().length,2);
+});
+
+test('QQ 主人和访客跨账号合计，旧记录停写，账本不可读时渠道设置仍可保存', async t => {
+  const transport = qqTransport(t);
+  const f = await fixture(t,{channels:true,console:true,life:false,economy:false,now,configure(services){
+    services.set('agentPresets',{composedPreset:scope=>services.get('agents').list()
+      .find(agent=>agent.ctx===scope)?.session.header.agentPreset});
+  }});
+  const request = async (endpoint, input={}) => value(await f.settings(endpoint,{workspaceId:'world',...input}));
+  const configure = async qq => {
+    const {messaging} = await request('channelStatus');
+    return (await request('messagingSettings',{expected:messaging.config,next:{qq}})).messaging;
+  };
+  const old = () => ['channel-usage','channel-usage-event'].map(kind=>f.host.workspace.runtime.store.all(kind));
+  assert.deepEqual(old(),[[],[]]);
+  for (const [i,accountId,userId] of [[1,'100','200'],[2,'101','201']]) {
+    await configure({enabled:true,accountId,ownerSpeakerId:'200',allowPrivate:['200','201']});
+    const messageId='usage-'+i;
+    transport.gateway.onPrivateMessage({kind:'private',selfId:accountId,userId,messageId,text:'Synthetic QQ'});
+    const pending = () => f.agents().find(agent=>agent.inbox.nextTurn.some(row=>row.source.identity?.platformMessageId===messageId));
+    await until(pending,'QQ 输入按身份投递到原生会话');
+    const agent = pending(), message = agent.inbox.nextTurn.find(row=>row.source.identity?.platformMessageId===messageId);
+    assert.equal(agent.id === (await f.home()).id,i===1);
+    const active = await f.begin(agent.id,message);
+    await run(f,{...route,sessionId:agent.id});
+    await f.end(active);
+    await until(()=>transport.sent.length===i,'QQ 回复已送达');
+    const {qq,wechat} = (await request('channelStatus')).messaging;
+    assert.deepEqual([qq.usage.calls,qq.usage.input,qq.usage.read,qq.usage.write,qq.usage.output,wechat.usage.calls],
+      [i,i*100,i*40,i*5,i*10,0]);
+    assert.deepEqual(old(),[[],[]]);
+  }
+  const page = await report(f);
+  assert.deepEqual(page.groups.map(row=>row.entry).sort(),['qq-guest','qq-owner']);
+  await f.restart();
+  const {messaging} = await request('channelStatus');
+  assert.equal(messaging.qq.usage.yuan,page.summary.yuan);
+  writeFileSync(join(f.repo,'.chatpet/data/usage/ledger.sqlite'),'synthetic unreadable ledger');
+  const saved = await configure({enabled:false});
+  assert.equal(saved.qq.usage.issue,'unavailable');
+  assert.equal(saved.wechat.usage.issue,'unavailable');
+  assert.equal(saved.qq.state,'off');
+  assert.equal((await request('channelStatus')).messaging.config.qq.enabled,false);
+  assert.deepEqual(old(),[[],[]]);
 });

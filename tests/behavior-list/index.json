@@ -1966,6 +1966,33 @@
       "name": "模型调用途中换绑又返回时，两份账本都不写，漏记可从设置读回",
       "l1Stage": "阶段 3",
       "families": []
+    },
+    {
+      "id": "LEDGER-BUDGET-01",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/usage-ledger.test.mjs",
+      "name": "home 预算按账本跨线每天送达一次，压缩等下一条助手消息，读错保留原状态",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "LEDGER-BUDGET-COMPAT-01",
+      "categories": [],
+      "level": "L2",
+      "file": "dist/tests/core/usage-coverage.test.js",
+      "name": "同组假调用对账 Life 旧累计与账本，分辨辅助、无价格、跨峰谷及跨午夜",
+      "l1Stage": "阶段 3",
+      "families": []
+    },
+    {
+      "id": "LEDGER-CHANNEL-01",
+      "categories": [],
+      "level": "L1",
+      "file": "tests/behavior-list/usage-ledger.test.mjs",
+      "name": "QQ 主人和访客跨账号合计，旧记录停写，账本不可读时渠道设置仍可保存",
+      "l1Stage": "阶段 3",
+      "families": []
     }
   ]
 }
