@@ -1,3 +1,5 @@
+import {formatLocalTime} from '#dsh-world/timeContext';
+import {homeSpend} from '../../core/usage/totals.js';
 import { fail, object, requiredText, type ConsoleOperation } from '../../core/tables/console.js';
 import {reviewDiaryStatus} from './review-completion.js';
 import type { Context } from '@deepseek-ai/cordis';
@@ -261,6 +263,11 @@ export class CompanionLife {
       options: {worldDir: bound.directory, roomDir: bound.path, diaryDir: bound.library.paths.diaryDir, selfFile: bound.library.paths.selfFile, timeZone: this.timeZone,
         schedule: () => this.preferences, alarmFile: REVIEW_ALARM_FILE},
       dailyBudget: () => this.preferences.dailyBudget ?? undefined,
+      spentToday: (id, day) => {
+        if (!canWrite() || host.workspace.readCompanionHome(bound.scope)?.sessionId !== id) return {unavailable:true};
+        const spend = homeSpend(bound.scope, id, day);
+        return spend.issue ? {unavailable:true} : {yuan:spend.yuan};
+      },
       // The upstream runtime only forwards this store to photoTools.
       photos: () => bound.library.photoTools as ReturnType<NonNullable<LifeDeps['photos']>>,
       reviewDiaryStatus: (day,session,messageId) => {
@@ -488,8 +495,9 @@ export class CompanionLife {
       const state={workspaceId,enabled:this.enabled,running:this.running(),timeZone:this.timeZone,preferences:{...this.preferences}};
       const home=await (body && withLivingCaller(validate,()=>body.value.roomState(workspaceId)));
       validate();
-      return {...state, home: home ?? null,
-        life: this.runtime?.snapshot() ?? this.binding.home.store.read(),
+      const life = this.runtime?.snapshot() ?? this.binding.home.store.read();
+      const day = formatLocalTime(new Date(), this.timeZone).slice(0,10);
+      return {...state, home: home ?? null, life, ledgerSpend:homeSpend(this.binding.scope, life.homeSessionId, day),
         activity: store.activityDays().slice(0, 2).reverse().flatMap(day => store.activity(day)).slice(-20),
         fault: this.fault ?? null};
     });

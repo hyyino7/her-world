@@ -46,7 +46,7 @@ export async function checkMessaging({ctx,host,workspace,deviceDirectory,home,mo
       socket.send(JSON.stringify({status:'ok',retcode:0,data,echo:input.echo}));
     });
   });
-  const start=()=>createMessaging(ctx,host,{deviceDirectory,dataDirectory,workspaceId:workspace.id,storageId:host.workspace.storageId(),ownerHome:async()=>home,active:()=>true});
+  const start=()=>createMessaging(ctx,host,{deviceDirectory,dataDirectory,path:workspace.path,workspaceId:workspace.id,storageId:host.workspace.storageId(),ownerHome:async()=>home,active:()=>true});
   try {
     msg=await start();assert.equal(msg.status().wechat.path,null);assert.equal(client,undefined);
     await msg.configure({qq:{enabled:true,accountId:'100',ownerSpeakerId:'101',allowPrivate:['101','102'],allowGroups:['201'],voiceEnabled:true,
@@ -58,6 +58,7 @@ export async function checkMessaging({ctx,host,workspace,deviceDirectory,home,mo
     const latest=options=>options.messages.filter(m=>m.role==='tool').at(-1);
     let qqNames,qqText;
     setProgram(async function*(options){iterations++;qqNames=toolsOf(options);qqText=textOf(options);yield* say('QQ fixture reply');});
+    const initialQQ = msg.status().qq.usage;
     const groupPrefs=await msg.group('groupState',{groupId:'201'});
     await msg.group('groupSettings',{groupId:'201',expected:groupPrefs.settings,next:{...groupPrefs.settings,roleCard:'QQ_FIXTURE_GROUP_CARD'}});
     const group={time:Math.floor(Date.now()/1000),self_id:100,post_type:'message',message_type:'group',sub_type:'normal',message_id:7001,user_id:102,group_id:201,
@@ -74,7 +75,8 @@ export async function checkMessaging({ctx,host,workspace,deviceDirectory,home,mo
     assert.equal(spoken,'QQ fixture reply');assert.ok(qqText.includes('QQ speech transcript')&&!qqText.includes('do-not-open-local-fixture'));
     assert.equal(actions.find(a=>a.action==='fetch_ptt_text').params.message_id,'7006');
     assert.ok(actions.find(a=>a.action==='send_private_msg' && a.params.user_id===102).params.message[0].data.file.startsWith('base64://'));
-    assert.equal(msg.status().qq.usage.requests,3);assert.equal(msg.status().qq.usage.inputTokens,36);
+    const qqUsage = msg.status().qq.usage;
+    assert.equal(qqUsage.calls-initialQQ.calls,3);assert.equal(qqUsage.input-initialQQ.input,36);
     const publicDraft='A fixture about clouds.';
     await msg.group('qzoneDraft',{text:publicDraft});
     setProgram(async function*(){yield* say('[[qzone:'+publicDraft+']]');});
@@ -196,7 +198,7 @@ export async function checkMessaging({ctx,host,workspace,deviceDirectory,home,mo
     }
     await reading;assert.ok(sawGroupImage);
     const photoJob=(await ok(inbox)).job;assert.equal(photoJob.messages[0].text,'group photo seen');await ok({receipt:{id:photoJob.id,status:'sent',confirmed:1}});
-    assert.ok(msg.status().wechat.usage.requests>=6);assert.ok(msg.status().wechat.usage.outputTokens>=18);
+    assert.ok(msg.status().wechat.usage.calls>=6);assert.ok(msg.status().wechat.usage.output>=18);
     await msg.close();assert.equal((await fetch(origin+key.path)).status,404);assert.ok(!existsSync(discovery));
     msg=await start();const next=JSON.parse(readFileSync(msg.status().wechat.path));
     const again=await fetch(origin+next.path,{method:'POST',headers:{'x-dsh-world-token':next.token},body:JSON.stringify(ask)});

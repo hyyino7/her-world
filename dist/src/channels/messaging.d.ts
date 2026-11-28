@@ -7,6 +7,7 @@ import { type QQOptions, type QQTransport } from './qq.js';
 interface Options {
     deviceDirectory: string;
     dataDirectory: string;
+    path: string;
     workspaceId: string;
     storageId: string;
     ownerHome(): Promise<Agent>;
@@ -72,11 +73,22 @@ export declare function createMessaging(ctx: Context, host: PetCoreHost, options
         };
         qq: {
             usage: {
-                requests: number;
-                inputTokens: number;
-                outputTokens: number;
-                cacheReadTokens: number;
-                unreported: number;
+                from: string;
+                to: string;
+                status: "unavailable" | "empty" | "absent" | "recorded" | "recovered";
+                issue: string | null;
+                calls: number;
+                missingUsage: number;
+                input: number;
+                output: number;
+                read: number;
+                write: number;
+                missingRead: number;
+                missingWrite: number;
+                priced: number;
+                unpriced: number;
+                yuan: number;
+                partial: boolean;
             };
             credentialSet: boolean;
             pending?: number | undefined;
@@ -97,11 +109,22 @@ export declare function createMessaging(ctx: Context, host: PetCoreHost, options
             path: string | null;
             presence: string | null;
             usage: {
-                requests: number;
-                inputTokens: number;
-                outputTokens: number;
-                cacheReadTokens: number;
-                unreported: number;
+                from: string;
+                to: string;
+                status: "unavailable" | "empty" | "absent" | "recorded" | "recovered";
+                issue: string | null;
+                calls: number;
+                missingUsage: number;
+                input: number;
+                output: number;
+                read: number;
+                write: number;
+                missingRead: number;
+                missingWrite: number;
+                priced: number;
+                unpriced: number;
+                yuan: number;
+                partial: boolean;
             };
             contextMessages?: number | undefined;
             bufferSeconds?: number | undefined;

@@ -2,8 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createUserMessage} from '@deepseek-ai/dsh-llm';
 import {createChannelSourceAdapter} from '../../src/channels/sessions.js';
-import {channelUsage} from '../../src/channels/usage.js';
-import {readLedger} from '../../src/core/usage/ledger.js';
+import {join} from 'node:path';
+import {createLifeRuntime} from '#dsh-world/life/runtime';
+import {createLifeStore} from '#dsh-world/life/lifeStore';
+import {channelTotals, homeSpend} from '../../src/core/usage/totals.js';
+import {readLedger, usageDay} from '../../src/core/usage/ledger.js';
 
 const {fixture, until} = await import(new URL('../../../tests/behavior-list/fixture.mjs',import.meta.url).href);
 const {say} = await import(new URL('../../../scripts/checks/lib/native-conversation-scenarios.mjs',import.meta.url).href);
@@ -214,10 +217,9 @@ test('未迭代零调用；消费方提前停止或抛错记 cancelled，内层�
   assert.equal(attempts,rows!.length);
 });
 
-test('渠道旧事件和账本对同组请求按可比口径对账', async t => {
-  const f = await fixture(t,{life:false,economy:false});
-  const agent = f.agent('home'), ctx = agent.ctx;
-  const legacy = channelUsage(ctx,f.host,'world',()=>true);
+test('渠道重复投递事件仅记一次模型流，缺用量、无事件失败流和辅助调用均计次', async t => {
+  const f = await fixture(t,{life:false,economy:false,now:"2026-11-26T02:00:00Z"});
+  const agent = f.agent('home');
   const channel = createChannelSourceAdapter({guest:()=>false,ownerActorId:()=>'owner',admit:()=>'owner'});
   f.host.native.sourceTable.register(channel);
   const identity = {channel:'qq',accountId:'account',conversationId:'private',speakerId:'qq:owner'};
@@ -231,12 +233,55 @@ test('渠道旧事件和账本对同组请求按可比口径对账', async t => 
     if (kind.startsWith('assistant/')) {
       const event = agent.session.append(kind,{turn:active.turn,message:{role:'assistant',content:[]},usage:chunks[0]?.usage,stream:chunks});
       await f.emit('session/event',agent.session,event); await f.emit('session/event',agent.session,event);
+      const qq = channelTotals(f.host.workspace.homeScope(),usageDay(Date.now())).qq;
+      assert.deepEqual([qq.calls,qq.input,qq.output,qq.read,qq.missingUsage],
+        [kind==='assistant/message'?1:2,3,5,1,kind==='assistant/message'?0:1]);
     }
   }
-  const old = legacy.read('qq','account'); legacy.stop();
-  assert.deepEqual(old,{requests:2,inputTokens:3,outputTokens:5,cacheReadTokens:1,unreported:1});
-  const counts = readLedger(f.repo,db=>db.prepare("SELECT COUNT(*) AS n, COUNT(input_miss) AS reported, SUM(cache_write) AS writes FROM calls WHERE entry='qq-owner' AND purpose IS NULL").get());
-  assert.equal(counts!.n,old.requests+1);
-  assert.equal(counts!.reported,Number(counts!.n)-old.unreported);
-  assert.equal(counts!.writes,4);
+  const qq = channelTotals(f.host.workspace.homeScope(),usageDay(Date.now())).qq;
+  assert.deepEqual([qq.calls,qq.input,qq.output,qq.read,qq.write,qq.missingUsage],[4,9,15,3,6,1]);
+});
+
+test('同组假调用对账 Life 旧累计与账本，分辨辅助、无价格、跨峰谷及跨午夜', async t => {
+  const f = await fixture(t,{life:false,now:'2026-11-26T03:59:00Z'});
+  const home = await f.home(), dir = join(f.root,'legacy-life'), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const store = createLifeStore(dir,timeZone);
+  store.update(state => { state.homeSessionId = home.id; });
+  // Exercise the supported vendor caller without a ledger hook.
+  const legacy = createLifeRuntime({ctx:home.ctx, config:{worldId:'world',agentPreset:'standard',timeZone},store,
+    options:{worldDir:dir,roomDir:f.repo,diaryDir:dir,selfFile:join(dir,'self.md'),timeZone,schedule:()=>({wake:'',review:''})},
+    notifier:{outlets:[]}, hasCurrentPlan:()=>true, host:{workspace:async()=>f.workspace,resolveAgent:async()=>home,
+      isArchived:()=>false,rename:async()=>{},origin:()=>'',createSession:async()=>assert.fail('home exists')}});
+  await legacy.start();
+  t.after(()=>legacy.stop());
+  const active = await f.begin(home.id);
+  const spend = () => homeSpend(f.host.workspace.homeScope(), home.id, usageDay(Date.now()));
+  const old = () => store.read().spend!.yuan;
+  async function call(purpose?: string, provider='deepseek', duration=0, eventDelay=0) {
+    const opts = {...route, provider, sessionId:home.id, purpose}, usage = {inputTokens:1e6, outputTokens:0};
+    const stream = await f.middleware('llm/stream',[opts],async function* () {
+      yield {type:'usage',usage}; t.mock.timers.tick(duration); yield {type:'finish',reason:{kind:'completed'}};
+    });
+    for await (const _ of stream) { /* finish billing before emitting the assistant message */ }
+    t.mock.timers.tick(eventDelay);
+    if (!purpose) await f.emit('session/event',home.session,home.session.append('assistant/message',{
+      turn:active.turn,message:{role:'assistant',source:opts,content:[]},usage,stream:[]}));
+  }
+  await call();
+  assert.equal(old(),2);
+  assert.equal(spend().yuan,old());
+  await call('compaction');
+  assert.deepEqual([spend().yuan,old()],[4,2]);
+  await call(undefined,'fixture');
+  assert.deepEqual([spend().yuan,spend().unpriced,old()],[4,1,4]);
+  await call(undefined,'deepseek',120000); // Beijing 11:59 → 12:01.
+  assert.deepEqual([spend().yuan,old()],[6,5]);
+  const midnight = new Date(); midnight.setHours(24,0,0,0);
+  t.mock.timers.setTime(midnight.valueOf()-1000);
+  const yesterday = usageDay(Date.now());
+  await call(undefined,'deepseek',0,2000);
+  assert.equal(spend().calls,0);
+  assert.equal(homeSpend(f.host.workspace.homeScope(),home.id,yesterday).calls,5);
+  assert.ok(old() > 0);
+  await f.end(active);
 });

@@ -952,11 +952,17 @@ export function createLifeRuntime(deps) {
             retryFailedPlanning(agent.session, {data:{turn:wake.turn,reason:{kind:requirePlanningDecision ? 'interrupted' : 'error'}}});
     }
     // What her home spends: each model step priced as it lands; past the daily budget she is told once that day.
-    function spent(usage, model) {
+    function spent(sessionId, usage, model) {
         const now = clock();
         const day = formatLocalTime(now, timeZone).slice(0, 10);
+        const amount = deps.spentToday?.(sessionId, day);
+        if (amount && 'unavailable' in amount)
+            return;
         const spend = state.spend?.day === day ? state.spend : (state.spend = { day, yuan: 0 });
-        spend.yuan += stepCost(usage, model, now);
+        if (amount)
+            spend.yuan = amount.yuan;
+        else
+            spend.yuan += stepCost(usage, model, now);
         const budget = deps.dailyBudget?.();
         const remind = budget !== undefined && spend.yuan >= budget && !spend.reminded;
         if (remind)
@@ -1048,7 +1054,7 @@ export function createLifeRuntime(deps) {
                 return;
             journal.home(session, event);
             if (event.type === 'assistant/message' && event.data.usage)
-                spent(event.data.usage, event.data.message.source.model);
+                spent(session.id, event.data.usage, event.data.message.source.model);
             if (event.type === 'user/message' && event.data.source.kind === 'user') {
                 earlyStop.partnerSpoke();
                 if (state.reviewWake) { state.reviewWake.ownerInterrupted = true; store.write(state); }

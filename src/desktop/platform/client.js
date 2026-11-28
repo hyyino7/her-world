@@ -17240,6 +17240,21 @@ registerCompanion({
         return h('label', {className:'cp-field',key}, label, h('input', {value:value ?? '', type:kind,
           onChange:e => set(group,key,kind === 'number' ? Number(e.target.value) : e.target.value)}));
       }
+      function channelUsageText(row, name) {
+        if (row.issue) return '账本暂不可读';
+        const coverage = row.status === 'recovered' ? ' · 已重建，合计只覆盖新账本' : '';
+        if (!row.calls) return '近 30 天经 ' + name + ' 没有调用' + coverage;
+        const reported = row.calls - row.missingUsage;
+        const counter = (count, missing = 0) => !reported ? '—' : missing === reported ? '未报'
+          : String(count) + (missing ? '（另有 ' + missing + ' 次未报）' : '');
+        const parts = ['本伙伴经 ' + name + ' 近 30 天（含今天）：调用 ' + row.calls + ' 次',
+          '未命中输入 ' + counter(row.input), '缓存读 ' + counter(row.read,row.missingRead),
+          '缓存写 ' + counter(row.write,row.missingWrite), '输出 ' + counter(row.output)];
+        parts.push(row.priced ? '估算 ¥' + row.yuan.toFixed(6) + (row.partial ? '（部分估算）' : '') : '估算 —');
+        if (row.unpriced) parts.push('另有 ' + row.unpriced + ' 次无价格，未计入');
+        if (row.missingUsage) parts.push('缺用量 ' + row.missingUsage + ' 次');
+        return parts.join(' · ') + coverage;
+      }
       function platform(group, name) {
         const config = draft[group], status = saved.messaging[group];
         if (!config) return null;
@@ -17249,9 +17264,7 @@ registerCompanion({
             status.error, Number.isFinite(status.pending ?? status.outbox) ? '待发 ' + (status.pending ?? status.outbox) : '',
             Number.isFinite(status.sent) ? '已发 ' + status.sent : '', Number.isFinite(status.failed) ? '失败 ' + status.failed : '',
             Number.isFinite(status.uncertain) ? '待核对 ' + status.uncertain : ''].filter(Boolean).join(' · ')),
-          status?.usage && h('p',null,'本账号模型调用 ' + status.usage.requests + ' 次 · 输入 ' + status.usage.inputTokens +
-            ' / 输出 ' + status.usage.outputTokens + ' tokens · 缓存读取 ' + status.usage.cacheReadTokens +
-            (status.usage.unreported ? ' · 未返回用量 ' + status.usage.unreported + ' 次' : '')),
+          status?.usage && h('p',null,channelUsageText(status.usage,name)),
           Number.isFinite(status?.voiceReceived) && h('p',null,'收到语音 ' + status.voiceReceived + ' · 送达已核对 ' +
             status.voiceVerified + ' · 待核对 ' + status.voiceUncertain),
           status?.path && h('p',null,'本机微信适配器连接文件：' + status.path),
@@ -17577,6 +17590,14 @@ registerCompanion({
       }
       if (!workspaceId) return h('p', null, '请先绑定并初始化工作区。');
       const button = (label, click, disabled = false) => h('button', {type: 'button', className: 'cp-save', disabled: busy || disabled, onClick: click}, label);
+      function homeCost(row) {
+        if (row.issue) return '账本暂不可读';
+        const coverage = row.status === 'recovered' ? ' · 已重建，合计只覆盖新账本' : '';
+        if (!row.calls) return '今天还没有记录' + coverage;
+        const priced = row.priced ? '¥' + row.yuan.toFixed(6) + (row.partial ? '（部分估算）' : '') : '无已计价金额';
+        return priced + (row.unpriced ? ' · 另有 ' + row.unpriced + ' 次无价格，未计入' : '')
+          + (row.missingUsage ? ' · 缺用量 ' + row.missingUsage + ' 次' : '') + coverage;
+      }
       const home = view?.home, life = view?.life, plan = life?.currentPlan;
       const prefs = edit?.next || view?.preferences;
       const updatePref = (key, value) => setEdit(old => ({expected:old?.expected || view.preferences,
@@ -17590,8 +17611,9 @@ registerCompanion({
           home && facts([['现在', `${home.her.roomName} · ${home.her.spotLabel}，${home.her.activity}`],
             ['身体状态', Object.values(home.body.words).join('，')], ['生活时区', view.timeZone],
             ['下次考虑', life?.alarm ? `${new Date(life.alarm.at).toLocaleString()} · ${life.alarm.note || '生活唤醒'}` : '等待消息或计划条件'],
-            ['生活会话', life?.homeSessionId ? '已保存，可在 DSH 会话列表打开' : '开启后创建'],
-            ['生活会话用量估算', life?.spend ? life.spend.day + ' · ¥' + Number(life.spend.yuan).toFixed(4) : '暂无记录']]),
+            ['生活会话', life?.homeSessionId ? '已保存，可在 DSH 会话列表打开' : '开启后创建']]),
+          view?.ledgerSpend && facts([['今天 home 花费（账本）',
+            homeCost(view.ledgerSpend)]]),
           view?.fault && h('p', {role: 'alert'}, view.fault),
           ...(life?.faults || []).map((fault, index) => h('p', {key: index, role: 'alert'}, fault)),
           h('p', {className: 'cp-muted'}, '安静模式暂停主动气泡，生活继续记录。生活运行时，自动碎碎念暂停；手动碎碎念仍可使用。')),
@@ -17736,23 +17758,16 @@ registerCompanion({
     function UsagePage({workspaceId, request}) {
       const [day, setDay] = useState(''), [revision, refresh] = useState(0);
       const [view, setView] = useState(null), [fault, setFault] = useState('');
-      const [legacy, setLegacy] = useState({}), [recovered, setRecovered] = useState(false);
+      const [recovered, setRecovered] = useState(false);
       React.useEffect(() => {
         const controller = new AbortController(), signal = controller.signal;
-        setView(null); setFault(''); setLegacy({}); setRecovered(false);
+        setView(null); setFault(''); setRecovered(false);
         request('usageLedger', day ? {workspaceId, day} : {workspaceId}, signal).then(result => {
           if (signal.aborted) return;
           setView(result);
           const key = JSON.stringify([workspaceId, result.recovery]);
           if (result.recovery && !recoveryNotices.has(key)) { recoveryNotices.add(key); setRecovered(true); }
         }).catch(e => { if (!signal.aborted) setFault(e.message); });
-        for (const endpoint of ['channelStatus', 'lifeView']) {
-          request(endpoint, {workspaceId}, signal).then(value => {
-            if (!signal.aborted) setLegacy(old => ({...old, [endpoint]: {value}}));
-          }).catch(e => {
-            if (!signal.aborted) setLegacy(old => ({...old, [endpoint]: {status: e.code === 'UNAVAILABLE' ? '未加载' : '读取失败'}}));
-          });
-        }
         return () => controller.abort();
       }, [workspaceId, request, day, revision]);
       const amount = value => '¥' + Number(value).toFixed(6);
@@ -17770,8 +17785,6 @@ registerCompanion({
             tokens(row,'input'), tokens(row,'read','missingRead'), tokens(row,'write','missingWrite'),
             tokens(row,'output'), cost].map((value,i) => h('td', {key:i}, value)));
       }
-      const channels = legacy.channelStatus?.value?.messaging, spend = legacy.lifeView?.value?.life?.spend;
-      const oldCount = channel => channels ? channels[channel]?.usage?.requests ?? '暂无记录' : legacy.channelStatus?.status ?? '读取中';
       return h(Card, {title:'模型用量', note:'只记当前伙伴工作区的调用。合计不含漏记的次数。'},
         h('div', {className:'cp-inline-actions'},
           h('label', null, '记录日期 ', h('input', {type:'date', value:day || view?.day || '', min:view?.minDay, max:view?.today,
@@ -17793,15 +17806,7 @@ registerCompanion({
           !view.issue && view.summary.missingUsage > 0 && h('p', null, '缺用量 ' + view.summary.missingUsage + ' 次，仅计次数。'),
           !view.issue && view.prices.map(info => h('p', {key:info}, '价格缺项 · ' + info)),
           Object.values(view.gaps).some(Boolean) && h('p', {role:'status'}, '漏记 · 写失败 ' + view.gaps.writeFailed
-            + ' 次，未绑定 ' + view.gaps.unbound + ' 次，换绑未记 ' + view.gaps.rebound + ' 次。'),
-          !view.issue && h(React.Fragment, null, h('h4', null, '旧统计对照'),
-            facts([['口径','旧统计 ／ 账本'], ['QQ 累计调用', oldCount('qq') + ' ／ ' + view.channels.qq],
-              ['微信累计调用', oldCount('wechat') + ' ／ ' + view.channels.wechat],
-              ['Life 当日估算', (legacy.lifeView?.value ? spend?.day === view.day ? amount(spend.yuan) : '当天无旧记录'
-                : legacy.lifeView?.status ?? '读取中') + ' ／ ' + amount(view.homeYuan)]]),
-            h('p', null, '渠道旧值是当前账号的全期累计，按会话与事件序号去重。消息和尝试各算一次，缺用量也计次，缓存写未计。账本合计所有账号的主人、访客和补答入口，包含未产生会话事件的失败流，此处排除辅助用途。'),
-            h('p', null, 'Life 旧值只保留最近一天，运行期间按处理时刻估算 home 带用量的助手消息，含部分输出。账本按结束时刻用旧单价估算当天 home 的普通调用，也含 Life 暂停期间。'),
-            h('p', {className:'cp-muted'}, '全新隔离安装便于对照。旧统计可能含启用账本前的记录。恢复离线备份会回卷账本，渠道及 Life 旧值保留。'))));
+            + ' 次，未绑定 ' + view.gaps.unbound + ' 次，换绑未记 ' + view.gaps.rebound + ' 次。')));
     }
 
     function SettingsPage({ request, getAppearanceEditor }) {

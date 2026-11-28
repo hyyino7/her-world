@@ -31,6 +31,7 @@ export declare function coreConsoleOperations(host: PetCoreHost): {
                 missingRead: number;
                 missingWrite: number;
                 priced: number;
+                unpriced: number;
                 yuan: number;
                 partial: boolean;
             }[];
@@ -44,15 +45,11 @@ export declare function coreConsoleOperations(host: PetCoreHost): {
                 missingRead: number;
                 missingWrite: number;
                 priced: number;
+                unpriced: number;
                 yuan: number;
                 partial: boolean;
             };
             prices: string[];
-            channels: {
-                qq: number;
-                wechat: number;
-            };
-            homeYuan: number;
         };
         foundation(call: ConsoleCall): Promise<import("./workspace.js").CompanionFoundation>;
         self(call: ConsoleCall): Promise<{
