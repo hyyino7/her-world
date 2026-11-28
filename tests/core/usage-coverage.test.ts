@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createUserMessage} from '@deepseek-ai/dsh-llm';
 import {createChannelSourceAdapter} from '../../src/channels/sessions.js';
-import {channelUsage} from '../../src/channels/usage.js';
 import {join} from 'node:path';
 import {createLifeRuntime} from '#dsh-world/life/runtime';
 import {createLifeStore} from '#dsh-world/life/lifeStore';
@@ -218,10 +217,9 @@ test('未迭代零调用；消费方提前停止或抛错记 cancelled，内层�
   assert.equal(attempts,rows!.length);
 });
 
-test('渠道旧事件和账本对同组请求按可比口径对账', async t => {
+test('渠道重复投递事件仅记一次模型流，缺用量、无事件失败流和辅助调用均计次', async t => {
   const f = await fixture(t,{life:false,economy:false,now:"2026-11-26T02:00:00Z"});
-  const agent = f.agent('home'), ctx = agent.ctx;
-  const legacy = channelUsage(ctx,f.host,'world',()=>true);
+  const agent = f.agent('home');
   const channel = createChannelSourceAdapter({guest:()=>false,ownerActorId:()=>'owner',admit:()=>'owner'});
   f.host.native.sourceTable.register(channel);
   const identity = {channel:'qq',accountId:'account',conversationId:'private',speakerId:'qq:owner'};
@@ -236,16 +234,12 @@ test('渠道旧事件和账本对同组请求按可比口径对账', async t => 
       const event = agent.session.append(kind,{turn:active.turn,message:{role:'assistant',content:[]},usage:chunks[0]?.usage,stream:chunks});
       await f.emit('session/event',agent.session,event); await f.emit('session/event',agent.session,event);
       const qq = channelTotals(f.host.workspace.homeScope(),usageDay(Date.now())).qq;
-      assert.deepEqual(legacy.read('qq','account'),{requests:qq.calls,inputTokens:qq.input,outputTokens:qq.output,
-        cacheReadTokens:qq.read,unreported:qq.missingUsage});
+      assert.deepEqual([qq.calls,qq.input,qq.output,qq.read,qq.missingUsage],
+        [kind==='assistant/message'?1:2,3,5,1,kind==='assistant/message'?0:1]);
     }
   }
-  const old = legacy.read('qq','account'); legacy.stop();
-  assert.deepEqual(old,{requests:2,inputTokens:3,outputTokens:5,cacheReadTokens:1,unreported:1});
-  const counts = readLedger(f.repo,db=>db.prepare("SELECT COUNT(*) AS n, COUNT(input_miss) AS reported, SUM(cache_write) AS writes FROM calls WHERE entry='qq-owner' AND purpose IS NULL").get());
-  assert.equal(counts!.n,old.requests+1);
-  assert.equal(counts!.reported,Number(counts!.n)-old.unreported);
-  assert.equal(counts!.writes,4);
+  const qq = channelTotals(f.host.workspace.homeScope(),usageDay(Date.now())).qq;
+  assert.deepEqual([qq.calls,qq.input,qq.output,qq.read,qq.write,qq.missingUsage],[4,9,15,3,6,1]);
 });
 
 test('同组假调用对账 Life 旧累计与账本，分辨辅助、无价格、跨峰谷及跨午夜', async t => {

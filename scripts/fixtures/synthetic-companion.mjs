@@ -18,7 +18,6 @@ import { CompanionVoice } from '../../dist/src/voice/plugin.js';
 import { companionChannelDirectory } from '../../dist/src/channels/storage.js';
 import { messagingStorage } from '../../dist/src/channels/messaging-storage.js';
 import { createQQInbox } from '../../dist/src/channels/qq-inbox.js';
-import { channelUsage } from '../../dist/src/channels/usage.js';
 import { createLifeStore, durableWrite } from '#dsh-world/life/lifeStore';
 import { backupPlan } from '../lib/offline-backup.mjs';
 import { inspectRepoBinding } from '../lib/repo-storage.mjs';
@@ -119,11 +118,6 @@ export async function generateSynthetic(out) {
     const inbox = createQQInbox({store:host.workspace.runtime.store,storageId:binding.storageId,active:() => true,allowed:() => true,owner:() => true,probe:async () => 'absent'});
     const speaker = {channel:'qq',accountId:'123',conversationType:'private',conversationId:'456',speakerId:'qq:456',platformMessageId:'789'};
     assert.ok(inbox.receive({identity:speaker,text:'SYNTHETIC_QQ_817',at:'2026-01-01T00:00:00Z',record:true,directed:true,replyToSelf:false}));
-    let listener;
-    const usage = channelUsage({on:(_event,fn) => {listener=fn;return () => {};}},host,binding.storageId,() => true);
-    listener({id:'fixture-session'},{type:'user/message',data:{source:{kind:'user',identity:speaker}}});
-    listener({id:'fixture-session'},{type:'assistant/message',seq:2,data:{usage:{inputTokens:1,outputTokens:1}}}); usage.stop();
-    assert.equal(usage.read('qq','123').requests, 1);
     const voice = new CompanionVoice(host, join(profile, 'chatpet-voice'), () => undefined);
     try { await voice.handle({rest:'voice/voices',method:'GET'}); } finally { voice.release(); }
     // Browser-only rows have no filesystem owner; keep an explicit synthetic

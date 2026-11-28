@@ -63,7 +63,9 @@ test('R5 仅放行仍登记在 Core 原位的记录及获批模块',t=>{
     kinds.map(kind=>`store.get('${kind}', 'fixture'); store.put('${kind}', 'fixture', {});`).join('\n'),
   ])));
   const violations=rows=>rows.filter(row=>row.violation).map(row=>[row.writer,row.target,row.access]);
-  const unapproved=[['channels','memory-batch','读'],['channels','memory-batch','写'],
+  const unapproved=[['channels','channel-usage','读'],['channels','channel-usage','写'],
+    ['channels','channel-usage-event','读'],['channels','channel-usage-event','写'],
+    ['channels','memory-batch','读'],['channels','memory-batch','写'],
     ['desktop','channel-reach','读'],['desktop','channel-reach','写']];
   const rows=work.scan().writers;
   assert.equal(rows.length,16);

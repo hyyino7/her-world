@@ -12,7 +12,8 @@ import type {PetCoreHost} from '../core/index.js';
 import {check, digest} from '../core/storage.js';
 import {isRunningLifeHome} from '../living/outlets.js';
 import {privateDeviceDirectory} from './bridge.js';
-import {channelUsage} from './usage.js';
+import {channelTotals} from '../core/usage/totals.js';
+import {usageDay} from '../core/usage/ledger.js';
 import {createChannelHomes} from './sessions.js';
 import {allowedIdentity, editableMessagingFields, messagingPreferences, ownerIdentity} from './messaging-settings.js';
 import {createQzoneLedger} from './group-qzone.js';
@@ -22,7 +23,7 @@ import {messagingStorage} from './messaging-storage.js';
 import {createQQInbox,probeQQAdmission} from './qq-inbox.js';
 
 interface Options {
-  deviceDirectory:string; dataDirectory:string; workspaceId:string; storageId:string; ownerHome():Promise<Agent>; active():boolean;
+  deviceDirectory:string; dataDirectory:string; path:string; workspaceId:string; storageId:string; ownerHome():Promise<Agent>; active():boolean;
   qqTransport?(opts:QQOptions):QQTransport;
 }
 interface Server {getOrigin():string; register(route:ReturnType<typeof createWechatModule>['route']):()=>void}
@@ -62,7 +63,6 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
   const allowed=(id:SpeakerIdentity)=>active()&&allowedIdentity(config,id);
   const owner=(id:SpeakerIdentity)=>active()&&ownerIdentity(config,id);
   const homes=createChannelHomes(ctx,host,{...options,active,identityAllowed:allowed,ownerIdentity:owner});
-  const usage=channelUsage(ctx,host,options.storageId,homes.allowsReply);
   const web=(ctx as unknown as {get(name:'web'):{search(input:{query:string;maxResults:number}):Promise<{sources:{url:string;title?:string;snippet?:string}[]}>}|undefined}).get('web');
   const groups=createGroupGameplay({dataDirectory:options.dataDirectory,active,allowed,
     companionName:()=>host.workspace.runtime.identity().displayName,
@@ -189,9 +189,11 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
     qqConnection(): 'off'|'online'|'unavailable' {
       return !active() || !config.qq.enabled ? 'off' : qq?.status().connected ? 'online' : 'unavailable';
     },
-    status(){return {config:structuredClone(config),fields:editableMessagingFields(),qq:{connected:false,state:config.qq.enabled?'unavailable':'off',error:qqError,
-      sent:0,failed:0,blocked:0,outbox:0,voiceReceived:0,voiceVerified:0,voiceUncertain:0,...qq?.status(),usage:usage.read('qq',config.qq.accountId),credentialSet:!!config.qq.tokenEnv&&!!process.env[config.qq.tokenEnv]},
-      wechat:{account:null,lastContactAt:null,chats:0,pending:0,uncertain:0,...wx?.status(),error:wxError,path:wxFile,presence:wx?.presence(new Date())??null,usage:usage.read('wechat',config.wechat.accountId)}};},
+    status(){
+      const usage = channelTotals(options, usageDay(Date.now()));
+      return {config:structuredClone(config),fields:editableMessagingFields(),qq:{connected:false,state:config.qq.enabled?'unavailable':'off',error:qqError,
+      sent:0,failed:0,blocked:0,outbox:0,voiceReceived:0,voiceVerified:0,voiceUncertain:0,...qq?.status(),usage:usage.qq,credentialSet:!!config.qq.tokenEnv&&!!process.env[config.qq.tokenEnv]},
+      wechat:{account:null,lastContactAt:null,chats:0,pending:0,uncertain:0,...wx?.status(),error:wxError,path:wxFile,presence:wx?.presence(new Date())??null,usage:usage.wechat}};},
     async configure(patch:Parameters<typeof messagingPreferences>[1], validate?: () => void, committed?: () => void){
       const next=messagingPreferences(config,patch);check(active(),'Channel workspace changed');
       const updateQQ=!isDeepStrictEqual(next.qq,config.qq)||Boolean(qqError);
@@ -231,6 +233,6 @@ export async function createMessaging(ctx:Context, host:PetCoreHost, options:Opt
       return Promise.allSettled(senders);
     },
     group:(operation:string,input:Record<string,unknown>)=>operation.startsWith('qzone')?createQzoneLedger(options.dataDirectory,config.qq.accountId).manage(operation,input):groups.manage(config.qq.accountId,config.qq.allowGroups,operation,input),
-    async close(){closed=true;usage.stop();groups.stop();homes.stop();await Promise.all([stopQQ(),stopWechat()]);},
+    async close(){closed=true;groups.stop();homes.stop();await Promise.all([stopQQ(),stopWechat()]);},
   };
 }

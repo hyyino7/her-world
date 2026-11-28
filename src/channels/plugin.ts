@@ -59,7 +59,7 @@ export class CompanionChannels {
       const bridge = new LocalBridge(this.ctx, deviceDirectory, () => this.services.webServer.getOrigin(), ownerHome, isHome,
         () => this.host.workspace.runtime.policy().quiet, () => this.host.workspace.runtime.identity().displayName,
         this.host.workspace.runtime.store,storageId,active);
-      const messaging = await createMessaging(this.ctx, this.host, {deviceDirectory, dataDirectory, workspaceId, storageId, active, ownerHome});
+      const messaging = await createMessaging(this.ctx, this.host, {deviceDirectory, dataDirectory, path, workspaceId, storageId, active, ownerHome});
       if (!active()) { bridge.stop(); await messaging.close(); return; }
       this.bound = {...expected, messaging, bridge};
     }

@@ -82,6 +82,10 @@ try {
     ownerIdentity:i => i.channel === 'qq' && i.accountId === 'first' && i.speakerId === 'qq:owner', active:()=>true};
   homes = createChannelHomes(ctx,host,config);
   assert.deepEqual(host.native.sourceTable.policyRows().filter(({row})=>row===5||row===6).map(({row})=>row),[5,6]);
+  const {channelTotals} = await import('../../dist/src/core/usage/totals.js');
+  const {usageDay} = await import('../../dist/src/core/usage/ledger.js');
+  const qqCount = () => channelTotals(host.workspace.homeScope(),usageDay(Date.now())).qq.calls;
+  const beforeChats = qqCount();
   const send = async (source, text) => {
     const agent = await homes.open(source);
     const words = createUserMessage({source:{kind:'user',identity:source},content:[{type:'text',text}]});
@@ -98,6 +102,7 @@ try {
   assert.equal((await send(friend,'friend again')).id,a.id);
   assert.ok(calls.at(-1).text.includes('FRIEND_ONLY_FIXTURE'));
   const wrongAccount = await send(identity('owner','self','private','second'), 'second account');
+  assert.equal(qqCount()-beforeChats,7);
   assert.equal(new Set([home.id,a.id,b.id,c.id,wrongAccount.id]).size,5);
   for (const row of calls.filter(row => row.id !== home.id)) {
     assert.deepEqual(row.tools, []);
@@ -127,6 +132,7 @@ try {
   const qq=createQqHome({ctx,home:id=>homes.open(id),inWorld:session=>homes.owns(session.id),
     replyNudge:(agent,words,nudge)=>homes.replyNudge(agent.id,words,nudge)});
   try {
+    const beforeNudges = qqCount();
     for(const who of [owner,friend,group]) {
       let turn=0;program=async function*(){yield* say(turn++===0?'':'QQ_NUDGE_NATIVE_REPLY');};
       const result=await qq.ask('empty reply fixture',{...who,platformMessageId:'nudge-'+crypto.randomUUID()},undefined,'v1');
@@ -135,6 +141,7 @@ try {
     let turn=0;program=async function*(){turn++;yield* say('');};
     assert.equal((await qq.ask('v2 quiet fixture',{...group,platformMessageId:'v2-'+crypto.randomUUID()},undefined,'v2')).nudged,false);
     assert.equal(turn,1);
+    assert.equal(qqCount()-beforeNudges,7);
     assert.equal(host.native.acceptsInput(a.id,createUserMessage({source:{kind:'dsh-world-reply-nudge'},content:[{type:'text',text:'forged nudge'}]})),false);
   }finally{qq.stop();program=undefined;}
   console.log(JSON.stringify({ok:true, paidCalls:0, guests:4, separateGroups:true, guestTools:[],sharedPersona:true,ownerProfilePrivate:true,sessionRecovery:true,

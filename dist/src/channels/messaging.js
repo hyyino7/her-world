@@ -8,7 +8,8 @@ import { conversationKey, speakerIdentity } from '#dsh-world/ecosystem/shared/id
 import { check, digest } from '../core/storage.js';
 import { isRunningLifeHome } from '../living/outlets.js';
 import { privateDeviceDirectory } from './bridge.js';
-import { channelUsage } from './usage.js';
+import { channelTotals } from '../core/usage/totals.js';
+import { usageDay } from '../core/usage/ledger.js';
 import { createChannelHomes } from './sessions.js';
 import { allowedIdentity, editableMessagingFields, messagingPreferences, ownerIdentity } from './messaging-settings.js';
 import { createQzoneLedger } from './group-qzone.js';
@@ -61,7 +62,6 @@ export async function createMessaging(ctx, host, options) {
     const allowed = (id) => active() && allowedIdentity(config, id);
     const owner = (id) => active() && ownerIdentity(config, id);
     const homes = createChannelHomes(ctx, host, { ...options, active, identityAllowed: allowed, ownerIdentity: owner });
-    const usage = channelUsage(ctx, host, options.storageId, homes.allowsReply);
     const web = ctx.get('web');
     const groups = createGroupGameplay({ dataDirectory: options.dataDirectory, active, allowed,
         companionName: () => host.workspace.runtime.identity().displayName,
@@ -220,9 +220,10 @@ export async function createMessaging(ctx, host, options) {
             return !active() || !config.qq.enabled ? 'off' : qq?.status().connected ? 'online' : 'unavailable';
         },
         status() {
+            const usage = channelTotals(options, usageDay(Date.now()));
             return { config: structuredClone(config), fields: editableMessagingFields(), qq: { connected: false, state: config.qq.enabled ? 'unavailable' : 'off', error: qqError,
-                    sent: 0, failed: 0, blocked: 0, outbox: 0, voiceReceived: 0, voiceVerified: 0, voiceUncertain: 0, ...qq?.status(), usage: usage.read('qq', config.qq.accountId), credentialSet: !!config.qq.tokenEnv && !!process.env[config.qq.tokenEnv] },
-                wechat: { account: null, lastContactAt: null, chats: 0, pending: 0, uncertain: 0, ...wx?.status(), error: wxError, path: wxFile, presence: wx?.presence(new Date()) ?? null, usage: usage.read('wechat', config.wechat.accountId) } };
+                    sent: 0, failed: 0, blocked: 0, outbox: 0, voiceReceived: 0, voiceVerified: 0, voiceUncertain: 0, ...qq?.status(), usage: usage.qq, credentialSet: !!config.qq.tokenEnv && !!process.env[config.qq.tokenEnv] },
+                wechat: { account: null, lastContactAt: null, chats: 0, pending: 0, uncertain: 0, ...wx?.status(), error: wxError, path: wxFile, presence: wx?.presence(new Date()) ?? null, usage: usage.wechat } };
         },
         async configure(patch, validate, committed) {
             const next = messagingPreferences(config, patch);
@@ -282,7 +283,7 @@ export async function createMessaging(ctx, host, options) {
             return Promise.allSettled(senders);
         },
         group: (operation, input) => operation.startsWith('qzone') ? createQzoneLedger(options.dataDirectory, config.qq.accountId).manage(operation, input) : groups.manage(config.qq.accountId, config.qq.allowGroups, operation, input),
-        async close() { closed = true; usage.stop(); groups.stop(); homes.stop(); await Promise.all([stopQQ(), stopWechat()]); },
+        async close() { closed = true; groups.stop(); homes.stop(); await Promise.all([stopQQ(), stopWechat()]); },
     };
 }
 //# sourceMappingURL=messaging.js.map

@@ -60,7 +60,7 @@ test('R5 常量 kind 定位读写调用，区分拥有者和 Core 物理容器',
   const result=work.scan();
   const rows=result.writers;
   assert.deepEqual(rows.filter(r=>r.file.includes('channels/')).map(r=>[r.line,r.target,r.access,r.owner,r.containerOwner,r.violation]),[
-    [4,'channel-received','读','channels','core',false],[5,'channel-received','写','channels','core',false],[6,'channel-usage','写','channels','core',false],
+    [4,'channel-received','读','channels','core',false],[5,'channel-received','写','channels','core',false],[6,'channel-usage','写','channels','core',true],
   ]);
   assert.deepEqual(rows.filter(r=>r.file.includes('desktop/')).map(r=>[r.line,r.access,r.owner,r.violation]),[[3,'读','desktop',false],[4,'写','desktop',false]]);
   assert.ok(rows.some(r=>r.target==='economy.initialized:*'&&r.line===3&&r.owner==='living'&&r.containerOwner==='core'&&r.violation));
