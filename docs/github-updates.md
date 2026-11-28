@@ -6,7 +6,14 @@ Her World 的 npm 包名为 `her-world`。源码、版本标签和通过检查�
 
 ## 在 DSH 安装和更新
 
-- **首次安装**：打开 **插件 → 添加插件**，输入 `her-world`，安装并启用。随后在设置里绑定伙伴 Repo。
+- **首次安装**：打开 **插件 → 添加插件**，输入 `her-world` 并安装。npm 包不带 Core 配置，这时启用会在 `00-Core` 报 `Invalid companionId`。完全退出 DSH，用 DSH 自带的 Electron 以 Node 模式运行已装包里的 setup，由它把 Core 身份写进 profile：
+
+  ```sh
+  ELECTRON_RUN_AS_NODE=1 "/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness" \
+    ~/.dsh/profiles/desktop/node_modules/her-world/scripts/install-dsh.mjs --apply
+  ```
+
+  先不加 `--apply` 可以只预览。重新打开 DSH 后，在设置里绑定伙伴 Repo。参数见[伙伴数据搬家和恢复](portability.md)。
 - **更新已有 npm 安装**：打开 **Her World → 版本**，检查版本，选择所需正式版并点 **更新**。DSH 提示重启时再重启。
 - **隔离验收与换包**：先用隔离环境激活正式包，走实际功能入口，并从同一版本页换回基线版，核对数据仍可读。支持基线是已迁移的 0.5.0，操作完成后再升级日常机器。历史迁移步骤见 [v0.5.0](https://github.com/hyyino7/her-world/tree/v0.5.0)。
 - **搬家和离线修复**：setup 及恢复步骤见[伙伴数据搬家和恢复](portability.md)。
