@@ -31,6 +31,7 @@ export declare function coreConsoleOperations(host: PetCoreHost): {
                 missingRead: number;
                 missingWrite: number;
                 priced: number;
+                unpriced: number;
                 yuan: number;
                 partial: boolean;
             }[];
@@ -44,6 +45,7 @@ export declare function coreConsoleOperations(host: PetCoreHost): {
                 missingRead: number;
                 missingWrite: number;
                 priced: number;
+                unpriced: number;
                 yuan: number;
                 partial: boolean;
             };

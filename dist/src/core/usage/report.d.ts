@@ -26,6 +26,7 @@ export declare function usageReport(host: PetCoreHost, scope: HomeBinding, reque
         missingRead: number;
         missingWrite: number;
         priced: number;
+        unpriced: number;
         yuan: number;
         partial: boolean;
     }[];
@@ -39,6 +40,7 @@ export declare function usageReport(host: PetCoreHost, scope: HomeBinding, reque
         missingRead: number;
         missingWrite: number;
         priced: number;
+        unpriced: number;
         yuan: number;
         partial: boolean;
     };
