@@ -22,6 +22,8 @@ export interface LifeDeps {
     timers?: LifeTimers;
     /** CNY her home may spend a day; undefined or absent is no limit. */
     dailyBudget?: () => number | undefined;
+    /** Current home ledger total. Unavailable leaves today's spend and reminder untouched. */
+    spentToday?: (homeSessionId: string, day: string) => {yuan: number} | {unavailable: true};
     /** Called after verified diary completion when reviewDiaryStatus is provided; legacy hosts receive it on review delivery. */
     afterReview?: () => void;
     /** Opt-in native write receipt verification; existing old diaries are retained. */

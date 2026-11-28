@@ -204,3 +204,44 @@ test('missing processed-message records or Life spend cannot be recovered from o
   write(life,JSON.stringify({version:1}));
   assert.throws(()=>restoreOfflineBackup(f.plan,backup,join(f.root,'before-spend'),noWriter),/spend.*Reconcile actual deliveries/);
 });
+
+test('恢复回卷账本并保留 spend，下一次 home 检查下调金额且当天不重发', async t => {
+  const {fixture: companion, until} = await import('../behavior-list/fixture.mjs');
+  const {homeSpend} = await import('../../dist/src/core/usage/totals.js');
+  const {usageDay} = await import('../../dist/src/core/usage/ledger.js');
+  const f = await companion(t,{now:'2026-11-26T02:00:00Z'});
+  const dshHome = join(f.root,'offline'), profileDir = join(dshHome,'profiles/test');
+  write(join(profileDir,'node_modules/her-world/package.json'),'synthetic runtime');
+  write(join(dshHome,'storages/workspace.json'),JSON.stringify({unit:{name:'workspace',version:1},
+    global:{workspaceIds:['world']},tables:{workspaces:{world:{path:f.repo,sessionIds:['home']}}}}));
+  await f.enable();
+  const prefs = (await f.life.snapshot('world')).preferences;
+  await f.life.settings('world',prefs,{...prefs,dailyBudget:1});
+  const id = (await f.home()).id, day = usageDay(Date.now());
+  async function step(tokens) {
+    const agent = await f.home(), active = await f.begin(id);
+    const route = {provider:'deepseek',model:'deepseek-flash',sessionId:id}, usage = {inputTokens:tokens,outputTokens:0};
+    const stream = await f.middleware('llm/stream',[route],async function*(){yield {type:'usage',usage};});
+    for await (const _ of stream) {}
+    await f.emit('session/event',agent.session,agent.session.append('assistant/message',{
+      turn:active.turn,message:{role:'assistant',source:route,content:[]},usage,stream:[]}));
+    await f.end(active);
+  }
+  const budgetMessages = () => f.sent.filter(message=>message.content.some(block=>block.text?.includes('手上的事收个尾')));
+  const stored = () => JSON.parse(read(join(f.repo,'.chatpet/data/life/life.json'))).spend;
+  const plan = () => backupPlan({repo:f.repo,workspaceId:'world',profileDir,dshHome,config:f.config});
+  const backup = join(f.root,'backup');
+  await step(300000);
+  await f.restart(()=>createOfflineBackup(plan(),backup,noWriter));
+  await step(300000);
+  await until(()=>budgetMessages().length===1,'home 收到额度提醒');
+  assert.deepEqual(stored(),{day,yuan:1.2,reminded:true});
+  await f.restart(()=>{
+    restoreOfflineBackup(plan(),backup,join(f.root,'before'),noWriter);
+    assert.equal(homeSpend({path:f.repo},id,day).yuan,0.6);
+    assert.deepEqual(stored(),{day,yuan:1.2,reminded:true});
+  });
+  await step(250000);
+  assert.deepEqual(stored(),{day,yuan:1.1,reminded:true});
+  assert.equal(budgetMessages().length,1);
+});

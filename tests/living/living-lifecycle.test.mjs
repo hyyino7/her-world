@@ -14,6 +14,7 @@ import {renderContextSections} from '@deepseek-ai/dsh-system-prompt';
 import {createLifeStore} from '#dsh-world/life/lifeStore';
 import {presentFact} from '../../dist/src/core/interaction-presentation.js';
 import {isCompanionHome, resolveCompanionHome} from '../../dist/src/core/companion-foundation.js';
+import {appendUsage as recordUsage, usageDay} from '../../dist/src/core/usage/ledger.js';
 import {LivingWorld} from '../../dist/src/living/index.js';
 import {behaviorPlugin, corePlugin, economyPlugin} from '../../dist/tests/behavior-list/entries.js';
 import {cordisFixture, eventually, submitPlan} from '../behavior-list/entries-lifecycle.test.mjs';
@@ -1044,8 +1045,8 @@ test('R6 Life 卸载等待原生持久日志的无信号读取关闭 reader', as
   assert.ok((await f.body.pendingFacts(f.id)).some(row => row.id === fact.id));
 });
 
-async function runningHold(t) {
-  const f = await cordisFixture(t);
+async function runningHold(t, options) {
+  const f = await cordisFixture(t, options);
   f.model = async call => {
     if (call.messages.some(message => message.source.kind === 'dsh-world-life'))
       await submitPlan(call, [{id: 'rest', kind: 'hold', activity: 'Resting', durationMinutes: 10}]);
@@ -1248,7 +1249,11 @@ test('3B 显式暂停等待 Body 时卸载 Life，重挂后保留暂停并按原
   assert.equal(Date.parse(receipt.until), Date.parse(plan.execution.until) + pauseMs);
 });
 
-function appendUsage(session) {
+function appendUsage(repo, session) {
+  const at = Date.now();
+  recordUsage(repo,{started_at:at,ended_at:at,day:usageDay(at),session_id:session.id,entry:'dsh',preset:'standard',
+    purpose:null,provider:'deepseek',model:'deepseek-flash',requested_effort:null,outcome:'completed',
+    input_miss:1000,output:125,cache_read:null,cache_write:null,reasoning:null});
   const turn = (session.snapshotEvents().findLast(event => event.type === 'turn/start')?.data.turn ?? 0) + 1;
   const step = 1, reason = {kind: 'completed'};
   session.append('turn/start', {turn});
@@ -1263,7 +1268,7 @@ function appendUsage(session) {
 }
 
 test('3B 暂停等 Body 与运行时收尾期间照常落盘 home 花费，重挂淘汰旧写入', async t => {
-  const {f} = await runningHold(t);
+  const {f} = await runningHold(t, {now:new Date(2026,10,26,22,59)});
   const life = f.life, fiber = f.fiber('life'), runtime = life.runtime;
   const homeId = life.homeSessionId();
   assert.ok(homeId);
@@ -1287,7 +1292,7 @@ test('3B 暂停等 Body 与运行时收尾期间照常落盘 home 花费，重�
   try {
     await eventually(inspection.waiting, '显式暂停正在等待 Body，home 仍能提交在途记账');
     const before = spend();
-    appendUsage(home.session);
+    appendUsage(f.repo,home.session);
     const duringPause = spend();
 
     inspection.release();
@@ -1297,7 +1302,7 @@ test('3B 暂停等 Body 与运行时收尾期间照常落盘 home 花费，重�
     await eventually(() => !f.ctx.get('petLife', false), '旧 Life 门面已撤下');
     // 模拟原生事件分发已取出该监听器，运行时撤订后才交付回调。
     const recordLateUsage = () => {
-      const event = appendUsage(home.session);
+      const event = appendUsage(f.repo,home.session);
       for (const {callback} of retiredHooks) callback(home.session, event);
     };
     recordLateUsage();

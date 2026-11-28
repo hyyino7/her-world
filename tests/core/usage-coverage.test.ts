@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {createUserMessage} from '@deepseek-ai/dsh-llm';
 import {createChannelSourceAdapter} from '../../src/channels/sessions.js';
 import {channelUsage} from '../../src/channels/usage.js';
+import {join} from 'node:path';
+import {createLifeRuntime} from '#dsh-world/life/runtime';
+import {createLifeStore} from '#dsh-world/life/lifeStore';
 import {channelTotals, homeSpend} from '../../src/core/usage/totals.js';
 import {readLedger, usageDay} from '../../src/core/usage/ledger.js';
 
@@ -246,11 +249,20 @@ test('渠道旧事件和账本对同组请求按可比口径对账', async t => 
 });
 
 test('同组假调用对账 Life 旧累计与账本，分辨辅助、无价格、跨峰谷及跨午夜', async t => {
-  const f = await fixture(t,{console:true,now:'2026-11-26T03:59:00Z'});
-  await f.enable();
-  const home = await f.home(), active = await f.begin(home.id);
+  const f = await fixture(t,{life:false,now:'2026-11-26T03:59:00Z'});
+  const home = await f.home(), dir = join(f.root,'legacy-life'), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const store = createLifeStore(dir,timeZone);
+  store.update(state => { state.homeSessionId = home.id; });
+  // Exercise the supported vendor caller without a ledger hook.
+  const legacy = createLifeRuntime({ctx:home.ctx, config:{worldId:'world',agentPreset:'standard',timeZone},store,
+    options:{worldDir:dir,roomDir:f.repo,diaryDir:dir,selfFile:join(dir,'self.md'),timeZone,schedule:()=>({wake:'',review:''})},
+    notifier:{outlets:[]}, hasCurrentPlan:()=>true, host:{workspace:async()=>f.workspace,resolveAgent:async()=>home,
+      isArchived:()=>false,rename:async()=>{},origin:()=>'',createSession:async()=>assert.fail('home exists')}});
+  await legacy.start();
+  t.after(()=>legacy.stop());
+  const active = await f.begin(home.id);
   const spend = () => homeSpend(f.host.workspace.homeScope(), home.id, usageDay(Date.now()));
-  const old = async () => (await f.service('petLife').snapshot('world')).life.spend.yuan;
+  const old = () => store.read().spend!.yuan;
   async function call(purpose?: string, provider='deepseek', duration=0, eventDelay=0) {
     const opts = {...route, provider, sessionId:home.id, purpose}, usage = {inputTokens:1e6, outputTokens:0};
     const stream = await f.middleware('llm/stream',[opts],async function* () {
@@ -262,20 +274,20 @@ test('同组假调用对账 Life 旧累计与账本，分辨辅助、无价格�
       turn:active.turn,message:{role:'assistant',source:opts,content:[]},usage,stream:[]}));
   }
   await call();
-  assert.equal(await old(),2);
-  assert.equal(spend().yuan,await old());
+  assert.equal(old(),2);
+  assert.equal(spend().yuan,old());
   await call('compaction');
-  assert.deepEqual([spend().yuan,await old()],[4,2]);
+  assert.deepEqual([spend().yuan,old()],[4,2]);
   await call(undefined,'fixture');
-  assert.deepEqual([spend().yuan,spend().unpriced,await old()],[4,1,4]);
+  assert.deepEqual([spend().yuan,spend().unpriced,old()],[4,1,4]);
   await call(undefined,'deepseek',120000); // Beijing 11:59 → 12:01.
-  assert.deepEqual([spend().yuan,await old()],[6,5]);
+  assert.deepEqual([spend().yuan,old()],[6,5]);
   const midnight = new Date(); midnight.setHours(24,0,0,0);
   t.mock.timers.setTime(midnight.valueOf()-1000);
   const yesterday = usageDay(Date.now());
   await call(undefined,'deepseek',0,2000);
   assert.equal(spend().calls,0);
   assert.equal(homeSpend(f.host.workspace.homeScope(),home.id,yesterday).calls,5);
-  assert.ok(await old() > 0);
+  assert.ok(old() > 0);
   await f.end(active);
 });
